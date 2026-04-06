@@ -27,7 +27,7 @@ env:
   OSM_PBF_URL: https://download.openstreetmap.fr/extracts/europe/belgium/brussels_capital_region-latest.osm.pbf
   OSM_STATE_URL: https://download.openstreetmap.fr/extracts/europe/belgium/brussels_capital_region.state.txt
   MIN_ZOOM: 8
-  MAX_ZOOM: 19
+  MAX_ZOOM: 16
 
 jobs:
   build-and-deploy:
