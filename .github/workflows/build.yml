@@ -39,39 +39,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      # ── Check remote state ──────────────────
-      - name: Fetch remote state
-        id: state
-        run: |
-          wget -q -O state_remote.txt "$OSM_STATE_URL"
-          echo "Remote state:"
-          cat state_remote.txt
-
-          if [ -f state.txt ] && diff -q state.txt state_remote.txt > /dev/null 2>&1; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "ℹ️  OSM data unchanged, skipping rebuild."
-          else
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-            echo "✅ OSM data updated, rebuilding PMTiles."
-          fi
-
       # ── Install tools ───────────────────────
       - name: Install osmium-tool & tippecanoe
-        if: steps.state.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends osmium-tool tippecanoe
 
       # ── Download OSM extract ────────────────
       - name: Download OSM PBF
-        if: steps.state.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
         run: |
           wget -O brussels.osm.pbf "$OSM_PBF_URL"
+          wget -O state.txt "$OSM_STATE_URL"
           echo "PBF size: $(du -sh brussels.osm.pbf | cut -f1)"
 
       # ── Filter data ─────────────────────────
       - name: Filter highway features
-        if: steps.state.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
         run: |
           osmium tags-filter brussels.osm.pbf \
             ${{ env.HIGHWAY_TYPES }} \
@@ -79,7 +61,6 @@ jobs:
           echo "Highways PBF: $(du -sh highways_raw.osm.pbf | cut -f1)"
 
       - name: Filter landuse features
-        if: steps.state.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
         run: |
           osmium tags-filter brussels.osm.pbf \
             a/landuse \
@@ -88,7 +69,6 @@ jobs:
 
       # ── Export to GeoJSON ───────────────────
       - name: Export highways GeoJSON
-        if: steps.state.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
         run: |
           osmium export highways_raw.osm.pbf \
             --geometry-types=linestring,point \
@@ -96,7 +76,6 @@ jobs:
           echo "highways.geojson: $(du -sh highways.geojson | cut -f1)"
 
       - name: Export landuse GeoJSON
-        if: steps.state.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
         run: |
           osmium export landuse_raw.osm.pbf \
             --geometry-types=polygon \
@@ -105,7 +84,6 @@ jobs:
 
       # ── Build PMTiles ───────────────────────
       - name: Build PMTiles with tippecanoe
-        if: steps.state.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
         run: |
           tippecanoe \
             -o pedestrian.pmtiles \
@@ -122,24 +100,8 @@ jobs:
 
       # ── GitHub Pages workaround ─────────────
       - name: Rename PMTiles
-        if: steps.state.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
         run: |
           mv pedestrian.pmtiles pedestrian.pmtiles.gz
-
-      # ── Save updated state ──────────────────
-      - name: Update state file
-        if: steps.state.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
-        run: cp state_remote.txt state.txt
-
-      # ── Commit state back to main ───────────
-      - name: Commit state.txt to main
-        if: steps.state.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
-        run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add state.txt
-          git diff --staged --quiet || git commit -m "chore: update OSM state [skip ci]"
-          git push
 
       # ── Assemble site ───────────────────────
       - name: Prepare _site directory
@@ -147,13 +109,9 @@ jobs:
           mkdir -p _site
           cp index.html _site/
           cp style.json _site/
-          [ -f state.txt ] && cp state.txt _site/
-          if [ -f pedestrian.pmtiles.gz ]; then
-            cp pedestrian.pmtiles.gz _site/
-            echo "✅ PMTiles included in deploy"
-          else
-            echo "⚠️  No PMTiles found — only static files deployed"
-          fi
+          cp state.txt _site/
+          cp pedestrian.pmtiles.gz _site/
+          echo "📦 Site contents:"
           ls -lh _site/
 
       # ── Deploy ──────────────────────────────
