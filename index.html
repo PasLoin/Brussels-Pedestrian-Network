@@ -12,21 +12,13 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    body {
-      font-family: "Inter", system-ui, sans-serif;
-      background: #1a1a1a;
-    }
+    body { font-family: "Inter", system-ui, sans-serif; background: #1a1a1a; }
 
-    #map {
-      position: absolute;
-      inset: 0;
-    }
+    #map { position: absolute; inset: 0; }
 
-    /* ── Header ─────────────────────────── */
     #header {
       position: absolute;
-      top: 12px;
-      left: 12px;
+      top: 12px; left: 12px;
       z-index: 10;
       background: rgba(255,255,255,0.96);
       border-radius: 10px;
@@ -34,119 +26,61 @@
       box-shadow: 0 2px 12px rgba(0,0,0,0.15);
       max-width: 240px;
     }
+    #header h1 { font-size: 14px; font-weight: 700; color: #111; line-height: 1.2; }
+    #header .subtitle { font-size: 11px; color: #666; margin-top: 2px; }
+    #last-update { font-size: 10px; color: #999; margin-top: 6px; }
 
-    #header h1 {
-      font-size: 14px;
-      font-weight: 700;
-      color: #111;
-      line-height: 1.2;
-    }
-
-    #header .subtitle {
-      font-size: 11px;
-      color: #666;
-      margin-top: 2px;
-    }
-
-    #last-update {
-      font-size: 10px;
-      color: #999;
-      margin-top: 6px;
-    }
-
-    /* ── Legend ─────────────────────────── */
     #legend {
       position: absolute;
-      bottom: 28px;
-      left: 12px;
+      bottom: 28px; left: 12px;
       z-index: 10;
       background: rgba(255,255,255,0.96);
       border-radius: 10px;
       padding: 12px 14px;
       box-shadow: 0 2px 12px rgba(0,0,0,0.15);
-      min-width: 180px;
+      min-width: 190px;
+      max-height: calc(100vh - 120px);
+      overflow-y: auto;
     }
-
     #legend h2 {
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: #444;
-      margin-bottom: 8px;
+      font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.05em;
+      color: #444; margin-bottom: 8px;
     }
-
     .legend-section {
-      font-size: 10px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      color: #888;
-      margin: 8px 0 4px;
+      font-size: 10px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.04em;
+      color: #888; margin: 10px 0 4px;
     }
-
-    .legend-section:first-of-type { margin-top: 0; }
-
     .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 5px;
-      cursor: pointer;
-      user-select: none;
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 5px; cursor: pointer; user-select: none;
     }
-
     .legend-item:last-child { margin-bottom: 0; }
-
-    .legend-item.hidden .legend-label { opacity: 0.35; }
-
-    .legend-line {
-      width: 26px;
-      height: 4px;
-      border-radius: 2px;
-      flex-shrink: 0;
-      transition: opacity 0.2s;
-    }
-
-    .legend-box {
-      width: 14px;
-      height: 14px;
-      border-radius: 3px;
-      flex-shrink: 0;
-      border: 1px solid rgba(0,0,0,0.15);
-      transition: opacity 0.2s;
-    }
-
-    .legend-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      flex-shrink: 0;
-      transition: opacity 0.2s;
-    }
-
+    .legend-item.hidden .legend-label,
     .legend-item.hidden .legend-line,
     .legend-item.hidden .legend-dot,
-    .legend-item.hidden .legend-box { opacity: 0.2; }
+    .legend-item.hidden .legend-box { opacity: 0.25; }
 
-    .legend-label {
-      font-size: 12px;
-      color: #333;
-      transition: opacity 0.2s;
+    .legend-line { width: 26px; height: 4px; border-radius: 2px; flex-shrink: 0; }
+    .legend-line.dashed {
+      background: repeating-linear-gradient(
+        to right,
+        var(--c) 0px, var(--c) 6px,
+        transparent 6px, transparent 10px
+      );
+      background-color: transparent !important;
     }
+    .legend-box  { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; border: 1px solid rgba(0,0,0,0.15); }
+    .legend-dot  { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .legend-label { font-size: 12px; color: #333; }
 
-    /* ── Zoom badge ─────────────────────── */
     #zoom-badge {
-      position: absolute;
-      top: 12px;
-      right: 52px;
+      position: absolute; top: 12px; right: 52px;
       z-index: 10;
       background: rgba(255,255,255,0.9);
-      border-radius: 6px;
-      padding: 4px 8px;
-      font-size: 11px;
-      color: #555;
-      pointer-events: none;
+      border-radius: 6px; padding: 4px 8px;
+      font-size: 11px; color: #555; pointer-events: none;
     }
   </style>
 </head>
@@ -160,9 +94,7 @@
   <div id="last-update">Chargement…</div>
 </div>
 
-<div id="legend">
-  <h2>Légende</h2>
-</div>
+<div id="legend"><h2>Légende</h2></div>
 
 <div id="zoom-badge">z<span id="zoom-val">—</span></div>
 
@@ -170,17 +102,16 @@
 // ── PMTiles protocol ──────────────────────────────────────────────────────────
 const protocol = new pmtiles.Protocol();
 maplibregl.addProtocol("pmtiles", protocol.tile.bind(protocol));
-
 const PMTILES_URL = new URL("./pedestrian.pmtiles.gz", window.location.href).href;
 
-// ── Définition des couches piétonnes ─────────────────────────────────────────
+// ── Couches piétonnes ─────────────────────────────────────────────────────────
 const HIGHWAY_LAYERS = [
-  { id: "living_street", label: "Rue partagée",     color: "#f59e0b", width: 3,   dash: null },
-  { id: "pedestrian",    label: "Zone piétonne",    color: "#6366f1", width: 3,   dash: null },
-  { id: "footway",       label: "Trottoir / allée", color: "#f97316", width: 2,   dash: null },
-  { id: "cycleway",      label: "Piste cyclable",   color: "#06b6d4", width: 2.5, dash: null },
-  { id: "path",          label: "Sentier",          color: "#22c55e", width: 1.5, dash: [3, 3] },
-  { id: "steps",         label: "Escaliers",        color: "#ef4444", width: 2,   dash: [2, 2] },
+  { id: "living_street", label: "Rue partagée",     color: "#f59e0b", width: 3,   dash: false },
+  { id: "pedestrian",    label: "Zone piétonne",    color: "#6366f1", width: 3,   dash: false },
+  { id: "footway",       label: "Trottoir / allée", color: "#f97316", width: 2,   dash: false },
+  { id: "cycleway",      label: "Piste cyclable",   color: "#06b6d4", width: 2.5, dash: false },
+  { id: "path",          label: "Sentier",          color: "#22c55e", width: 1.5, dash: true  },
+  { id: "steps",         label: "Escaliers",        color: "#ef4444", width: 2,   dash: true  },
 ];
 
 // ── Style MapLibre ────────────────────────────────────────────────────────────
@@ -196,77 +127,14 @@ const mapStyle = {
   },
   layers: [
 
-    // ── Background ────────────────────────────────────────────────────────────
+    // Background
     {
       id: "background",
       type: "background",
       paint: { "background-color": "#f0ece4" }
     },
 
-    // ── Buildings ─────────────────────────────────────────────────────────────
-    {
-      id: "buildings-fill",
-      type: "fill",
-      source: "pedestrian",
-      "source-layer": "buildings",
-      paint: {
-        "fill-color": "#ddd8d0",
-        "fill-opacity": 0.8
-      }
-    },
-    {
-      id: "buildings-outline",
-      type: "line",
-      source: "pedestrian",
-      "source-layer": "buildings",
-      paint: {
-        "line-color": "#c4bdb4",
-        "line-width": 0.5
-      }
-    },
-
-    // ── Roads (fond) ──────────────────────────────────────────────────────────
-    {
-      id: "roads-casing",
-      type: "line",
-      source: "pedestrian",
-      "source-layer": "roads",
-      layout: { "line-cap": "round", "line-join": "round" },
-      paint: {
-        "line-color": "#c8c0b4",
-        "line-width": [
-          "interpolate", ["linear"], ["zoom"],
-          8, 1.5, 12, 3, 16, 8
-        ]
-      }
-    },
-    {
-      id: "roads-fill",
-      type: "line",
-      source: "pedestrian",
-      "source-layer": "roads",
-      layout: { "line-cap": "round", "line-join": "round" },
-      paint: {
-        "line-color": [
-          "match", ["get", "highway"],
-          "motorway",      "#f0d0a0",
-          "trunk",         "#f0d8b0",
-          "primary",       "#f8e8c0",
-          "secondary",     "#fffff0",
-          "tertiary",      "#ffffff",
-          "residential",   "#ffffff",
-          "unclassified",  "#ffffff",
-          "service",       "#f4f0ec",
-          /* default */    "#ffffff"
-        ],
-        "line-width": [
-          "interpolate", ["linear"], ["zoom"],
-          8, 0.8, 12, 2, 16, 5
-        ]
-      }
-    },
-
-    // ── Landuse fills ─────────────────────────────────────────────────────────
+    // ── Landuse ───────────────────────────────────────────────────────────────
     {
       id: "landuse-fill",
       type: "fill",
@@ -294,7 +162,7 @@ const mapStyle = {
           "military",          "#d4ccbc",
           "#ddd8d0"
         ],
-        "fill-opacity": 0.65
+        "fill-opacity": 0.7
       }
     },
     {
@@ -302,38 +170,29 @@ const mapStyle = {
       type: "line",
       source: "pedestrian",
       "source-layer": "landuse",
-      paint: {
-        "line-color": "#b8b0a4",
-        "line-width": 0.5,
-        "line-opacity": 0.5
-      }
+      paint: { "line-color": "#b8b0a4", "line-width": 0.5, "line-opacity": 0.5 }
     },
 
-    // ── Highways (lignes piétonnes/cyclables) ─────────────────────────────────
+    // ── Highways ──────────────────────────────────────────────────────────────
     ...HIGHWAY_LAYERS.map(({ id, color, width, dash }) => ({
       id: `highway-${id}`,
       type: "line",
       source: "pedestrian",
       "source-layer": "highways",
       filter: ["==", ["get", "highway"], id],
-      layout: {
-        "line-cap": "round",
-        "line-join": "round"
-      },
+      layout: { "line-cap": "round", "line-join": "round" },
       paint: {
         "line-color": color,
         "line-width": [
           "interpolate", ["linear"], ["zoom"],
-          8, width * 0.4,
-          14, width,
-          18, width * 2.5
+          8, width * 0.4, 14, width, 18, width * 2.5
         ],
         "line-opacity": 0.9,
-        ...(dash ? { "line-dasharray": dash } : {})
+        ...(dash ? { "line-dasharray": [3, 3] } : {})
       }
     })),
 
-    // ── Elevator (point) ──────────────────────────────────────────────────────
+    // ── Elevator ──────────────────────────────────────────────────────────────
     {
       id: "highway-elevator",
       type: "circle",
@@ -342,12 +201,39 @@ const mapStyle = {
       filter: ["==", ["get", "highway"], "elevator"],
       paint: {
         "circle-color": "#a855f7",
-        "circle-radius": [
-          "interpolate", ["linear"], ["zoom"],
-          8, 3, 16, 7
-        ],
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 3, 16, 7],
         "circle-stroke-color": "#fff",
         "circle-stroke-width": 1.5
+      }
+    },
+
+    // ── Gaps longs (orange) ───────────────────────────────────────────────────
+    {
+      id: "gaps-long",
+      type: "line",
+      source: "pedestrian",
+      "source-layer": "gaps_long",
+      layout: { "line-cap": "round" },
+      paint: {
+        "line-color": "#fb923c",
+        "line-width": 2,
+        "line-dasharray": [4, 3],
+        "line-opacity": 0.85
+      }
+    },
+
+    // ── Gaps courts (rouge vif) ───────────────────────────────────────────────
+    {
+      id: "gaps-short",
+      type: "line",
+      source: "pedestrian",
+      "source-layer": "gaps_short",
+      layout: { "line-cap": "round" },
+      paint: {
+        "line-color": "#ef4444",
+        "line-width": 2.5,
+        "line-dasharray": [3, 2],
+        "line-opacity": 0.9
       }
     }
 
@@ -374,6 +260,23 @@ map.on("load", () => {
   document.getElementById("zoom-val").textContent = map.getZoom().toFixed(1);
 });
 
+// ── Popup sur les gaps ────────────────────────────────────────────────────────
+map.on("load", () => {
+  ["gaps-short", "gaps-long"].forEach(layerId => {
+    map.on("mouseenter", layerId, () => { map.getCanvas().style.cursor = "pointer"; });
+    map.on("mouseleave", layerId, () => { map.getCanvas().style.cursor = ""; });
+    map.on("click", layerId, e => {
+      const props = e.features[0].properties;
+      const dist = props.distance_m;
+      const label = layerId === "gaps-short" ? "Gap court" : "Gap long";
+      new maplibregl.Popup()
+        .setLngLat(e.lngLat)
+        .setHTML(`<strong>${label}</strong><br>${dist} m`)
+        .addTo(map);
+    });
+  });
+});
+
 // ── Légende ───────────────────────────────────────────────────────────────────
 const legendEl = document.getElementById("legend");
 
@@ -384,15 +287,18 @@ function addSection(label) {
   legendEl.appendChild(s);
 }
 
-function makeLegendItem({ layerId, label, color, type = "line" }) {
+function makeLegendItem({ layerId, label, color, swatchType = "line", dashed = false }) {
   const item = document.createElement("div");
   item.className = "legend-item";
 
   const swatch = document.createElement("div");
-  if (type === "dot")       swatch.className = "legend-dot";
-  else if (type === "box")  swatch.className = "legend-box";
-  else                      swatch.className = "legend-line";
-  swatch.style.background = color;
+  swatch.className = `legend-${swatchType}`;
+  if (dashed) {
+    swatch.classList.add("dashed");
+    swatch.style.setProperty("--c", color);
+  } else {
+    swatch.style.background = color;
+  }
 
   const lbl = document.createElement("span");
   lbl.className = "legend-label";
@@ -410,18 +316,23 @@ function makeLegendItem({ layerId, label, color, type = "line" }) {
   return item;
 }
 
-// Fond
 addSection("Fond de carte");
-legendEl.appendChild(makeLegendItem({ layerId: "buildings-fill",  label: "Bâtiments",       color: "#ddd8d0", type: "box" }));
-legendEl.appendChild(makeLegendItem({ layerId: "roads-fill",      label: "Routes",           color: "#f8e8c0", type: "box" }));
-legendEl.appendChild(makeLegendItem({ layerId: "landuse-fill",    label: "Occupation du sol",color: "#c8e8b8", type: "box" }));
+legendEl.appendChild(makeLegendItem({ layerId: "landuse-fill", label: "Occupation du sol", color: "#c8e8b8", swatchType: "box" }));
 
-// Voies actives
-addSection("Réseau actif");
+addSection("Réseau piéton & vélo");
 HIGHWAY_LAYERS.forEach(l => {
-  legendEl.appendChild(makeLegendItem({ layerId: `highway-${l.id}`, label: l.label, color: l.color }));
+  legendEl.appendChild(makeLegendItem({
+    layerId: `highway-${l.id}`,
+    label: l.label,
+    color: l.color,
+    dashed: l.dash
+  }));
 });
-legendEl.appendChild(makeLegendItem({ layerId: "highway-elevator", label: "Ascenseur", color: "#a855f7", type: "dot" }));
+legendEl.appendChild(makeLegendItem({ layerId: "highway-elevator", label: "Ascenseur", color: "#a855f7", swatchType: "dot" }));
+
+addSection("Gaps réseau OSM");
+legendEl.appendChild(makeLegendItem({ layerId: "gaps-short", label: "Court < 30 m (priorité)", color: "#ef4444", dashed: true }));
+legendEl.appendChild(makeLegendItem({ layerId: "gaps-long",  label: "Long < 150 m",            color: "#fb923c", dashed: true }));
 
 // ── Date de mise à jour ───────────────────────────────────────────────────────
 fetch("./state.txt")
@@ -435,9 +346,7 @@ fetch("./state.txt")
         "Données : " + d.toLocaleDateString("fr-BE", { day: "2-digit", month: "short", year: "numeric" });
     }
   })
-  .catch(() => {
-    document.getElementById("last-update").textContent = "";
-  });
+  .catch(() => { document.getElementById("last-update").textContent = ""; });
 </script>
 </body>
 </html>
