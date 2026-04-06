@@ -1,0 +1,212 @@
+{
+  "version": 8,
+  "name": "Brussels Pedestrian Network",
+  "metadata": {
+    "maputnik:renderer": "mlgljs",
+    "maputnik:mapbox:access_token": ""
+  },
+  "glyphs": "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+  "sprite": "",
+
+  "sources": {
+    "pedestrian": {
+      "type": "vector",
+      "url": "pmtiles://https://YOUR_GITHUB_USERNAME.github.io/YOUR_REPO_NAME/pedestrian.pmtiles.gz",
+      "attribution": "© <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap contributors</a>"
+    }
+  },
+
+  "layers": [
+
+    {
+      "id": "background",
+      "type": "background",
+      "paint": {
+        "background-color": "#f0ece4"
+      }
+    },
+
+    {
+      "id": "landuse-fill",
+      "type": "fill",
+      "source": "pedestrian",
+      "source-layer": "landuse",
+      "paint": {
+        "fill-color": [
+          "match", ["get", "landuse"],
+          "residential",       "#e8e2d8",
+          "commercial",        "#f5e8d0",
+          "retail",            "#f5dfc8",
+          "industrial",        "#d8d4cc",
+          "park",              "#c8e8b8",
+          "grass",             "#ceecc0",
+          "meadow",            "#d4ecc4",
+          "forest",            "#b8d8a0",
+          "cemetery",          "#d0e8c4",
+          "recreation_ground", "#c4e0b0",
+          "farmland",          "#e4eccc",
+          "allotments",        "#cce8b4",
+          "education",         "#ecdfd0",
+          "school",            "#ecdfd0",
+          "university",        "#ecdfd0",
+          "hospital",          "#f0d8d8",
+          "military",          "#d4ccbc",
+          "#ddd8d0"
+        ],
+        "fill-opacity": 0.75
+      }
+    },
+
+    {
+      "id": "landuse-outline",
+      "type": "line",
+      "source": "pedestrian",
+      "source-layer": "landuse",
+      "paint": {
+        "line-color": "#b8b0a4",
+        "line-width": 0.5,
+        "line-opacity": 0.6
+      }
+    },
+
+    {
+      "id": "highway-living_street",
+      "type": "line",
+      "source": "pedestrian",
+      "source-layer": "highways",
+      "filter": ["==", ["get", "highway"], "living_street"],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "#f59e0b",
+        "line-width": [
+          "interpolate", ["linear"], ["zoom"],
+          8, 1.2, 14, 3, 18, 7.5
+        ],
+        "line-opacity": 0.9
+      }
+    },
+
+    {
+      "id": "highway-pedestrian",
+      "type": "line",
+      "source": "pedestrian",
+      "source-layer": "highways",
+      "filter": ["==", ["get", "highway"], "pedestrian"],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "#6366f1",
+        "line-width": [
+          "interpolate", ["linear"], ["zoom"],
+          8, 1.2, 14, 3, 18, 7.5
+        ],
+        "line-opacity": 0.9
+      }
+    },
+
+    {
+      "id": "highway-footway",
+      "type": "line",
+      "source": "pedestrian",
+      "source-layer": "highways",
+      "filter": ["==", ["get", "highway"], "footway"],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "#f97316",
+        "line-width": [
+          "interpolate", ["linear"], ["zoom"],
+          8, 0.8, 14, 2, 18, 5
+        ],
+        "line-opacity": 0.9
+      }
+    },
+
+    {
+      "id": "highway-cycleway",
+      "type": "line",
+      "source": "pedestrian",
+      "source-layer": "highways",
+      "filter": ["==", ["get", "highway"], "cycleway"],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "#06b6d4",
+        "line-width": [
+          "interpolate", ["linear"], ["zoom"],
+          8, 1, 14, 2.5, 18, 6
+        ],
+        "line-opacity": 0.9
+      }
+    },
+
+    {
+      "id": "highway-path",
+      "type": "line",
+      "source": "pedestrian",
+      "source-layer": "highways",
+      "filter": ["==", ["get", "highway"], "path"],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "#22c55e",
+        "line-width": [
+          "interpolate", ["linear"], ["zoom"],
+          8, 0.6, 14, 1.5, 18, 4
+        ],
+        "line-dasharray": [3, 3],
+        "line-opacity": 0.9
+      }
+    },
+
+    {
+      "id": "highway-steps",
+      "type": "line",
+      "source": "pedestrian",
+      "source-layer": "highways",
+      "filter": ["==", ["get", "highway"], "steps"],
+      "layout": {
+        "line-cap": "butt",
+        "line-join": "miter"
+      },
+      "paint": {
+        "line-color": "#ef4444",
+        "line-width": [
+          "interpolate", ["linear"], ["zoom"],
+          8, 0.8, 14, 2, 18, 5
+        ],
+        "line-dasharray": [2, 2],
+        "line-opacity": 0.9
+      }
+    },
+
+    {
+      "id": "highway-elevator",
+      "type": "circle",
+      "source": "pedestrian",
+      "source-layer": "highways",
+      "filter": ["==", ["get", "highway"], "elevator"],
+      "paint": {
+        "circle-color": "#a855f7",
+        "circle-radius": [
+          "interpolate", ["linear"], ["zoom"],
+          12, 3, 16, 7
+        ],
+        "circle-stroke-color": "#ffffff",
+        "circle-stroke-width": 1.5
+      }
+    }
+
+  ]
+}
