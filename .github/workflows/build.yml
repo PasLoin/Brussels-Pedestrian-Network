@@ -40,10 +40,10 @@ jobs:
         uses: actions/checkout@v5
 
       # ── Install tools ───────────────────────
-      - name: Install osmium-tool & tippecanoe
+      - name: Install osmium-tool, tippecanoe & jq
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends osmium-tool tippecanoe
+          sudo apt-get install -y --no-install-recommends osmium-tool tippecanoe jq
 
       # ── Download OSM extract ────────────────
       - name: Download OSM PBF
@@ -67,6 +67,27 @@ jobs:
             -o landuse_raw.osm.pbf --overwrite
           echo "Landuse PBF: $(du -sh landuse_raw.osm.pbf | cut -f1)"
 
+      - name: Filter road features
+        run: |
+          osmium tags-filter brussels.osm.pbf \
+            w/highway=motorway \
+            w/highway=trunk \
+            w/highway=primary \
+            w/highway=secondary \
+            w/highway=tertiary \
+            w/highway=residential \
+            w/highway=service \
+            w/highway=unclassified \
+            -o roads_raw.osm.pbf --overwrite
+          echo "Roads PBF: $(du -sh roads_raw.osm.pbf | cut -f1)"
+
+      - name: Filter building features
+        run: |
+          osmium tags-filter brussels.osm.pbf \
+            a/building \
+            -o buildings_raw.osm.pbf --overwrite
+          echo "Buildings PBF: $(du -sh buildings_raw.osm.pbf | cut -f1)"
+
       # ── Export to GeoJSON ───────────────────
       - name: Export highways GeoJSON
         run: |
@@ -81,12 +102,29 @@ jobs:
             --geometry-types=polygon \
             -o landuse.geojson --overwrite
           echo "landuse.geojson: $(du -sh landuse.geojson | cut -f1)"
+
+      - name: Export roads GeoJSON
+        run: |
+          osmium export roads_raw.osm.pbf \
+            --geometry-types=linestring \
+            -o roads.geojson --overwrite
+          echo "roads.geojson: $(du -sh roads.geojson | cut -f1)"
+
+      - name: Export buildings GeoJSON
+        run: |
+          osmium export buildings_raw.osm.pbf \
+            --geometry-types=polygon \
+            -o buildings.geojson --overwrite
+          echo "buildings.geojson: $(du -sh buildings.geojson | cut -f1)"
+
+      # ── Force elevators visible at all zooms ─
       - name: Force elevators visible at all zooms
         run: |
           jq '(.features[] | select(.properties.highway == "elevator")) |= . + {"tippecanoe": {"minzoom": 8}}' \
             highways.geojson > highways_fixed.geojson
           mv highways_fixed.geojson highways.geojson
 
+      # ── Build PMTiles ───────────────────────
       - name: Build PMTiles with tippecanoe
         run: |
           tippecanoe \
@@ -96,12 +134,13 @@ jobs:
             --description "Pedestrian, cycling and shared streets of Brussels" \
             --attribution "© OpenStreetMap contributors" \
             -Z${{ env.MIN_ZOOM }} -z${{ env.MAX_ZOOM }} \
-            --no-feature-limit \
-            --no-tile-size-limit \
-            --extend-zooms-if-still-dropping \
             --drop-densest-as-needed \
+            --extend-zooms-if-still-dropping \
             highways.geojson \
-            landuse.geojson
+            landuse.geojson \
+            roads.geojson \
+            buildings.geojson
+          echo "PMTiles: $(du -sh pedestrian.pmtiles | cut -f1)"
 
       # ── GitHub Pages workaround ─────────────
       - name: Rename PMTiles
@@ -121,7 +160,7 @@ jobs:
 
       # ── Deploy ──────────────────────────────
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+        uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./_site
