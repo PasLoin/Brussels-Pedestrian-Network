@@ -2,7 +2,7 @@ name: Build & Deploy PMTiles
 
 on:
   schedule:
-    - cron: "0 3 * * 1" # Every Monday at 3:00 UTC
+    - cron: "0 3 * * 1"
   push:
     branches: [main]
     paths:
@@ -11,9 +11,6 @@ on:
       - "style.json"
   workflow_dispatch:
 
-# ──────────────────────────────────────────────
-# Configurable highway types — edit as needed
-# ──────────────────────────────────────────────
 env:
   HIGHWAY_TYPES: >-
     w/highway=footway
@@ -25,12 +22,13 @@ env:
     w/highway=cycleway
     n/highway=elevator
     n/highway=crossing
+    n/amenity=elevator
   OSM_PBF_URL: https://download.openstreetmap.fr/extracts/europe/belgium/brussels_capital_region-latest.osm.pbf
   OSM_STATE_URL: https://download.openstreetmap.fr/extracts/europe/belgium/brussels_capital_region.state.txt
   MIN_ZOOM: 8
   MAX_ZOOM: 19
-  SHORT_GAP_MAX: 30    # mètres — gap facile à combler
-  LONG_GAP_MAX: 150    # mètres — gap plus long
+  SHORT_GAP_MAX: 30
+  LONG_GAP_MAX: 150
 
 jobs:
   build-and-deploy:
@@ -42,7 +40,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      # ── Install tools ───────────────────────
       - name: Install osmium-tool, tippecanoe & jq
         run: |
           sudo apt-get update -qq
@@ -51,51 +48,41 @@ jobs:
       - name: Install Python deps
         run: pip install geopandas shapely --break-system-packages
 
-      # ── Download OSM extract ────────────────
       - name: Download OSM PBF
         run: |
           wget -O brussels.osm.pbf "$OSM_PBF_URL"
           wget -O state.txt "$OSM_STATE_URL"
-          echo "PBF size: $(du -sh brussels.osm.pbf | cut -f1)"
 
-      # ── Filter data ─────────────────────────
       - name: Filter highway features
         run: |
           osmium tags-filter brussels.osm.pbf \
             ${{ env.HIGHWAY_TYPES }} \
             -o highways_raw.osm.pbf --overwrite
-          echo "Highways PBF: $(du -sh highways_raw.osm.pbf | cut -f1)"
 
       - name: Filter landuse features
         run: |
           osmium tags-filter brussels.osm.pbf \
             a/landuse \
             -o landuse_raw.osm.pbf --overwrite
-          echo "Landuse PBF: $(du -sh landuse_raw.osm.pbf | cut -f1)"
 
-      # ── Export to GeoJSON ───────────────────
       - name: Export highways GeoJSON
         run: |
           osmium export highways_raw.osm.pbf \
             --geometry-types=linestring,point \
             -o highways.geojson --overwrite
-          echo "highways.geojson: $(du -sh highways.geojson | cut -f1)"
 
       - name: Export landuse GeoJSON
         run: |
           osmium export landuse_raw.osm.pbf \
             --geometry-types=polygon \
             -o landuse.geojson --overwrite
-          echo "landuse.geojson: $(du -sh landuse.geojson | cut -f1)"
 
-      # ── Force elevators visible at all zooms ─
-      - name: Force elevators visible at all zooms
+      - name: Force elevators visible
         run: |
-          jq '(.features[] | select(.properties.highway == "elevator")) |= . + {"tippecanoe": {"minzoom": 8}}' \
+          jq '(.features[] | select(.properties.highway == "elevator" or .properties.amenity == "elevator")) |= . + {"tippecanoe": {"minzoom": 8}}' \
             highways.geojson > highways_fixed.geojson
           mv highways_fixed.geojson highways.geojson
 
-      # ── Compute network gaps (STRtree) ───────
       - name: Compute network gaps
         run: |
           python3 << 'EOF'
@@ -106,103 +93,84 @@ jobs:
           from collections import Counter, defaultdict
 
           SHORT_MAX = int(os.environ.get("SHORT_GAP_MAX", 30))
-          LONG_MAX  = int(os.environ.get("LONG_GAP_MAX",  150))
-
+          LONG_MAX  = int(os.environ.get("LONG_GAP_MAX", 150))
           t0 = time.time()
 
-          # ── Chargement en Lambert belge (métrique) ────────────────────────
-          print("Chargement highways.geojson...")
-          gdf = gpd.read_file("highways.geojson")
-          gdf = gdf[gdf.geometry.geom_type == "LineString"].to_crs("EPSG:31370").reset_index(drop=True)
-          print(f"  {len(gdf)} lignes — {time.time()-t0:.1f}s")
+          print("Chargement des données...")
+          full_gdf = gpd.read_file("highways.geojson").to_crs("EPSG:31370")
+          
+          lines = full_gdf[full_gdf.geometry.geom_type == "LineString"].reset_index(drop=True)
+          crossings = full_gdf[full_gdf["highway"] == "crossing"].reset_index(drop=True)
+          
+          print(f"Lignes: {len(lines)}, Crossings nodes: {len(crossings)}")
 
-          geom_list = list(gdf.geometry)
-
-          # ── Endpoints pendants + mapping coords → indices de lignes ──────
-          print("Calcul des endpoints...")
           all_pts = []
           endpoint_to_lines = defaultdict(set)
-          for idx, geom in enumerate(geom_list):
+          for idx, geom in enumerate(lines.geometry):
               coords = list(geom.coords)
+              if len(coords) < 2: continue
               s, e = tuple(coords[0]), tuple(coords[-1])
               all_pts += [s, e]
               endpoint_to_lines[s].add(idx)
               endpoint_to_lines[e].add(idx)
 
           counts = Counter(all_pts)
-          # Pendants = extrémités libres (apparaissent une seule fois)
           dangling_coords = [p for p, c in counts.items() if c == 1]
           dangling = [(Point(p), endpoint_to_lines[p]) for p in dangling_coords]
-          print(f"  {len(dangling)} endpoints pendants — {time.time()-t0:.1f}s")
 
-          # ── Index spatial STRtree ─────────────────────────────────────────
-          print("Construction du STRtree...")
-          tree = STRtree(geom_list)
-          print(f"  STRtree prêt — {time.time()-t0:.1f}s")
+          line_tree = STRtree(list(lines.geometry))
+          crossing_tree = STRtree(list(crossings.geometry))
 
-          # ── Calcul des gaps ───────────────────────────────────────────────
-          print("Calcul des gaps...")
           gaps_short, gaps_long = [], []
-          skipped = 0
 
           for i, (pt, own_lines) in enumerate(dangling):
-              if i % 2000 == 0:
-                  print(f"  {i}/{len(dangling)} — {time.time()-t0:.1f}s")
-
-              # Candidats dans le rayon, en excluant les lignes de l'endpoint
-              candidates_idx = [
-                  idx for idx in tree.query(pt.buffer(LONG_MAX))
-                  if idx not in own_lines
-              ]
-              if not candidates_idx:
-                  skipped += 1
-                  continue
-
               best_dist = float("inf")
-              best_pt   = None
-              for idx in candidates_idx:
-                  line = geom_list[idx]
-                  d = pt.distance(line)
-                  if d < best_dist:
-                      best_dist = d
-                      best_pt   = line.interpolate(line.project(pt))
+              target_pt = None
+              found_via_crossing = False
 
-              if best_dist > LONG_MAX:
-                  skipped += 1
-                  continue
+              near_crossing_idx = crossing_tree.query(pt.buffer(SHORT_MAX))
+              if len(near_crossing_idx) > 0:
+                  for c_idx in near_crossing_idx:
+                      c_pt = crossings.geometry.iloc[c_idx]
+                      d = pt.distance(c_pt)
+                      if d < best_dist:
+                          best_dist = d
+                          target_pt = c_pt
+                          found_via_crossing = True
+              
+              if target_pt is None:
+                  candidates_idx = [idx for idx in line_tree.query(pt.buffer(LONG_MAX)) if idx not in own_lines]
+                  for l_idx in candidates_idx:
+                      line = lines.geometry.iloc[l_idx]
+                      d = pt.distance(line)
+                      if d < best_dist:
+                          best_dist = d
+                          target_pt = line.interpolate(line.project(pt))
 
-              props = {"distance_m": round(best_dist, 1)}
-              gap   = LineString([pt, best_pt])
-              if best_dist <= SHORT_MAX:
-                  gaps_short.append({"geometry": gap, **props})
-              else:
-                  gaps_long.append({"geometry": gap, **props})
+              if target_pt and 0.1 < best_dist <= LONG_MAX:
+                  gap = LineString([pt, target_pt])
+                  props = {"distance_m": round(best_dist, 1), "to_crossing": 1 if found_via_crossing else 0}
+                  if best_dist <= SHORT_MAX:
+                      gaps_short.append({"geometry": gap, **props})
+                  else:
+                      gaps_long.append({"geometry": gap, **props})
 
-          print(f"Gaps courts (<{SHORT_MAX}m) : {len(gaps_short)}")
-          print(f"Gaps longs  (<{LONG_MAX}m)  : {len(gaps_long)}")
-          print(f"Ignorés (hors portée)       : {skipped}")
-          print(f"Durée totale : {time.time()-t0:.1f}s")
-
-          # ── Sauvegarde ────────────────────────────────────────────────────
           def save(features, filename):
-              rows = features if features else [{"geometry": None, "distance_m": 0}]
+              rows = features if features else [{"geometry": None, "distance_m": 0, "to_crossing": 0}]
               g = gpd.GeoDataFrame(rows, crs="EPSG:31370")
               g.to_crs("EPSG:4326").to_file(filename, driver="GeoJSON")
-              import subprocess
-              print(" ", subprocess.run(["du", "-sh", filename], capture_output=True, text=True).stdout.strip())
 
           save(gaps_short, "gaps_short.geojson")
           save(gaps_long,  "gaps_long.geojson")
+          print(f"Calcul terminé en {time.time()-t0:.1f}s")
           EOF
 
-      # ── Build PMTiles ───────────────────────
       - name: Build PMTiles with tippecanoe
         run: |
           tippecanoe \
             -o pedestrian.pmtiles \
             --force \
             --name "Brussels Pedestrian Network" \
-            --description "Pedestrian, cycling and shared streets of Brussels" \
             --attribution "© OpenStreetMap contributors" \
             -Z${{ env.MIN_ZOOM }} -z${{ env.MAX_ZOOM }} \
             --no-feature-limit \
@@ -213,25 +181,13 @@ jobs:
             landuse.geojson \
             gaps_short.geojson \
             gaps_long.geojson
-          echo "PMTiles: $(du -sh pedestrian.pmtiles | cut -f1)"
 
-      # ── GitHub Pages workaround ─────────────
-      - name: Rename PMTiles
+      - name: Prepare site
         run: |
           mv pedestrian.pmtiles pedestrian.pmtiles.gz
-
-      # ── Assemble site ───────────────────────
-      - name: Prepare _site directory
-        run: |
           mkdir -p _site
-          cp index.html _site/
-          cp style.json _site/
-          cp state.txt _site/
-          cp pedestrian.pmtiles.gz _site/
-          echo "📦 Site contents:"
-          ls -lh _site/
+          cp index.html style.json state.txt pedestrian.pmtiles.gz _site/
 
-      # ── Deploy ──────────────────────────────
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
@@ -239,4 +195,4 @@ jobs:
           publish_dir: ./_site
           publish_branch: gh-pages
           force_orphan: true
-          commit_message: "deploy: update pedestrian map"
+          commit_message: "deploy: update pedestrian map and network gaps"
