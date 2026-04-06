@@ -11,7 +11,7 @@
   "sources": {
     "pedestrian": {
       "type": "vector",
-      "url": "pmtiles://https://PasLoin.github.io/Brussels-Pedestrian-Network/pedestrian.pmtiles.gz",
+      "url": "pmtiles://https://YOUR_GITHUB_USERNAME.github.io/YOUR_REPO_NAME/pedestrian.pmtiles.gz",
       "attribution": "© <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap contributors</a>"
     }
   },
@@ -23,6 +23,75 @@
       "type": "background",
       "paint": {
         "background-color": "#f0ece4"
+      }
+    },
+
+    {
+      "id": "buildings-fill",
+      "type": "fill",
+      "source": "pedestrian",
+      "source-layer": "buildings",
+      "paint": {
+        "fill-color": "#ddd8d0",
+        "fill-opacity": 0.8
+      }
+    },
+
+    {
+      "id": "buildings-outline",
+      "type": "line",
+      "source": "pedestrian",
+      "source-layer": "buildings",
+      "paint": {
+        "line-color": "#c4bdb4",
+        "line-width": 0.5
+      }
+    },
+
+    {
+      "id": "roads-casing",
+      "type": "line",
+      "source": "pedestrian",
+      "source-layer": "roads",
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "#c8c0b4",
+        "line-width": [
+          "interpolate", ["linear"], ["zoom"],
+          8, 1.5, 12, 3, 16, 8
+        ]
+      }
+    },
+
+    {
+      "id": "roads-fill",
+      "type": "line",
+      "source": "pedestrian",
+      "source-layer": "roads",
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": [
+          "match", ["get", "highway"],
+          "motorway",     "#f0d0a0",
+          "trunk",        "#f0d8b0",
+          "primary",      "#f8e8c0",
+          "secondary",    "#fffff0",
+          "tertiary",     "#ffffff",
+          "residential",  "#ffffff",
+          "unclassified", "#ffffff",
+          "service",      "#f4f0ec",
+          "#ffffff"
+        ],
+        "line-width": [
+          "interpolate", ["linear"], ["zoom"],
+          8, 0.8, 12, 2, 16, 5
+        ]
       }
     },
 
@@ -53,7 +122,7 @@
           "military",          "#d4ccbc",
           "#ddd8d0"
         ],
-        "fill-opacity": 0.75
+        "fill-opacity": 0.65
       }
     },
 
@@ -65,7 +134,7 @@
       "paint": {
         "line-color": "#b8b0a4",
         "line-width": 0.5,
-        "line-opacity": 0.6
+        "line-opacity": 0.5
       }
     },
 
@@ -75,16 +144,10 @@
       "source": "pedestrian",
       "source-layer": "highways",
       "filter": ["==", ["get", "highway"], "living_street"],
-      "layout": {
-        "line-cap": "round",
-        "line-join": "round"
-      },
+      "layout": { "line-cap": "round", "line-join": "round" },
       "paint": {
         "line-color": "#f59e0b",
-        "line-width": [
-          "interpolate", ["linear"], ["zoom"],
-          8, 1.2, 14, 3, 18, 7.5
-        ],
+        "line-width": ["interpolate", ["linear"], ["zoom"], 8, 1.2, 14, 3, 18, 7.5],
         "line-opacity": 0.9
       }
     },
@@ -95,16 +158,10 @@
       "source": "pedestrian",
       "source-layer": "highways",
       "filter": ["==", ["get", "highway"], "pedestrian"],
-      "layout": {
-        "line-cap": "round",
-        "line-join": "round"
-      },
+      "layout": { "line-cap": "round", "line-join": "round" },
       "paint": {
         "line-color": "#6366f1",
-        "line-width": [
-          "interpolate", ["linear"], ["zoom"],
-          8, 1.2, 14, 3, 18, 7.5
-        ],
+        "line-width": ["interpolate", ["linear"], ["zoom"], 8, 1.2, 14, 3, 18, 7.5],
         "line-opacity": 0.9
       }
     },
@@ -115,16 +172,10 @@
       "source": "pedestrian",
       "source-layer": "highways",
       "filter": ["==", ["get", "highway"], "footway"],
-      "layout": {
-        "line-cap": "round",
-        "line-join": "round"
-      },
+      "layout": { "line-cap": "round", "line-join": "round" },
       "paint": {
         "line-color": "#f97316",
-        "line-width": [
-          "interpolate", ["linear"], ["zoom"],
-          8, 0.8, 14, 2, 18, 5
-        ],
+        "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.8, 14, 2, 18, 5],
         "line-opacity": 0.9
       }
     },
@@ -135,16 +186,10 @@
       "source": "pedestrian",
       "source-layer": "highways",
       "filter": ["==", ["get", "highway"], "cycleway"],
-      "layout": {
-        "line-cap": "round",
-        "line-join": "round"
-      },
+      "layout": { "line-cap": "round", "line-join": "round" },
       "paint": {
         "line-color": "#06b6d4",
-        "line-width": [
-          "interpolate", ["linear"], ["zoom"],
-          8, 1, 14, 2.5, 18, 6
-        ],
+        "line-width": ["interpolate", ["linear"], ["zoom"], 8, 1, 14, 2.5, 18, 6],
         "line-opacity": 0.9
       }
     },
@@ -155,16 +200,10 @@
       "source": "pedestrian",
       "source-layer": "highways",
       "filter": ["==", ["get", "highway"], "path"],
-      "layout": {
-        "line-cap": "round",
-        "line-join": "round"
-      },
+      "layout": { "line-cap": "round", "line-join": "round" },
       "paint": {
         "line-color": "#22c55e",
-        "line-width": [
-          "interpolate", ["linear"], ["zoom"],
-          8, 0.6, 14, 1.5, 18, 4
-        ],
+        "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.6, 14, 1.5, 18, 4],
         "line-dasharray": [3, 3],
         "line-opacity": 0.9
       }
@@ -176,16 +215,10 @@
       "source": "pedestrian",
       "source-layer": "highways",
       "filter": ["==", ["get", "highway"], "steps"],
-      "layout": {
-        "line-cap": "butt",
-        "line-join": "miter"
-      },
+      "layout": { "line-cap": "butt", "line-join": "miter" },
       "paint": {
         "line-color": "#ef4444",
-        "line-width": [
-          "interpolate", ["linear"], ["zoom"],
-          8, 0.8, 14, 2, 18, 5
-        ],
+        "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.8, 14, 2, 18, 5],
         "line-dasharray": [2, 2],
         "line-opacity": 0.9
       }
@@ -199,10 +232,7 @@
       "filter": ["==", ["get", "highway"], "elevator"],
       "paint": {
         "circle-color": "#a855f7",
-        "circle-radius": [
-          "interpolate", ["linear"], ["zoom"],
-          12, 3, 16, 7
-        ],
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 3, 16, 7],
         "circle-stroke-color": "#ffffff",
         "circle-stroke-width": 1.5
       }
