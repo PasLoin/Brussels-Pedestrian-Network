@@ -76,6 +76,17 @@
       margin-bottom: 8px;
     }
 
+    .legend-section {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #888;
+      margin: 8px 0 4px;
+    }
+
+    .legend-section:first-of-type { margin-top: 0; }
+
     .legend-item {
       display: flex;
       align-items: center;
@@ -97,6 +108,15 @@
       transition: opacity 0.2s;
     }
 
+    .legend-box {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      flex-shrink: 0;
+      border: 1px solid rgba(0,0,0,0.15);
+      transition: opacity 0.2s;
+    }
+
     .legend-dot {
       width: 10px;
       height: 10px;
@@ -106,7 +126,8 @@
     }
 
     .legend-item.hidden .legend-line,
-    .legend-item.hidden .legend-dot { opacity: 0.2; }
+    .legend-item.hidden .legend-dot,
+    .legend-item.hidden .legend-box { opacity: 0.2; }
 
     .legend-label {
       font-size: 12px;
@@ -141,7 +162,6 @@
 
 <div id="legend">
   <h2>Légende</h2>
-  <!-- items injected by JS -->
 </div>
 
 <div id="zoom-badge">z<span id="zoom-val">—</span></div>
@@ -151,17 +171,16 @@
 const protocol = new pmtiles.Protocol();
 maplibregl.addProtocol("pmtiles", protocol.tile.bind(protocol));
 
-// Résout l'URL absolue du fichier PMTiles (fonctionne en local et sur GH Pages)
 const PMTILES_URL = new URL("./pedestrian.pmtiles.gz", window.location.href).href;
 
-// ── Définition des couches ────────────────────────────────────────────────────
+// ── Définition des couches piétonnes ─────────────────────────────────────────
 const HIGHWAY_LAYERS = [
-  { id: "living_street", label: "Rue partagée",   color: "#f59e0b", width: 3,   dash: null },
-  { id: "pedestrian",    label: "Zone piétonne",  color: "#6366f1", width: 3,   dash: null },
-  { id: "footway",       label: "Trottoir / allée", color: "#f97316", width: 2, dash: null },
-  { id: "cycleway",      label: "Piste cyclable", color: "#06b6d4", width: 2.5, dash: null },
-  { id: "path",          label: "Sentier",        color: "#22c55e", width: 1.5, dash: [3, 3] },
-  { id: "steps",         label: "Escaliers",      color: "#ef4444", width: 2,   dash: [2, 2] },
+  { id: "living_street", label: "Rue partagée",     color: "#f59e0b", width: 3,   dash: null },
+  { id: "pedestrian",    label: "Zone piétonne",    color: "#6366f1", width: 3,   dash: null },
+  { id: "footway",       label: "Trottoir / allée", color: "#f97316", width: 2,   dash: null },
+  { id: "cycleway",      label: "Piste cyclable",   color: "#06b6d4", width: 2.5, dash: null },
+  { id: "path",          label: "Sentier",          color: "#22c55e", width: 1.5, dash: [3, 3] },
+  { id: "steps",         label: "Escaliers",        color: "#ef4444", width: 2,   dash: [2, 2] },
 ];
 
 // ── Style MapLibre ────────────────────────────────────────────────────────────
@@ -176,11 +195,75 @@ const mapStyle = {
     }
   },
   layers: [
-    // Background
+
+    // ── Background ────────────────────────────────────────────────────────────
     {
       id: "background",
       type: "background",
       paint: { "background-color": "#f0ece4" }
+    },
+
+    // ── Buildings ─────────────────────────────────────────────────────────────
+    {
+      id: "buildings-fill",
+      type: "fill",
+      source: "pedestrian",
+      "source-layer": "buildings",
+      paint: {
+        "fill-color": "#ddd8d0",
+        "fill-opacity": 0.8
+      }
+    },
+    {
+      id: "buildings-outline",
+      type: "line",
+      source: "pedestrian",
+      "source-layer": "buildings",
+      paint: {
+        "line-color": "#c4bdb4",
+        "line-width": 0.5
+      }
+    },
+
+    // ── Roads (fond) ──────────────────────────────────────────────────────────
+    {
+      id: "roads-casing",
+      type: "line",
+      source: "pedestrian",
+      "source-layer": "roads",
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: {
+        "line-color": "#c8c0b4",
+        "line-width": [
+          "interpolate", ["linear"], ["zoom"],
+          8, 1.5, 12, 3, 16, 8
+        ]
+      }
+    },
+    {
+      id: "roads-fill",
+      type: "line",
+      source: "pedestrian",
+      "source-layer": "roads",
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: {
+        "line-color": [
+          "match", ["get", "highway"],
+          "motorway",      "#f0d0a0",
+          "trunk",         "#f0d8b0",
+          "primary",       "#f8e8c0",
+          "secondary",     "#fffff0",
+          "tertiary",      "#ffffff",
+          "residential",   "#ffffff",
+          "unclassified",  "#ffffff",
+          "service",       "#f4f0ec",
+          /* default */    "#ffffff"
+        ],
+        "line-width": [
+          "interpolate", ["linear"], ["zoom"],
+          8, 0.8, 12, 2, 16, 5
+        ]
+      }
     },
 
     // ── Landuse fills ─────────────────────────────────────────────────────────
@@ -202,16 +285,16 @@ const mapStyle = {
           "forest",            "#b8d8a0",
           "cemetery",          "#d0e8c4",
           "recreation_ground", "#c4e0b0",
-          "farmland",          "#e4eccC",
+          "farmland",          "#e4eccc",
           "allotments",        "#cce8b4",
           "education",         "#ecdfd0",
           "school",            "#ecdfd0",
           "university",        "#ecdfd0",
           "hospital",          "#f0d8d8",
           "military",          "#d4ccbc",
-          /* fallback */       "#ddd8d0"
+          "#ddd8d0"
         ],
-        "fill-opacity": 0.75
+        "fill-opacity": 0.65
       }
     },
     {
@@ -222,11 +305,11 @@ const mapStyle = {
       paint: {
         "line-color": "#b8b0a4",
         "line-width": 0.5,
-        "line-opacity": 0.6
+        "line-opacity": 0.5
       }
     },
 
-    // ── Highways (lignes) ─────────────────────────────────────────────────────
+    // ── Highways (lignes piétonnes/cyclables) ─────────────────────────────────
     ...HIGHWAY_LAYERS.map(({ id, color, width, dash }) => ({
       id: `highway-${id}`,
       type: "line",
@@ -261,12 +344,13 @@ const mapStyle = {
         "circle-color": "#a855f7",
         "circle-radius": [
           "interpolate", ["linear"], ["zoom"],
-          12, 3, 16, 7
+          8, 3, 16, 7
         ],
         "circle-stroke-color": "#fff",
         "circle-stroke-width": 1.5
       }
     }
+
   ]
 };
 
@@ -274,16 +358,15 @@ const mapStyle = {
 const map = new maplibregl.Map({
   container: "map",
   style: mapStyle,
-  center: [4.3517, 50.8503], // Bruxelles
+  center: [4.3517, 50.8503],
   zoom: 12,
   minZoom: 8,
-  maxZoom: 18
+  maxZoom: 19
 });
 
 map.addControl(new maplibregl.NavigationControl(), "top-right");
 map.addControl(new maplibregl.ScaleControl({ maxWidth: 120, unit: "metric" }), "bottom-right");
 
-// Zoom badge
 map.on("zoom", () => {
   document.getElementById("zoom-val").textContent = map.getZoom().toFixed(1);
 });
@@ -291,16 +374,24 @@ map.on("load", () => {
   document.getElementById("zoom-val").textContent = map.getZoom().toFixed(1);
 });
 
-// ── Légende dynamique avec toggle ─────────────────────────────────────────────
+// ── Légende ───────────────────────────────────────────────────────────────────
 const legendEl = document.getElementById("legend");
 
-function makeLegendItem({ id, label, color, dot = false }) {
+function addSection(label) {
+  const s = document.createElement("div");
+  s.className = "legend-section";
+  s.textContent = label;
+  legendEl.appendChild(s);
+}
+
+function makeLegendItem({ layerId, label, color, type = "line" }) {
   const item = document.createElement("div");
   item.className = "legend-item";
-  item.dataset.layerId = id;
 
   const swatch = document.createElement("div");
-  swatch.className = dot ? "legend-dot" : "legend-line";
+  if (type === "dot")       swatch.className = "legend-dot";
+  else if (type === "box")  swatch.className = "legend-box";
+  else                      swatch.className = "legend-line";
   swatch.style.background = color;
 
   const lbl = document.createElement("span");
@@ -311,7 +402,6 @@ function makeLegendItem({ id, label, color, dot = false }) {
   item.appendChild(lbl);
 
   item.addEventListener("click", () => {
-    const layerId = `highway-${id}`;
     const visible = map.getLayoutProperty(layerId, "visibility") !== "none";
     map.setLayoutProperty(layerId, "visibility", visible ? "none" : "visible");
     item.classList.toggle("hidden", visible);
@@ -320,18 +410,27 @@ function makeLegendItem({ id, label, color, dot = false }) {
   return item;
 }
 
-HIGHWAY_LAYERS.forEach(l => legendEl.appendChild(makeLegendItem(l)));
-legendEl.appendChild(makeLegendItem({ id: "elevator", label: "Ascenseur", color: "#a855f7", dot: true }));
+// Fond
+addSection("Fond de carte");
+legendEl.appendChild(makeLegendItem({ layerId: "buildings-fill",  label: "Bâtiments",       color: "#ddd8d0", type: "box" }));
+legendEl.appendChild(makeLegendItem({ layerId: "roads-fill",      label: "Routes",           color: "#f8e8c0", type: "box" }));
+legendEl.appendChild(makeLegendItem({ layerId: "landuse-fill",    label: "Occupation du sol",color: "#c8e8b8", type: "box" }));
 
-// ── State / date de mise à jour ───────────────────────────────────────────────
+// Voies actives
+addSection("Réseau actif");
+HIGHWAY_LAYERS.forEach(l => {
+  legendEl.appendChild(makeLegendItem({ layerId: `highway-${l.id}`, label: l.label, color: l.color }));
+});
+legendEl.appendChild(makeLegendItem({ layerId: "highway-elevator", label: "Ascenseur", color: "#a855f7", type: "dot" }));
+
+// ── Date de mise à jour ───────────────────────────────────────────────────────
 fetch("./state.txt")
   .then(r => r.ok ? r.text() : null)
   .then(txt => {
     if (!txt) return;
-    // state.txt format: timestamp=YYYY-MM-DDTHH:MM:SSZ
     const m = txt.match(/timestamp=(.+)/);
     if (m) {
-      const d = new Date(m[1].replace(/\\/g, ""));
+      const d = new Date(m[1].trim());
       document.getElementById("last-update").textContent =
         "Données : " + d.toLocaleDateString("fr-BE", { day: "2-digit", month: "short", year: "numeric" });
     }
