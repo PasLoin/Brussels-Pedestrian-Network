@@ -21,78 +21,7 @@
     {
       "id": "background",
       "type": "background",
-      "paint": {
-        "background-color": "#f0ece4"
-      }
-    },
-
-    {
-      "id": "buildings-fill",
-      "type": "fill",
-      "source": "pedestrian",
-      "source-layer": "buildings",
-      "paint": {
-        "fill-color": "#ddd8d0",
-        "fill-opacity": 0.8
-      }
-    },
-
-    {
-      "id": "buildings-outline",
-      "type": "line",
-      "source": "pedestrian",
-      "source-layer": "buildings",
-      "paint": {
-        "line-color": "#c4bdb4",
-        "line-width": 0.5
-      }
-    },
-
-    {
-      "id": "roads-casing",
-      "type": "line",
-      "source": "pedestrian",
-      "source-layer": "roads",
-      "layout": {
-        "line-cap": "round",
-        "line-join": "round"
-      },
-      "paint": {
-        "line-color": "#c8c0b4",
-        "line-width": [
-          "interpolate", ["linear"], ["zoom"],
-          8, 1.5, 12, 3, 16, 8
-        ]
-      }
-    },
-
-    {
-      "id": "roads-fill",
-      "type": "line",
-      "source": "pedestrian",
-      "source-layer": "roads",
-      "layout": {
-        "line-cap": "round",
-        "line-join": "round"
-      },
-      "paint": {
-        "line-color": [
-          "match", ["get", "highway"],
-          "motorway",     "#f0d0a0",
-          "trunk",        "#f0d8b0",
-          "primary",      "#f8e8c0",
-          "secondary",    "#fffff0",
-          "tertiary",     "#ffffff",
-          "residential",  "#ffffff",
-          "unclassified", "#ffffff",
-          "service",      "#f4f0ec",
-          "#ffffff"
-        ],
-        "line-width": [
-          "interpolate", ["linear"], ["zoom"],
-          8, 0.8, 12, 2, 16, 5
-        ]
-      }
+      "paint": { "background-color": "#f0ece4" }
     },
 
     {
@@ -122,7 +51,7 @@
           "military",          "#d4ccbc",
           "#ddd8d0"
         ],
-        "fill-opacity": 0.65
+        "fill-opacity": 0.7
       }
     },
 
@@ -131,11 +60,7 @@
       "type": "line",
       "source": "pedestrian",
       "source-layer": "landuse",
-      "paint": {
-        "line-color": "#b8b0a4",
-        "line-width": 0.5,
-        "line-opacity": 0.5
-      }
+      "paint": { "line-color": "#b8b0a4", "line-width": 0.5, "line-opacity": 0.5 }
     },
 
     {
@@ -235,6 +160,34 @@
         "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 3, 16, 7],
         "circle-stroke-color": "#ffffff",
         "circle-stroke-width": 1.5
+      }
+    },
+
+    {
+      "id": "gaps-long",
+      "type": "line",
+      "source": "pedestrian",
+      "source-layer": "gaps_long",
+      "layout": { "line-cap": "round" },
+      "paint": {
+        "line-color": "#fb923c",
+        "line-width": 2,
+        "line-dasharray": [4, 3],
+        "line-opacity": 0.85
+      }
+    },
+
+    {
+      "id": "gaps-short",
+      "type": "line",
+      "source": "pedestrian",
+      "source-layer": "gaps_short",
+      "layout": { "line-cap": "round" },
+      "paint": {
+        "line-color": "#ef4444",
+        "line-width": 2.5,
+        "line-dasharray": [3, 2],
+        "line-opacity": 0.9
       }
     }
 
