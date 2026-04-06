@@ -28,8 +28,8 @@ env:
   OSM_STATE_URL: https://download.openstreetmap.fr/extracts/europe/belgium/brussels_capital_region.state.txt
   MIN_ZOOM: 8
   MAX_ZOOM: 19
-  SHORT_GAP_MAX: 30   # mètres — gap facile à combler
-  LONG_GAP_MAX: 150   # mètres — gap plus long
+  SHORT_GAP_MAX: 30    # mètres — gap facile à combler
+  LONG_GAP_MAX: 150    # mètres — gap plus long
 
 jobs:
   build-and-deploy:
@@ -94,24 +94,30 @@ jobs:
             highways.geojson > highways_fixed.geojson
           mv highways_fixed.geojson highways.geojson
 
-      # ── Compute network gaps ─────────────────
+      # ── Compute network gaps (STRtree) ───────
       - name: Compute network gaps
         run: |
-          python3 - << 'EOF'
+          python3 << 'EOF'
+          import time
+          import os
           import geopandas as gpd
           from shapely.geometry import LineString, Point
           from shapely.strtree import STRtree
           from collections import Counter
-          import os
 
           SHORT_MAX = int(os.environ.get("SHORT_GAP_MAX", 30))
-          LONG_MAX  = int(os.environ.get("LONG_GAP_MAX", 150))
+          LONG_MAX  = int(os.environ.get("LONG_GAP_MAX",  150))
 
-          # Chargement en Lambert belge (métrique)
+          t0 = time.time()
+
+          # ── Chargement en Lambert belge (métrique) ──────────────────────────
+          print("Chargement highways.geojson...")
           gdf = gpd.read_file("highways.geojson")
-          gdf = gdf[gdf.geometry.geom_type == "LineString"].to_crs("EPSG:31370")
+          gdf = gdf[gdf.geometry.geom_type == "LineString"].to_crs("EPSG:31370").reset_index(drop=True)
+          print(f"  {len(gdf)} lignes — {time.time()-t0:.1f}s")
 
-          # Trouver les endpoints pendants (apparaissent une seule fois)
+          # ── Endpoints pendants ──────────────────────────────────────────────
+          print("Calcul des endpoints pendants...")
           all_pts = []
           for geom in gdf.geometry:
               coords = list(geom.coords)
@@ -119,36 +125,68 @@ jobs:
 
           counts = Counter(all_pts)
           dangling = [Point(p) for p, c in counts.items() if c == 1]
-          print(f"Endpoints pendants : {len(dangling)}")
+          print(f"  {len(dangling)} endpoints pendants — {time.time()-t0:.1f}s")
 
-          # Pour chaque endpoint, trouver le point le plus proche sur le réseau
-          network_union = gdf.geometry.unary_union
+          # ── Index spatial STRtree ───────────────────────────────────────────
+          print("Construction du STRtree...")
+          geom_list = list(gdf.geometry)
+          tree = STRtree(geom_list)
+          print(f"  STRtree prêt — {time.time()-t0:.1f}s")
+
+          # ── Calcul des gaps ─────────────────────────────────────────────────
+          print("Calcul des gaps...")
           gaps_short, gaps_long = [], []
+          skipped = 0
 
-          for pt in dangling:
-              nearest = network_union.interpolate(network_union.project(pt))
-              dist = pt.distance(nearest)
-              if dist < 1 or dist > LONG_MAX:
+          for i, pt in enumerate(dangling):
+              if i % 2000 == 0:
+                  print(f"  {i}/{len(dangling)} — {time.time()-t0:.1f}s")
+
+              # Cherche uniquement les lignes dans un rayon de LONG_MAX mètres
+              candidates_idx = tree.query(pt.buffer(LONG_MAX))
+              if len(candidates_idx) == 0:
+                  skipped += 1
                   continue
-              props = {"distance_m": round(dist, 1)}
-              line = LineString([pt, nearest])
-              if dist <= SHORT_MAX:
+
+              # Ligne la plus proche parmi les candidats
+              best_dist = float("inf")
+              best_pt   = None
+              for idx in candidates_idx:
+                  line = geom_list[idx]
+                  d = pt.distance(line)
+                  if d < best_dist:
+                      best_dist = d
+                      best_pt   = line.interpolate(line.project(pt))
+
+              # Ignorer si trop proche (même nœud) ou trop loin
+              if best_dist < 0.5 or best_dist > LONG_MAX:
+                  skipped += 1
+                  continue
+
+              props = {"distance_m": round(best_dist, 1)}
+              line  = LineString([pt, best_pt])
+
+              if best_dist <= SHORT_MAX:
                   gaps_short.append({"geometry": line, **props})
               else:
                   gaps_long.append({"geometry": line, **props})
 
           print(f"Gaps courts (<{SHORT_MAX}m) : {len(gaps_short)}")
           print(f"Gaps longs  (<{LONG_MAX}m)  : {len(gaps_long)}")
+          print(f"Ignorés : {skipped}")
+          print(f"Durée totale : {time.time()-t0:.1f}s")
 
+          # ── Sauvegarde ──────────────────────────────────────────────────────
           def save(features, filename):
               rows = features if features else [{"geometry": None, "distance_m": 0}]
               g = gpd.GeoDataFrame(rows, crs="EPSG:31370")
               g.to_crs("EPSG:4326").to_file(filename, driver="GeoJSON")
+              import subprocess
+              result = subprocess.run(["du", "-sh", filename], capture_output=True, text=True)
+              print(f"  {result.stdout.strip()}")
 
           save(gaps_short, "gaps_short.geojson")
           save(gaps_long,  "gaps_long.geojson")
-          print("gaps_short.geojson:", end=" "); import subprocess; subprocess.run(["du", "-sh", "gaps_short.geojson"])
-          print("gaps_long.geojson:",  end=" "); subprocess.run(["du", "-sh", "gaps_long.geojson"])
           EOF
 
       # ── Build PMTiles ───────────────────────
@@ -172,10 +210,9 @@ jobs:
           echo "PMTiles: $(du -sh pedestrian.pmtiles | cut -f1)"
 
       # ── GitHub Pages workaround ─────────────
-      - name: Compress & rename PMTiles
+      - name: Rename PMTiles
         run: |
-          gzip -9 pedestrian.pmtiles
-          echo "Compressed: $(du -sh pedestrian.pmtiles.gz | cut -f1)"
+          mv pedestrian.pmtiles pedestrian.pmtiles.gz
 
       # ── Assemble site ───────────────────────
       - name: Prepare _site directory
