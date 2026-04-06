@@ -81,6 +81,11 @@ jobs:
             --geometry-types=polygon \
             -o landuse.geojson --overwrite
           echo "landuse.geojson: $(du -sh landuse.geojson | cut -f1)"
+      - name: Force elevators visible at all zooms
+        run: |
+          jq '(.features[] | select(.properties.highway == "elevator")) |= . + {"tippecanoe": {"minzoom": 8}}' \
+            highways.geojson > highways_fixed.geojson
+          mv highways_fixed.geojson highways.geojson
 
       - name: Build PMTiles with tippecanoe
         run: |
