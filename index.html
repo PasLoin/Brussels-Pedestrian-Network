@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Brussels Pedestrian Network</title>
+
+  <link href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css" rel="stylesheet" />
+  <script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
+  <script src="https://unpkg.com/pmtiles@3/dist/pmtiles.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Inter", system-ui, sans-serif;
+      background: #1a1a1a;
+    }
+
+    #map {
+      position: absolute;
+      inset: 0;
+    }
+
+    /* ── Header ─────────────────────────── */
+    #header {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      z-index: 10;
+      background: rgba(255,255,255,0.96);
+      border-radius: 10px;
+      padding: 12px 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+      max-width: 240px;
+    }
+
+    #header h1 {
+      font-size: 14px;
+      font-weight: 700;
+      color: #111;
+      line-height: 1.2;
+    }
+
+    #header .subtitle {
+      font-size: 11px;
+      color: #666;
+      margin-top: 2px;
+    }
+
+    #last-update {
+      font-size: 10px;
+      color: #999;
+      margin-top: 6px;
+    }
+
+    /* ── Legend ─────────────────────────── */
+    #legend {
+      position: absolute;
+      bottom: 28px;
+      left: 12px;
+      z-index: 10;
+      background: rgba(255,255,255,0.96);
+      border-radius: 10px;
+      padding: 12px 14px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+      min-width: 180px;
+    }
+
+    #legend h2 {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #444;
+      margin-bottom: 8px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 5px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .legend-item:last-child { margin-bottom: 0; }
+
+    .legend-item.hidden .legend-label { opacity: 0.35; }
+
+    .legend-line {
+      width: 26px;
+      height: 4px;
+      border-radius: 2px;
+      flex-shrink: 0;
+      transition: opacity 0.2s;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      transition: opacity 0.2s;
+    }
+
+    .legend-item.hidden .legend-line,
+    .legend-item.hidden .legend-dot { opacity: 0.2; }
+
+    .legend-label {
+      font-size: 12px;
+      color: #333;
+      transition: opacity 0.2s;
+    }
+
+    /* ── Zoom badge ─────────────────────── */
+    #zoom-badge {
+      position: absolute;
+      top: 12px;
+      right: 52px;
+      z-index: 10;
+      background: rgba(255,255,255,0.9);
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 11px;
+      color: #555;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div id="header">
+  <h1>🚶 Brussels Pedestrian<br>Network</h1>
+  <div class="subtitle">OSM · vector tiles</div>
+  <div id="last-update">Chargement…</div>
+</div>
+
+<div id="legend">
+  <h2>Légende</h2>
+  <!-- items injected by JS -->
+</div>
+
+<div id="zoom-badge">z<span id="zoom-val">—</span></div>
+
+<script>
+// ── PMTiles protocol ──────────────────────────────────────────────────────────
+const protocol = new pmtiles.Protocol();
+maplibregl.addProtocol("pmtiles", protocol.tile.bind(protocol));
+
+// Résout l'URL absolue du fichier PMTiles (fonctionne en local et sur GH Pages)
+const PMTILES_URL = new URL("./pedestrian.pmtiles.gz", window.location.href).href;
+
+// ── Définition des couches ────────────────────────────────────────────────────
+const HIGHWAY_LAYERS = [
+  { id: "living_street", label: "Rue partagée",   color: "#f59e0b", width: 3,   dash: null },
+  { id: "pedestrian",    label: "Zone piétonne",  color: "#6366f1", width: 3,   dash: null },
+  { id: "footway",       label: "Trottoir / allée", color: "#f97316", width: 2, dash: null },
+  { id: "cycleway",      label: "Piste cyclable", color: "#06b6d4", width: 2.5, dash: null },
+  { id: "path",          label: "Sentier",        color: "#22c55e", width: 1.5, dash: [3, 3] },
+  { id: "steps",         label: "Escaliers",      color: "#ef4444", width: 2,   dash: [2, 2] },
+];
+
+// ── Style MapLibre ────────────────────────────────────────────────────────────
+const mapStyle = {
+  version: 8,
+  name: "Brussels Pedestrian",
+  glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+  sources: {
+    pedestrian: {
+      type: "vector",
+      url: `pmtiles://${PMTILES_URL}`
+    }
+  },
+  layers: [
+    // Background
+    {
+      id: "background",
+      type: "background",
+      paint: { "background-color": "#f0ece4" }
+    },
+
+    // ── Landuse fills ─────────────────────────────────────────────────────────
+    {
+      id: "landuse-fill",
+      type: "fill",
+      source: "pedestrian",
+      "source-layer": "landuse",
+      paint: {
+        "fill-color": [
+          "match", ["get", "landuse"],
+          "residential",       "#e8e2d8",
+          "commercial",        "#f5e8d0",
+          "retail",            "#f5dfc8",
+          "industrial",        "#d8d4cc",
+          "park",              "#c8e8b8",
+          "grass",             "#ceecc0",
+          "meadow",            "#d4ecc4",
+          "forest",            "#b8d8a0",
+          "cemetery",          "#d0e8c4",
+          "recreation_ground", "#c4e0b0",
+          "farmland",          "#e4eccC",
+          "allotments",        "#cce8b4",
+          "education",         "#ecdfd0",
+          "school",            "#ecdfd0",
+          "university",        "#ecdfd0",
+          "hospital",          "#f0d8d8",
+          "military",          "#d4ccbc",
+          /* fallback */       "#ddd8d0"
+        ],
+        "fill-opacity": 0.75
+      }
+    },
+    {
+      id: "landuse-outline",
+      type: "line",
+      source: "pedestrian",
+      "source-layer": "landuse",
+      paint: {
+        "line-color": "#b8b0a4",
+        "line-width": 0.5,
+        "line-opacity": 0.6
+      }
+    },
+
+    // ── Highways (lignes) ─────────────────────────────────────────────────────
+    ...HIGHWAY_LAYERS.map(({ id, color, width, dash }) => ({
+      id: `highway-${id}`,
+      type: "line",
+      source: "pedestrian",
+      "source-layer": "highways",
+      filter: ["==", ["get", "highway"], id],
+      layout: {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      paint: {
+        "line-color": color,
+        "line-width": [
+          "interpolate", ["linear"], ["zoom"],
+          8, width * 0.4,
+          14, width,
+          18, width * 2.5
+        ],
+        "line-opacity": 0.9,
+        ...(dash ? { "line-dasharray": dash } : {})
+      }
+    })),
+
+    // ── Elevator (point) ──────────────────────────────────────────────────────
+    {
+      id: "highway-elevator",
+      type: "circle",
+      source: "pedestrian",
+      "source-layer": "highways",
+      filter: ["==", ["get", "highway"], "elevator"],
+      paint: {
+        "circle-color": "#a855f7",
+        "circle-radius": [
+          "interpolate", ["linear"], ["zoom"],
+          12, 3, 16, 7
+        ],
+        "circle-stroke-color": "#fff",
+        "circle-stroke-width": 1.5
+      }
+    }
+  ]
+};
+
+// ── Carte ─────────────────────────────────────────────────────────────────────
+const map = new maplibregl.Map({
+  container: "map",
+  style: mapStyle,
+  center: [4.3517, 50.8503], // Bruxelles
+  zoom: 12,
+  minZoom: 8,
+  maxZoom: 18
+});
+
+map.addControl(new maplibregl.NavigationControl(), "top-right");
+map.addControl(new maplibregl.ScaleControl({ maxWidth: 120, unit: "metric" }), "bottom-right");
+
+// Zoom badge
+map.on("zoom", () => {
+  document.getElementById("zoom-val").textContent = map.getZoom().toFixed(1);
+});
+map.on("load", () => {
+  document.getElementById("zoom-val").textContent = map.getZoom().toFixed(1);
+});
+
+// ── Légende dynamique avec toggle ─────────────────────────────────────────────
+const legendEl = document.getElementById("legend");
+
+function makeLegendItem({ id, label, color, dot = false }) {
+  const item = document.createElement("div");
+  item.className = "legend-item";
+  item.dataset.layerId = id;
+
+  const swatch = document.createElement("div");
+  swatch.className = dot ? "legend-dot" : "legend-line";
+  swatch.style.background = color;
+
+  const lbl = document.createElement("span");
+  lbl.className = "legend-label";
+  lbl.textContent = label;
+
+  item.appendChild(swatch);
+  item.appendChild(lbl);
+
+  item.addEventListener("click", () => {
+    const layerId = `highway-${id}`;
+    const visible = map.getLayoutProperty(layerId, "visibility") !== "none";
+    map.setLayoutProperty(layerId, "visibility", visible ? "none" : "visible");
+    item.classList.toggle("hidden", visible);
+  });
+
+  return item;
+}
+
+HIGHWAY_LAYERS.forEach(l => legendEl.appendChild(makeLegendItem(l)));
+legendEl.appendChild(makeLegendItem({ id: "elevator", label: "Ascenseur", color: "#a855f7", dot: true }));
+
+// ── State / date de mise à jour ───────────────────────────────────────────────
+fetch("./state.txt")
+  .then(r => r.ok ? r.text() : null)
+  .then(txt => {
+    if (!txt) return;
+    // state.txt format: timestamp=YYYY-MM-DDTHH:MM:SSZ
+    const m = txt.match(/timestamp=(.+)/);
+    if (m) {
+      const d = new Date(m[1].replace(/\\/g, ""));
+      document.getElementById("last-update").textContent =
+        "Données : " + d.toLocaleDateString("fr-BE", { day: "2-digit", month: "short", year: "numeric" });
+    }
+  })
+  .catch(() => {
+    document.getElementById("last-update").textContent = "";
+  });
+</script>
+</body>
+</html>
