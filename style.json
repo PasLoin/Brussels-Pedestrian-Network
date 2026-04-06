@@ -11,7 +11,7 @@
   "sources": {
     "pedestrian": {
       "type": "vector",
-      "url": "pmtiles://https://YOUR_GITHUB_USERNAME.github.io/YOUR_REPO_NAME/pedestrian.pmtiles.gz",
+      "url": "pmtiles://https://PasLoin.github.io/Brussels-Pedestrian-Network/pedestrian.pmtiles.gz",
       "attribution": "© <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap contributors</a>"
     }
   },
