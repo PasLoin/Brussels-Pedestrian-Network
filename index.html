@@ -30,7 +30,6 @@
     #header .subtitle { font-size: 11px; color: #666; margin-top: 2px; }
     #last-update { font-size: 10px; color: #999; margin-top: 6px; }
 
-    /* ── Bouton éditer OSM ─────────────────── */
     #edit-btn {
       display: flex;
       align-items: center;
@@ -94,10 +93,7 @@
       margin-bottom: 5px; cursor: pointer; user-select: none;
     }
     .legend-item:last-child { margin-bottom: 0; }
-    .legend-item.hidden .legend-label,
-    .legend-item.hidden .legend-line,
-    .legend-item.hidden .legend-dot,
-    .legend-item.hidden .legend-box { opacity: 0.25; }
+    .legend-item.hidden { opacity: 0.25; }
 
     .legend-line { width: 26px; height: 4px; border-radius: 2px; flex-shrink: 0; }
     .legend-line.dashed {
@@ -106,7 +102,6 @@
         var(--c) 0px, var(--c) 6px,
         transparent 6px, transparent 10px
       );
-      background-color: transparent !important;
     }
     .legend-box  { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; border: 1px solid rgba(0,0,0,0.15); }
     .legend-dot  { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
@@ -145,15 +140,13 @@
 <div id="zoom-badge">z<span id="zoom-val">—</span></div>
 
 <script>
-// ── PMTiles protocol ──────────────────────────────────────────────────────────
 const protocol = new pmtiles.Protocol();
 maplibregl.addProtocol("pmtiles", protocol.tile.bind(protocol));
 const PMTILES_URL = new URL("./pedestrian.pmtiles.gz", window.location.href).href;
 
-// ── Zoom minimum pour activer le bouton édition ───────────────────────────────
 const EDIT_MIN_ZOOM = 16;
 
-// ── Couches piétonnes ─────────────────────────────────────────────────────────
+// Crossing supprimé de HIGHWAY_LAYERS car traité séparément en point (circle)
 const HIGHWAY_LAYERS = [
   { id: "living_street", label: "Rue partagée",     color: "#f59e0b", width: 3,   dash: false },
   { id: "pedestrian",    label: "Zone piétonne",    color: "#6366f1", width: 3,   dash: false },
@@ -161,10 +154,8 @@ const HIGHWAY_LAYERS = [
   { id: "cycleway",      label: "Piste cyclable",   color: "#06b6d4", width: 2.5, dash: false },
   { id: "path",          label: "Sentier",          color: "#22c55e", width: 1.5, dash: true  },
   { id: "steps",         label: "Escaliers",        color: "#ef4444", width: 2,   dash: true  },
-  { id: "crossing",      label: "Passage piéton",   color: "#ef4444", width: 3,   dash: false },
 ];
 
-// ── Style MapLibre ────────────────────────────────────────────────────────────
 const mapStyle = {
   version: 8,
   name: "Brussels Pedestrian",
@@ -176,10 +167,8 @@ const mapStyle = {
     }
   },
   layers: [
-
     { id: "background", type: "background", paint: { "background-color": "#f0ece4" } },
 
-    // ── Landuse ───────────────────────────────────────────────────────────────
     {
       id: "landuse-fill",
       type: "fill",
@@ -188,37 +177,14 @@ const mapStyle = {
       paint: {
         "fill-color": [
           "match", ["get", "landuse"],
-          "residential",       "#e8e2d8",
-          "commercial",        "#f5e8d0",
-          "retail",            "#f5dfc8",
-          "industrial",        "#d8d4cc",
-          "park",              "#c8e8b8",
-          "grass",             "#ceecc0",
-          "meadow",            "#d4ecc4",
-          "forest",            "#b8d8a0",
-          "cemetery",          "#d0e8c4",
-          "recreation_ground", "#c4e0b0",
-          "farmland",          "#e4eccc",
-          "allotments",        "#cce8b4",
-          "education",         "#ecdfd0",
-          "school",            "#ecdfd0",
-          "university",        "#ecdfd0",
-          "hospital",          "#f0d8d8",
-          "military",          "#d4ccbc",
-          "#ddd8d0"
+          "residential", "#e8e2d8", "commercial", "#f5e8d0", "retail", "#f5dfc8",
+          "industrial", "#d8d4cc", "park", "#c8e8b8", "grass", "#ceecc0",
+          "forest", "#b8d8a0", "#ddd8d0"
         ],
         "fill-opacity": 0.7
       }
     },
-    {
-      id: "landuse-outline",
-      type: "line",
-      source: "pedestrian",
-      "source-layer": "landuse",
-      paint: { "line-color": "#b8b0a4", "line-width": 0.5, "line-opacity": 0.5 }
-    },
 
-    // ── Highways ──────────────────────────────────────────────────────────────
     ...HIGHWAY_LAYERS.map(({ id, color, width, dash }) => ({
       id: `highway-${id}`,
       type: "line",
@@ -228,61 +194,59 @@ const mapStyle = {
       layout: { "line-cap": "round", "line-join": "round" },
       paint: {
         "line-color": color,
-        "line-width": [
-          "interpolate", ["linear"], ["zoom"],
-          8, width * 0.4, 14, width, 18, width * 2.5
-        ],
+        "line-width": ["interpolate", ["linear"], ["zoom"], 8, width * 0.4, 14, width, 18, width * 2.5],
         "line-opacity": 0.9,
         ...(dash ? { "line-dasharray": [3, 3] } : {})
       }
     })),
 
-    // ── Elevator ──────────────────────────────────────────────────────────────
+    // ── Crossing (Points) ───────────────────────────────────────────────────
+    {
+      id: "highway-crossing",
+      type: "circle",
+      source: "pedestrian",
+      "source-layer": "highways",
+      filter: ["==", ["get", "highway"], "crossing"],
+      paint: {
+        "circle-color": "#ffffff",
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 12, 1.5, 16, 4, 18, 8],
+        "circle-stroke-color": "#ef4444",
+        "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], 12, 1, 16, 2]
+      }
+    },
+
+    // ── Elevator (Points) ───────────────────────────────────────────────────
     {
       id: "highway-elevator",
       type: "circle",
       source: "pedestrian",
       "source-layer": "highways",
-      filter: ["==", ["get", "highway"], "elevator"],
+      filter: ["any", ["==", ["get", "highway"], "elevator"], ["==", ["get", "amenity"], "elevator"]],
       paint: {
         "circle-color": "#a855f7",
-        "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 3, 16, 7],
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 2, 16, 6],
         "circle-stroke-color": "#fff",
         "circle-stroke-width": 1.5
       }
     },
 
-    // ── Gaps ──────────────────────────────────────────────────────────────────
     {
       id: "gaps-long",
       type: "line",
       source: "pedestrian",
       "source-layer": "gaps_long",
-      layout: { "line-cap": "round" },
-      paint: {
-        "line-color": "#fb923c",
-        "line-width": 2,
-        "line-dasharray": [4, 3],
-        "line-opacity": 0.85
-      }
+      paint: { "line-color": "#fb923c", "line-width": 2, "line-dasharray": [4, 3], "line-opacity": 0.85 }
     },
     {
       id: "gaps-short",
       type: "line",
       source: "pedestrian",
       "source-layer": "gaps_short",
-      layout: { "line-cap": "round" },
-      paint: {
-        "line-color": "#ef4444",
-        "line-width": 2.5,
-        "line-dasharray": [3, 2],
-        "line-opacity": 0.9
-      }
+      paint: { "line-color": "#ef4444", "line-width": 2.5, "line-dasharray": [3, 2], "line-opacity": 0.9 }
     }
   ]
 };
 
-// ── Carte ─────────────────────────────────────────────────────────────────────
 const map = new maplibregl.Map({
   container: "map",
   style: mapStyle,
@@ -295,45 +259,30 @@ const map = new maplibregl.Map({
 map.addControl(new maplibregl.NavigationControl(), "top-right");
 map.addControl(new maplibregl.ScaleControl({ maxWidth: 120, unit: "metric" }), "bottom-right");
 
-// ── Bouton édition OSM ────────────────────────────────────────────────────────
-const editBtn  = document.getElementById("edit-btn");
-const editHint = document.getElementById("edit-hint");
-
 function updateEditButton() {
-  const zoom   = map.getZoom();
+  const zoom = map.getZoom();
   const center = map.getCenter();
-  const osmZoom = Math.round(zoom);
-
   if (zoom >= EDIT_MIN_ZOOM) {
-    const url = `https://www.openstreetmap.org/edit#map=${osmZoom}/${center.lat.toFixed(5)}/${center.lng.toFixed(5)}`;
-    editBtn.href = url;
+    editBtn.href = `https://www.openstreetmap.org/edit#map=${Math.round(zoom)}/${center.lat.toFixed(5)}/${center.lng.toFixed(5)}`;
     editBtn.classList.remove("disabled");
     editHint.textContent = "";
   } else {
-    editBtn.href = "#";
     editBtn.classList.add("disabled");
-    const needed = Math.ceil(EDIT_MIN_ZOOM - zoom);
-    editHint.textContent = `Zoomez encore ${needed} niveau${needed > 1 ? "x" : ""} pour éditer`;
+    editHint.textContent = `Zoomez encore ${Math.ceil(EDIT_MIN_ZOOM - zoom)} niveau(x) pour éditer`;
   }
-
   document.getElementById("zoom-val").textContent = zoom.toFixed(1);
 }
 
-map.on("zoom",     updateEditButton);
-map.on("move",     updateEditButton);
-map.on("load",     updateEditButton);
+const editBtn = document.getElementById("edit-btn");
+const editHint = document.getElementById("edit-hint");
+map.on("moveend", updateEditButton);
 
-// ── Popup sur les gaps ────────────────────────────────────────────────────────
 map.on("load", () => {
   ["gaps-short", "gaps-long"].forEach(layerId => {
-    map.on("mouseenter", layerId, () => { map.getCanvas().style.cursor = "pointer"; });
-    map.on("mouseleave", layerId, () => { map.getCanvas().style.cursor = ""; });
     map.on("click", layerId, e => {
-      const dist  = e.features[0].properties.distance_m;
-      const label = layerId === "gaps-short" ? "Gap court" : "Gap long";
       new maplibregl.Popup()
         .setLngLat(e.lngLat)
-        .setHTML(`<strong>${label}</strong><br>${dist} m`)
+        .setHTML(`<strong>Gap</strong><br>${e.features[0].properties.distance_m} m`)
         .addTo(map);
     });
   });
@@ -352,7 +301,6 @@ function addSection(label) {
 function makeLegendItem({ layerId, label, color, swatchType = "line", dashed = false }) {
   const item = document.createElement("div");
   item.className = "legend-item";
-
   const swatch = document.createElement("div");
   swatch.className = `legend-${swatchType}`;
   if (dashed) {
@@ -360,55 +308,33 @@ function makeLegendItem({ layerId, label, color, swatchType = "line", dashed = f
     swatch.style.setProperty("--c", color);
   } else {
     swatch.style.background = color;
+    if(swatchType === 'dot' && label === 'Passage piéton') swatch.style.border = '1.5px solid #ef4444';
   }
-
   const lbl = document.createElement("span");
-  lbl.className = "legend-label";
-  lbl.textContent = label;
-
-  item.appendChild(swatch);
-  item.appendChild(lbl);
-
-  item.addEventListener("click", () => {
-    const visible = map.getLayoutProperty(layerId, "visibility") !== "none";
-    map.setLayoutProperty(layerId, "visibility", visible ? "none" : "visible");
-    item.classList.toggle("hidden", visible);
-  });
-
+  lbl.className = "legend-label"; lbl.textContent = label;
+  item.appendChild(swatch); item.appendChild(lbl);
+  item.onclick = () => {
+    const vis = map.getLayoutProperty(layerId, "visibility") === "none" ? "visible" : "none";
+    map.setLayoutProperty(layerId, "visibility", vis);
+    item.classList.toggle("hidden", vis === "none");
+  };
   return item;
 }
 
-addSection("Fond de carte");
-legendEl.appendChild(makeLegendItem({ layerId: "landuse-fill", label: "Occupation du sol", color: "#c8e8b8", swatchType: "box" }));
+addSection("Réseau");
+HIGHWAY_LAYERS.forEach(l => legendEl.appendChild(makeLegendItem({ layerId: `highway-${l.id}`, label: l.label, color: l.color, dashed: l.dash })));
 
-addSection("Réseau piéton & vélo");
-HIGHWAY_LAYERS.forEach(l => {
-  legendEl.appendChild(makeLegendItem({
-    layerId: `highway-${l.id}`,
-    label: l.label,
-    color: l.color,
-    dashed: l.dash
-  }));
-});
+legendEl.appendChild(makeLegendItem({ layerId: "highway-crossing", label: "Passage piéton", color: "#fff", swatchType: "dot" }));
 legendEl.appendChild(makeLegendItem({ layerId: "highway-elevator", label: "Ascenseur", color: "#a855f7", swatchType: "dot" }));
 
-addSection("Gaps réseau OSM");
-legendEl.appendChild(makeLegendItem({ layerId: "gaps-short", label: "Court < 30 m (priorité)", color: "#ef4444", dashed: true }));
-legendEl.appendChild(makeLegendItem({ layerId: "gaps-long",  label: "Long < 150 m",            color: "#fb923c", dashed: true }));
+addSection("Gaps");
+legendEl.appendChild(makeLegendItem({ layerId: "gaps-short", label: "Court < 30m", color: "#ef4444", dashed: true }));
+legendEl.appendChild(makeLegendItem({ layerId: "gaps-long", label: "Long < 150m", color: "#fb923c", dashed: true }));
 
-// ── Date de mise à jour ───────────────────────────────────────────────────────
-fetch("./state.txt")
-  .then(r => r.ok ? r.text() : null)
-  .then(txt => {
-    if (!txt) return;
-    const m = txt.match(/timestamp=(.+)/);
-    if (m) {
-      const d = new Date(m[1].trim());
-      document.getElementById("last-update").textContent =
-        "Données : " + d.toLocaleDateString("fr-BE", { day: "2-digit", month: "short", year: "numeric" });
-    }
-  })
-  .catch(() => { document.getElementById("last-update").textContent = ""; });
+fetch("./state.txt").then(r => r.text()).then(txt => {
+  const m = txt.match(/timestamp=(.+)/);
+  if (m) document.getElementById("last-update").textContent = "Données : " + new Date(m[1].trim()).toLocaleDateString("fr-BE");
+}).catch(() => {});
 </script>
 </body>
 </html>
