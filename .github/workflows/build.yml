@@ -88,11 +88,13 @@ jobs:
             -o pedestrian.pmtiles \
             --force \
             --name "Brussels Pedestrian Network" \
+            --description "Pedestrian, cycling and shared streets of Brussels" \
+            --attribution "© OpenStreetMap contributors" \
             -Z${{ env.MIN_ZOOM }} -z${{ env.MAX_ZOOM }} \
-            --full-detail-at-maxzoom \
             --no-feature-limit \
             --no-tile-size-limit \
-            --coalesce-densest-as-needed \
+            --extend-zooms-if-still-dropping \
+            --drop-densest-as-needed \
             highways.geojson \
             landuse.geojson
 
