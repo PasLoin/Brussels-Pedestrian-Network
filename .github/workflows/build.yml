@@ -82,21 +82,19 @@ jobs:
             -o landuse.geojson --overwrite
           echo "landuse.geojson: $(du -sh landuse.geojson | cut -f1)"
 
-      # ── Build PMTiles ───────────────────────
       - name: Build PMTiles with tippecanoe
         run: |
           tippecanoe \
             -o pedestrian.pmtiles \
             --force \
             --name "Brussels Pedestrian Network" \
-            --description "Pedestrian, cycling and shared streets of Brussels" \
-            --attribution "© OpenStreetMap contributors" \
             -Z${{ env.MIN_ZOOM }} -z${{ env.MAX_ZOOM }} \
-            --drop-densest-as-needed \
-            --extend-zooms-if-still-dropping \
+            --full-detail-at-maxzoom \
+            --no-feature-limit \
+            --no-tile-size-limit \
+            --coalesce-densest-as-needed \
             highways.geojson \
             landuse.geojson
-          echo "PMTiles: $(du -sh pedestrian.pmtiles | cut -f1)"
 
       # ── GitHub Pages workaround ─────────────
       - name: Rename PMTiles
