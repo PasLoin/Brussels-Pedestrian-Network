@@ -1,0 +1,167 @@
+name: Build & Deploy PMTiles
+
+on:
+  schedule:
+    - cron: "0 3 * * 1" # Every Monday at 3:00 UTC
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/build.yml"
+      - "index.html"
+      - "style.json"
+  workflow_dispatch:
+
+# ──────────────────────────────────────────────
+# Configurable highway types — edit as needed
+# ──────────────────────────────────────────────
+env:
+  HIGHWAY_TYPES: >-
+    w/highway=footway
+    w/highway=pedestrian
+    w/highway=path
+    w/highway=living_street
+    w/highway=steps
+    w/highway=elevator
+    w/highway=cycleway
+    n/highway=elevator
+  OSM_PBF_URL: https://download.openstreetmap.fr/extracts/europe/belgium/brussels_capital_region-latest.osm.pbf
+  OSM_STATE_URL: https://download.openstreetmap.fr/extracts/europe/belgium/brussels_capital_region.state.txt
+  MIN_ZOOM: 8
+  MAX_ZOOM: 19
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Check remote state ──────────────────
+      - name: Fetch remote state
+        id: state
+        run: |
+          wget -q -O state_remote.txt "$OSM_STATE_URL"
+          echo "Remote state:"
+          cat state_remote.txt
+
+          if [ -f state.txt ] && diff -q state.txt state_remote.txt > /dev/null 2>&1; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "ℹ️  OSM data unchanged, skipping rebuild."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "✅ OSM data updated, rebuilding PMTiles."
+          fi
+
+      # ── Install tools ───────────────────────
+      - name: Install osmium-tool & tippecanoe
+        if: steps.state.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends osmium-tool tippecanoe
+
+      # ── Download OSM extract ────────────────
+      - name: Download OSM PBF
+        if: steps.state.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
+        run: |
+          wget -O brussels.osm.pbf "$OSM_PBF_URL"
+          echo "PBF size: $(du -sh brussels.osm.pbf | cut -f1)"
+
+      # ── Filter data ─────────────────────────
+      - name: Filter highway features
+        if: steps.state.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
+        run: |
+          osmium tags-filter brussels.osm.pbf \
+            ${{ env.HIGHWAY_TYPES }} \
+            -o highways_raw.osm.pbf --overwrite
+          echo "Highways PBF: $(du -sh highways_raw.osm.pbf | cut -f1)"
+
+      - name: Filter landuse features
+        if: steps.state.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
+        run: |
+          osmium tags-filter brussels.osm.pbf \
+            a/landuse \
+            -o landuse_raw.osm.pbf --overwrite
+          echo "Landuse PBF: $(du -sh landuse_raw.osm.pbf | cut -f1)"
+
+      # ── Export to GeoJSON ───────────────────
+      - name: Export highways GeoJSON
+        if: steps.state.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
+        run: |
+          osmium export highways_raw.osm.pbf \
+            --geometry-types=linestring,point \
+            -o highways.geojson --overwrite
+          echo "highways.geojson: $(du -sh highways.geojson | cut -f1)"
+
+      - name: Export landuse GeoJSON
+        if: steps.state.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
+        run: |
+          osmium export landuse_raw.osm.pbf \
+            --geometry-types=polygon \
+            -o landuse.geojson --overwrite
+          echo "landuse.geojson: $(du -sh landuse.geojson | cut -f1)"
+
+      # ── Build PMTiles ───────────────────────
+      - name: Build PMTiles with tippecanoe
+        if: steps.state.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
+        run: |
+          tippecanoe \
+            -o pedestrian.pmtiles \
+            --force \
+            --name "Brussels Pedestrian Network" \
+            --description "Pedestrian, cycling and shared streets of Brussels" \
+            --attribution "© OpenStreetMap contributors" \
+            -Z${{ env.MIN_ZOOM }} -z${{ env.MAX_ZOOM }} \
+            --drop-densest-as-needed \
+            --extend-zooms-if-still-dropping \
+            highways.geojson \
+            landuse.geojson
+          echo "PMTiles: $(du -sh pedestrian.pmtiles | cut -f1)"
+
+      # ── GitHub Pages workaround ─────────────
+      - name: Rename PMTiles
+        if: steps.state.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
+        run: |
+          mv pedestrian.pmtiles pedestrian.pmtiles.gz
+
+      # ── Save updated state ──────────────────
+      - name: Update state file
+        if: steps.state.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
+        run: cp state_remote.txt state.txt
+
+      # ── Commit state back to main ───────────
+      - name: Commit state.txt to main
+        if: steps.state.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add state.txt
+          git diff --staged --quiet || git commit -m "chore: update OSM state [skip ci]"
+          git push
+
+      # ── Assemble site ───────────────────────
+      - name: Prepare _site directory
+        run: |
+          mkdir -p _site
+          cp index.html _site/
+          cp style.json _site/
+          [ -f state.txt ] && cp state.txt _site/
+          if [ -f pedestrian.pmtiles.gz ]; then
+            cp pedestrian.pmtiles.gz _site/
+            echo "✅ PMTiles included in deploy"
+          else
+            echo "⚠️  No PMTiles found — only static files deployed"
+          fi
+          ls -lh _site/
+
+      # ── Deploy ──────────────────────────────
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./_site
+          publish_branch: gh-pages
+          force_orphan: true
+          commit_message: "deploy: update pedestrian map"
