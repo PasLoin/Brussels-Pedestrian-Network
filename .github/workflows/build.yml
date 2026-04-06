@@ -98,57 +98,65 @@ jobs:
       - name: Compute network gaps
         run: |
           python3 << 'EOF'
-          import time
-          import os
+          import time, os
           import geopandas as gpd
           from shapely.geometry import LineString, Point
           from shapely.strtree import STRtree
-          from collections import Counter
+          from collections import Counter, defaultdict
 
           SHORT_MAX = int(os.environ.get("SHORT_GAP_MAX", 30))
           LONG_MAX  = int(os.environ.get("LONG_GAP_MAX",  150))
 
           t0 = time.time()
 
-          # ── Chargement en Lambert belge (métrique) ──────────────────────────
+          # ── Chargement en Lambert belge (métrique) ────────────────────────
           print("Chargement highways.geojson...")
           gdf = gpd.read_file("highways.geojson")
           gdf = gdf[gdf.geometry.geom_type == "LineString"].to_crs("EPSG:31370").reset_index(drop=True)
           print(f"  {len(gdf)} lignes — {time.time()-t0:.1f}s")
 
-          # ── Endpoints pendants ──────────────────────────────────────────────
-          print("Calcul des endpoints pendants...")
+          geom_list = list(gdf.geometry)
+
+          # ── Endpoints pendants + mapping coords → indices de lignes ──────
+          print("Calcul des endpoints...")
           all_pts = []
-          for geom in gdf.geometry:
+          endpoint_to_lines = defaultdict(set)
+          for idx, geom in enumerate(geom_list):
               coords = list(geom.coords)
-              all_pts += [tuple(coords[0]), tuple(coords[-1])]
+              s, e = tuple(coords[0]), tuple(coords[-1])
+              all_pts += [s, e]
+              endpoint_to_lines[s].add(idx)
+              endpoint_to_lines[e].add(idx)
 
           counts = Counter(all_pts)
-          dangling = [Point(p) for p, c in counts.items() if c == 1]
+          # Pendants = extrémités libres (apparaissent une seule fois)
+          dangling_coords = [p for p, c in counts.items() if c == 1]
+          dangling = [(Point(p), endpoint_to_lines[p]) for p in dangling_coords]
           print(f"  {len(dangling)} endpoints pendants — {time.time()-t0:.1f}s")
 
-          # ── Index spatial STRtree ───────────────────────────────────────────
+          # ── Index spatial STRtree ─────────────────────────────────────────
           print("Construction du STRtree...")
-          geom_list = list(gdf.geometry)
           tree = STRtree(geom_list)
           print(f"  STRtree prêt — {time.time()-t0:.1f}s")
 
-          # ── Calcul des gaps ─────────────────────────────────────────────────
+          # ── Calcul des gaps ───────────────────────────────────────────────
           print("Calcul des gaps...")
           gaps_short, gaps_long = [], []
           skipped = 0
 
-          for i, pt in enumerate(dangling):
+          for i, (pt, own_lines) in enumerate(dangling):
               if i % 2000 == 0:
                   print(f"  {i}/{len(dangling)} — {time.time()-t0:.1f}s")
 
-              # Cherche uniquement les lignes dans un rayon de LONG_MAX mètres
-              candidates_idx = tree.query(pt.buffer(LONG_MAX))
-              if len(candidates_idx) == 0:
+              # Candidats dans le rayon, en excluant les lignes de l'endpoint
+              candidates_idx = [
+                  idx for idx in tree.query(pt.buffer(LONG_MAX))
+                  if idx not in own_lines
+              ]
+              if not candidates_idx:
                   skipped += 1
                   continue
 
-              # Ligne la plus proche parmi les candidats
               best_dist = float("inf")
               best_pt   = None
               for idx in candidates_idx:
@@ -158,32 +166,29 @@ jobs:
                       best_dist = d
                       best_pt   = line.interpolate(line.project(pt))
 
-              # Ignorer si trop proche (même nœud) ou trop loin
-              if best_dist < 0.5 or best_dist > LONG_MAX:
+              if best_dist > LONG_MAX:
                   skipped += 1
                   continue
 
               props = {"distance_m": round(best_dist, 1)}
-              line  = LineString([pt, best_pt])
-
+              gap   = LineString([pt, best_pt])
               if best_dist <= SHORT_MAX:
-                  gaps_short.append({"geometry": line, **props})
+                  gaps_short.append({"geometry": gap, **props})
               else:
-                  gaps_long.append({"geometry": line, **props})
+                  gaps_long.append({"geometry": gap, **props})
 
           print(f"Gaps courts (<{SHORT_MAX}m) : {len(gaps_short)}")
           print(f"Gaps longs  (<{LONG_MAX}m)  : {len(gaps_long)}")
-          print(f"Ignorés : {skipped}")
+          print(f"Ignorés (hors portée)       : {skipped}")
           print(f"Durée totale : {time.time()-t0:.1f}s")
 
-          # ── Sauvegarde ──────────────────────────────────────────────────────
+          # ── Sauvegarde ────────────────────────────────────────────────────
           def save(features, filename):
               rows = features if features else [{"geometry": None, "distance_m": 0}]
               g = gpd.GeoDataFrame(rows, crs="EPSG:31370")
               g.to_crs("EPSG:4326").to_file(filename, driver="GeoJSON")
               import subprocess
-              result = subprocess.run(["du", "-sh", filename], capture_output=True, text=True)
-              print(f"  {result.stdout.strip()}")
+              print(" ", subprocess.run(["du", "-sh", filename], capture_output=True, text=True).stdout.strip())
 
           save(gaps_short, "gaps_short.geojson")
           save(gaps_long,  "gaps_long.geojson")
