@@ -1,169 +1,127 @@
 name: Build & Deploy PMTiles
 
 on:
-  schedule:
-    - cron: "0 3 * * 1" # Every Monday at 3:00 UTC
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/build.yml"
-      - "index.html"
-      - "style.json"
-  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * 1" # Every Monday at 3:00 UTC
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/build.yml"
+      - "index.html"
+      - "style.json"
+  workflow_dispatch:
 
 # ──────────────────────────────────────────────
 # Configurable highway types — edit as needed
 # ──────────────────────────────────────────────
 env:
-  HIGHWAY_TYPES: >-
-    w/highway=footway
-    w/highway=pedestrian
-    w/highway=path
-    w/highway=living_street
-    w/highway=steps
-    w/highway=elevator
-    w/highway=cycleway
-    n/highway=elevator
-  OSM_PBF_URL: https://download.openstreetmap.fr/extracts/europe/belgium/brussels_capital_region-latest.osm.pbf
-  OSM_STATE_URL: https://download.openstreetmap.fr/extracts/europe/belgium/brussels_capital_region.state.txt
-  MIN_ZOOM: 8
-  MAX_ZOOM: 19
+  HIGHWAY_TYPES: >-
+    w/highway=footway
+    w/highway=pedestrian
+    w/highway=path
+    w/highway=living_street
+    w/highway=steps
+    w/highway=elevator
+    w/highway=cycleway
+    n/highway=elevator
+  OSM_PBF_URL: https://download.openstreetmap.fr/extracts/europe/belgium/brussels_capital_region-latest.osm.pbf
+  OSM_STATE_URL: https://download.openstreetmap.fr/extracts/europe/belgium/brussels_capital_region.state.txt
+  MIN_ZOOM: 8
+  MAX_ZOOM: 19
 
 jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
 
-      # ── Install tools ───────────────────────
-      - name: Install osmium-tool, tippecanoe & jq
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends osmium-tool tippecanoe jq
+      # ── Install tools ───────────────────────
+      - name: Install osmium-tool & tippecanoe
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends osmium-tool tippecanoe
 
-      # ── Download OSM extract ────────────────
-      - name: Download OSM PBF
-        run: |
-          wget -O brussels.osm.pbf "$OSM_PBF_URL"
-          wget -O state.txt "$OSM_STATE_URL"
-          echo "PBF size: $(du -sh brussels.osm.pbf | cut -f1)"
+      # ── Download OSM extract ────────────────
+      - name: Download OSM PBF
+        run: |
+          wget -O brussels.osm.pbf "$OSM_PBF_URL"
+          wget -O state.txt "$OSM_STATE_URL"
+          echo "PBF size: $(du -sh brussels.osm.pbf | cut -f1)"
 
-      # ── Filter data ─────────────────────────
-      - name: Filter highway features
-        run: |
-          osmium tags-filter brussels.osm.pbf \
-            ${{ env.HIGHWAY_TYPES }} \
-            -o highways_raw.osm.pbf --overwrite
-          echo "Highways PBF: $(du -sh highways_raw.osm.pbf | cut -f1)"
+      # ── Filter data ─────────────────────────
+      - name: Filter highway features
+        run: |
+          osmium tags-filter brussels.osm.pbf \
+            ${{ env.HIGHWAY_TYPES }} \
+            -o highways_raw.osm.pbf --overwrite
+          echo "Highways PBF: $(du -sh highways_raw.osm.pbf | cut -f1)"
 
-      - name: Filter landuse features
-        run: |
-          osmium tags-filter brussels.osm.pbf \
-            a/landuse \
-            -o landuse_raw.osm.pbf --overwrite
-          echo "Landuse PBF: $(du -sh landuse_raw.osm.pbf | cut -f1)"
+      - name: Filter landuse features
+        run: |
+          osmium tags-filter brussels.osm.pbf \
+            a/landuse \
+            -o landuse_raw.osm.pbf --overwrite
+          echo "Landuse PBF: $(du -sh landuse_raw.osm.pbf | cut -f1)"
 
-      - name: Filter road features
-        run: |
-          osmium tags-filter brussels.osm.pbf \
-            w/highway=motorway \
-            w/highway=trunk \
-            w/highway=primary \
-            w/highway=secondary \
-            w/highway=tertiary \
-            w/highway=residential \
-            w/highway=service \
-            w/highway=unclassified \
-            -o roads_raw.osm.pbf --overwrite
-          echo "Roads PBF: $(du -sh roads_raw.osm.pbf | cut -f1)"
+      # ── Export to GeoJSON ───────────────────
+      - name: Export highways GeoJSON
+        run: |
+          osmium export highways_raw.osm.pbf \
+            --geometry-types=linestring,point \
+            -o highways.geojson --overwrite
+          echo "highways.geojson: $(du -sh highways.geojson | cut -f1)"
 
-      - name: Filter building features
-        run: |
-          osmium tags-filter brussels.osm.pbf \
-            a/building \
-            -o buildings_raw.osm.pbf --overwrite
-          echo "Buildings PBF: $(du -sh buildings_raw.osm.pbf | cut -f1)"
+      - name: Export landuse GeoJSON
+        run: |
+          osmium export landuse_raw.osm.pbf \
+            --geometry-types=polygon \
+            -o landuse.geojson --overwrite
+          echo "landuse.geojson: $(du -sh landuse.geojson | cut -f1)"
 
-      # ── Export to GeoJSON ───────────────────
-      - name: Export highways GeoJSON
-        run: |
-          osmium export highways_raw.osm.pbf \
-            --geometry-types=linestring,point \
-            -o highways.geojson --overwrite
-          echo "highways.geojson: $(du -sh highways.geojson | cut -f1)"
+      # ── Build PMTiles ───────────────────────
+      - name: Build PMTiles with tippecanoe
+        run: |
+          tippecanoe \
+            -o pedestrian.pmtiles \
+            --force \
+            --name "Brussels Pedestrian Network" \
+            --description "Pedestrian, cycling and shared streets of Brussels" \
+            --attribution "© OpenStreetMap contributors" \
+            -Z${{ env.MIN_ZOOM }} -z${{ env.MAX_ZOOM }} \
+            --drop-densest-as-needed \
+            --extend-zooms-if-still-dropping \
+            highways.geojson \
+            landuse.geojson
+          echo "PMTiles: $(du -sh pedestrian.pmtiles | cut -f1)"
 
-      - name: Export landuse GeoJSON
-        run: |
-          osmium export landuse_raw.osm.pbf \
-            --geometry-types=polygon \
-            -o landuse.geojson --overwrite
-          echo "landuse.geojson: $(du -sh landuse.geojson | cut -f1)"
+      # ── GitHub Pages workaround ─────────────
+      - name: Rename PMTiles
+        run: |
+          mv pedestrian.pmtiles pedestrian.pmtiles.gz
 
-      - name: Export roads GeoJSON
-        run: |
-          osmium export roads_raw.osm.pbf \
-            --geometry-types=linestring \
-            -o roads.geojson --overwrite
-          echo "roads.geojson: $(du -sh roads.geojson | cut -f1)"
+      # ── Assemble site ───────────────────────
+      - name: Prepare _site directory
+        run: |
+          mkdir -p _site
+          cp index.html _site/
+          cp style.json _site/
+          cp state.txt _site/
+          cp pedestrian.pmtiles.gz _site/
+          echo "📦 Site contents:"
+          ls -lh _site/
 
-      - name: Export buildings GeoJSON
-        run: |
-          osmium export buildings_raw.osm.pbf \
-            --geometry-types=polygon \
-            -o buildings.geojson --overwrite
-          echo "buildings.geojson: $(du -sh buildings.geojson | cut -f1)"
+      # ── Deploy ──────────────────────────────
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./_site
+          publish_branch: gh-pages
+          force_orphan: true
+          commit_message: "deploy: update pedestrian map"
 
-      # ── Force elevators visible at all zooms ─
-      - name: Force elevators visible at all zooms
-        run: |
-          jq '(.features[] | select(.properties.highway == "elevator")) |= . + {"tippecanoe": {"minzoom": 8}}' \
-            highways.geojson > highways_fixed.geojson
-          mv highways_fixed.geojson highways.geojson
-
-      # ── Build PMTiles ───────────────────────
-      - name: Build PMTiles with tippecanoe
-        run: |
-          tippecanoe \
-            -o pedestrian.pmtiles \
-            --force \
-            --name "Brussels Pedestrian Network" \
-            --description "Pedestrian, cycling and shared streets of Brussels" \
-            --attribution "© OpenStreetMap contributors" \
-            -Z${{ env.MIN_ZOOM }} -z${{ env.MAX_ZOOM }} \
-            --drop-densest-as-needed \
-            --extend-zooms-if-still-dropping \
-            highways.geojson \
-            landuse.geojson \
-            roads.geojson \
-            buildings.geojson
-          echo "PMTiles: $(du -sh pedestrian.pmtiles | cut -f1)"
-
-      # ── GitHub Pages workaround ─────────────
-      - name: Rename PMTiles
-        run: |
-          mv pedestrian.pmtiles pedestrian.pmtiles.gz
-
-      # ── Assemble site ───────────────────────
-      - name: Prepare _site directory
-        run: |
-          mkdir -p _site
-          cp index.html _site/
-          cp style.json _site/
-          cp state.txt _site/
-          cp pedestrian.pmtiles.gz _site/
-          echo "📦 Site contents:"
-          ls -lh _site/
-
-      # ── Deploy ──────────────────────────────
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./_site
-          publish_branch: gh-pages
-          force_orphan: true
-          commit_message: "deploy: update pedestrian map"
+tout ce passe bien mais le fichier pmtiles.gz n'est pas sauvergardé dans mon repo !!!
