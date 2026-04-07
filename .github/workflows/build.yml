@@ -188,6 +188,7 @@ jobs:
             --extend-zooms-if-still-dropping \
             --drop-densest-as-needed \
             highways.geojson \
+            addresses.geojson \
             gaps_short.geojson \
             gaps_long.geojson
 
