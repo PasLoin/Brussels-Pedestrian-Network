@@ -46,7 +46,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends osmium-tool tippecanoe jq
 
       - name: Install Python deps
-        run: pip install geopandas shapely --break-system-packages
+        run: pip install osmnx geopandas shapely --break-system-packages
 
       - name: Download OSM PBF
         run: |
@@ -64,6 +64,10 @@ jobs:
           osmium tags-filter brussels.osm.pbf \
             a/landuse \
             -o landuse_raw.osm.pbf --overwrite
+
+      - name: Convert filtered PBF to OSM XML
+        run: |
+          osmium cat highways_raw.osm.pbf -o highways_raw.osm --overwrite
 
       - name: Export highways GeoJSON
         run: |
@@ -86,82 +90,77 @@ jobs:
       - name: Compute network gaps
         run: |
           python3 << 'EOF'
-          import time, os
+          import os, time
+          import osmnx as ox
           import geopandas as gpd
-          from shapely.geometry import LineString, Point
+          from shapely.geometry import LineString
           from shapely.strtree import STRtree
-          from collections import Counter, defaultdict
 
           SHORT_MAX = int(os.environ.get("SHORT_GAP_MAX", 30))
           LONG_MAX  = int(os.environ.get("LONG_GAP_MAX", 150))
           t0 = time.time()
 
-          print("Chargement des données...")
-          full_gdf = gpd.read_file("highways.geojson").to_crs("EPSG:31370")
-          
-          lines = full_gdf[full_gdf.geometry.geom_type == "LineString"].reset_index(drop=True)
-          crossings = full_gdf[full_gdf["highway"] == "crossing"].reset_index(drop=True)
-          
-          print(f"Lignes: {len(lines)}, Crossings nodes: {len(crossings)}")
+          print("Chargement du graphe OSM...")
+          G = ox.graph_from_xml("highways_raw.osm", retain_all=True, simplify=False)
+          G_proj = ox.project_graph(G, to_crs="EPSG:31370")
 
-          all_pts = []
-          endpoint_to_lines = defaultdict(set)
-          for idx, geom in enumerate(lines.geometry):
-              coords = list(geom.coords)
-              if len(coords) < 2: continue
-              s, e = tuple(coords[0]), tuple(coords[-1])
-              all_pts += [s, e]
-              endpoint_to_lines[s].add(idx)
-              endpoint_to_lines[e].add(idx)
+          nodes, edges = ox.graph_to_gdfs(G_proj)
+          print(f"Nœuds: {len(nodes)}, Arêtes: {len(edges)}")
 
-          counts = Counter(all_pts)
-          dangling_coords = [p for p, c in counts.items() if c == 1]
-          dangling = [(Point(p), endpoint_to_lines[p]) for p in dangling_coords]
+          # Dead-ends = nœuds de degré 1 dans le graphe non-orienté
+          G_undir = G_proj.to_undirected()
+          dead_end_ids = [n for n, d in G_undir.degree() if d == 1]
+          dead_ends = nodes.loc[dead_end_ids]
+          print(f"Dead-ends trouvés: {len(dead_ends)}")
 
-          line_tree = STRtree(list(lines.geometry))
-          crossing_tree = STRtree(list(crossings.geometry))
+          # Index spatial sur toutes les arêtes
+          edge_list = list(edges.itertuples())
+          edge_tree = STRtree([e.geometry for e in edge_list])
+
+          # Nœuds crossing pour le flag to_crossing
+          crossing_mask = nodes.get("highway") == "crossing"
+          crossings = nodes[crossing_mask] if crossing_mask.any() else gpd.GeoDataFrame()
+          crossing_tree = STRtree(list(crossings.geometry)) if len(crossings) else None
 
           gaps_short, gaps_long = [], []
 
-          for i, (pt, own_lines) in enumerate(dangling):
+          for node_id, row in dead_ends.iterrows():
+              pt = row.geometry
               best_dist = float("inf")
               target_pt = None
-              found_via_crossing = False
 
-              near_crossing_idx = crossing_tree.query(pt.buffer(SHORT_MAX))
-              if len(near_crossing_idx) > 0:
-                  for c_idx in near_crossing_idx:
-                      c_pt = crossings.geometry.iloc[c_idx]
-                      d = pt.distance(c_pt)
-                      if d < best_dist:
-                          best_dist = d
-                          target_pt = c_pt
-                          found_via_crossing = True
-              
-              if target_pt is None:
-                  candidates_idx = [idx for idx in line_tree.query(pt.buffer(LONG_MAX)) if idx not in own_lines]
-                  for l_idx in candidates_idx:
-                      line = lines.geometry.iloc[l_idx]
-                      d = pt.distance(line)
-                      if d < best_dist:
-                          best_dist = d
-                          target_pt = line.interpolate(line.project(pt))
+              for c_idx in edge_tree.query(pt.buffer(LONG_MAX)):
+                  e = edge_list[c_idx]
+                  if node_id in (e.Index[0], e.Index[1]):
+                      continue
+                  d = pt.distance(e.geometry)
+                  if d < best_dist:
+                      best_dist = d
+                      target_pt = e.geometry.interpolate(e.geometry.project(pt))
 
-              if target_pt and 0.1 < best_dist <= LONG_MAX:
-                  gap = LineString([pt, target_pt])
-                  props = {"distance_m": round(best_dist, 1), "to_crossing": 1 if found_via_crossing else 0}
-                  if best_dist <= SHORT_MAX:
-                      gaps_short.append({"geometry": gap, **props})
-                  else:
-                      gaps_long.append({"geometry": gap, **props})
+              if not (0.1 < best_dist <= LONG_MAX):
+                  continue
+
+              to_crossing = 0
+              if crossing_tree and best_dist <= SHORT_MAX:
+                  if len(crossing_tree.query(pt.buffer(SHORT_MAX))) > 0:
+                      to_crossing = 1
+
+              gap = LineString([pt, target_pt])
+              props = {"distance_m": round(best_dist, 1), "to_crossing": to_crossing}
+              (gaps_short if best_dist <= SHORT_MAX else gaps_long).append(
+                  {"geometry": gap, **props}
+              )
 
           def save(features, filename):
-              rows = features if features else [{"geometry": None, "distance_m": 0, "to_crossing": 0}]
-              g = gpd.GeoDataFrame(rows, crs="EPSG:31370")
-              g.to_crs("EPSG:4326").to_file(filename, driver="GeoJSON")
+              rows = features or [{"geometry": None, "distance_m": 0, "to_crossing": 0}]
+              gpd.GeoDataFrame(rows, crs="EPSG:31370").to_crs("EPSG:4326").to_file(
+                  filename, driver="GeoJSON"
+              )
 
           save(gaps_short, "gaps_short.geojson")
           save(gaps_long,  "gaps_long.geojson")
+          print(f"Gaps courts: {len(gaps_short)}, longs: {len(gaps_long)}")
           print(f"Calcul terminé en {time.time()-t0:.1f}s")
           EOF
 
