@@ -131,7 +131,7 @@ const PEDESTRIAN_LAYERS = [
     "source-layer": "highways",
     filter: ["==", ["get", "highway"], "crossing"],
     paint: {
-      "circle-color": "#ffffff",
+      "circle-color": "#15803d",
       "circle-radius": ["interpolate", ["linear"], ["zoom"], 12, 1.5, 16, 4, 18, 8],
       "circle-stroke-color": "#ef4444",
       "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], 12, 1, 16, 2]
@@ -172,10 +172,10 @@ const PEDESTRIAN_LAYERS = [
     type: "symbol",
     source: "pedestrian",
     "source-layer": "addresses",
-    minzoom: 17,
+    minzoom: 16,
     layout: {
       "text-field": ["get", "addr:housenumber"],
-      "text-size": 10,
+      "text-size": 11,
       "text-font": ["Noto Sans Regular"],
       "text-allow-overlap": false
     },
