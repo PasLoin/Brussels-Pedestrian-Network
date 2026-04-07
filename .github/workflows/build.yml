@@ -58,7 +58,19 @@ jobs:
           osmium tags-filter brussels.osm.pbf \
             ${{ env.HIGHWAY_TYPES }} \
             -o highways_raw.osm.pbf --overwrite
-
+   
+      - name: Filter address features
+        run: |
+          osmium tags-filter brussels.osm.pbf \
+            n/addr:housenumber \
+            -o addresses_raw.osm.pbf --overwrite
+      
+      - name: Export addresses GeoJSON
+        run: |
+          osmium export addresses_raw.osm.pbf \
+            --geometry-types=point \
+            -o addresses.geojson --overwrite
+           
       - name: Convert filtered PBF to OSM XML
         run: |
           osmium cat highways_raw.osm.pbf -o highways_raw.osm --overwrite
