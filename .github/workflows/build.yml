@@ -46,7 +46,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends osmium-tool tippecanoe jq
 
       - name: Install Python deps
-        run: pip install geopandas shapely networkx --break-system-packages
+        run: pip install osmnx geopandas shapely --break-system-packages
 
       - name: Download OSM PBF
         run: |
@@ -64,6 +64,10 @@ jobs:
           osmium tags-filter brussels.osm.pbf \
             a/landuse \
             -o landuse_raw.osm.pbf --overwrite
+
+      - name: Convert filtered PBF to OSM XML
+        run: |
+          osmium cat highways_raw.osm.pbf -o highways_raw.osm --overwrite
 
       - name: Export highways GeoJSON
         run: |
@@ -87,67 +91,66 @@ jobs:
         run: |
           python3 << 'EOF'
           import os, time
+          import xml.etree.ElementTree as ET
+          import osmnx as ox
           import geopandas as gpd
-          import networkx as nx
-          from shapely.geometry import LineString, Point
+          from shapely.geometry import LineString
           from shapely.strtree import STRtree
 
           SHORT_MAX = int(os.environ.get("SHORT_GAP_MAX", 30))
           LONG_MAX  = int(os.environ.get("LONG_GAP_MAX", 150))
           t0 = time.time()
 
-          print("Chargement des données...")
-          full_gdf = gpd.read_file("highways.geojson").to_crs("EPSG:31370")
-          lines = full_gdf[full_gdf.geometry.geom_type == "LineString"].reset_index(drop=True)
-          crossings = full_gdf[full_gdf["highway"] == "crossing"].reset_index(drop=True)
-          print(f"Lignes: {len(lines)}, Crossings: {len(crossings)}")
+          # Nettoyage du XML : supprime les ways qui référencent des nœuds manquants
+          # (nœuds hors limites de l'extrait Brussels Capital Region)
+          print("Nettoyage du XML OSM...")
+          tree = ET.parse("highways_raw.osm")
+          root = tree.getroot()
+          node_ids = {n.get("id") for n in root.findall("node")}
+          removed = 0
+          for way in root.findall("way"):
+              refs = {nd.get("ref") for nd in way.findall("nd")}
+              if not refs.issubset(node_ids):
+                  root.remove(way)
+                  removed += 1
+          print(f"Ways supprimés (nœuds manquants): {removed}")
+          tree.write("highways_clean.osm")
 
-          # Snapping à 1cm pour éviter les erreurs flottantes aux intersections
-          def snap(coord):
-              return (round(coord[0], 2), round(coord[1], 2))
+          print("Chargement du graphe OSM...")
+          G = ox.graph_from_xml("highways_clean.osm", retain_all=True, simplify=False)
+          G_proj = ox.project_graph(G, to_crs="EPSG:31370")
 
-          print("Construction du graphe...")
-          G = nx.Graph()
-          line_geoms = list(lines.geometry)
+          nodes, edges = ox.graph_to_gdfs(G_proj)
+          print(f"Nœuds: {len(nodes)}, Arêtes: {len(edges)}")
 
-          for idx, geom in enumerate(line_geoms):
-              coords = list(geom.coords)
-              if len(coords) < 2:
-                  continue
-              s, e = snap(coords[0]), snap(coords[-1])
-              # On stocke tous les indices d'arêtes par nœud pour l'exclusion
-              if G.has_edge(s, e):
-                  G[s][e].setdefault("indices", set()).add(idx)
-              else:
-                  G.add_edge(s, e, indices={idx})
+          # Dead-ends = nœuds de degré 1 dans le graphe non-orienté
+          G_undir = G_proj.to_undirected()
+          dead_end_ids = [n for n, d in G_undir.degree() if d == 1]
+          dead_ends = nodes.loc[dead_end_ids]
+          print(f"Dead-ends trouvés: {len(dead_ends)}")
 
-          dead_end_coords = [n for n, d in G.degree() if d == 1]
-          print(f"Dead-ends trouvés: {len(dead_end_coords)}")
+          edge_list = list(edges.itertuples())
+          edge_tree = STRtree([e.geometry for e in edge_list])
 
-          edge_tree = STRtree(line_geoms)
+          crossing_mask = nodes.get("highway") == "crossing"
+          crossings = nodes[crossing_mask] if crossing_mask.any() else gpd.GeoDataFrame()
           crossing_tree = STRtree(list(crossings.geometry)) if len(crossings) else None
 
           gaps_short, gaps_long = [], []
 
-          for coord in dead_end_coords:
-              pt = Point(coord)
-
-              # Indices des arêtes propres à exclure
-              own_indices = set()
-              for u, v, data in G.edges(coord, data=True):
-                  own_indices |= data.get("indices", set())
-
+          for node_id, row in dead_ends.iterrows():
+              pt = row.geometry
               best_dist = float("inf")
               target_pt = None
 
               for c_idx in edge_tree.query(pt.buffer(LONG_MAX)):
-                  if c_idx in own_indices:
+                  e = edge_list[c_idx]
+                  if node_id in (e.Index[0], e.Index[1]):
                       continue
-                  line = line_geoms[c_idx]
-                  d = pt.distance(line)
+                  d = pt.distance(e.geometry)
                   if d < best_dist:
                       best_dist = d
-                      target_pt = line.interpolate(line.project(pt))
+                      target_pt = e.geometry.interpolate(e.geometry.project(pt))
 
               if not (0.1 < best_dist <= LONG_MAX):
                   continue
