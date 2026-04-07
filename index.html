@@ -117,7 +117,11 @@ const PEDESTRIAN_LAYERS = [
     source: "pedestrian",
     "source-layer": "highways",
     filter: ["==", ["get", "highway"], id],
-    layout: { "line-cap": "round", "line-join": "round" },
+    layout: {
+      "line-cap": "round",
+      "line-join": "round",
+      ...(id === "cycleway" ? { visibility: "none" } : {})
+    },
     paint: {
       "line-color": color,
       "line-width": ["interpolate", ["linear"], ["zoom"], 8, width * 0.4, 14, width, 18, width * 2.5],
@@ -156,7 +160,7 @@ const PEDESTRIAN_LAYERS = [
     type: "line",
     source: "pedestrian",
     "source-layer": "gaps_long",
-    layout: { "line-cap": "round" },
+    layout: { "line-cap": "round", visibility: "none" },
     paint: { "line-color": "#fb923c", "line-width": 2, "line-dasharray": [4, 3], "line-opacity": 0.85 }
   },
   {
@@ -164,7 +168,7 @@ const PEDESTRIAN_LAYERS = [
     type: "line",
     source: "pedestrian",
     "source-layer": "gaps_short",
-    layout: { "line-cap": "round" },
+    layout: { "line-cap": "round", visibility: "none" },
     paint: { "line-color": "#ef4444", "line-width": 2.5, "line-dasharray": [3, 2], "line-opacity": 0.9 }
   },
   {
@@ -284,6 +288,7 @@ function initMap(style) {
     lbl.textContent = label;
     item.appendChild(swatch);
     item.appendChild(lbl);
+    item.classList.toggle("hidden", map.getLayoutProperty(layerId, "visibility") === "none");
     item.onclick = () => {
       const vis = map.getLayoutProperty(layerId, "visibility") === "none" ? "visible" : "none";
       map.setLayoutProperty(layerId, "visibility", vis);
