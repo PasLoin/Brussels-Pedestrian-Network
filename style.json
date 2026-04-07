@@ -99,7 +99,7 @@
       "filter": ["==", ["get", "highway"], "footway"],
       "layout": { "line-cap": "round", "line-join": "round" },
       "paint": {
-        "line-color": "#f97316",
+        "line-color": "#008000",
         "line-width": ["interpolate", ["linear"], ["zoom"], 8, 0.8, 14, 2, 18, 5],
         "line-opacity": 0.9
       }
