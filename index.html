@@ -14,6 +14,8 @@
     body { font-family: "Inter", system-ui, sans-serif; background: #1a1a1a; }
     #map { position: absolute; inset: 0; }
 
+    .maplibregl-ctrl-attrib-button { display: none !important; }
+
     #header {
       position: absolute; top: 12px; left: 12px; z-index: 10;
       background: rgba(255,255,255,0.96); border-radius: 10px;
@@ -87,7 +89,6 @@ maplibregl.addProtocol("pmtiles", protocol.tile.bind(protocol));
 const PMTILES_URL = new URL("./pedestrian.pmtiles.gz", window.location.href).href;
 const EDIT_MIN_ZOOM = 16;
 
-// Couleurs à écraser sur le style OpenFreeMap (layer id → propriété → valeur)
 const BASE_STYLE_OVERRIDES = {
   "road_secondary_tertiary":       { "line-color": "rgba(248,170,255,1)" },
   "road_trunk_primary":            { "line-color": "rgba(113,14,109,1)" },
@@ -166,7 +167,6 @@ const PEDESTRIAN_LAYERS = [
     layout: { "line-cap": "round" },
     paint: { "line-color": "#ef4444", "line-width": 2.5, "line-dasharray": [3, 2], "line-opacity": 0.9 }
   },
-  // ── Adresses ── (nécessite l'étape addresses dans le YAML)
   {
     id: "housenumbers",
     type: "symbol",
@@ -187,7 +187,6 @@ const PEDESTRIAN_LAYERS = [
   }
 ];
 
-// Fetch du style OpenFreeMap, patch des couleurs, init de la carte
 fetch("https://tiles.openfreemap.org/styles/liberty")
   .then(r => r.json())
   .then(style => {
@@ -202,7 +201,6 @@ fetch("https://tiles.openfreemap.org/styles/liberty")
     initMap(style);
   })
   .catch(() => {
-    // Fallback sur l'URL directe si le fetch échoue (CORS, etc.)
     initMap("https://tiles.openfreemap.org/styles/liberty");
   });
 
@@ -213,12 +211,13 @@ function initMap(style) {
     center: [4.3517, 50.8503],
     zoom: 12,
     minZoom: 8,
-    maxZoom: 19
+    maxZoom: 19,
+    attributionControl: false
   });
 
   map.addControl(new maplibregl.NavigationControl(), "top-right");
   map.addControl(new maplibregl.ScaleControl({ maxWidth: 120, unit: "metric" }), "bottom-right");
-  map.addControl(new maplibregl.AttributionControl({compact: false }),"bottom-right" );
+  map.addControl(new maplibregl.AttributionControl({ compact: false }), "bottom-right");
 
   map.on("load", () => {
     map.addSource("pedestrian", {
@@ -259,7 +258,6 @@ function initMap(style) {
 
   map.on("moveend", updateEditButton);
 
-  // ── Légende ──────────────────────────────────────────────────────────────
   const legendEl = document.getElementById("legend");
 
   function addSection(label) {
