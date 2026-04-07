@@ -59,12 +59,6 @@ jobs:
             ${{ env.HIGHWAY_TYPES }} \
             -o highways_raw.osm.pbf --overwrite
 
-      - name: Filter landuse features
-        run: |
-          osmium tags-filter brussels.osm.pbf \
-            a/landuse \
-            -o landuse_raw.osm.pbf --overwrite
-
       - name: Convert filtered PBF to OSM XML
         run: |
           osmium cat highways_raw.osm.pbf -o highways_raw.osm --overwrite
@@ -74,12 +68,6 @@ jobs:
           osmium export highways_raw.osm.pbf \
             --geometry-types=linestring,point \
             -o highways.geojson --overwrite
-
-      - name: Export landuse GeoJSON
-        run: |
-          osmium export landuse_raw.osm.pbf \
-            --geometry-types=polygon \
-            -o landuse.geojson --overwrite
 
       - name: Force elevators visible
         run: |
@@ -101,8 +89,6 @@ jobs:
           LONG_MAX  = int(os.environ.get("LONG_GAP_MAX", 150))
           t0 = time.time()
 
-          # Nettoyage du XML : supprime les ways qui référencent des nœuds manquants
-          # (nœuds hors limites de l'extrait Brussels Capital Region)
           print("Nettoyage du XML OSM...")
           tree = ET.parse("highways_raw.osm")
           root = tree.getroot()
@@ -123,7 +109,6 @@ jobs:
           nodes, edges = ox.graph_to_gdfs(G_proj)
           print(f"Nœuds: {len(nodes)}, Arêtes: {len(edges)}")
 
-          # Dead-ends = nœuds de degré 1 dans le graphe non-orienté
           G_undir = G_proj.to_undirected()
           dead_end_ids = [n for n, d in G_undir.degree() if d == 1]
           dead_ends = nodes.loc[dead_end_ids]
@@ -191,7 +176,6 @@ jobs:
             --extend-zooms-if-still-dropping \
             --drop-densest-as-needed \
             highways.geojson \
-            landuse.geojson \
             gaps_short.geojson \
             gaps_long.geojson
 
