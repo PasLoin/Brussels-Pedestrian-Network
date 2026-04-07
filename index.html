@@ -133,7 +133,7 @@ const PEDESTRIAN_LAYERS = [
     paint: {
       "circle-color": "#15803d",
       "circle-radius": ["interpolate", ["linear"], ["zoom"], 12, 1.5, 16, 4, 18, 8],
-      "circle-stroke-color": "#ef4444",
+      "circle-stroke-color": "#15803d",
       "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], 12, 1, 16, 2]
     }
   },
@@ -278,7 +278,7 @@ function initMap(style) {
       swatch.style.setProperty("--c", color);
     } else {
       swatch.style.background = color;
-      if (swatchType === "dot" && label === "Passage piéton") swatch.style.border = "1.5px solid #ef4444";
+      if (swatchType === "dot" && label === "Passage piéton") swatch.style.border = "1.5px solid #15803d";
     }
     const lbl = document.createElement("span");
     lbl.className = "legend-label";
