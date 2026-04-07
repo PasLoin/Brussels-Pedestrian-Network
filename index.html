@@ -146,7 +146,6 @@ const PMTILES_URL = new URL("./pedestrian.pmtiles.gz", window.location.href).hre
 
 const EDIT_MIN_ZOOM = 16;
 
-// Crossing supprimé de HIGHWAY_LAYERS car traité séparément en point (circle)
 const HIGHWAY_LAYERS = [
   { id: "living_street", label: "Rue partagée",     color: "#f59e0b", width: 3,   dash: false },
   { id: "pedestrian",    label: "Zone piétonne",    color: "#6366f1", width: 3,   dash: false },
@@ -156,100 +155,67 @@ const HIGHWAY_LAYERS = [
   { id: "steps",         label: "Escaliers",        color: "#ef4444", width: 2,   dash: true  },
 ];
 
-const mapStyle = {
-  version: 8,
-  name: "Brussels Pedestrian",
-  glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
-  sources: {
-    pedestrian: {
-      type: "vector",
-      url: `pmtiles://${PMTILES_URL}`
+// Couches piétonnes à injecter dans le style OpenFreeMap après chargement
+const PEDESTRIAN_LAYERS = [
+  ...HIGHWAY_LAYERS.map(({ id, color, width, dash }) => ({
+    id: `highway-${id}`,
+    type: "line",
+    source: "pedestrian",
+    "source-layer": "highways",
+    filter: ["==", ["get", "highway"], id],
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: {
+      "line-color": color,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 8, width * 0.4, 14, width, 18, width * 2.5],
+      "line-opacity": 0.9,
+      ...(dash ? { "line-dasharray": [3, 3] } : {})
+    }
+  })),
+  {
+    id: "highway-crossing",
+    type: "circle",
+    source: "pedestrian",
+    "source-layer": "highways",
+    filter: ["==", ["get", "highway"], "crossing"],
+    paint: {
+      "circle-color": "#ffffff",
+      "circle-radius": ["interpolate", ["linear"], ["zoom"], 12, 1.5, 16, 4, 18, 8],
+      "circle-stroke-color": "#ef4444",
+      "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], 12, 1, 16, 2]
     }
   },
-  layers: [
-    { id: "background", type: "background", paint: { "background-color": "#f0ece4" } },
-
-    {
-      id: "landuse-fill",
-      type: "fill",
-      source: "pedestrian",
-      "source-layer": "landuse",
-      paint: {
-        "fill-color": [
-          "match", ["get", "landuse"],
-          "residential", "#e8e2d8", "commercial", "#f5e8d0", "retail", "#f5dfc8",
-          "industrial", "#d8d4cc", "park", "#c8e8b8", "grass", "#ceecc0",
-          "forest", "#b8d8a0", "#ddd8d0"
-        ],
-        "fill-opacity": 0.7
-      }
-    },
-
-    ...HIGHWAY_LAYERS.map(({ id, color, width, dash }) => ({
-      id: `highway-${id}`,
-      type: "line",
-      source: "pedestrian",
-      "source-layer": "highways",
-      filter: ["==", ["get", "highway"], id],
-      layout: { "line-cap": "round", "line-join": "round" },
-      paint: {
-        "line-color": color,
-        "line-width": ["interpolate", ["linear"], ["zoom"], 8, width * 0.4, 14, width, 18, width * 2.5],
-        "line-opacity": 0.9,
-        ...(dash ? { "line-dasharray": [3, 3] } : {})
-      }
-    })),
-
-    // ── Crossing (Points) ───────────────────────────────────────────────────
-    {
-      id: "highway-crossing",
-      type: "circle",
-      source: "pedestrian",
-      "source-layer": "highways",
-      filter: ["==", ["get", "highway"], "crossing"],
-      paint: {
-        "circle-color": "#ffffff",
-        "circle-radius": ["interpolate", ["linear"], ["zoom"], 12, 1.5, 16, 4, 18, 8],
-        "circle-stroke-color": "#ef4444",
-        "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], 12, 1, 16, 2]
-      }
-    },
-
-    // ── Elevator (Points) ───────────────────────────────────────────────────
-    {
-      id: "highway-elevator",
-      type: "circle",
-      source: "pedestrian",
-      "source-layer": "highways",
-      filter: ["any", ["==", ["get", "highway"], "elevator"], ["==", ["get", "amenity"], "elevator"]],
-      paint: {
-        "circle-color": "#a855f7",
-        "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 2, 16, 6],
-        "circle-stroke-color": "#fff",
-        "circle-stroke-width": 1.5
-      }
-    },
-
-    {
-      id: "gaps-long",
-      type: "line",
-      source: "pedestrian",
-      "source-layer": "gaps_long",
-      paint: { "line-color": "#fb923c", "line-width": 2, "line-dasharray": [4, 3], "line-opacity": 0.85 }
-    },
-    {
-      id: "gaps-short",
-      type: "line",
-      source: "pedestrian",
-      "source-layer": "gaps_short",
-      paint: { "line-color": "#ef4444", "line-width": 2.5, "line-dasharray": [3, 2], "line-opacity": 0.9 }
+  {
+    id: "highway-elevator",
+    type: "circle",
+    source: "pedestrian",
+    "source-layer": "highways",
+    filter: ["any", ["==", ["get", "highway"], "elevator"], ["==", ["get", "amenity"], "elevator"]],
+    paint: {
+      "circle-color": "#a855f7",
+      "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 2, 16, 6],
+      "circle-stroke-color": "#fff",
+      "circle-stroke-width": 1.5
     }
-  ]
-};
+  },
+  {
+    id: "gaps-long",
+    type: "line",
+    source: "pedestrian",
+    "source-layer": "gaps_long",
+    paint: { "line-color": "#fb923c", "line-width": 2, "line-dasharray": [4, 3], "line-opacity": 0.85 }
+  },
+  {
+    id: "gaps-short",
+    type: "line",
+    source: "pedestrian",
+    "source-layer": "gaps_short",
+    paint: { "line-color": "#ef4444", "line-width": 2.5, "line-dasharray": [3, 2], "line-opacity": 0.9 }
+  }
+];
 
 const map = new maplibregl.Map({
   container: "map",
-  style: mapStyle,
+  style: "https://tiles.openfreemap.org/styles/liberty",
   center: [4.3517, 50.8503],
   zoom: 12,
   minZoom: 8,
@@ -258,6 +224,27 @@ const map = new maplibregl.Map({
 
 map.addControl(new maplibregl.NavigationControl(), "top-right");
 map.addControl(new maplibregl.ScaleControl({ maxWidth: 120, unit: "metric" }), "bottom-right");
+
+map.on("load", () => {
+  // Ajout de la source PMTiles sur le style OpenFreeMap
+  map.addSource("pedestrian", {
+    type: "vector",
+    url: `pmtiles://${PMTILES_URL}`
+  });
+
+  // Injection des couches piétonnes par-dessus le fond
+  PEDESTRIAN_LAYERS.forEach(layer => map.addLayer(layer));
+
+  // Popups sur les gaps
+  ["gaps-short", "gaps-long"].forEach(layerId => {
+    map.on("click", layerId, e => {
+      new maplibregl.Popup()
+        .setLngLat(e.lngLat)
+        .setHTML(`<strong>Gap</strong><br>${e.features[0].properties.distance_m} m`)
+        .addTo(map);
+    });
+  });
+});
 
 function updateEditButton() {
   const zoom = map.getZoom();
@@ -276,17 +263,6 @@ function updateEditButton() {
 const editBtn = document.getElementById("edit-btn");
 const editHint = document.getElementById("edit-hint");
 map.on("moveend", updateEditButton);
-
-map.on("load", () => {
-  ["gaps-short", "gaps-long"].forEach(layerId => {
-    map.on("click", layerId, e => {
-      new maplibregl.Popup()
-        .setLngLat(e.lngLat)
-        .setHTML(`<strong>Gap</strong><br>${e.features[0].properties.distance_m} m`)
-        .addTo(map);
-    });
-  });
-});
 
 // ── Légende ───────────────────────────────────────────────────────────────────
 const legendEl = document.getElementById("legend");
@@ -308,7 +284,7 @@ function makeLegendItem({ layerId, label, color, swatchType = "line", dashed = f
     swatch.style.setProperty("--c", color);
   } else {
     swatch.style.background = color;
-    if(swatchType === 'dot' && label === 'Passage piéton') swatch.style.border = '1.5px solid #ef4444';
+    if (swatchType === "dot" && label === "Passage piéton") swatch.style.border = "1.5px solid #ef4444";
   }
   const lbl = document.createElement("span");
   lbl.className = "legend-label"; lbl.textContent = label;
@@ -323,7 +299,6 @@ function makeLegendItem({ layerId, label, color, swatchType = "line", dashed = f
 
 addSection("Réseau");
 HIGHWAY_LAYERS.forEach(l => legendEl.appendChild(makeLegendItem({ layerId: `highway-${l.id}`, label: l.label, color: l.color, dashed: l.dash })));
-
 legendEl.appendChild(makeLegendItem({ layerId: "highway-crossing", label: "Passage piéton", color: "#fff", swatchType: "dot" }));
 legendEl.appendChild(makeLegendItem({ layerId: "highway-elevator", label: "Ascenseur", color: "#a855f7", swatchType: "dot" }));
 
