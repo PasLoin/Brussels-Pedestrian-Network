@@ -218,6 +218,7 @@ function initMap(style) {
 
   map.addControl(new maplibregl.NavigationControl(), "top-right");
   map.addControl(new maplibregl.ScaleControl({ maxWidth: 120, unit: "metric" }), "bottom-right");
+  map.addControl(new maplibregl.AttributionControl({compact: false }),"bottom-right" );
 
   map.on("load", () => {
     map.addSource("pedestrian", {
