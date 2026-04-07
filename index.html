@@ -11,107 +11,51 @@
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     body { font-family: "Inter", system-ui, sans-serif; background: #1a1a1a; }
-
     #map { position: absolute; inset: 0; }
 
     #header {
-      position: absolute;
-      top: 12px; left: 12px;
-      z-index: 10;
-      background: rgba(255,255,255,0.96);
-      border-radius: 10px;
-      padding: 12px 16px;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
-      max-width: 240px;
+      position: absolute; top: 12px; left: 12px; z-index: 10;
+      background: rgba(255,255,255,0.96); border-radius: 10px;
+      padding: 12px 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.15); max-width: 240px;
     }
     #header h1 { font-size: 14px; font-weight: 700; color: #111; line-height: 1.2; }
     #header .subtitle { font-size: 11px; color: #666; margin-top: 2px; }
     #last-update { font-size: 10px; color: #999; margin-top: 6px; }
 
     #edit-btn {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      margin-top: 10px;
-      width: 100%;
-      padding: 7px 10px;
-      border: none;
-      border-radius: 7px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      text-decoration: none;
+      display: flex; align-items: center; gap: 6px; margin-top: 10px;
+      width: 100%; padding: 7px 10px; border: none; border-radius: 7px;
+      font-size: 12px; font-weight: 600; cursor: pointer; text-decoration: none;
       transition: background 0.15s, opacity 0.15s, transform 0.1s;
-      background: #e74c3c;
-      color: #fff;
+      background: #e74c3c; color: #fff;
     }
-    #edit-btn:hover:not(.disabled) {
-      background: #c0392b;
-      transform: translateY(-1px);
-    }
-    #edit-btn.disabled {
-      background: #ddd;
-      color: #aaa;
-      cursor: not-allowed;
-      pointer-events: none;
-    }
+    #edit-btn:hover:not(.disabled) { background: #c0392b; transform: translateY(-1px); }
+    #edit-btn.disabled { background: #ddd; color: #aaa; cursor: not-allowed; pointer-events: none; }
     #edit-btn svg { flex-shrink: 0; }
-    #edit-hint {
-      font-size: 10px;
-      color: #aaa;
-      margin-top: 4px;
-      text-align: center;
-      min-height: 14px;
-    }
+    #edit-hint { font-size: 10px; color: #aaa; margin-top: 4px; text-align: center; min-height: 14px; }
 
     #legend {
-      position: absolute;
-      bottom: 28px; left: 12px;
-      z-index: 10;
-      background: rgba(255,255,255,0.96);
-      border-radius: 10px;
-      padding: 12px 14px;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
-      min-width: 190px;
-      max-height: calc(100vh - 120px);
-      overflow-y: auto;
+      position: absolute; bottom: 28px; left: 12px; z-index: 10;
+      background: rgba(255,255,255,0.96); border-radius: 10px;
+      padding: 12px 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+      min-width: 190px; max-height: calc(100vh - 120px); overflow-y: auto;
     }
-    #legend h2 {
-      font-size: 11px; font-weight: 700;
-      text-transform: uppercase; letter-spacing: 0.05em;
-      color: #444; margin-bottom: 8px;
-    }
-    .legend-section {
-      font-size: 10px; font-weight: 600;
-      text-transform: uppercase; letter-spacing: 0.04em;
-      color: #888; margin: 10px 0 4px;
-    }
-    .legend-item {
-      display: flex; align-items: center; gap: 8px;
-      margin-bottom: 5px; cursor: pointer; user-select: none;
-    }
+    #legend h2 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #444; margin-bottom: 8px; }
+    .legend-section { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #888; margin: 10px 0 4px; }
+    .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; cursor: pointer; user-select: none; }
     .legend-item:last-child { margin-bottom: 0; }
     .legend-item.hidden { opacity: 0.25; }
-
     .legend-line { width: 26px; height: 4px; border-radius: 2px; flex-shrink: 0; }
     .legend-line.dashed {
-      background: repeating-linear-gradient(
-        to right,
-        var(--c) 0px, var(--c) 6px,
-        transparent 6px, transparent 10px
-      );
+      background: repeating-linear-gradient(to right, var(--c) 0px, var(--c) 6px, transparent 6px, transparent 10px);
     }
-    .legend-box  { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; border: 1px solid rgba(0,0,0,0.15); }
-    .legend-dot  { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
     .legend-label { font-size: 12px; color: #333; }
 
     #zoom-badge {
-      position: absolute; top: 12px; right: 52px;
-      z-index: 10;
-      background: rgba(255,255,255,0.9);
-      border-radius: 6px; padding: 4px 8px;
+      position: absolute; top: 12px; right: 52px; z-index: 10;
+      background: rgba(255,255,255,0.9); border-radius: 6px; padding: 4px 8px;
       font-size: 11px; color: #555; pointer-events: none;
     }
   </style>
@@ -124,7 +68,6 @@
   <h1>🚶 Brussels Pedestrian<br>Network</h1>
   <div class="subtitle">OSM · vector tiles</div>
   <div id="last-update">Chargement…</div>
-
   <a id="edit-btn" class="disabled" href="#" target="_blank" rel="noopener">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -136,15 +79,26 @@
 </div>
 
 <div id="legend"><h2>Légende</h2></div>
-
 <div id="zoom-badge">z<span id="zoom-val">—</span></div>
 
 <script>
 const protocol = new pmtiles.Protocol();
 maplibregl.addProtocol("pmtiles", protocol.tile.bind(protocol));
 const PMTILES_URL = new URL("./pedestrian.pmtiles.gz", window.location.href).href;
-
 const EDIT_MIN_ZOOM = 16;
+
+// Couleurs à écraser sur le style OpenFreeMap (layer id → propriété → valeur)
+const BASE_STYLE_OVERRIDES = {
+  "road_secondary_tertiary":       { "line-color": "rgba(248,170,255,1)" },
+  "road_trunk_primary":            { "line-color": "rgba(113,14,109,1)" },
+  "road_motorway_casing":          { "line-color": "rgba(119,4,6,1)" },
+  "road_motorway_link":            { "line-color": "rgba(8,7,7,1)" },
+  "road_motorway":                 { "line-color": "#000" },
+  "bridge_trunk_primary":          { "line-color": "rgba(247,4,4,1)" },
+  "bridge_motorway":               { "line-color": "rgba(255,1,1,1)" },
+  "bridge_motorway_link":          { "line-color": "rgba(26,25,24,1)" },
+  "tunnel_trunk_primary":          { "line-color": "rgba(18,18,17,1)" },
+};
 
 const HIGHWAY_LAYERS = [
   { id: "living_street", label: "Rue partagée",     color: "#16a34a", width: 3,   dash: false },
@@ -211,109 +165,151 @@ const PEDESTRIAN_LAYERS = [
     "source-layer": "gaps_short",
     layout: { "line-cap": "round" },
     paint: { "line-color": "#ef4444", "line-width": 2.5, "line-dasharray": [3, 2], "line-opacity": 0.9 }
+  },
+  // ── Adresses ── (nécessite l'étape addresses dans le YAML)
+  {
+    id: "housenumbers",
+    type: "symbol",
+    source: "pedestrian",
+    "source-layer": "addresses",
+    minzoom: 17,
+    layout: {
+      "text-field": ["get", "addr:housenumber"],
+      "text-size": 10,
+      "text-font": ["Noto Sans Regular"],
+      "text-allow-overlap": false
+    },
+    paint: {
+      "text-color": "#444",
+      "text-halo-color": "#fff",
+      "text-halo-width": 1
+    }
   }
 ];
 
-const map = new maplibregl.Map({
-  container: "map",
-  style: "https://tiles.openfreemap.org/styles/liberty",
-  center: [4.3517, 50.8503],
-  zoom: 12,
-  minZoom: 8,
-  maxZoom: 19
-});
-
-map.addControl(new maplibregl.NavigationControl(), "top-right");
-map.addControl(new maplibregl.ScaleControl({ maxWidth: 120, unit: "metric" }), "bottom-right");
-
-map.on("load", () => {
-  map.addSource("pedestrian", {
-    type: "vector",
-    url: `pmtiles://${PMTILES_URL}`
-  });
-
-  PEDESTRIAN_LAYERS.forEach(layer => map.addLayer(layer));
-
-  ["gaps-short", "gaps-long"].forEach(layerId => {
-    map.on("click", layerId, e => {
-      new maplibregl.Popup()
-        .setLngLat(e.lngLat)
-        .setHTML(`<strong>Gap</strong><br>${e.features[0].properties.distance_m} m`)
-        .addTo(map);
+// Fetch du style OpenFreeMap, patch des couleurs, init de la carte
+fetch("https://tiles.openfreemap.org/styles/liberty")
+  .then(r => r.json())
+  .then(style => {
+    style.layers = style.layers.map(layer => {
+      const overrides = BASE_STYLE_OVERRIDES[layer.id];
+      if (!overrides) return layer;
+      return {
+        ...layer,
+        paint: { ...layer.paint, ...overrides }
+      };
     });
-    map.on("mouseenter", layerId, () => map.getCanvas().style.cursor = "pointer");
-    map.on("mouseleave", layerId, () => map.getCanvas().style.cursor = "");
+    initMap(style);
+  })
+  .catch(() => {
+    // Fallback sur l'URL directe si le fetch échoue (CORS, etc.)
+    initMap("https://tiles.openfreemap.org/styles/liberty");
   });
-});
 
-function updateEditButton() {
-  const zoom = map.getZoom();
-  const center = map.getCenter();
-  if (zoom >= EDIT_MIN_ZOOM) {
-    editBtn.href = `https://www.openstreetmap.org/edit#map=${Math.round(zoom)}/${center.lat.toFixed(5)}/${center.lng.toFixed(5)}`;
-    editBtn.classList.remove("disabled");
-    editHint.textContent = "";
-  } else {
-    editBtn.classList.add("disabled");
-    editHint.textContent = `Zoomez encore ${Math.ceil(EDIT_MIN_ZOOM - zoom)} niveau(x) pour éditer`;
+function initMap(style) {
+  const map = new maplibregl.Map({
+    container: "map",
+    style,
+    center: [4.3517, 50.8503],
+    zoom: 12,
+    minZoom: 8,
+    maxZoom: 19
+  });
+
+  map.addControl(new maplibregl.NavigationControl(), "top-right");
+  map.addControl(new maplibregl.ScaleControl({ maxWidth: 120, unit: "metric" }), "bottom-right");
+
+  map.on("load", () => {
+    map.addSource("pedestrian", {
+      type: "vector",
+      url: `pmtiles://${PMTILES_URL}`
+    });
+
+    PEDESTRIAN_LAYERS.forEach(layer => map.addLayer(layer));
+
+    ["gaps-short", "gaps-long"].forEach(layerId => {
+      map.on("click", layerId, e => {
+        new maplibregl.Popup()
+          .setLngLat(e.lngLat)
+          .setHTML(`<strong>Gap</strong><br>${e.features[0].properties.distance_m} m`)
+          .addTo(map);
+      });
+      map.on("mouseenter", layerId, () => map.getCanvas().style.cursor = "pointer");
+      map.on("mouseleave", layerId, () => map.getCanvas().style.cursor = "");
+    });
+  });
+
+  const editBtn  = document.getElementById("edit-btn");
+  const editHint = document.getElementById("edit-hint");
+
+  function updateEditButton() {
+    const zoom = map.getZoom();
+    const center = map.getCenter();
+    if (zoom >= EDIT_MIN_ZOOM) {
+      editBtn.href = `https://www.openstreetmap.org/edit#map=${Math.round(zoom)}/${center.lat.toFixed(5)}/${center.lng.toFixed(5)}`;
+      editBtn.classList.remove("disabled");
+      editHint.textContent = "";
+    } else {
+      editBtn.classList.add("disabled");
+      editHint.textContent = `Zoomez encore ${Math.ceil(EDIT_MIN_ZOOM - zoom)} niveau(x) pour éditer`;
+    }
+    document.getElementById("zoom-val").textContent = zoom.toFixed(1);
   }
-  document.getElementById("zoom-val").textContent = zoom.toFixed(1);
-}
 
-const editBtn = document.getElementById("edit-btn");
-const editHint = document.getElementById("edit-hint");
-map.on("moveend", updateEditButton);
+  map.on("moveend", updateEditButton);
 
-// ── Légende ───────────────────────────────────────────────────────────────────
-const legendEl = document.getElementById("legend");
+  // ── Légende ──────────────────────────────────────────────────────────────
+  const legendEl = document.getElementById("legend");
 
-function addSection(label) {
-  const s = document.createElement("div");
-  s.className = "legend-section";
-  s.textContent = label;
-  legendEl.appendChild(s);
-}
-
-function makeLegendItem({ layerId, label, color, swatchType = "line", dashed = false }) {
-  const item = document.createElement("div");
-  item.className = "legend-item";
-  const swatch = document.createElement("div");
-  swatch.className = `legend-${swatchType}`;
-  if (dashed) {
-    swatch.classList.add("dashed");
-    swatch.style.setProperty("--c", color);
-  } else {
-    swatch.style.background = color;
-    if (swatchType === "dot" && label === "Passage piéton") swatch.style.border = "1.5px solid #ef4444";
+  function addSection(label) {
+    const s = document.createElement("div");
+    s.className = "legend-section";
+    s.textContent = label;
+    legendEl.appendChild(s);
   }
-  const lbl = document.createElement("span");
-  lbl.className = "legend-label";
-  lbl.textContent = label;
-  item.appendChild(swatch);
-  item.appendChild(lbl);
-  item.onclick = () => {
-    const vis = map.getLayoutProperty(layerId, "visibility") === "none" ? "visible" : "none";
-    map.setLayoutProperty(layerId, "visibility", vis);
-    item.classList.toggle("hidden", vis === "none");
-  };
-  return item;
+
+  function makeLegendItem({ layerId, label, color, swatchType = "line", dashed = false }) {
+    const item = document.createElement("div");
+    item.className = "legend-item";
+    const swatch = document.createElement("div");
+    swatch.className = `legend-${swatchType}`;
+    if (dashed) {
+      swatch.classList.add("dashed");
+      swatch.style.setProperty("--c", color);
+    } else {
+      swatch.style.background = color;
+      if (swatchType === "dot" && label === "Passage piéton") swatch.style.border = "1.5px solid #ef4444";
+    }
+    const lbl = document.createElement("span");
+    lbl.className = "legend-label";
+    lbl.textContent = label;
+    item.appendChild(swatch);
+    item.appendChild(lbl);
+    item.onclick = () => {
+      const vis = map.getLayoutProperty(layerId, "visibility") === "none" ? "visible" : "none";
+      map.setLayoutProperty(layerId, "visibility", vis);
+      item.classList.toggle("hidden", vis === "none");
+    };
+    return item;
+  }
+
+  addSection("Réseau");
+  HIGHWAY_LAYERS.forEach(l => legendEl.appendChild(makeLegendItem({
+    layerId: `highway-${l.id}`, label: l.label, color: l.color, dashed: l.dash
+  })));
+  legendEl.appendChild(makeLegendItem({ layerId: "highway-crossing", label: "Passage piéton", color: "#fff", swatchType: "dot" }));
+  legendEl.appendChild(makeLegendItem({ layerId: "highway-elevator", label: "Ascenseur", color: "#14532d", swatchType: "dot" }));
+  addSection("Gaps");
+  legendEl.appendChild(makeLegendItem({ layerId: "gaps-short", label: "Court < 30m",  color: "#ef4444", dashed: true }));
+  legendEl.appendChild(makeLegendItem({ layerId: "gaps-long",  label: "Long < 150m", color: "#fb923c", dashed: true }));
+  addSection("Adresses");
+  legendEl.appendChild(makeLegendItem({ layerId: "housenumbers", label: "Numéros", color: "#444", swatchType: "dot" }));
+
+  fetch("./state.txt").then(r => r.text()).then(txt => {
+    const m = txt.match(/timestamp=(.+)/);
+    if (m) document.getElementById("last-update").textContent = "Données : " + new Date(m[1].trim()).toLocaleDateString("fr-BE");
+  }).catch(() => {});
 }
-
-addSection("Réseau");
-HIGHWAY_LAYERS.forEach(l => legendEl.appendChild(makeLegendItem({
-  layerId: `highway-${l.id}`, label: l.label, color: l.color, dashed: l.dash
-})));
-legendEl.appendChild(makeLegendItem({ layerId: "highway-crossing", label: "Passage piéton", color: "#fff", swatchType: "dot" }));
-legendEl.appendChild(makeLegendItem({ layerId: "highway-elevator", label: "Ascenseur", color: "#14532d", swatchType: "dot" }));
-
-addSection("Gaps");
-legendEl.appendChild(makeLegendItem({ layerId: "gaps-short", label: "Court < 30m",  color: "#ef4444", dashed: true }));
-legendEl.appendChild(makeLegendItem({ layerId: "gaps-long",  label: "Long < 150m", color: "#fb923c", dashed: true }));
-
-fetch("./state.txt").then(r => r.text()).then(txt => {
-  const m = txt.match(/timestamp=(.+)/);
-  if (m) document.getElementById("last-update").textContent = "Données : " + new Date(m[1].trim()).toLocaleDateString("fr-BE");
-}).catch(() => {});
 </script>
 </body>
 </html>
