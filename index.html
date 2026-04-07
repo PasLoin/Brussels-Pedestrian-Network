@@ -147,15 +147,14 @@ const PMTILES_URL = new URL("./pedestrian.pmtiles.gz", window.location.href).hre
 const EDIT_MIN_ZOOM = 16;
 
 const HIGHWAY_LAYERS = [
-  { id: "living_street", label: "Rue partagée",     color: "#f59e0b", width: 3,   dash: false },
-  { id: "pedestrian",    label: "Zone piétonne",    color: "#6366f1", width: 3,   dash: false },
-  { id: "footway",       label: "Trottoir / allée", color: "#f97316", width: 2,   dash: false },
-  { id: "cycleway",      label: "Piste cyclable",   color: "#06b6d4", width: 2.5, dash: false },
-  { id: "path",          label: "Sentier",          color: "#22c55e", width: 1.5, dash: true  },
-  { id: "steps",         label: "Escaliers",        color: "#ef4444", width: 2,   dash: true  },
+  { id: "living_street", label: "Rue partagée",     color: "#16a34a", width: 3,   dash: false },
+  { id: "pedestrian",    label: "Zone piétonne",    color: "#15803d", width: 3,   dash: false },
+  { id: "footway",       label: "Trottoir / allée", color: "#22c55e", width: 2,   dash: false },
+  { id: "cycleway",      label: "Piste cyclable",   color: "#4ade80", width: 2.5, dash: false },
+  { id: "path",          label: "Sentier",          color: "#86efac", width: 1.5, dash: true  },
+  { id: "steps",         label: "Escaliers",        color: "#166534", width: 2,   dash: true  },
 ];
 
-// Couches piétonnes à injecter dans le style OpenFreeMap après chargement
 const PEDESTRIAN_LAYERS = [
   ...HIGHWAY_LAYERS.map(({ id, color, width, dash }) => ({
     id: `highway-${id}`,
@@ -191,7 +190,7 @@ const PEDESTRIAN_LAYERS = [
     "source-layer": "highways",
     filter: ["any", ["==", ["get", "highway"], "elevator"], ["==", ["get", "amenity"], "elevator"]],
     paint: {
-      "circle-color": "#a855f7",
+      "circle-color": "#14532d",
       "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 2, 16, 6],
       "circle-stroke-color": "#fff",
       "circle-stroke-width": 1.5
@@ -202,6 +201,7 @@ const PEDESTRIAN_LAYERS = [
     type: "line",
     source: "pedestrian",
     "source-layer": "gaps_long",
+    layout: { "line-cap": "round" },
     paint: { "line-color": "#fb923c", "line-width": 2, "line-dasharray": [4, 3], "line-opacity": 0.85 }
   },
   {
@@ -209,6 +209,7 @@ const PEDESTRIAN_LAYERS = [
     type: "line",
     source: "pedestrian",
     "source-layer": "gaps_short",
+    layout: { "line-cap": "round" },
     paint: { "line-color": "#ef4444", "line-width": 2.5, "line-dasharray": [3, 2], "line-opacity": 0.9 }
   }
 ];
@@ -226,16 +227,13 @@ map.addControl(new maplibregl.NavigationControl(), "top-right");
 map.addControl(new maplibregl.ScaleControl({ maxWidth: 120, unit: "metric" }), "bottom-right");
 
 map.on("load", () => {
-  // Ajout de la source PMTiles sur le style OpenFreeMap
   map.addSource("pedestrian", {
     type: "vector",
     url: `pmtiles://${PMTILES_URL}`
   });
 
-  // Injection des couches piétonnes par-dessus le fond
   PEDESTRIAN_LAYERS.forEach(layer => map.addLayer(layer));
 
-  // Popups sur les gaps
   ["gaps-short", "gaps-long"].forEach(layerId => {
     map.on("click", layerId, e => {
       new maplibregl.Popup()
@@ -243,6 +241,8 @@ map.on("load", () => {
         .setHTML(`<strong>Gap</strong><br>${e.features[0].properties.distance_m} m`)
         .addTo(map);
     });
+    map.on("mouseenter", layerId, () => map.getCanvas().style.cursor = "pointer");
+    map.on("mouseleave", layerId, () => map.getCanvas().style.cursor = "");
   });
 });
 
@@ -287,8 +287,10 @@ function makeLegendItem({ layerId, label, color, swatchType = "line", dashed = f
     if (swatchType === "dot" && label === "Passage piéton") swatch.style.border = "1.5px solid #ef4444";
   }
   const lbl = document.createElement("span");
-  lbl.className = "legend-label"; lbl.textContent = label;
-  item.appendChild(swatch); item.appendChild(lbl);
+  lbl.className = "legend-label";
+  lbl.textContent = label;
+  item.appendChild(swatch);
+  item.appendChild(lbl);
   item.onclick = () => {
     const vis = map.getLayoutProperty(layerId, "visibility") === "none" ? "visible" : "none";
     map.setLayoutProperty(layerId, "visibility", vis);
@@ -298,13 +300,15 @@ function makeLegendItem({ layerId, label, color, swatchType = "line", dashed = f
 }
 
 addSection("Réseau");
-HIGHWAY_LAYERS.forEach(l => legendEl.appendChild(makeLegendItem({ layerId: `highway-${l.id}`, label: l.label, color: l.color, dashed: l.dash })));
+HIGHWAY_LAYERS.forEach(l => legendEl.appendChild(makeLegendItem({
+  layerId: `highway-${l.id}`, label: l.label, color: l.color, dashed: l.dash
+})));
 legendEl.appendChild(makeLegendItem({ layerId: "highway-crossing", label: "Passage piéton", color: "#fff", swatchType: "dot" }));
-legendEl.appendChild(makeLegendItem({ layerId: "highway-elevator", label: "Ascenseur", color: "#a855f7", swatchType: "dot" }));
+legendEl.appendChild(makeLegendItem({ layerId: "highway-elevator", label: "Ascenseur", color: "#14532d", swatchType: "dot" }));
 
 addSection("Gaps");
-legendEl.appendChild(makeLegendItem({ layerId: "gaps-short", label: "Court < 30m", color: "#ef4444", dashed: true }));
-legendEl.appendChild(makeLegendItem({ layerId: "gaps-long", label: "Long < 150m", color: "#fb923c", dashed: true }));
+legendEl.appendChild(makeLegendItem({ layerId: "gaps-short", label: "Court < 30m",  color: "#ef4444", dashed: true }));
+legendEl.appendChild(makeLegendItem({ layerId: "gaps-long",  label: "Long < 150m", color: "#fb923c", dashed: true }));
 
 fetch("./state.txt").then(r => r.text()).then(txt => {
   const m = txt.match(/timestamp=(.+)/);
