@@ -14,8 +14,6 @@
     body { font-family: "Inter", system-ui, sans-serif; background: #1a1a1a; }
     #map { position: absolute; inset: 0; }
 
-    .maplibregl-ctrl-attrib-button { display: none !important; }
-
     #header {
       position: absolute; top: 12px; left: 12px; z-index: 10;
       background: rgba(255,255,255,0.96); border-radius: 10px;
@@ -90,28 +88,29 @@ const PMTILES_URL = new URL("./pedestrian.pmtiles.gz", window.location.href).hre
 const EDIT_MIN_ZOOM = 16;
 
 const BASE_STYLE_OVERRIDES = {
-  "road_secondary_tertiary":       { "line-color": "rgba(248,170,255,1)" },
-  "road_trunk_primary":            { "line-color": "rgba(113,14,109,1)" },
-  "road_motorway_casing":          { "line-color": "rgba(119,4,6,1)" },
-  "road_motorway_link":            { "line-color": "rgba(8,7,7,1)" },
-  "road_motorway":                 { "line-color": "#000" },
-  "bridge_trunk_primary":          { "line-color": "rgba(247,4,4,1)" },
-  "bridge_motorway":               { "line-color": "rgba(255,1,1,1)" },
-  "bridge_motorway_link":          { "line-color": "rgba(26,25,24,1)" },
-  "tunnel_trunk_primary":          { "line-color": "rgba(18,18,17,1)" },
+  "road_secondary_tertiary": { "line-color": "rgba(248,170,255,1)" },
+  "road_trunk_primary":      { "line-color": "rgba(113,14,109,1)" },
+  "road_motorway_casing":    { "line-color": "rgba(119,4,6,1)" },
+  "road_motorway_link":      { "line-color": "rgba(8,7,7,1)" },
+  "road_motorway":           { "line-color": "#000" },
+  "bridge_trunk_primary":    { "line-color": "rgba(247,4,4,1)" },
+  "bridge_motorway":         { "line-color": "rgba(255,1,1,1)" },
+  "bridge_motorway_link":    { "line-color": "rgba(26,25,24,1)" },
+  "tunnel_trunk_primary":    { "line-color": "rgba(18,18,17,1)" },
 };
 
+// hidden: true = caché au chargement
 const HIGHWAY_LAYERS = [
-  { id: "living_street", label: "Rue partagée",     color: "#16a34a", width: 3,   dash: false },
-  { id: "pedestrian",    label: "Zone piétonne",    color: "#15803d", width: 3,   dash: false },
-  { id: "footway",       label: "Trottoir / allée", color: "#22c55e", width: 2,   dash: false },
-  { id: "cycleway",      label: "Piste cyclable",   color: "#4ade80", width: 2.5, dash: false },
-  { id: "path",          label: "Sentier",          color: "#86efac", width: 1.5, dash: true  },
-  { id: "steps",         label: "Escaliers",        color: "#166534", width: 2,   dash: true  },
+  { id: "living_street", label: "Rue partagée",     color: "#16a34a", width: 3,   dash: false, hidden: false },
+  { id: "pedestrian",    label: "Zone piétonne",    color: "#15803d", width: 3,   dash: false, hidden: false },
+  { id: "footway",       label: "Trottoir / allée", color: "#22c55e", width: 2,   dash: false, hidden: false },
+  { id: "cycleway",      label: "Piste cyclable",   color: "#0000ff", width: 2.5, dash: false, hidden: true  },
+  { id: "path",          label: "Sentier",          color: "#86efac", width: 1.5, dash: true,  hidden: false },
+  { id: "steps",         label: "Escaliers",        color: "#166534", width: 2,   dash: true,  hidden: false },
 ];
 
 const PEDESTRIAN_LAYERS = [
-  ...HIGHWAY_LAYERS.map(({ id, color, width, dash }) => ({
+  ...HIGHWAY_LAYERS.map(({ id, color, width, dash, hidden }) => ({
     id: `highway-${id}`,
     type: "line",
     source: "pedestrian",
@@ -120,7 +119,7 @@ const PEDESTRIAN_LAYERS = [
     layout: {
       "line-cap": "round",
       "line-join": "round",
-      ...(id === "cycleway" ? { visibility: "none" } : {})
+      visibility: hidden ? "none" : "visible"
     },
     paint: {
       "line-color": color,
@@ -135,6 +134,7 @@ const PEDESTRIAN_LAYERS = [
     source: "pedestrian",
     "source-layer": "highways",
     filter: ["==", ["get", "highway"], "crossing"],
+    layout: { visibility: "visible" },
     paint: {
       "circle-color": "#15803d",
       "circle-radius": ["interpolate", ["linear"], ["zoom"], 12, 1.5, 16, 4, 18, 8],
@@ -148,6 +148,7 @@ const PEDESTRIAN_LAYERS = [
     source: "pedestrian",
     "source-layer": "highways",
     filter: ["any", ["==", ["get", "highway"], "elevator"], ["==", ["get", "amenity"], "elevator"]],
+    layout: { visibility: "visible" },
     paint: {
       "circle-color": "#14532d",
       "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 2, 16, 6],
@@ -181,7 +182,8 @@ const PEDESTRIAN_LAYERS = [
       "text-field": ["get", "addr:housenumber"],
       "text-size": 11,
       "text-font": ["Noto Sans Regular"],
-      "text-allow-overlap": false
+      "text-allow-overlap": false,
+      visibility: "visible"
     },
     paint: {
       "text-color": "#444",
@@ -197,16 +199,11 @@ fetch("https://tiles.openfreemap.org/styles/liberty")
     style.layers = style.layers.map(layer => {
       const overrides = BASE_STYLE_OVERRIDES[layer.id];
       if (!overrides) return layer;
-      return {
-        ...layer,
-        paint: { ...layer.paint, ...overrides }
-      };
+      return { ...layer, paint: { ...layer.paint, ...overrides } };
     });
     initMap(style);
   })
-  .catch(() => {
-    initMap("https://tiles.openfreemap.org/styles/liberty");
-  });
+  .catch(() => initMap("https://tiles.openfreemap.org/styles/liberty"));
 
 function initMap(style) {
   const map = new maplibregl.Map({
@@ -241,8 +238,66 @@ function initMap(style) {
       map.on("mouseenter", layerId, () => map.getCanvas().style.cursor = "pointer");
       map.on("mouseleave", layerId, () => map.getCanvas().style.cursor = "");
     });
+
+    // ── Légende — construite ICI dans le load, après addLayer ────────────────
+    const legendEl = document.getElementById("legend");
+
+    function addSection(label) {
+      const s = document.createElement("div");
+      s.className = "legend-section";
+      s.textContent = label;
+      legendEl.appendChild(s);
+    }
+
+    function makeLegendItem({ layerId, label, color, swatchType = "line", dashed = false }) {
+      const item = document.createElement("div");
+      item.className = "legend-item";
+
+      const swatch = document.createElement("div");
+      swatch.className = `legend-${swatchType}`;
+      if (dashed) {
+        swatch.classList.add("dashed");
+        swatch.style.setProperty("--c", color);
+      } else {
+        swatch.style.background = color;
+        if (swatchType === "dot" && label === "Passage piéton") swatch.style.border = "1.5px solid #15803d";
+      }
+
+      const lbl = document.createElement("span");
+      lbl.className = "legend-label";
+      lbl.textContent = label;
+
+      item.appendChild(swatch);
+      item.appendChild(lbl);
+
+      // État initial correct car les couches existent déjà
+      const initialVis = map.getLayoutProperty(layerId, "visibility");
+      item.classList.toggle("hidden", initialVis === "none");
+
+      item.onclick = () => {
+        const vis = map.getLayoutProperty(layerId, "visibility") === "none" ? "visible" : "none";
+        map.setLayoutProperty(layerId, "visibility", vis);
+        item.classList.toggle("hidden", vis === "none");
+      };
+      return item;
+    }
+
+    addSection("Réseau");
+    HIGHWAY_LAYERS.forEach(l => legendEl.appendChild(makeLegendItem({
+      layerId: `highway-${l.id}`, label: l.label, color: l.color, dashed: l.dash
+    })));
+    legendEl.appendChild(makeLegendItem({ layerId: "highway-crossing", label: "Passage piéton", color: "#fff", swatchType: "dot" }));
+    legendEl.appendChild(makeLegendItem({ layerId: "highway-elevator", label: "Ascenseur",      color: "#14532d", swatchType: "dot" }));
+
+    addSection("Gaps");
+    legendEl.appendChild(makeLegendItem({ layerId: "gaps-short", label: "Court < 30m",  color: "#ef4444", dashed: true }));
+    legendEl.appendChild(makeLegendItem({ layerId: "gaps-long",  label: "Long < 150m", color: "#fb923c", dashed: true }));
+
+    addSection("Adresses");
+    legendEl.appendChild(makeLegendItem({ layerId: "housenumbers", label: "Numéros", color: "#444", swatchType: "dot" }));
   });
 
+  // ── Bouton édition ────────────────────────────────────────────────────────
   const editBtn  = document.getElementById("edit-btn");
   const editHint = document.getElementById("edit-hint");
 
@@ -261,53 +316,6 @@ function initMap(style) {
   }
 
   map.on("moveend", updateEditButton);
-
-  const legendEl = document.getElementById("legend");
-
-  function addSection(label) {
-    const s = document.createElement("div");
-    s.className = "legend-section";
-    s.textContent = label;
-    legendEl.appendChild(s);
-  }
-
-  function makeLegendItem({ layerId, label, color, swatchType = "line", dashed = false }) {
-    const item = document.createElement("div");
-    item.className = "legend-item";
-    const swatch = document.createElement("div");
-    swatch.className = `legend-${swatchType}`;
-    if (dashed) {
-      swatch.classList.add("dashed");
-      swatch.style.setProperty("--c", color);
-    } else {
-      swatch.style.background = color;
-      if (swatchType === "dot" && label === "Passage piéton") swatch.style.border = "1.5px solid #15803d";
-    }
-    const lbl = document.createElement("span");
-    lbl.className = "legend-label";
-    lbl.textContent = label;
-    item.appendChild(swatch);
-    item.appendChild(lbl);
-    item.classList.toggle("hidden", map.getLayoutProperty(layerId, "visibility") === "none");
-    item.onclick = () => {
-      const vis = map.getLayoutProperty(layerId, "visibility") === "none" ? "visible" : "none";
-      map.setLayoutProperty(layerId, "visibility", vis);
-      item.classList.toggle("hidden", vis === "none");
-    };
-    return item;
-  }
-
-  addSection("Réseau");
-  HIGHWAY_LAYERS.forEach(l => legendEl.appendChild(makeLegendItem({
-    layerId: `highway-${l.id}`, label: l.label, color: l.color, dashed: l.dash
-  })));
-  legendEl.appendChild(makeLegendItem({ layerId: "highway-crossing", label: "Passage piéton", color: "#fff", swatchType: "dot" }));
-  legendEl.appendChild(makeLegendItem({ layerId: "highway-elevator", label: "Ascenseur", color: "#14532d", swatchType: "dot" }));
-  addSection("Gaps");
-  legendEl.appendChild(makeLegendItem({ layerId: "gaps-short", label: "Court < 30m",  color: "#ef4444", dashed: true }));
-  legendEl.appendChild(makeLegendItem({ layerId: "gaps-long",  label: "Long < 150m", color: "#fb923c", dashed: true }));
-  addSection("Adresses");
-  legendEl.appendChild(makeLegendItem({ layerId: "housenumbers", label: "Numéros", color: "#444", swatchType: "dot" }));
 
   fetch("./state.txt").then(r => r.text()).then(txt => {
     const m = txt.match(/timestamp=(.+)/);
