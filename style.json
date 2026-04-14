@@ -20,7 +20,7 @@
     },
     "pedestrian": {
       "type": "vector",
-      "url": "pmtiles://https://VOTRE_NOM_UTILISATEUR.github.io/VOTRE_REPO/pedestrian.pmtiles.gz",
+      "url": "pmtiles://https://pasloin.github.io/Brussels-Pedestrian-Network/pedestrian.pmtiles.gz",
       "attribution": "© <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap contributors</a>"
     }
   },
