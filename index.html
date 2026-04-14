@@ -261,16 +261,40 @@ const PEDESTRIAN_LAYERS = [
   }
 ];
 
-fetch("./style.json")
+fetch("https://tiles.openfreemap.org/styles/liberty")
   .then(r => r.json())
-  .then(style => {
-    style.layers = style.layers.map(layer => {
-      const overrides = BASE_STYLE_OVERRIDES[layer.id];
-      if (!overrides) return layer;
-      return { ...layer, paint: { ...layer.paint, ...overrides } };
-    });
-    initMap(style);
-  });
+  .then(libertyStyle => {
+    fetch("./style.json")
+      .then(r => r.json())
+      .then(localStyle => {
+        const allowedOverlayIds = new Set(Object.keys(BASE_STYLE_OVERRIDES));
+        const localOverlayPaintById = new Map(
+          (localStyle.layers || [])
+            .filter(layer => allowedOverlayIds.has(layer.id))
+            .map(layer => [layer.id, layer.paint || {}])
+        );
+
+        libertyStyle.layers = (libertyStyle.layers || []).map(layer => {
+          const localOverlayPaint = localOverlayPaintById.get(layer.id) || {};
+          const overrides = BASE_STYLE_OVERRIDES[layer.id] || {};
+          return {
+            ...layer,
+            paint: { ...(layer.paint || {}), ...localOverlayPaint, ...overrides }
+          };
+        });
+
+        initMap(libertyStyle);
+      })
+      .catch(() => {
+        libertyStyle.layers = (libertyStyle.layers || []).map(layer => {
+          const overrides = BASE_STYLE_OVERRIDES[layer.id];
+          if (!overrides) return layer;
+          return { ...layer, paint: { ...(layer.paint || {}), ...overrides } };
+        });
+        initMap(libertyStyle);
+      });
+  })
+  .catch(() => initMap("https://tiles.openfreemap.org/styles/liberty"));
 
 function initMap(style) {
   const map = new maplibregl.Map({
