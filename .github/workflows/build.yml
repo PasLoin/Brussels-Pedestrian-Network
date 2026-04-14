@@ -57,7 +57,7 @@ env:
 
   # ── Routing parameters (all configurable) ─────────────────────────────────
   MAX_OD_DISTANCE_KM: 5       # max crow-fly distance between OD pair
-  MAX_OD_PAIRS: 150000         # cap on number of routed pairs
+  MAX_OD_PAIRS: 500000         # cap on number of routed pairs
   TOP_RANK_PCT: 5             # top X% by flow = "high usage" threshold
 
 jobs:
@@ -250,7 +250,8 @@ jobs:
               n = len(grp_s)
               if n == 0:
                   continue
-              idxs = [n // 2] if n < 5 else [int(n * 0.10), int(n * 0.50), int(n * 0.90)]
+              #####idxs = [n // 2] if n < 5 else [int(n * 0.10), int(n * 0.50), int(n * 0.90)]
+              idxs = [n // 2] if n < 5 else [int(n * p) for p in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]]
               for i in idxs:
                   row = grp_s.iloc[i]
                   od_points.append((row.geometry.x, row.geometry.y))
