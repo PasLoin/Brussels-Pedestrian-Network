@@ -172,8 +172,8 @@
       "source": "pedestrian",
       "source-layer": "flow_edges",
       "filter": ["==", ["get", "surface_cat"], "road"],
-      "layout": { "visibility": "none" },
-      "paint": { "line-color": "#ef4444", "line-width": 3 }
+      "layout": { "visibility": "visible" },
+      "paint": { "line-color": "#ef4444", "line-width": 4 }
     }
   ]
 }
