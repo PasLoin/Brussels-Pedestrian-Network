@@ -56,9 +56,9 @@ env:
   MAX_ZOOM: 19
 
   # ── Routing parameters (all configurable) ─────────────────────────────────
-  MAX_OD_DISTANCE_KM: 5       # max crow-fly distance between OD pair
-  MAX_OD_PAIRS: 500000         # cap on number of routed pairs #50000
-  TOP_RANK_PCT: 5             # top X% by flow = "high usage" threshold
+  MAX_OD_DISTANCE_KM: 6       # max crow-fly distance between OD pair #5
+  MAX_OD_PAIRS: 900000         # cap on number of routed pairs #50000
+  TOP_RANK_PCT: 15             # top X% by flow = "high usage" threshold #5 ## plus haut plus de détection et faux positifs
 
 jobs:
   build-and-deploy:
