@@ -307,10 +307,12 @@ function initMap(style) {
 
   map.addControl(
     new maplibregl.AttributionControl({
-      compact: true,
-      customAttribution: ["Données © OpenStreetMap contributeurs"]
+      compact: false,
+      customAttribution: [
+        '<a href="https://github.com/PasLoin/Brussels-Pedestrian-Network" target="_blank" rel="noopener">PasLoin</a>'
+      ]
     }),
-    "bottom-left"
+    "bottom-right"
   );
 
   map.on("load", () => {
