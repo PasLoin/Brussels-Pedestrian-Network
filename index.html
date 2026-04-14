@@ -261,15 +261,57 @@ const PEDESTRIAN_LAYERS = [
   }
 ];
 
-fetch("./style.json")
-  .then(r => r.json())
-  .then(style => {
-    style.layers = style.layers.map(layer => {
-      const overrides = BASE_STYLE_OVERRIDES[layer.id];
-      if (!overrides) return layer;
-      return { ...layer, paint: { ...layer.paint, ...overrides } };
+Promise.all([
+  fetch("https://tiles.openfreemap.org/styles/liberty").then(r => r.json()),
+  fetch("./style.json").then(r => r.json())
+])
+  .then(([libertyStyle, localStyle]) => {
+    const localSources = localStyle.sources || {};
+    const localLayers = localStyle.layers || [];
+    const localLayerById = new Map(localLayers.map(layer => [layer.id, layer]));
+
+    const mergedLayers = (libertyStyle.layers || []).map(layer => {
+      const localLayer = localLayerById.get(layer.id);
+      if (!localLayer) return layer;
+      return {
+        ...layer,
+        ...localLayer,
+        paint: { ...(layer.paint || {}), ...(localLayer.paint || {}) },
+        layout: { ...(layer.layout || {}), ...(localLayer.layout || {}) }
+      };
     });
-    initMap(style);
+
+    localLayers.forEach(layer => {
+      if (!mergedLayers.some(existing => existing.id === layer.id)) {
+        mergedLayers.push(layer);
+      }
+    });
+
+    const finalStyle = {
+      ...libertyStyle,
+      ...localStyle,
+      sources: { ...(libertyStyle.sources || {}), ...localSources },
+      layers: mergedLayers.map(layer => {
+        const overrides = BASE_STYLE_OVERRIDES[layer.id];
+        if (!overrides) return layer;
+        return { ...layer, paint: { ...layer.paint, ...overrides } };
+      })
+    };
+
+    initMap(finalStyle);
+  })
+  .catch(() => {
+    fetch("https://tiles.openfreemap.org/styles/liberty")
+      .then(r => r.json())
+      .then(style => {
+        style.layers = (style.layers || []).map(layer => {
+          const overrides = BASE_STYLE_OVERRIDES[layer.id];
+          if (!overrides) return layer;
+          return { ...layer, paint: { ...layer.paint, ...overrides } };
+        });
+        initMap(style);
+      })
+      .catch(() => initMap("https://tiles.openfreemap.org/styles/liberty"));
   });
 
 function initMap(style) {
