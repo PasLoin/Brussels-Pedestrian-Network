@@ -113,37 +113,13 @@ maplibregl.addProtocol("pmtiles", protocol.tile.bind(protocol));
 const PMTILES_URL = new URL("./pedestrian.pmtiles.gz", window.location.href).href;
 const EDIT_MIN_ZOOM = 16;
 
-// --- CONFIGURATION GRIS HOMOGÈNE ---
-const ROAD_GRAY = "#d5d5d5";
-const ROAD_BORDER = "#aaaaaa";
-
-const BASE_STYLE_OVERRIDES = {
-  "road_motorway":          { "line-color": ROAD_GRAY },
-  "road_motorway_link":     { "line-color": ROAD_GRAY },
-  "road_trunk_primary":     { "line-color": ROAD_GRAY },
-  "road_trunk_primary_link":{ "line-color": ROAD_GRAY },
-  "road_secondary_tertiary":{ "line-color": ROAD_GRAY },
-  "road_major_rail":        { "line-color": ROAD_BORDER },
-  "road_motorway_casing":   { "line-color": ROAD_BORDER },
-  "road_trunk_primary_casing": { "line-color": ROAD_BORDER },
-  "road_secondary_tertiary_casing": { "line-color": ROAD_BORDER },
-  "bridge_motorway":        { "line-color": ROAD_GRAY },
-  "bridge_motorway_casing": { "line-color": ROAD_BORDER },
-  "bridge_trunk_primary":   { "line-color": ROAD_GRAY },
-  "bridge_trunk_primary_casing": { "line-color": ROAD_BORDER },
-  "bridge_secondary_tertiary": { "line-color": ROAD_GRAY },
-  "tunnel_motorway":        { "line-color": ROAD_GRAY },
-  "tunnel_trunk_primary":   { "line-color": ROAD_GRAY },
-};
-
-fetch("https://tiles.openfreemap.org/styles/liberty")
+fetch("./style.json")
   .then(r => r.json())
   .then(style => {
-    style.layers = style.layers.map(layer => {
-      const overrides = BASE_STYLE_OVERRIDES[layer.id];
-      if (!overrides) return layer;
-      return { ...layer, paint: { ...layer.paint, ...overrides } };
-    });
+    // Dynamically resolve PMTiles URL relative to current page
+    if (style.sources && style.sources.pedestrian) {
+      style.sources.pedestrian.url = "pmtiles://" + PMTILES_URL;
+    }
     initMap(style);
   });
 
