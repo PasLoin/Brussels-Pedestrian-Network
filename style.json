@@ -386,11 +386,28 @@
     },
 
     {
+      "id": "forced-cycleway",
+      "type": "line",
+      "source": "pedestrian",
+      "source-layer": "forced_cycleway",
+      "layout": { "line-cap": "round", "line-join": "round" },
+      "paint": {
+        "line-color": "#7c3aed",
+        "line-width": [
+          "interpolate", ["linear"], ["zoom"],
+          10, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 1,   100, 4],
+          16, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 2.5, 100, 12]
+        ],
+        "line-opacity": 0.88
+      }
+    },
+
+    {
       "id": "flow-ped",
       "type": "line",
       "source": "pedestrian",
       "source-layer": "flow_edges",
-      "filter": ["==", ["get", "is_pedestrian"], 1],
+      "filter": ["==", ["get", "surface_cat"], "pedestrian"],
       "layout": { "line-cap": "round", "line-join": "round", "visibility": "none" },
       "paint": {
         "line-color": [
@@ -407,11 +424,32 @@
     },
 
     {
+      "id": "flow-cycleway",
+      "type": "line",
+      "source": "pedestrian",
+      "source-layer": "flow_edges",
+      "filter": ["==", ["get", "surface_cat"], "cycleway_no_foot"],
+      "layout": { "line-cap": "round", "line-join": "round", "visibility": "none" },
+      "paint": {
+        "line-color": [
+          "interpolate", ["linear"], ["get", "flow_pct"],
+          0, "#ede9fe", 50, "#7c3aed", 100, "#3b0764"
+        ],
+        "line-width": [
+          "interpolate", ["linear"], ["zoom"],
+          10, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 0.5, 100, 3],
+          16, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 1,   100, 8]
+        ],
+        "line-opacity": 0.85
+      }
+    },
+
+    {
       "id": "flow-road",
       "type": "line",
       "source": "pedestrian",
       "source-layer": "flow_edges",
-      "filter": ["==", ["get", "is_pedestrian"], 0],
+      "filter": ["==", ["get", "surface_cat"], "road"],
       "layout": { "line-cap": "round", "line-join": "round", "visibility": "none" },
       "paint": {
         "line-color": [
