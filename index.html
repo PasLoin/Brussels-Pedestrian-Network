@@ -94,7 +94,7 @@ fetch("./state.txt")
     const match = txt.match(/timestamp=(.+)/);
     if (!match) return;
 
-    const iso = match[1].replace("\\:", ":");
+    const iso = match[1].trim().replace(/\\:/g, ":");
     const date = new Date(iso);
 
     const formatted = date.toLocaleString("fr-BE", {
@@ -304,6 +304,14 @@ function initMap(style) {
     zoom: 12,
     attributionControl: false
   });
+
+  map.addControl(
+    new maplibregl.AttributionControl({
+      compact: true,
+      customAttribution: ["Données © OpenStreetMap contributeurs"]
+    }),
+    "bottom-left"
+  );
 
   map.on("load", () => {
     map.addSource("pedestrian", { type: "vector", url: `pmtiles://${PMTILES_URL}` });
