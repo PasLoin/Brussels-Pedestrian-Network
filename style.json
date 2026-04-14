@@ -39,7 +39,6 @@
       "source-layer": "park",
       "paint": { "fill-color": "#242d24", "fill-opacity": 0.7 }
     },
-    /* --- CORRECTION DES ROUTES DE BASE (GRIS SOMBRE) --- */
     {
       "id": "road_secondary_tertiary_casing",
       "type": "line",
@@ -85,7 +84,33 @@
       }
     },
 
-    /* --- CALQUES PEDESTRIAN (MASQUÉS PAR DÉFAUT SAUF FORCED) --- */
+    {
+      "id": "road_motorway_link_casing",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "filter": ["all",
+        ["match", ["get", "class"], ["motorway_link"], true, false]
+      ],
+      "paint": {
+        "line-color": "#aaaaaa",
+        "line-width": ["interpolate", ["exponential", 1.2], ["zoom"], 5, 0.6, 20, 20]
+      }
+    },
+    {
+      "id": "road_motorway_link",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "filter": ["all",
+        ["match", ["get", "class"], ["motorway_link"], true, false]
+      ],
+      "paint": {
+        "line-color": "#d5d5d5",
+        "line-width": ["interpolate", ["exponential", 1.2], ["zoom"], 5, 0, 20, 16]
+      }
+    },
+
     {
       "id": "highway-living_street",
       "type": "line",
@@ -113,8 +138,6 @@
       "layout": { "visibility": "none" },
       "paint": { "line-color": "#22c55e", "line-width": 1.5 }
     },
-
-    /* --- ROUTAGE SIMULÉ (ACTIF) --- */
     {
       "id": "forced-segments",
       "type": "line",
@@ -134,8 +157,6 @@
       "layout": { "visibility": "visible" },
       "paint": { "line-color": "#7c3aed", "line-width": 3 }
     },
-
-    /* --- FLUX (MASQUÉS PAR DÉFAUT) --- */
     {
       "id": "flow-ped",
       "type": "line",
