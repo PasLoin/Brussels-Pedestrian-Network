@@ -173,7 +173,7 @@
       "source-layer": "flow_edges",
       "filter": ["==", ["get", "surface_cat"], "road"],
       "layout": { "visibility": "none" },
-      "paint": { "line-color": "#ef4444", "line-width": 2 }
+      "paint": { "line-color": "#ef4444", "line-width": 3 }
     }
   ]
 }
