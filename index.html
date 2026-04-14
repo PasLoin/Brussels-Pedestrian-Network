@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Brussels Pedestrian Network Analysis</title>
+  <title>Brussels Pedestrian Flow Analysis</title>
 
   <link href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css" rel="stylesheet" />
   <script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
@@ -44,7 +44,6 @@
     #legend h2 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #444; margin-bottom: 8px; }
     .legend-section { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #888; margin: 10px 0 4px; }
     .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; cursor: pointer; user-select: none; }
-    .legend-item:last-child { margin-bottom: 0; }
     .legend-item.hidden { opacity: 0.25; }
     .legend-line { width: 26px; height: 4px; border-radius: 2px; flex-shrink: 0; }
     .legend-line.dashed {
@@ -71,8 +70,8 @@
 <div id="map"></div>
 
 <div id="header">
-  <h1>🚶 Brussels Pedestrian<br>Flow Analysis</h1>
-  <div class="subtitle">OSM · vector tiles</div>
+  <h1>🚶 Brussels Pedestrian<br>Simulated Flows</h1>
+  <div class="subtitle">Analyse des flux piétons (OSM)</div>
   <div id="last-update">Chargement…</div>
   <a id="edit-btn" class="disabled" href="#" target="_blank" rel="noopener">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -93,41 +92,44 @@ maplibregl.addProtocol("pmtiles", protocol.tile.bind(protocol));
 const PMTILES_URL = new URL("./pedestrian.pmtiles.gz", window.location.href).href;
 const EDIT_MIN_ZOOM = 16;
 
-// --- CONFIGURATION COULEURS FOND DE CARTE ---
+// --- CONFIGURATION GRIS HOMOGÈNE ---
 const ROAD_GRAY = "#2a2a2a";
-const ROAD_BORDER = "#1a1a1a"; // Légèrement plus foncé pour les bords
+const ROAD_BORDER = "#1a1a1a";
 
 const BASE_STYLE_OVERRIDES = {
-  // Remplissages des routes
-  "road_secondary_tertiary": { "line-color": ROAD_GRAY },
-  "road_trunk_primary":      { "line-color": ROAD_GRAY },
-  "road_motorway":           { "line-color": ROAD_GRAY },
-  "road_motorway_link":      { "line-color": ROAD_GRAY },
-  "bridge_trunk_primary":    { "line-color": ROAD_GRAY },
-  "bridge_motorway":         { "line-color": ROAD_GRAY },
-  "bridge_motorway_link":    { "line-color": ROAD_GRAY },
-  "tunnel_trunk_primary":    { "line-color": ROAD_GRAY },
-  
-  // Bordures (casings) des routes pour homogénéiser
-  "road_motorway_casing":    { "line-color": ROAD_BORDER },
+  // Coeurs de routes
+  "road_motorway":          { "line-color": ROAD_GRAY },
+  "road_motorway_link":     { "line-color": ROAD_GRAY },
+  "road_trunk_primary":     { "line-color": ROAD_GRAY },
+  "road_trunk_primary_link":{ "line-color": ROAD_GRAY },
+  "road_secondary_tertiary":{ "line-color": ROAD_GRAY },
+  "road_major_rail":        { "line-color": ROAD_BORDER },
+  // Casings (bords) pour éviter le noir ou les contrastes
+  "road_motorway_casing":   { "line-color": ROAD_BORDER },
   "road_trunk_primary_casing": { "line-color": ROAD_BORDER },
   "road_secondary_tertiary_casing": { "line-color": ROAD_BORDER },
-  "bridge_motorway_casing":  { "line-color": ROAD_BORDER },
-  "bridge_trunk_primary_casing": { "line-color": ROAD_BORDER }
+  // Ponts et tunnels
+  "bridge_motorway":        { "line-color": ROAD_GRAY },
+  "bridge_motorway_casing": { "line-color": ROAD_BORDER },
+  "bridge_trunk_primary":   { "line-color": ROAD_GRAY },
+  "bridge_trunk_primary_casing": { "line-color": ROAD_BORDER },
+  "bridge_secondary_tertiary": { "line-color": ROAD_GRAY },
+  "tunnel_motorway":        { "line-color": ROAD_GRAY },
+  "tunnel_trunk_primary":   { "line-color": ROAD_GRAY },
 };
 
-// ── Pedestrian network base layers ──────────────────────────────────────────
+// ── Réseau de base : TOUT À FALSE (Masqué au démarrage) ──────────────────────
 const HIGHWAY_LAYERS = [
-  { id: "living_street", label: "Rue partagée",     color: "#16a34a", width: 3,   dash: false, hidden: false },
-  { id: "pedestrian",    label: "Zone piétonne",    color: "#15803d", width: 3,   dash: false, hidden: false },
-  { id: "footway",       label: "Trottoir / allée", color: "#22c55e", width: 2,   dash: false, hidden: false },
-  { id: "cycleway",      label: "Piste cyclable",   color: "#0000ff", width: 2.5, dash: false, hidden: true  },
-  { id: "path",          label: "Sentier",          color: "#86efac", width: 1.5, dash: true,  hidden: false },
-  { id: "steps",         label: "Escaliers",        color: "#166534", width: 2,   dash: true,  hidden: false },
+  { id: "living_street", label: "Rue partagée",    color: "#16a34a", width: 3,   dash: false, hidden: true },
+  { id: "pedestrian",    label: "Zone piétonne",    color: "#15803d", width: 3,   dash: false, hidden: true },
+  { id: "footway",       label: "Trottoir / allée", color: "#22c55e", width: 2,   dash: false, hidden: true },
+  { id: "cycleway",      label: "Piste cyclable",   color: "#0000ff", width: 2.5, dash: false, hidden: true },
+  { id: "path",          label: "Sentier",          color: "#86efac", width: 1.5, dash: true,  hidden: true },
+  { id: "steps",         label: "Escaliers",        color: "#166534", width: 2,   dash: true,  hidden: true },
 ];
 
 const PEDESTRIAN_LAYERS = [
-  // ── Base network ─────────────────────────────────────────────────────────
+  // ── Base network (Désactivé par défaut) ──────────────────────────────────
   ...HIGHWAY_LAYERS.map(({ id, color, width, dash, hidden }) => ({
     id: `highway-${id}`,
     type: "line",
@@ -149,30 +151,16 @@ const PEDESTRIAN_LAYERS = [
     source: "pedestrian",
     "source-layer": "highways",
     filter: ["==", ["get", "highway"], "crossing"],
-    layout: { visibility: "visible" },
+    layout: { visibility: "none" }, // Masqué au démarrage
     paint: {
       "circle-color": "#15803d",
-      "circle-radius": ["interpolate", ["linear"], ["zoom"], 12, 1.5, 16, 4, 18, 8],
+      "circle-radius": ["interpolate", ["linear"], ["zoom"], 12, 1.5, 16, 4],
       "circle-stroke-color": "#15803d",
-      "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], 12, 1, 16, 2]
-    }
-  },
-  {
-    id: "highway-elevator",
-    type: "circle",
-    source: "pedestrian",
-    "source-layer": "highways",
-    filter: ["any", ["==", ["get", "highway"], "elevator"], ["==", ["get", "amenity"], "elevator"]],
-    layout: { visibility: "visible" },
-    paint: {
-      "circle-color": "#14532d",
-      "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 2, 16, 6],
-      "circle-stroke-color": "#fff",
-      "circle-stroke-width": 1.5
+      "circle-stroke-width": 1
     }
   },
 
-  // ── Viz A1 : Tronçons forcés sur route ──────────────────────────────────
+  // ── ROUTAGE SIMULÉ (ACTIVÉ PAR DÉFAUT) ──────────────────────────────────
   {
     id: "forced-segments",
     type: "line",
@@ -180,25 +168,11 @@ const PEDESTRIAN_LAYERS = [
     "source-layer": "forced_segments",
     layout: { "line-cap": "round", "line-join": "round", visibility: "visible" },
     paint: {
-      "line-color": [
-        "match", ["get", "highway"],
-        ["residential", "service"],          "#f59e0b",
-        ["unclassified"],                    "#f97316",
-        ["tertiary",  "tertiary_link"],      "#ef4444",
-        ["secondary", "secondary_link"],     "#dc2626",
-        ["primary",   "primary_link"],       "#991b1b",
-        "#f97316"
-      ],
-      "line-width": [
-        "interpolate", ["linear"], ["zoom"],
-        10, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 1,   100, 4],
-        16, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 2.5, 100, 12]
-      ],
+      "line-color": ["match", ["get", "highway"], ["residential", "service"], "#f59e0b", ["unclassified"], "#f97316", ["tertiary", "tertiary_link"], "#ef4444", ["secondary", "secondary_link"], "#dc2626", ["primary", "primary_link"], "#991b1b", "#f97316"],
+      "line-width": ["interpolate", ["linear"], ["zoom"], 10, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 1, 100, 4], 16, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 2.5, 100, 12]],
       "line-opacity": 0.88
     }
   },
-
-  // ── Viz A2 : Tronçons forcés sur piste cyclable ──────────────────────────
   {
     id: "forced-cycleway",
     type: "line",
@@ -207,82 +181,50 @@ const PEDESTRIAN_LAYERS = [
     layout: { "line-cap": "round", "line-join": "round", visibility: "visible" },
     paint: {
       "line-color": "#7c3aed",
-      "line-width": [
-        "interpolate", ["linear"], ["zoom"],
-        10, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 1,   100, 4],
-        16, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 2.5, 100, 12]
-      ],
+      "line-width": ["interpolate", ["linear"], ["zoom"], 10, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 1, 100, 4], 16, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 2.5, 100, 12]],
       "line-opacity": 0.88
     }
   },
-
-  // ── Viz B : Flux piéton ───────────────────────────────────────────────────
   {
     id: "flow-ped",
     type: "line",
     source: "pedestrian",
     "source-layer": "flow_edges",
     filter: ["==", ["get", "surface_cat"], "pedestrian"],
-    layout: { "line-cap": "round", "line-join": "round", visibility: "none" },
+    layout: { "line-cap": "round", "line-join": "round", visibility: "visible" },
     paint: {
-      "line-color": [
-        "interpolate", ["linear"], ["get", "flow_pct"],
-        0, "#bbf7d0", 50, "#16a34a", 100, "#14532d"
-      ],
-      "line-width": [
-        "interpolate", ["linear"], ["zoom"],
-        10, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 0.5, 100, 3],
-        16, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 1,   100, 8]
-      ],
+      "line-color": ["interpolate", ["linear"], ["get", "flow_pct"], 0, "#bbf7d0", 50, "#16a34a", 100, "#14532d"],
+      "line-width": ["interpolate", ["linear"], ["zoom"], 10, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 0.5, 100, 3], 16, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 1, 100, 8]],
       "line-opacity": 0.85
     }
   },
-
-  // ── Viz B : Flux sur cycleway sans foot=yes ───────────────────────────────
   {
     id: "flow-cycleway",
     type: "line",
     source: "pedestrian",
     "source-layer": "flow_edges",
     filter: ["==", ["get", "surface_cat"], "cycleway_no_foot"],
-    layout: { "line-cap": "round", "line-join": "round", visibility: "none" },
+    layout: { "line-cap": "round", "line-join": "round", visibility: "visible" },
     paint: {
-      "line-color": [
-        "interpolate", ["linear"], ["get", "flow_pct"],
-        0, "#ede9fe", 50, "#7c3aed", 100, "#3b0764"
-      ],
-      "line-width": [
-        "interpolate", ["linear"], ["zoom"],
-        10, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 0.5, 100, 3],
-        16, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 1,   100, 8]
-      ],
+      "line-color": ["interpolate", ["linear"], ["get", "flow_pct"], 0, "#ede9fe", 50, "#7c3aed", 100, "#3b0764"],
+      "line-width": ["interpolate", ["linear"], ["zoom"], 10, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 0.5, 100, 3], 16, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 1, 100, 8]],
       "line-opacity": 0.85
     }
   },
-
-  // ── Viz B : Flux sur route ────────────────────────────────────────────────
   {
     id: "flow-road",
     type: "line",
     source: "pedestrian",
     "source-layer": "flow_edges",
     filter: ["==", ["get", "surface_cat"], "road"],
-    layout: { "line-cap": "round", "line-join": "round", visibility: "none" },
+    layout: { "line-cap": "round", "line-join": "round", visibility: "visible" },
     paint: {
-      "line-color": [
-        "interpolate", ["linear"], ["get", "flow_pct"],
-        0, "#fed7aa", 50, "#ef4444", 100, "#7f1d1d"
-      ],
-      "line-width": [
-        "interpolate", ["linear"], ["zoom"],
-        10, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 0.5, 100, 3],
-        16, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 1,   100, 8]
-      ],
+      "line-color": ["interpolate", ["linear"], ["get", "flow_pct"], 0, "#fed7aa", 50, "#ef4444", 100, "#7f1d1d"],
+      "line-width": ["interpolate", ["linear"], ["zoom"], 10, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 0.5, 100, 3], 16, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 1, 100, 8]],
       "line-opacity": 0.8
     }
   },
 
-  // ── Viz C : Score de marchabilité par rue ────────────────────────────────
   {
     id: "street-scores",
     type: "circle",
@@ -291,46 +233,12 @@ const PEDESTRIAN_LAYERS = [
     minzoom: 13,
     layout: { visibility: "none" },
     paint: {
-      "circle-color": [
-        "interpolate", ["linear"], ["get", "walkability"],
-        0.0, "#ef4444", 0.3, "#f97316", 0.6, "#eab308", 1.0, "#22c55e"
-      ],
+      "circle-color": ["interpolate", ["linear"], ["get", "walkability"], 0, "#ef4444", 1, "#22c55e"],
       "circle-radius": ["interpolate", ["linear"], ["zoom"], 13, 5, 16, 10],
-      "circle-stroke-color": "#fff",
-      "circle-stroke-width": 1.5,
-      "circle-opacity": 0.9
-    }
-  },
-
-  // ── House numbers ─────────────────────────────────────────────────────────
-  {
-    id: "housenumbers",
-    type: "symbol",
-    source: "pedestrian",
-    "source-layer": "addresses",
-    minzoom: 16,
-    layout: {
-      "text-field": ["get", "addr:housenumber"],
-      "text-size": 11,
-      "text-font": ["Noto Sans Regular"],
-      "text-allow-overlap": false,
-      visibility: "visible"
-    },
-    paint: {
-      "text-color": "#444",
-      "text-halo-color": "#fff",
-      "text-halo-width": 1
+      "circle-stroke-color": "#fff", "circle-stroke-width": 1.5
     }
   }
 ];
-
-const HW_LABELS = {
-  residential: "Rue résidentielle", service: "Voie de service",
-  unclassified: "Voie non classée",
-  tertiary: "Rue tertiaire", tertiary_link: "Bretelle tertiaire",
-  secondary: "Rue secondaire", secondary_link: "Bretelle secondaire",
-  primary: "Avenue principale", primary_link: "Bretelle principale",
-};
 
 fetch("https://tiles.openfreemap.org/styles/liberty")
   .then(r => r.json())
@@ -338,12 +246,10 @@ fetch("https://tiles.openfreemap.org/styles/liberty")
     style.layers = style.layers.map(layer => {
       const overrides = BASE_STYLE_OVERRIDES[layer.id];
       if (!overrides) return layer;
-      // On fusionne les propriétés de peinture pour écraser les couleurs d'origine
       return { ...layer, paint: { ...layer.paint, ...overrides } };
     });
     initMap(style);
-  })
-  .catch(() => initMap("https://tiles.openfreemap.org/styles/liberty"));
+  });
 
 function initMap(style) {
   const map = new maplibregl.Map({
@@ -351,127 +257,49 @@ function initMap(style) {
     style,
     center: [4.3517, 50.8503],
     zoom: 12,
-    minZoom: 8,
-    maxZoom: 19,
     attributionControl: false
   });
 
-  map.addControl(new maplibregl.NavigationControl(), "top-right");
-  map.addControl(new maplibregl.ScaleControl({ maxWidth: 120, unit: "metric" }), "bottom-right");
-  map.addControl(new maplibregl.AttributionControl({ compact: false }), "bottom-right");
-
   map.on("load", () => {
-    map.addSource("pedestrian", {
-      type: "vector",
-      url: `pmtiles://${PMTILES_URL}`
-    });
-
+    map.addSource("pedestrian", { type: "vector", url: `pmtiles://${PMTILES_URL}` });
     PEDESTRIAN_LAYERS.forEach(layer => map.addLayer(layer));
 
-    // ── Popups ─────────────────────────────────────────────────────────────
-    map.on("click", "forced-segments", e => {
-      const p = e.features[0].properties;
-      const hw = HW_LABELS[p.highway] || p.highway;
-      new maplibregl.Popup().setLngLat(e.lngLat).setHTML(`<strong>⚠️ Tronçon forcé sur route</strong><br>Voirie : ${hw}<br>Flux simulé : ${p.flow} trajets<br>Top ${(100 - p.flow_pct).toFixed(1)}% du réseau`).addTo(map);
-    });
-
-    map.on("click", "forced-cycleway", e => {
-      const p = e.features[0].properties;
-      new maplibregl.Popup().setLngLat(e.lngLat).setHTML(`<strong>🚲 Tronçon forcé sur piste cyclable</strong><br>Piste sans <code>foot=yes</code><br>Flux simulé : ${p.flow} trajets<br>Top ${(100 - p.flow_pct).toFixed(1)}% du réseau`).addTo(map);
-    });
-
-    map.on("click", "street-scores", e => {
-      const p = e.features[0].properties;
-      const score = Math.round(p.walkability * 100);
-      new maplibregl.Popup().setLngLat(e.lngLat).setHTML(`<strong>${p.street}</strong><br>Score piéton : ${score}%<br>Sur infra piétonne : ${p.ped_meters} m<br>Sur cycleway (sans foot=yes) : ${p.cycleway_meters} m`).addTo(map);
-    });
-
-    ["flow-ped", "flow-cycleway", "flow-road"].forEach(layerId => {
-      map.on("click", layerId, e => {
-        const p = e.features[0].properties;
-        const hw = HW_LABELS[p.highway] || p.highway;
-        const cats = { pedestrian: "Infra piétonne", cycleway_no_foot: "Piste (sans foot=yes)", road: "Voirie" };
-        new maplibregl.Popup().setLngLat(e.lngLat).setHTML(`<strong>Flux simulé</strong><br>${cats[p.surface_cat] || p.surface_cat} · ${hw}<br>Flux : ${p.flow} trajets (${p.flow_pct}%)`).addTo(map);
-      });
-    });
-
-    // ── Légende ────────────────────────────────────────────────────────────
+    // -- Légende --
     const legendEl = document.getElementById("legend");
-    function addSection(label) {
-      const s = document.createElement("div");
-      s.className = "legend-section";
-      s.textContent = label;
-      legendEl.appendChild(s);
-    }
-
-    function makeLegendItem({ layerId, label, color, color2, swatchType = "line", dashed = false }) {
-      const item = document.createElement("div");
-      item.className = "legend-item";
-      const swatch = document.createElement("div");
-      swatch.className = `legend-${swatchType}`;
-      if (color2) {
-        swatch.classList.add(swatchType === "dot" ? "gradient-dot" : "gradient");
-        swatch.style.setProperty("--c1", color);
-        swatch.style.setProperty("--c2", color2);
-      } else if (dashed) {
-        swatch.classList.add("dashed");
-        swatch.style.setProperty("--c", color);
-      } else {
-        swatch.style.background = color;
-      }
-      const lbl = document.createElement("span");
-      lbl.className = "legend-label";
-      lbl.textContent = label;
-      item.appendChild(swatch);
-      item.appendChild(lbl);
-
-      const initialVis = map.getLayoutProperty(layerId, "visibility");
-      item.classList.toggle("hidden", initialVis === "none");
-
-      item.onclick = () => {
-        const vis = map.getLayoutProperty(layerId, "visibility") === "none" ? "visible" : "none";
-        map.setLayoutProperty(layerId, "visibility", vis);
-        item.classList.toggle("hidden", vis === "none");
-      };
-      return item;
-    }
-
-    addSection("Réseau piéton");
-    HIGHWAY_LAYERS.forEach(l => legendEl.appendChild(makeLegendItem({ layerId: `highway-${l.id}`, label: l.label, color: l.color, dashed: l.dash })));
+    const addSection = (txt) => { const s = document.createElement("div"); s.className="legend-section"; s.textContent=txt; legendEl.appendChild(s); };
     
-    addSection("Routage simulé");
-    legendEl.appendChild(makeLegendItem({ layerId: "forced-segments", label: "Forcé sur route", color: "#f59e0b", color2: "#991b1b" }));
-    legendEl.appendChild(makeLegendItem({ layerId: "forced-cycleway", label: "Forcé sur piste cyclable", color: "#c4b5fd", color2: "#3b0764" }));
-    legendEl.appendChild(makeLegendItem({ layerId: "flow-ped", label: "Flux piéton", color: "#bbf7d0", color2: "#14532d" }));
-    legendEl.appendChild(makeLegendItem({ layerId: "flow-cycleway", label: "Flux cycleway (no foot)", color: "#ede9fe", color2: "#3b0764" }));
-    legendEl.appendChild(makeLegendItem({ layerId: "flow-road", label: "Flux sur route", color: "#fed7aa", color2: "#7f1d1d" }));
-    legendEl.appendChild(makeLegendItem({ layerId: "street-scores", label: "Score marchabilité", color: "#ef4444", color2: "#22c55e", swatchType: "dot" }));
+    const makeItem = ({ layerId, label, color, color2, swatchType = "line", dashed = false }) => {
+      const item = document.createElement("div"); item.className = "legend-item";
+      const swatch = document.createElement("div"); swatch.className = `legend-${swatchType}`;
+      if (color2) { swatch.classList.add(swatchType==="dot"?"gradient-dot":"gradient"); swatch.style.setProperty("--c1", color); swatch.style.setProperty("--c2", color2); }
+      else if (dashed) { swatch.classList.add("dashed"); swatch.style.setProperty("--c", color); }
+      else { swatch.style.background = color; }
+      const lbl = document.createElement("span"); lbl.className="legend-label"; lbl.textContent=label;
+      item.append(swatch, lbl);
+      const updateState = () => item.classList.toggle("hidden", map.getLayoutProperty(layerId, "visibility") === "none");
+      updateState();
+      item.onclick = () => { const v = map.getLayoutProperty(layerId, "visibility") === "none" ? "visible" : "none"; map.setLayoutProperty(layerId, "visibility", v); updateState(); };
+      return item;
+    };
 
-    addSection("Adresses");
-    legendEl.appendChild(makeLegendItem({ layerId: "housenumbers", label: "Numéros", color: "#444", swatchType: "dot" }));
+    addSection("Routage simulé");
+    legendEl.appendChild(makeItem({ layerId: "forced-segments", label: "Forcé sur route", color: "#f59e0b", color2: "#991b1b" }));
+    legendEl.appendChild(makeItem({ layerId: "forced-cycleway", label: "Forcé sur piste cyclable", color: "#c4b5fd", color2: "#3b0764" }));
+    legendEl.appendChild(makeItem({ layerId: "flow-ped", label: "Flux piéton", color: "#bbf7d0", color2: "#14532d" }));
+    legendEl.appendChild(makeItem({ layerId: "flow-cycleway", label: "Flux cycleway (no foot)", color: "#ede9fe", color2: "#3b0764" }));
+    legendEl.appendChild(makeItem({ layerId: "flow-road", label: "Flux sur route", color: "#fed7aa", color2: "#7f1d1d" }));
+
+    addSection("Réseau de base (Désactivé)");
+    HIGHWAY_LAYERS.forEach(l => legendEl.appendChild(makeItem({ layerId: `highway-${l.id}`, label: l.label, color: l.color, dashed: l.dash })));
   });
 
-  const editBtn = document.getElementById("edit-btn");
-  const editHint = document.getElementById("edit-hint");
-  function updateEditButton() {
-    const zoom = map.getZoom();
-    const center = map.getCenter();
-    if (zoom >= EDIT_MIN_ZOOM) {
-      editBtn.href = `https://www.openstreetmap.org/edit#map=${Math.round(zoom)}/${center.lat.toFixed(5)}/${center.lng.toFixed(5)}`;
-      editBtn.classList.remove("disabled");
-      editHint.textContent = "";
-    } else {
-      editBtn.classList.add("disabled");
-      editHint.textContent = `Zoomez encore ${Math.ceil(EDIT_MIN_ZOOM - zoom)} niv. pour éditer`;
-    }
-    document.getElementById("zoom-val").textContent = zoom.toFixed(1);
-  }
-  map.on("moveend", updateEditButton);
-
-  fetch("./state.txt").then(r => r.text()).then(txt => {
-    const m = txt.match(/timestamp=(.+)/);
-    if (m) document.getElementById("last-update").textContent = "Données : " + new Date(m[1].trim().replace(/\\:/g, ":")).toLocaleDateString("fr-BE");
-  }).catch(() => {});
+  map.on("moveend", () => {
+    const z = map.getZoom(); const c = map.getCenter();
+    document.getElementById("zoom-val").textContent = z.toFixed(1);
+    const btn = document.getElementById("edit-btn");
+    if (z >= EDIT_MIN_ZOOM) { btn.href = `https://www.openstreetmap.org/edit#map=${Math.round(z)}/${c.lat.toFixed(5)}/${c.lng.toFixed(5)}`; btn.classList.remove("disabled"); }
+    else btn.classList.add("disabled");
+  });
 }
 </script>
 </body>
