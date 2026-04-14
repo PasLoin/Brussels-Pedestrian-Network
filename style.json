@@ -311,12 +311,11 @@
       "source": "pedestrian",
       "source-layer": "highways",
       "filter": ["==", ["get", "highway"], "cycleway"],
-      "layout": { "line-cap": "round", "line-join": "round" },
+      "layout": { "line-cap": "round", "line-join": "round", "visibility": "none" },
       "paint": {
         "line-color": "#0000FF",
         "line-width": ["interpolate", ["linear"], ["zoom"], 8, 1, 14, 2.5, 18, 6],
-        "line-opacity": 0.9,
-        "visibility": "none"
+        "line-opacity": 0.9
       }
     },
     {
@@ -360,32 +359,93 @@
         "circle-stroke-width": 1.5
       }
     },
+
     {
-      "id": "gaps-long",
+      "id": "forced-segments",
       "type": "line",
       "source": "pedestrian",
-      "source-layer": "gaps_long",
-      "layout": { "line-cap": "round" },
+      "source-layer": "forced_segments",
+      "layout": { "line-cap": "round", "line-join": "round" },
       "paint": {
-        "line-color": "#fb923c",
-        "line-width": 2,
-        "line-dasharray": [4, 3],
-        "line-opacity": 0.85,
-        "visibility": "none"
+        "line-color": [
+          "match", ["get", "highway"],
+          ["residential", "service"],      "#f59e0b",
+          ["unclassified"],                "#f97316",
+          ["tertiary",  "tertiary_link"],  "#ef4444",
+          ["secondary", "secondary_link"], "#dc2626",
+          ["primary",   "primary_link"],   "#991b1b",
+          "#f97316"
+        ],
+        "line-width": [
+          "interpolate", ["linear"], ["zoom"],
+          10, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 1,   100, 4],
+          16, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 2.5, 100, 12]
+        ],
+        "line-opacity": 0.88
       }
     },
+
     {
-      "id": "gaps-short",
+      "id": "flow-ped",
       "type": "line",
       "source": "pedestrian",
-      "source-layer": "gaps_short",
-      "layout": { "line-cap": "round" },
+      "source-layer": "flow_edges",
+      "filter": ["==", ["get", "is_pedestrian"], 1],
+      "layout": { "line-cap": "round", "line-join": "round", "visibility": "none" },
       "paint": {
-        "line-color": "#ef4444",
-        "line-width": 2.5,
-        "line-dasharray": [3, 2],
-        "line-opacity": 0.9,
-        "visibility": "none"
+        "line-color": [
+          "interpolate", ["linear"], ["get", "flow_pct"],
+          0, "#bbf7d0", 50, "#16a34a", 100, "#14532d"
+        ],
+        "line-width": [
+          "interpolate", ["linear"], ["zoom"],
+          10, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 0.5, 100, 3],
+          16, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 1,   100, 8]
+        ],
+        "line-opacity": 0.85
+      }
+    },
+
+    {
+      "id": "flow-road",
+      "type": "line",
+      "source": "pedestrian",
+      "source-layer": "flow_edges",
+      "filter": ["==", ["get", "is_pedestrian"], 0],
+      "layout": { "line-cap": "round", "line-join": "round", "visibility": "none" },
+      "paint": {
+        "line-color": [
+          "interpolate", ["linear"], ["get", "flow_pct"],
+          0, "#fed7aa", 50, "#ef4444", 100, "#7f1d1d"
+        ],
+        "line-width": [
+          "interpolate", ["linear"], ["zoom"],
+          10, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 0.5, 100, 3],
+          16, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 1,   100, 8]
+        ],
+        "line-opacity": 0.8
+      }
+    },
+
+    {
+      "id": "street-scores",
+      "type": "circle",
+      "source": "pedestrian",
+      "source-layer": "street_scores",
+      "minzoom": 13,
+      "layout": { "visibility": "none" },
+      "paint": {
+        "circle-color": [
+          "interpolate", ["linear"], ["get", "walkability"],
+          0.0, "#ef4444",
+          0.3, "#f97316",
+          0.6, "#eab308",
+          1.0, "#22c55e"
+        ],
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 13, 5, 16, 10],
+        "circle-stroke-color": "#fff",
+        "circle-stroke-width": 1.5,
+        "circle-opacity": 0.9
       }
     },
 
