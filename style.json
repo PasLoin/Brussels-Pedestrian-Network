@@ -17,11 +17,6 @@
       "type": "vector",
       "url": "https://tiles.openfreemap.org/planet",
       "attribution": "© <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> © <a href='https://openfreemap.org/'>OpenFreeMap</a>"
-    },
-    "pedestrian": {
-      "type": "vector",
-      "url": "pmtiles://https://pasloin.github.io/Brussels-Pedestrian-Network/pedestrian.pmtiles.gz",
-      "attribution": "© <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap contributors</a>"
     }
   },
   "layers": [
@@ -84,7 +79,6 @@
         "line-width": ["interpolate", ["exponential", 1.2], ["zoom"], 5, 0, 20, 18]
       }
     },
-
     {
       "id": "road_motorway_link_casing",
       "type": "line",
@@ -110,71 +104,6 @@
         "line-color": "#d5d5d5",
         "line-width": ["interpolate", ["exponential", 1.2], ["zoom"], 5, 0, 20, 16]
       }
-    },
-
-    {
-      "id": "highway-living_street",
-      "type": "line",
-      "source": "pedestrian",
-      "source-layer": "highways",
-      "filter": ["==", ["get", "highway"], "living_street"],
-      "layout": { "visibility": "none" },
-      "paint": { "line-color": "#16a34a", "line-width": 2 }
-    },
-    {
-      "id": "highway-pedestrian",
-      "type": "line",
-      "source": "pedestrian",
-      "source-layer": "highways",
-      "filter": ["==", ["get", "highway"], "pedestrian"],
-      "layout": { "visibility": "none" },
-      "paint": { "line-color": "#15803d", "line-width": 2 }
-    },
-    {
-      "id": "highway-footway",
-      "type": "line",
-      "source": "pedestrian",
-      "source-layer": "highways",
-      "filter": ["==", ["get", "highway"], "footway"],
-      "layout": { "visibility": "none" },
-      "paint": { "line-color": "#22c55e", "line-width": 1.5 }
-    },
-    {
-      "id": "forced-segments",
-      "type": "line",
-      "source": "pedestrian",
-      "source-layer": "forced_segments",
-      "layout": { "line-cap": "round", "line-join": "round", "visibility": "visible" },
-      "paint": {
-        "line-color": ["match", ["get", "highway"], ["residential", "service"], "#f59e0b", ["tertiary"], "#ef4444", "#dc2626"],
-        "line-width": ["interpolate", ["linear"], ["zoom"], 10, 2, 16, 6]
-      }
-    },
-    {
-      "id": "forced-cycleway",
-      "type": "line",
-      "source": "pedestrian",
-      "source-layer": "forced_cycleway",
-      "layout": { "visibility": "visible" },
-      "paint": { "line-color": "#7c3aed", "line-width": 3 }
-    },
-    {
-      "id": "flow-ped",
-      "type": "line",
-      "source": "pedestrian",
-      "source-layer": "flow_edges",
-      "filter": ["==", ["get", "surface_cat"], "pedestrian"],
-      "layout": { "visibility": "none" },
-      "paint": { "line-color": "#16a34a", "line-width": 2 }
-    },
-    {
-      "id": "flow-road",
-      "type": "line",
-      "source": "pedestrian",
-      "source-layer": "flow_edges",
-      "filter": ["==", ["get", "surface_cat"], "road"],
-      "layout": { "visibility": "visible" },
-      "paint": { "line-color": "#ef4444", "line-width": 8 }
     }
   ]
 }
