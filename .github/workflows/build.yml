@@ -57,7 +57,7 @@ env:
 
   # ── Routing parameters (all configurable) ─────────────────────────────────
   MAX_OD_DISTANCE_KM: 5       # max crow-fly distance between OD pair
-  MAX_OD_PAIRS: 50000         # cap on number of routed pairs
+  MAX_OD_PAIRS: 150000         # cap on number of routed pairs
   TOP_RANK_PCT: 5             # top X% by flow = "high usage" threshold
 
 jobs:
