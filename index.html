@@ -240,8 +240,8 @@ const PEDESTRIAN_LAYERS = [
     filter: ["==", ["get", "surface_cat"], "road"],
     layout: { "line-cap": "round", "line-join": "round", visibility: "visible" },
     paint: {
-      "line-color": ["interpolate", ["linear"], ["get", "flow_pct"], 0, "#fed7aa", 50, "#ef4444", 100, "#7f1d1d"],
-      "line-width": ["interpolate", ["linear"], ["zoom"], 10, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 0.5, 100, 3], 16, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 1, 100, 8]],
+      "line-color": ["interpolate", ["linear"], ["get", "flow_pct"], 0, "#fdba74", 50, "#ef4444", 100, "#7f1d1d"],
+      "line-width": ["interpolate", ["linear"], ["zoom"], 10, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 0.8, 100, 4], 16, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 1.2, 100, 8.5]],
       "line-opacity": 0.8
     }
   },
