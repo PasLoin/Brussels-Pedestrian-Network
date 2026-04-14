@@ -99,7 +99,6 @@ const BASE_STYLE_OVERRIDES = {
   "tunnel_trunk_primary":    { "line-color": "rgba(18,18,17,1)" },
 };
 
-// hidden: true = caché au chargement
 const HIGHWAY_LAYERS = [
   { id: "living_street", label: "Rue partagée",     color: "#16a34a", width: 3,   dash: false, hidden: false },
   { id: "pedestrian",    label: "Zone piétonne",    color: "#15803d", width: 3,   dash: false, hidden: false },
@@ -239,7 +238,6 @@ function initMap(style) {
       map.on("mouseleave", layerId, () => map.getCanvas().style.cursor = "");
     });
 
-    // ── Légende — construite ICI dans le load, après addLayer ────────────────
     const legendEl = document.getElementById("legend");
 
     function addSection(label) {
@@ -270,7 +268,6 @@ function initMap(style) {
       item.appendChild(swatch);
       item.appendChild(lbl);
 
-      // État initial correct car les couches existent déjà
       const initialVis = map.getLayoutProperty(layerId, "visibility");
       item.classList.toggle("hidden", initialVis === "none");
 
@@ -297,7 +294,6 @@ function initMap(style) {
     legendEl.appendChild(makeLegendItem({ layerId: "housenumbers", label: "Numéros", color: "#444", swatchType: "dot" }));
   });
 
-  // ── Bouton édition ────────────────────────────────────────────────────────
   const editBtn  = document.getElementById("edit-btn");
   const editHint = document.getElementById("edit-hint");
 
@@ -319,7 +315,7 @@ function initMap(style) {
 
   fetch("./state.txt").then(r => r.text()).then(txt => {
     const m = txt.match(/timestamp=(.+)/);
-    if (m) document.getElementById("last-update").textContent = "Données : " + new Date(m[1].trim()).toLocaleDateString("fr-BE");
+    if (m) document.getElementById("last-update").textContent = "Données : " + new Date(m[1].trim().replace(/\\:/g, ":")).toLocaleDateString("fr-BE");
   }).catch(() => {});
 }
 </script>
