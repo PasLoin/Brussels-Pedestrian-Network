@@ -176,7 +176,7 @@ jobs:
 
           # Tags that mean "pedestrians forbidden" → edge excluded entirely
           FOOT_FORBIDDEN  = {"no"}
-          ACCESS_EXCLUDED = {"no"}
+          ACCESS_EXCLUDED = {"no", "private"}
           # Tags that mean "pedestrians explicitly allowed on cycleway"
           FOOT_ALLOWED    = {"yes", "designated", "permissive"}
 
@@ -236,10 +236,6 @@ jobs:
               # ── Compute cost ────────────────────────────────────────────────
               base_cost = COST.get(hw, 2.5)
 
-              # access=private: very high cost (rare usage, but keeps graph connected)
-              if access_tag == "private":
-                  base_cost = max(base_cost, 9.0)
-
               # cycleway: penalise unless foot is explicitly allowed
               is_cycleway_no_foot = False
               if hw == "cycleway":
@@ -257,7 +253,7 @@ jobs:
               edge_geoms.append(row.geometry)
               edge_cycleway_nf.append(is_cycleway_no_foot)
 
-          print(f"  Edges skipped — foot=no: {skipped_forbidden}, access=no: {skipped_no_access}")
+          print(f"  Edges skipped — foot=no: {skipped_forbidden}, access=no/private: {skipped_no_access}")
 
           g = ig.Graph(directed=True, n=len(node_list))
           g.vs["osmid"] = node_list
