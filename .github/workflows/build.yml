@@ -265,7 +265,12 @@ jobs:
           print(f"  igraph: {g.vcount()} vertices, {g.ecount()} edges")
 
           # ── 4. Sample OD points from addresses ───────────────────────────────
-          print("Sampling OD points from addresses...")
+          # CHANGED: sample even and odd house numbers separately per street.
+          # This doubles the points on streets where both sides have addresses,
+          # so routes from "the odd side" and "the even side" are distinct —
+          # revealing streets where only one side has a sidewalk and the other
+          # side is forced to walk on the road.
+          print("Sampling OD points from addresses (even/odd split)...")
 
           def extract_num(hn):
               m = re.match(r"(\d+)", str(hn))
@@ -274,6 +279,7 @@ jobs:
           addr_gdf = gpd.read_file("addresses.geojson").to_crs("EPSG:31370")
           addr_gdf["_num"] = addr_gdf.get("addr:housenumber", "").apply(extract_num)
           addr_gdf = addr_gdf.dropna(subset=["_num"])
+          addr_gdf["_num"] = addr_gdf["_num"].astype(int)
 
           # Defensive: ensure addr:street column exists, then filter out empty/NA
           if "addr:street" not in addr_gdf.columns:
@@ -284,19 +290,37 @@ jobs:
 
           od_points  = []
           od_streets = []
+          od_sides   = []   # "even" | "odd" — kept for debug / future filtering
+
+          streets_both = 0
+          streets_one  = 0
 
           for street, grp in addr_gdf.groupby("addr:street"):
-              grp_s = grp.sort_values("_num")
-              n = len(grp_s)
-              if n == 0:
-                  continue
-              idxs = [n // 2] if n < 5 else [int(n * 0.10), int(n * 0.50), int(n * 0.90)]
-              for i in idxs:
-                  row = grp_s.iloc[i]
-                  od_points.append((row.geometry.x, row.geometry.y))
-                  od_streets.append(str(street))
+              sides_sampled = 0
+              for side_name, side_grp in [
+                  ("even", grp[grp["_num"] % 2 == 0]),
+                  ("odd",  grp[grp["_num"] % 2 == 1]),
+              ]:
+                  grp_s = side_grp.sort_values("_num")
+                  n = len(grp_s)
+                  if n == 0:
+                      continue
+                  # Same distribution as before: 1 point if <5, else 3 points at 10/50/90%
+                  idxs = [n // 2] if n < 5 else [int(n * 0.10), int(n * 0.50), int(n * 0.90)]
+                  for i in idxs:
+                      row = grp_s.iloc[i]
+                      od_points.append((row.geometry.x, row.geometry.y))
+                      od_streets.append(str(street))
+                      od_sides.append(side_name)
+                  sides_sampled += 1
+              if sides_sampled == 2:
+                  streets_both += 1
+              elif sides_sampled == 1:
+                  streets_one += 1
 
           print(f"  OD points: {len(od_points)}")
+          print(f"  Streets with both sides sampled: {streets_both}")
+          print(f"  Streets with only one side:      {streets_one}")
 
           # ── 5. Snap OD points to nearest graph node ──────────────────────────
           # shapely>=2: STRtree.nearest() returns an INDEX (int), not a geometry
