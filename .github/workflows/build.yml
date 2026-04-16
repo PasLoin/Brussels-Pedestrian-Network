@@ -56,9 +56,11 @@ env:
   MAX_ZOOM: 19
 
   # ── Routing parameters (all configurable) ─────────────────────────────────
+  MIN_OD_DISTANCE_M: 300      # min crow-fly distance between OD pair (filters trivial trips)
   MAX_OD_DISTANCE_KM: 6       # max crow-fly distance between OD pair
   MAX_OD_PAIRS: 900000         # cap on number of routed pairs
   TOP_RANK_PCT: 15             # top X% by flow = "high usage" threshold
+  POINTS_PER_SIDE: 5           # sample points per street side (even/odd)
 
 jobs:
   build-and-deploy:
@@ -150,10 +152,15 @@ jobs:
           warnings.filterwarnings("ignore", category=RuntimeWarning)
 
           # ── Config ──────────────────────────────────────────────────────────
-          MAX_OD_KM  = float(os.environ.get("MAX_OD_DISTANCE_KM", 5))
-          MAX_PAIRS  = int(os.environ.get("MAX_OD_PAIRS", 50000))
-          TOP_PCT    = float(os.environ.get("TOP_RANK_PCT", 5))
-          MAX_DIST_M = MAX_OD_KM * 1000
+          MIN_DIST_M      = float(os.environ.get("MIN_OD_DISTANCE_M", 300))
+          MAX_OD_KM       = float(os.environ.get("MAX_OD_DISTANCE_KM", 5))
+          MAX_PAIRS       = int(os.environ.get("MAX_OD_PAIRS", 50000))
+          TOP_PCT         = float(os.environ.get("TOP_RANK_PCT", 5))
+          POINTS_PER_SIDE = int(os.environ.get("POINTS_PER_SIDE", 5))
+          MAX_DIST_M      = MAX_OD_KM * 1000
+
+          print(f"Config: MIN_DIST={MIN_DIST_M}m MAX_DIST={MAX_DIST_M}m "
+                f"MAX_PAIRS={MAX_PAIRS} TOP_PCT={TOP_PCT} POINTS_PER_SIDE={POINTS_PER_SIDE}")
 
           # "True" pedestrian infra — cycleway only counts if foot=yes/designated
           PED_TYPES = {
@@ -265,16 +272,25 @@ jobs:
           print(f"  igraph: {g.vcount()} vertices, {g.ecount()} edges")
 
           # ── 4. Sample OD points from addresses ───────────────────────────────
-          # CHANGED: sample even and odd house numbers separately per street.
-          # This doubles the points on streets where both sides have addresses,
-          # so routes from "the odd side" and "the even side" are distinct —
-          # revealing streets where only one side has a sidewalk and the other
-          # side is forced to walk on the road.
-          print("Sampling OD points from addresses (even/odd split)...")
+          # Even/odd split: each side of the street sampled independently.
+          # This reveals streets where only one side has a sidewalk — the other
+          # side ends up forced onto the road by the router.
+          print(f"Sampling OD points ({POINTS_PER_SIDE} per side, even/odd split)...")
 
           def extract_num(hn):
               m = re.match(r"(\d+)", str(hn))
               return int(m.group(1)) if m else None
+
+          def pick_indices(n, k):
+              """Return up to k evenly-spaced indices into a list of length n.
+              For n < k: fall back to middle point only (n==0 → []).
+              """
+              if n == 0:
+                  return []
+              if n < k:
+                  return [n // 2]
+              # Evenly spaced percentiles in (0,1), excluding endpoints
+              return [int(n * (i + 1) / (k + 1)) for i in range(k)]
 
           addr_gdf = gpd.read_file("addresses.geojson").to_crs("EPSG:31370")
           addr_gdf["_num"] = addr_gdf.get("addr:housenumber", "").apply(extract_num)
@@ -290,7 +306,7 @@ jobs:
 
           od_points  = []
           od_streets = []
-          od_sides   = []   # "even" | "odd" — kept for debug / future filtering
+          od_sides   = []   # "even" | "odd"
 
           streets_both = 0
           streets_one  = 0
@@ -303,10 +319,9 @@ jobs:
               ]:
                   grp_s = side_grp.sort_values("_num")
                   n = len(grp_s)
-                  if n == 0:
+                  idxs = pick_indices(n, POINTS_PER_SIDE)
+                  if not idxs:
                       continue
-                  # Same distribution as before: 1 point if <5, else 3 points at 10/50/90%
-                  idxs = [n // 2] if n < 5 else [int(n * 0.10), int(n * 0.50), int(n * 0.90)]
                   for i in idxs:
                       row = grp_s.iloc[i]
                       od_points.append((row.geometry.x, row.geometry.y))
@@ -316,7 +331,7 @@ jobs:
               if sides_sampled == 2:
                   streets_both += 1
               elif sides_sampled == 1:
-                  streets_one += 1
+                  streets_one  += 1
 
           print(f"  OD points: {len(od_points)}")
           print(f"  Streets with both sides sampled: {streets_both}")
@@ -334,30 +349,42 @@ jobs:
               idx = node_tree.nearest(Point(x, y))
               snapped.append(int(idx))  # igraph vertex id == position in node_list
 
-          # ── 6. Generate OD pairs (crow-fly < MAX_DIST_M) ────────────────────
+          # ── 6. Generate OD pairs (MIN_DIST_M <= crow-fly <= MAX_DIST_M) ─────
           print("Generating OD pairs...")
           random.seed(42)
           n_pts    = len(od_points)
           od_pairs = []
           seen     = set()
           od_xy    = np.array(od_points)
-          attempts = 0
+          attempts       = 0
+          rejected_near  = 0
+          rejected_far   = 0
+          min_dist_sq    = MIN_DIST_M * MIN_DIST_M
+          max_dist_sq    = MAX_DIST_M * MAX_DIST_M
 
           while len(od_pairs) < MAX_PAIRS and attempts < MAX_PAIRS * 20:
               i, j = random.randrange(n_pts), random.randrange(n_pts)
+              attempts += 1
               if i == j:
-                  attempts += 1; continue
+                  continue
               key = (min(i, j), max(i, j))
               if key in seen:
-                  attempts += 1; continue
+                  continue
               dx = od_xy[i, 0] - od_xy[j, 0]
               dy = od_xy[i, 1] - od_xy[j, 1]
-              if (dx*dx + dy*dy) ** 0.5 <= MAX_DIST_M:
-                  od_pairs.append((snapped[i], snapped[j], od_streets[i], od_streets[j]))
-                  seen.add(key)
-              attempts += 1
+              d2 = dx*dx + dy*dy
+              if d2 < min_dist_sq:
+                  rejected_near += 1
+                  continue
+              if d2 > max_dist_sq:
+                  rejected_far += 1
+                  continue
+              od_pairs.append((snapped[i], snapped[j], od_streets[i], od_streets[j]))
+              seen.add(key)
 
           print(f"  OD pairs: {len(od_pairs)}")
+          print(f"  Rejected — too close (<{MIN_DIST_M:.0f}m): {rejected_near} | "
+                f"too far (>{MAX_DIST_M:.0f}m): {rejected_far}")
 
           # ── 7. Route — group by source for one Dijkstra per source ──────────
           print("Routing pairs with igraph (grouped by source)...")
