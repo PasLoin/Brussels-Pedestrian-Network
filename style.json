@@ -40,7 +40,10 @@
       "type": "line",
       "source": "openmaptiles",
       "source-layer": "transportation",
-      "filter": ["all", ["match", ["get", "class"], ["secondary", "tertiary"], true, false]],
+      "filter": ["all",
+        ["match", ["get", "class"], ["secondary", "tertiary"], true, false],
+        ["!=", ["get", "brunnel"], "bridge"]
+      ],
       "paint": {
         "line-color": "#111111",
         "line-width": ["interpolate", ["exponential", 1.2], ["zoom"], 8, 1.5, 20, 17]
@@ -62,7 +65,10 @@
       "type": "line",
       "source": "openmaptiles",
       "source-layer": "transportation",
-      "filter": ["all", ["match", ["get", "class"], ["primary", "trunk"], true, false]],
+      "filter": ["all",
+        ["match", ["get", "class"], ["primary", "trunk"], true, false],
+        ["!=", ["get", "brunnel"], "bridge"]
+      ],
       "paint": {
         "line-color": "#111111",
         "line-width": ["interpolate", ["exponential", 1.2], ["zoom"], 5, 0.4, 20, 22]
@@ -85,7 +91,8 @@
       "source": "openmaptiles",
       "source-layer": "transportation",
       "filter": ["all",
-        ["match", ["get", "class"], ["motorway_link"], true, false]
+        ["match", ["get", "class"], ["motorway_link"], true, false],
+        ["!=", ["get", "brunnel"], "bridge"]
       ],
       "paint": {
         "line-color": "#aaaaaa",
