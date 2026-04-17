@@ -12,7 +12,6 @@ on:
   workflow_dispatch:
 
 env:
-  # ── Visual base layer (pedestrian-only) ───────────────────────────────────
   HIGHWAY_TYPES_PED: >-
     w/highway=footway
     w/highway=pedestrian
@@ -25,7 +24,6 @@ env:
     n/highway=crossing
     n/amenity=elevator
 
-  # ── Routing graph (extended: includes walkable roads) ─────────────────────
   HIGHWAY_TYPES_ROUTING: >-
     w/highway=footway
     w/highway=pedestrian
@@ -55,12 +53,11 @@ env:
   MIN_ZOOM: 8
   MAX_ZOOM: 19
 
-  # ── Routing parameters (all configurable) ─────────────────────────────────
-  MIN_OD_DISTANCE_M: 300       # min crow-fly distance between OD pair
-  MAX_OD_DISTANCE_KM: 6        # max crow-fly distance between OD pair
-  MAX_OD_PAIRS: 900000          # cap on number of routed pairs
-  TOP_RANK_PCT: 30              # top X% by flow = "high usage" threshold # 15
-  POINTS_PER_SIDE: 5            # sample points per street side (even/odd)
+  MIN_OD_DISTANCE_M: 300
+  MAX_OD_DISTANCE_KM: 6
+  MAX_OD_PAIRS: 900000
+  TOP_RANK_PCT: 15
+  POINTS_PER_SIDE: 5
 
 jobs:
   build-and-deploy:
@@ -80,14 +77,10 @@ jobs:
       - name: Install Python deps
         run: pip install "shapely>=2" osmnx geopandas igraph numpy --break-system-packages
 
-      # ── OSM data ────────────────────────────────────────────────────────────
-
       - name: Download OSM PBF
         run: |
           wget -O brussels.osm.pbf "$OSM_PBF_URL"
           wget -O state.txt "$OSM_STATE_URL"
-
-      # ── Visual pedestrian layer ──────────────────────────────────────────────
 
       - name: Filter pedestrian features (visual layer)
         run: |
@@ -107,8 +100,6 @@ jobs:
             highways.geojson > highways_fixed.geojson
           mv highways_fixed.geojson highways.geojson
 
-      # ── Address layer ────────────────────────────────────────────────────────
-
       - name: Filter address features
         run: |
           osmium tags-filter brussels.osm.pbf \
@@ -121,8 +112,6 @@ jobs:
             --geometry-types=point \
             -o addresses.geojson --overwrite
 
-      # ── Routing graph ────────────────────────────────────────────────────────
-
       - name: Filter extended routing features
         run: |
           osmium tags-filter brussels.osm.pbf \
@@ -133,12 +122,10 @@ jobs:
         run: |
           osmium cat routing_raw.osm.pbf -o routing_raw.osm --overwrite
 
-      # ── Routing & flow computation ───────────────────────────────────────────
-
       - name: Compute pedestrian routing flows
         run: |
           python3 << 'EOF'
-          import os, time, re, random, warnings
+          import os, time, re, random, warnings, json
           import xml.etree.ElementTree as ET
           import numpy as np
           import osmnx as ox
@@ -148,7 +135,6 @@ jobs:
           from shapely.geometry import Point
           from shapely.strtree import STRtree
 
-          # Suppress igraph "couldn't reach some vertices" — expected for disconnected graph
           warnings.filterwarnings("ignore", category=RuntimeWarning)
 
           # ── Config ──────────────────────────────────────────────────────────
@@ -162,7 +148,6 @@ jobs:
           print(f"Config: MIN_DIST={MIN_DIST_M}m MAX_DIST={MAX_DIST_M}m "
                 f"MAX_PAIRS={MAX_PAIRS} TOP_PCT={TOP_PCT} POINTS_PER_SIDE={POINTS_PER_SIDE}")
 
-          # "True" pedestrian infra — cycleway only counts if foot=yes/designated
           PED_TYPES = {
               "footway", "pedestrian", "path",
               "living_street", "steps", "elevator"
@@ -184,9 +169,6 @@ jobs:
           ACCESS_EXCLUDED = {"no", "private"}
           FOOT_ALLOWED    = {"yes", "designated", "permissive"}
 
-          # ── Barrier rules ───────────────────────────────────────────────────
-          # Nodes matching ANY of these (barrier_tag, access_tag) pairs will
-          # cut the way — no routing through them.  Easy to extend.
           BLOCKED_BARRIER_RULES = [
               ("gate",    "private"),
               ("gate",    "no"),
@@ -199,7 +181,6 @@ jobs:
           tree = ET.parse("routing_raw.osm")
           root = tree.getroot()
 
-          # ── 1a. Identify blocked barrier nodes ──────────────────────────────
           blocked_node_ids = set()
           rules_set = set(BLOCKED_BARRIER_RULES)
           for node in root.findall("node"):
@@ -208,27 +189,19 @@ jobs:
               access_val  = tags.get("access", "")
               if (barrier_val, access_val) in rules_set:
                   blocked_node_ids.add(node.get("id"))
-          print(f"  Blocked barrier nodes (gate+private/no): {len(blocked_node_ids)}")
+          print(f"  Blocked barrier nodes: {len(blocked_node_ids)}")
 
-          # ── 1b. Split ways at blocked nodes ─────────────────────────────────
-          # A way [A, B, BLOCKED, C, D] becomes two ways: [A, B] and [C, D]
-          # so the router cannot traverse the barrier.
-          way_id_counter = -1   # synthetic negative IDs for new sub-ways
+          way_id_counter = -1
           ways_split = 0
           ways_removed = 0
 
           for way in list(root.findall("way")):
               nds  = way.findall("nd")
               refs = [nd.get("ref") for nd in nds]
-
               blocked_here = [i for i, ref in enumerate(refs) if ref in blocked_node_ids]
               if not blocked_here:
                   continue
-
-              # Collect the way's tags (to copy onto sub-ways)
               way_tags = [(t.get("k"), t.get("v")) for t in way.findall("tag")]
-
-              # Split refs into segments between blocked positions
               segments = []
               prev = 0
               for bi in blocked_here:
@@ -237,22 +210,15 @@ jobs:
                   prev = bi + 1
               if prev < len(refs):
                   segments.append(refs[prev:])
-
-              # Keep only segments with >= 2 nodes (a single node isn't a valid way)
               segments = [s for s in segments if len(s) >= 2]
-
               if not segments:
                   root.remove(way)
                   ways_removed += 1
                   continue
-
-              # Rewrite original way with first segment
               for nd in nds:
                   way.remove(nd)
               for ref in segments[0]:
                   ET.SubElement(way, "nd", attrib={"ref": ref})
-
-              # Create new way elements for remaining segments
               for seg in segments[1:]:
                   new_way = ET.SubElement(root, "way", attrib={"id": str(way_id_counter)})
                   way_id_counter -= 1
@@ -260,12 +226,10 @@ jobs:
                       ET.SubElement(new_way, "nd", attrib={"ref": ref})
                   for k, v in way_tags:
                       ET.SubElement(new_way, "tag", attrib={"k": k, "v": v})
-
               ways_split += 1
 
           print(f"  Ways split at barriers: {ways_split} | Ways fully removed: {ways_removed}")
 
-          # ── 1c. Remove ways referencing missing nodes ───────────────────────
           node_ids_set = {n.get("id") for n in root.findall("node")}
           removed = 0
           for way in list(root.findall("way")):
@@ -276,7 +240,7 @@ jobs:
           print(f"  Ways removed (missing nodes): {removed}")
           tree.write("routing_clean.osm")
 
-          # ── 2. Build osmnx graph — simplify=True is the key perf win ────────
+          # ── 2. Build osmnx graph ────────────────────────────────────────────
           print("Building osmnx graph (simplified)...")
           G = ox.graph_from_xml("routing_clean.osm", retain_all=True, simplify=True)
           G_proj = ox.project_graph(G, to_crs="EPSG:31370")
@@ -288,31 +252,25 @@ jobs:
           node_list = list(nodes_gdf.index)
           node_map  = {nid: i for i, nid in enumerate(node_list)}
 
-          edge_tuples        = []
-          edge_weights       = []
-          edge_lengths       = []
-          edge_highways      = []
-          edge_geoms         = []
-          edge_cycleway_nf   = []
-          skipped_forbidden  = 0
-          skipped_no_access  = 0
+          edge_tuples      = []
+          edge_weights     = []
+          edge_lengths     = []
+          edge_highways    = []
+          edge_geoms       = []
+          edge_cycleway_nf = []
+          skipped_forbidden = 0
+          skipped_no_access = 0
 
           for (u, v, _k), row in edges_gdf.iterrows():
               hw = row.get("highway", "unclassified")
               if isinstance(hw, list): hw = hw[0]
-
               foot_tag   = str(row.get("foot",   "") or "").strip().lower()
               access_tag = str(row.get("access", "") or "").strip().lower()
-
               if foot_tag in FOOT_FORBIDDEN:
-                  skipped_forbidden += 1
-                  continue
+                  skipped_forbidden += 1; continue
               if access_tag in ACCESS_EXCLUDED:
-                  skipped_no_access += 1
-                  continue
-
+                  skipped_no_access += 1; continue
               base_cost = COST.get(hw, 2.5)
-
               is_cycleway_no_foot = False
               if hw == "cycleway":
                   if foot_tag in FOOT_ALLOWED:
@@ -320,7 +278,6 @@ jobs:
                   else:
                       base_cost = 1.8
                       is_cycleway_no_foot = True
-
               length = float(row.get("length", 1.0))
               edge_tuples.append((node_map[u], node_map[v]))
               edge_weights.append(length * base_cost)
@@ -334,15 +291,15 @@ jobs:
           g = ig.Graph(directed=True, n=len(node_list))
           g.vs["osmid"] = node_list
           g.add_edges(edge_tuples)
-          g.es["weight"]         = edge_weights
-          g.es["length"]         = edge_lengths
-          g.es["highway"]        = edge_highways
-          g.es["geometry"]       = edge_geoms
-          g.es["cycleway_nf"]    = edge_cycleway_nf
+          g.es["weight"]      = edge_weights
+          g.es["length"]      = edge_lengths
+          g.es["highway"]     = edge_highways
+          g.es["geometry"]    = edge_geoms
+          g.es["cycleway_nf"] = edge_cycleway_nf
           flow_arr = np.zeros(g.ecount(), dtype=np.int32)
           print(f"  igraph: {g.vcount()} vertices, {g.ecount()} edges")
 
-          # ── 4. Sample OD points from addresses ───────────────────────────────
+          # ── 4. Sample OD points ──────────────────────────────────────────────
           print(f"Sampling OD points ({POINTS_PER_SIDE} per side, even/odd split)...")
 
           def extract_num(hn):
@@ -350,105 +307,71 @@ jobs:
               return int(m.group(1)) if m else None
 
           def pick_indices(n, k):
-              if n == 0:
-                  return []
-              if n < k:
-                  return [n // 2]
+              if n == 0: return []
+              if n < k:  return [n // 2]
               return [int(n * (i + 1) / (k + 1)) for i in range(k)]
 
           addr_gdf = gpd.read_file("addresses.geojson").to_crs("EPSG:31370")
           addr_gdf["_num"] = addr_gdf.get("addr:housenumber", "").apply(extract_num)
           addr_gdf = addr_gdf.dropna(subset=["_num"])
           addr_gdf["_num"] = addr_gdf["_num"].astype(int)
-
           if "addr:street" not in addr_gdf.columns:
               addr_gdf["addr:street"] = ""
           addr_gdf = addr_gdf[addr_gdf["addr:street"].notna()]
-          street_col = addr_gdf["addr:street"].astype(str)
-          addr_gdf = addr_gdf[street_col.str.strip() != ""]
+          addr_gdf = addr_gdf[addr_gdf["addr:street"].astype(str).str.strip() != ""]
 
-          od_points  = []
-          od_streets = []
-          od_sides   = []
-
-          streets_both = 0
-          streets_one  = 0
+          od_points = []; od_streets = []; od_sides = []
+          streets_both = 0; streets_one = 0
 
           for street, grp in addr_gdf.groupby("addr:street"):
               sides_sampled = 0
-              for side_name, side_grp in [
-                  ("even", grp[grp["_num"] % 2 == 0]),
-                  ("odd",  grp[grp["_num"] % 2 == 1]),
-              ]:
+              for side_name, side_grp in [("even", grp[grp["_num"] % 2 == 0]), ("odd", grp[grp["_num"] % 2 == 1])]:
                   grp_s = side_grp.sort_values("_num")
-                  n = len(grp_s)
-                  idxs = pick_indices(n, POINTS_PER_SIDE)
-                  if not idxs:
-                      continue
+                  idxs = pick_indices(len(grp_s), POINTS_PER_SIDE)
+                  if not idxs: continue
                   for i in idxs:
                       row = grp_s.iloc[i]
                       od_points.append((row.geometry.x, row.geometry.y))
                       od_streets.append(str(street))
                       od_sides.append(side_name)
                   sides_sampled += 1
-              if sides_sampled == 2:
-                  streets_both += 1
-              elif sides_sampled == 1:
-                  streets_one  += 1
+              if sides_sampled == 2: streets_both += 1
+              elif sides_sampled == 1: streets_one += 1
 
           print(f"  OD points: {len(od_points)}")
-          print(f"  Streets with both sides sampled: {streets_both}")
-          print(f"  Streets with only one side:      {streets_one}")
+          print(f"  Streets both sides: {streets_both} | one side: {streets_one}")
 
-          # ── 5. Snap OD points to nearest graph node ──────────────────────────
+          # ── 5. Snap OD points ────────────────────────────────────────────────
           print("Snapping OD points to graph nodes...")
           node_xy = np.array([[nodes_gdf.loc[n, "x"], nodes_gdf.loc[n, "y"]] for n in node_list])
-          node_geoms = [Point(x, y) for x, y in node_xy]
-          node_tree = STRtree(node_geoms)
+          node_tree = STRtree([Point(x, y) for x, y in node_xy])
+          snapped = [int(node_tree.nearest(Point(x, y))) for x, y in od_points]
 
-          snapped = []
-          for x, y in od_points:
-              idx = node_tree.nearest(Point(x, y))
-              snapped.append(int(idx))
-
-          # ── 6. Generate OD pairs (MIN_DIST_M <= crow-fly <= MAX_DIST_M) ─────
+          # ── 6. Generate OD pairs ─────────────────────────────────────────────
           print("Generating OD pairs...")
           random.seed(42)
-          n_pts    = len(od_points)
-          od_pairs = []
-          seen     = set()
-          od_xy    = np.array(od_points)
-          attempts       = 0
-          rejected_near  = 0
-          rejected_far   = 0
-          min_dist_sq    = MIN_DIST_M * MIN_DIST_M
-          max_dist_sq    = MAX_DIST_M * MAX_DIST_M
+          n_pts = len(od_points)
+          od_pairs = []; seen = set(); od_xy = np.array(od_points)
+          attempts = 0; rejected_near = 0; rejected_far = 0
+          min_dist_sq = MIN_DIST_M ** 2; max_dist_sq = MAX_DIST_M ** 2
 
           while len(od_pairs) < MAX_PAIRS and attempts < MAX_PAIRS * 20:
               i, j = random.randrange(n_pts), random.randrange(n_pts)
               attempts += 1
-              if i == j:
-                  continue
+              if i == j: continue
               key = (min(i, j), max(i, j))
-              if key in seen:
-                  continue
-              dx = od_xy[i, 0] - od_xy[j, 0]
-              dy = od_xy[i, 1] - od_xy[j, 1]
+              if key in seen: continue
+              dx = od_xy[i, 0] - od_xy[j, 0]; dy = od_xy[i, 1] - od_xy[j, 1]
               d2 = dx*dx + dy*dy
-              if d2 < min_dist_sq:
-                  rejected_near += 1
-                  continue
-              if d2 > max_dist_sq:
-                  rejected_far += 1
-                  continue
+              if d2 < min_dist_sq: rejected_near += 1; continue
+              if d2 > max_dist_sq: rejected_far += 1; continue
               od_pairs.append((snapped[i], snapped[j], od_streets[i], od_streets[j]))
               seen.add(key)
 
           print(f"  OD pairs: {len(od_pairs)}")
-          print(f"  Rejected — too close (<{MIN_DIST_M:.0f}m): {rejected_near} | "
-                f"too far (>{MAX_DIST_M:.0f}m): {rejected_far}")
+          print(f"  Rejected — near: {rejected_near} | far: {rejected_far}")
 
-          # ── 7. Route — group by source for one Dijkstra per source ──────────
+          # ── 7. Route ─────────────────────────────────────────────────────────
           print("Routing pairs with igraph (grouped by source)...")
           t_route = time.time()
 
@@ -456,28 +379,23 @@ jobs:
           for src, tgt, st_src, st_tgt in od_pairs:
               pairs_by_src[src].append((tgt, st_src, st_tgt))
 
-          street_ped_m      = defaultdict(float)
-          street_cyc_nf_m   = defaultdict(float)
-          street_total_m    = defaultdict(float)
+          street_ped_m    = defaultdict(float)
+          street_cyc_nf_m = defaultdict(float)
+          street_total_m  = defaultdict(float)
           routed = 0
+          total_routed_distance = 0.0
           n_sources = len(pairs_by_src)
-
           cyc_nf_arr = np.array(g.es["cycleway_nf"], dtype=bool)
 
           for done, (src, targets_info) in enumerate(pairs_by_src.items()):
               if done % 2000 == 0:
                   elapsed = time.time() - t_route
                   print(f"  Sources: {done}/{n_sources} | Pairs routed: {routed} | {elapsed:.0f}s")
-
               targets = [t for t, _, _ in targets_info]
-
-              all_paths = g.get_shortest_paths(
-                  src, to=targets, weights="weight", output="epath"
-              )
+              all_paths = g.get_shortest_paths(src, to=targets, weights="weight", output="epath")
 
               for (tgt, st_src, st_tgt), eids in zip(targets_info, all_paths):
-                  if not eids:
-                      continue
+                  if not eids: continue
                   routed += 1
                   ped_m = cyc_nf_m = total_m = 0.0
                   for eid in eids:
@@ -486,118 +404,101 @@ jobs:
                       hw  = edge_highways[eid]
                       cnf = cyc_nf_arr[eid]
                       total_m += lm
-                      if cnf:
-                          cyc_nf_m += lm
-                      elif hw in PED_TYPES or hw == "cycleway":
-                          ped_m += lm
+                      if cnf: cyc_nf_m += lm
+                      elif hw in PED_TYPES or hw == "cycleway": ped_m += lm
+                  total_routed_distance += total_m
                   for st in (st_src, st_tgt):
                       street_ped_m[st]    += ped_m
                       street_cyc_nf_m[st] += cyc_nf_m
                       street_total_m[st]  += total_m
 
-          print(f"  Routed {routed} pairs in {time.time()-t_route:.1f}s")
+          routing_time = time.time() - t_route
+          avg_distance = total_routed_distance / routed if routed > 0 else 0
+          print(f"  Routed {routed} pairs in {routing_time:.1f}s")
+          print(f"  Average trip distance: {avg_distance:.0f}m")
+
+          # ── 7b. Save routing stats ───────────────────────────────────────────
+          stats = {
+              "routed_trips": routed,
+              "avg_distance_m": round(avg_distance, 1),
+              "od_points": len(od_points),
+              "od_pairs_generated": len(od_pairs),
+              "rejected_near": rejected_near,
+              "rejected_far": rejected_far,
+              "routing_time_s": round(routing_time, 1),
+              "min_dist_m": MIN_DIST_M,
+              "max_dist_m": MAX_DIST_M,
+          }
+          with open("stats.json", "w") as f:
+              json.dump(stats, f, indent=2)
+          print(f"  Stats saved to stats.json")
 
           # ── 8. Build output GeoJSONs ──────────────────────────────────────────
           print("Building output GeoJSONs...")
           max_flow = int(flow_arr.max()) if flow_arr.max() > 0 else 1
-
           nonzero = flow_arr[flow_arr > 0]
           flow_threshold = float(np.percentile(nonzero, 100.0 - TOP_PCT)) if len(nonzero) > 0 else 1.0
           print(f"  Flow threshold (top {TOP_PCT}%): {flow_threshold:.0f} trips")
 
           cyc_nf_list = g.es["cycleway_nf"]
-
-          rows_flow            = []
-          rows_forced_road     = []
-          rows_forced_cycleway = []
+          rows_flow = []; rows_forced_road = []; rows_forced_cycleway = []
 
           for eid in range(g.ecount()):
               flow = int(flow_arr[eid])
-              if flow == 0 or edge_geoms[eid] is None:
-                  continue
-              hw     = edge_highways[eid]
-              lm     = float(edge_lengths[eid])
-              cnf    = bool(cyc_nf_list[eid])
+              if flow == 0 or edge_geoms[eid] is None: continue
+              hw  = edge_highways[eid]
+              lm  = float(edge_lengths[eid])
+              cnf = bool(cyc_nf_list[eid])
               is_ped = (hw in PED_TYPES) or (hw == "cycleway" and not cnf)
-
-              if is_ped:
-                  surface_cat = "pedestrian"
-              elif cnf:
-                  surface_cat = "cycleway_no_foot"
-              else:
-                  surface_cat = "road"
-
+              surface_cat = "pedestrian" if is_ped else ("cycleway_no_foot" if cnf else "road")
               row = {
-                  "geometry":      edge_geoms[eid],
-                  "highway":       hw,
-                  "flow":          flow,
-                  "flow_pct":      round(flow / max_flow * 100, 2),
-                  "surface_cat":   surface_cat,
-                  "length_m":      round(lm, 1),
+                  "geometry": edge_geoms[eid], "highway": hw, "flow": flow,
+                  "flow_pct": round(flow / max_flow * 100, 2),
+                  "surface_cat": surface_cat, "length_m": round(lm, 1),
               }
               rows_flow.append(row)
-
               if flow >= flow_threshold:
-                  if cnf:
-                      rows_forced_cycleway.append(row)
-                  elif not is_ped:
-                      rows_forced_road.append(row)
+                  if cnf: rows_forced_cycleway.append(row)
+                  elif not is_ped: rows_forced_road.append(row)
 
-          def save_gdf(rows, fallback_schema, crs_in, filename):
-              if rows:
-                  gdf = gpd.GeoDataFrame(rows, crs=crs_in).to_crs("EPSG:4326")
-              else:
-                  gdf = gpd.GeoDataFrame([fallback_schema], crs=crs_in).to_crs("EPSG:4326")
+          def save_gdf(rows, fallback, crs_in, filename):
+              gdf = gpd.GeoDataFrame(rows if rows else [fallback], crs=crs_in).to_crs("EPSG:4326")
               gdf.to_file(filename, driver="GeoJSON")
               return len(rows)
 
-          fallback_edge = {"geometry": None, "highway": "", "flow": 0,
-                           "flow_pct": 0.0, "surface_cat": "", "length_m": 0.0}
+          fb_edge = {"geometry": None, "highway": "", "flow": 0, "flow_pct": 0.0, "surface_cat": "", "length_m": 0.0}
+          n_fr = save_gdf(rows_forced_road,     fb_edge, "EPSG:31370", "forced_segments.geojson")
+          n_fc = save_gdf(rows_forced_cycleway, fb_edge, "EPSG:31370", "forced_cycleway.geojson")
+          n_fl = save_gdf(rows_flow,            fb_edge, "EPSG:31370", "flow_edges.geojson")
+          print(f"  Forced road: {n_fr} | Forced cycleway: {n_fc} | Flow edges: {n_fl}")
 
-          n_forced_r = save_gdf(rows_forced_road,     fallback_edge, "EPSG:31370", "forced_segments.geojson")
-          n_forced_c = save_gdf(rows_forced_cycleway, fallback_edge, "EPSG:31370", "forced_cycleway.geojson")
-          n_flow     = save_gdf(rows_flow,            fallback_edge, "EPSG:31370", "flow_edges.geojson")
-          print(f"  Forced on road: {n_forced_r} | Forced on cycleway: {n_forced_c} | Flow edges: {n_flow}")
-
-          # ── Viz C: walkability score per street ──────────────────────────────
-          addr_wgs  = addr_gdf.to_crs("EPSG:4326")
+          addr_wgs = addr_gdf.to_crs("EPSG:4326")
           rows_score = []
           for street, total_m in street_total_m.items():
-              if total_m < 1.0:
-                  continue
-              ped_m    = street_ped_m.get(street, 0.0)
-              cyc_m    = street_cyc_nf_m.get(street, 0.0)
-              score    = round(ped_m / total_m, 3)
-              pts      = addr_wgs[addr_wgs["addr:street"] == street].geometry
-              if pts.empty:
-                  continue
+              if total_m < 1.0: continue
+              ped_m = street_ped_m.get(street, 0.0)
+              cyc_m = street_cyc_nf_m.get(street, 0.0)
+              score = round(ped_m / total_m, 3)
+              pts   = addr_wgs[addr_wgs["addr:street"] == street].geometry
+              if pts.empty: continue
               centroid = pts.union_all().centroid
               rows_score.append({
-                  "geometry":        centroid,
-                  "street":          street,
-                  "walkability":     score,
-                  "ped_meters":      round(ped_m, 0),
-                  "cycleway_meters": round(cyc_m, 0),
-                  "total_meters":    round(total_m, 0),
+                  "geometry": centroid, "street": street, "walkability": score,
+                  "ped_meters": round(ped_m, 0), "cycleway_meters": round(cyc_m, 0),
+                  "total_meters": round(total_m, 0),
               })
 
-          fallback_score = {"geometry": None, "street": "", "walkability": 0.0,
-                            "ped_meters": 0.0, "cycleway_meters": 0.0, "total_meters": 0.0}
-          n_score = save_gdf(rows_score, fallback_score, "EPSG:4326", "street_scores.geojson")
-          print(f"  Street scores: {n_score}")
-
+          fb_score = {"geometry": None, "street": "", "walkability": 0.0, "ped_meters": 0.0, "cycleway_meters": 0.0, "total_meters": 0.0}
+          n_sc = save_gdf(rows_score, fb_score, "EPSG:4326", "street_scores.geojson")
+          print(f"  Street scores: {n_sc}")
           print(f"Total time: {time.time()-t0:.1f}s")
           EOF
-
-      # ── Debug + Upload GeoJSONs ──────────────────────────────────────────────
 
       - name: List generated files (debug)
         if: always()
         run: |
           echo "=== Files in workspace ==="
-          ls -lh *.geojson 2>/dev/null || echo "No geojson files found"
-          echo "=== Disk usage ==="
-          df -h /
+          ls -lh *.geojson stats.json 2>/dev/null || echo "No files found"
 
       - name: Upload GeoJSON artifacts
         if: always()
@@ -611,10 +512,9 @@ jobs:
             street_scores.geojson
             highways.geojson
             addresses.geojson
+            stats.json
           retention-days: 30
           if-no-files-found: warn
-
-      # ── Build PMTiles ────────────────────────────────────────────────────────
 
       - name: Build PMTiles with tippecanoe
         run: |
@@ -635,13 +535,11 @@ jobs:
             --named-layer=forced_cycleway:forced_cycleway.geojson \
             --named-layer=street_scores:street_scores.geojson
 
-      # ── Deploy ───────────────────────────────────────────────────────────────
-
       - name: Prepare site
         run: |
           mv pedestrian.pmtiles pedestrian.pmtiles.gz
           mkdir -p _site
-          cp index.html style.json state.txt pedestrian.pmtiles.gz _site/
+          cp index.html style.json state.txt stats.json pedestrian.pmtiles.gz _site/
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
