@@ -56,11 +56,11 @@ env:
   MAX_ZOOM: 19
 
   # ── Routing parameters (all configurable) ─────────────────────────────────
-  MIN_OD_DISTANCE_M: 300      # min crow-fly distance between OD pair (filters trivial trips)
-  MAX_OD_DISTANCE_KM: 6       # max crow-fly distance between OD pair
-  MAX_OD_PAIRS: 900000         # cap on number of routed pairs
-  TOP_RANK_PCT: 15             # top X% by flow = "high usage" threshold
-  POINTS_PER_SIDE: 5           # sample points per street side (even/odd)
+  MIN_OD_DISTANCE_M: 300       # min crow-fly distance between OD pair
+  MAX_OD_DISTANCE_KM: 6        # max crow-fly distance between OD pair
+  MAX_OD_PAIRS: 900000          # cap on number of routed pairs
+  TOP_RANK_PCT: 15              # top X% by flow = "high usage" threshold
+  POINTS_PER_SIDE: 5            # sample points per street side (even/odd)
 
 jobs:
   build-and-deploy:
@@ -171,7 +171,6 @@ jobs:
           COST = {
               "pedestrian":    1.0, "footway":       1.0,
               "path":          1.2, "living_street": 1.2,
-              # cycleway base cost — overridden per-edge depending on foot tag
               "cycleway":      1.7,
               "steps":         1.5,
               "residential":   2.0, "service":       2.0,
@@ -181,21 +180,95 @@ jobs:
               "primary_link":  8.0,
           }
 
-          # Tags that mean "pedestrians forbidden" → edge excluded entirely
           FOOT_FORBIDDEN  = {"no"}
           ACCESS_EXCLUDED = {"no", "private"}
-          # Tags that mean "pedestrians explicitly allowed on cycleway"
           FOOT_ALLOWED    = {"yes", "designated", "permissive"}
+
+          # ── Barrier rules ───────────────────────────────────────────────────
+          # Nodes matching ANY of these (barrier_tag, access_tag) pairs will
+          # cut the way — no routing through them.  Easy to extend.
+          BLOCKED_BARRIER_RULES = [
+              ("gate",    "private"),
+              ("gate",    "no"),
+          ]
 
           t0 = time.time()
 
-          # ── 1. Clean OSM XML ─────────────────────────────────────────────────
+          # ── 1. Clean OSM XML + cut ways at blocked barriers ─────────────────
           print("Cleaning OSM XML...")
           tree = ET.parse("routing_raw.osm")
           root = tree.getroot()
+
+          # ── 1a. Identify blocked barrier nodes ──────────────────────────────
+          blocked_node_ids = set()
+          rules_set = set(BLOCKED_BARRIER_RULES)
+          for node in root.findall("node"):
+              tags = {t.get("k"): t.get("v") for t in node.findall("tag")}
+              barrier_val = tags.get("barrier", "")
+              access_val  = tags.get("access", "")
+              if (barrier_val, access_val) in rules_set:
+                  blocked_node_ids.add(node.get("id"))
+          print(f"  Blocked barrier nodes (gate+private/no): {len(blocked_node_ids)}")
+
+          # ── 1b. Split ways at blocked nodes ─────────────────────────────────
+          # A way [A, B, BLOCKED, C, D] becomes two ways: [A, B] and [C, D]
+          # so the router cannot traverse the barrier.
+          way_id_counter = -1   # synthetic negative IDs for new sub-ways
+          ways_split = 0
+          ways_removed = 0
+
+          for way in list(root.findall("way")):
+              nds  = way.findall("nd")
+              refs = [nd.get("ref") for nd in nds]
+
+              blocked_here = [i for i, ref in enumerate(refs) if ref in blocked_node_ids]
+              if not blocked_here:
+                  continue
+
+              # Collect the way's tags (to copy onto sub-ways)
+              way_tags = [(t.get("k"), t.get("v")) for t in way.findall("tag")]
+
+              # Split refs into segments between blocked positions
+              segments = []
+              prev = 0
+              for bi in blocked_here:
+                  if bi > prev:
+                      segments.append(refs[prev:bi])
+                  prev = bi + 1
+              if prev < len(refs):
+                  segments.append(refs[prev:])
+
+              # Keep only segments with >= 2 nodes (a single node isn't a valid way)
+              segments = [s for s in segments if len(s) >= 2]
+
+              if not segments:
+                  root.remove(way)
+                  ways_removed += 1
+                  continue
+
+              # Rewrite original way with first segment
+              for nd in nds:
+                  way.remove(nd)
+              for ref in segments[0]:
+                  ET.SubElement(way, "nd", attrib={"ref": ref})
+
+              # Create new way elements for remaining segments
+              for seg in segments[1:]:
+                  new_way = ET.SubElement(root, "way", attrib={"id": str(way_id_counter)})
+                  way_id_counter -= 1
+                  for ref in seg:
+                      ET.SubElement(new_way, "nd", attrib={"ref": ref})
+                  for k, v in way_tags:
+                      ET.SubElement(new_way, "tag", attrib={"k": k, "v": v})
+
+              ways_split += 1
+
+          print(f"  Ways split at barriers: {ways_split} | Ways fully removed: {ways_removed}")
+
+          # ── 1c. Remove ways referencing missing nodes ───────────────────────
           node_ids_set = {n.get("id") for n in root.findall("node")}
           removed = 0
-          for way in root.findall("way"):
+          for way in list(root.findall("way")):
               refs = {nd.get("ref") for nd in way.findall("nd")}
               if not refs.issubset(node_ids_set):
                   root.remove(way)
@@ -220,7 +293,7 @@ jobs:
           edge_lengths       = []
           edge_highways      = []
           edge_geoms         = []
-          edge_cycleway_nf   = []   # True = cycleway without foot=yes
+          edge_cycleway_nf   = []
           skipped_forbidden  = 0
           skipped_no_access  = 0
 
@@ -231,7 +304,6 @@ jobs:
               foot_tag   = str(row.get("foot",   "") or "").strip().lower()
               access_tag = str(row.get("access", "") or "").strip().lower()
 
-              # ── Hard exclusions ─────────────────────────────────────────────
               if foot_tag in FOOT_FORBIDDEN:
                   skipped_forbidden += 1
                   continue
@@ -239,7 +311,6 @@ jobs:
                   skipped_no_access += 1
                   continue
 
-              # ── Compute cost ────────────────────────────────────────────────
               base_cost = COST.get(hw, 2.5)
 
               is_cycleway_no_foot = False
@@ -272,9 +343,6 @@ jobs:
           print(f"  igraph: {g.vcount()} vertices, {g.ecount()} edges")
 
           # ── 4. Sample OD points from addresses ───────────────────────────────
-          # Even/odd split: each side of the street sampled independently.
-          # This reveals streets where only one side has a sidewalk — the other
-          # side ends up forced onto the road by the router.
           print(f"Sampling OD points ({POINTS_PER_SIDE} per side, even/odd split)...")
 
           def extract_num(hn):
@@ -282,14 +350,10 @@ jobs:
               return int(m.group(1)) if m else None
 
           def pick_indices(n, k):
-              """Return up to k evenly-spaced indices into a list of length n.
-              For n < k: fall back to middle point only (n==0 → []).
-              """
               if n == 0:
                   return []
               if n < k:
                   return [n // 2]
-              # Evenly spaced percentiles in (0,1), excluding endpoints
               return [int(n * (i + 1) / (k + 1)) for i in range(k)]
 
           addr_gdf = gpd.read_file("addresses.geojson").to_crs("EPSG:31370")
@@ -297,7 +361,6 @@ jobs:
           addr_gdf = addr_gdf.dropna(subset=["_num"])
           addr_gdf["_num"] = addr_gdf["_num"].astype(int)
 
-          # Defensive: ensure addr:street column exists, then filter out empty/NA
           if "addr:street" not in addr_gdf.columns:
               addr_gdf["addr:street"] = ""
           addr_gdf = addr_gdf[addr_gdf["addr:street"].notna()]
@@ -306,7 +369,7 @@ jobs:
 
           od_points  = []
           od_streets = []
-          od_sides   = []   # "even" | "odd"
+          od_sides   = []
 
           streets_both = 0
           streets_one  = 0
@@ -338,7 +401,6 @@ jobs:
           print(f"  Streets with only one side:      {streets_one}")
 
           # ── 5. Snap OD points to nearest graph node ──────────────────────────
-          # shapely>=2: STRtree.nearest() returns an INDEX (int), not a geometry
           print("Snapping OD points to graph nodes...")
           node_xy = np.array([[nodes_gdf.loc[n, "x"], nodes_gdf.loc[n, "y"]] for n in node_list])
           node_geoms = [Point(x, y) for x, y in node_xy]
@@ -347,7 +409,7 @@ jobs:
           snapped = []
           for x, y in od_points:
               idx = node_tree.nearest(Point(x, y))
-              snapped.append(int(idx))  # igraph vertex id == position in node_list
+              snapped.append(int(idx))
 
           # ── 6. Generate OD pairs (MIN_DIST_M <= crow-fly <= MAX_DIST_M) ─────
           print("Generating OD pairs...")
