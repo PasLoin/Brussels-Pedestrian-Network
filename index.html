@@ -302,13 +302,18 @@ const HOVER_LAYERS = [
   },
   {
     ids: ["street-scores"],
-    format: p => `
-      <div class="popup-title">🏙 ${p.street || "Rue inconnue"}</div>
-      <div class="popup-row"><span class="label">Marchabilité</span><span class="value">${((p.walkability || 0) * 100).toFixed(0)}%</span></div>
-      <div class="popup-row"><span class="label">Infra piétonne</span><span class="value">${Math.round(p.ped_meters || 0)} m</span></div>
-      <div class="popup-row"><span class="label">Cycleway (no foot)</span><span class="value">${Math.round(p.cycleway_meters || 0)} m</span></div>
-      <div class="popup-row"><span class="label">Total routé</span><span class="value">${Math.round(p.total_meters || 0)} m</span></div>
-    `
+    format: p => {
+      const swLabels = { both: "✅ Deux côtés", partial: "⚠️ Un seul côté", none: "❌ Aucun", unknown: "❓ Non renseigné" };
+      return `
+        <div class="popup-title">🏙 ${p.street || "Rue inconnue"}</div>
+        <div class="popup-row"><span class="label">Marchabilité</span><span class="value">${((p.walkability || 0) * 100).toFixed(0)}%</span></div>
+        <div class="popup-row"><span class="label">Score brut</span><span class="value">${((p.walkability_raw || 0) * 100).toFixed(0)}%</span></div>
+        <div class="popup-row"><span class="label">Trottoir</span><span class="value">${swLabels[p.sidewalk] || p.sidewalk || "?"}</span></div>
+        <div class="popup-row"><span class="label">Infra piétonne</span><span class="value">${Math.round(p.ped_meters || 0)} m</span></div>
+        <div class="popup-row"><span class="label">Cycleway (no foot)</span><span class="value">${Math.round(p.cycleway_meters || 0)} m</span></div>
+        <div class="popup-row"><span class="label">Total routé</span><span class="value">${Math.round(p.total_meters || 0)} m</span></div>
+      `;
+    }
   },
   {
     ids: HIGHWAY_LAYERS.map(l => `highway-${l.id}`).concat(["highway-crossing"]),
