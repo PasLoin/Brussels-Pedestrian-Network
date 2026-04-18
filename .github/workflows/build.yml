@@ -59,6 +59,12 @@ env:
   TOP_RANK_PCT: 15
   POINTS_PER_SIDE: 5
 
+  # ── Walkability score tuning ──────────────────────────────────────────────
+  WALK_SCORE_RADIUS_M: 1000    # only first/last N meters of each trip count
+  SIDEWALK_PENALTY_NONE: 0.3   # multiplier when street has sidewalk=no
+  SIDEWALK_PENALTY_PARTIAL: 0.6 # multiplier when street has sidewalk on one side only
+  SIDEWALK_PENALTY_UNKNOWN: 0.5 # multiplier when no sidewalk tag on road edges
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -145,19 +151,33 @@ jobs:
           POINTS_PER_SIDE = int(os.environ.get("POINTS_PER_SIDE", 5))
           MAX_DIST_M      = MAX_OD_KM * 1000
 
+          # Walkability score config
+          WALK_RADIUS     = float(os.environ.get("WALK_SCORE_RADIUS_M", 1000))
+          PEN_NONE        = float(os.environ.get("SIDEWALK_PENALTY_NONE", 0.3))
+          PEN_PARTIAL     = float(os.environ.get("SIDEWALK_PENALTY_PARTIAL", 0.6))
+          PEN_UNKNOWN     = float(os.environ.get("SIDEWALK_PENALTY_UNKNOWN", 0.5))
+
           print(f"Config: MIN_DIST={MIN_DIST_M}m MAX_DIST={MAX_DIST_M}m "
                 f"MAX_PAIRS={MAX_PAIRS} TOP_PCT={TOP_PCT} POINTS_PER_SIDE={POINTS_PER_SIDE}")
+          print(f"Walkability: radius={WALK_RADIUS}m penalties: none={PEN_NONE} "
+                f"partial={PEN_PARTIAL} unknown={PEN_UNKNOWN}")
 
           PED_TYPES = {
               "footway", "pedestrian", "path",
               "living_street", "steps", "elevator"
           }
+          # Road types where we expect a sidewalk to exist
+          ROAD_TYPES_SIDEWALK_EXPECTED = {
+              "residential", "service", "unclassified",
+              "tertiary", "tertiary_link",
+              "secondary", "secondary_link",
+              "primary", "primary_link",
+          }
 
           COST = {
               "pedestrian":    1.0, "footway":       1.0,
               "path":          1.2, "living_street": 1.2,
-              "cycleway":      1.7,
-              "steps":         1.5,
+              "cycleway":      1.7, "steps":         1.5,
               "residential":   2.0, "service":       2.0,
               "unclassified":  2.2, "tertiary":      3.5,
               "tertiary_link": 3.5, "secondary":     5.0,
@@ -169,10 +189,7 @@ jobs:
           ACCESS_EXCLUDED = {"no", "private"}
           FOOT_ALLOWED    = {"yes", "designated", "permissive"}
 
-          BLOCKED_BARRIER_RULES = [
-              ("gate",    "private"),
-              ("gate",    "no"),
-          ]
+          BLOCKED_BARRIER_RULES = [("gate", "private"), ("gate", "no")]
 
           t0 = time.time()
 
@@ -185,58 +202,43 @@ jobs:
           rules_set = set(BLOCKED_BARRIER_RULES)
           for node in root.findall("node"):
               tags = {t.get("k"): t.get("v") for t in node.findall("tag")}
-              barrier_val = tags.get("barrier", "")
-              access_val  = tags.get("access", "")
-              if (barrier_val, access_val) in rules_set:
+              if (tags.get("barrier", ""), tags.get("access", "")) in rules_set:
                   blocked_node_ids.add(node.get("id"))
           print(f"  Blocked barrier nodes: {len(blocked_node_ids)}")
 
           way_id_counter = -1
-          ways_split = 0
-          ways_removed = 0
+          ways_split = 0; ways_removed = 0
 
           for way in list(root.findall("way")):
               nds  = way.findall("nd")
               refs = [nd.get("ref") for nd in nds]
               blocked_here = [i for i, ref in enumerate(refs) if ref in blocked_node_ids]
-              if not blocked_here:
-                  continue
+              if not blocked_here: continue
               way_tags = [(t.get("k"), t.get("v")) for t in way.findall("tag")]
-              segments = []
-              prev = 0
+              segments = []; prev = 0
               for bi in blocked_here:
-                  if bi > prev:
-                      segments.append(refs[prev:bi])
+                  if bi > prev: segments.append(refs[prev:bi])
                   prev = bi + 1
-              if prev < len(refs):
-                  segments.append(refs[prev:])
+              if prev < len(refs): segments.append(refs[prev:])
               segments = [s for s in segments if len(s) >= 2]
               if not segments:
-                  root.remove(way)
-                  ways_removed += 1
-                  continue
-              for nd in nds:
-                  way.remove(nd)
-              for ref in segments[0]:
-                  ET.SubElement(way, "nd", attrib={"ref": ref})
+                  root.remove(way); ways_removed += 1; continue
+              for nd in nds: way.remove(nd)
+              for ref in segments[0]: ET.SubElement(way, "nd", attrib={"ref": ref})
               for seg in segments[1:]:
                   new_way = ET.SubElement(root, "way", attrib={"id": str(way_id_counter)})
                   way_id_counter -= 1
-                  for ref in seg:
-                      ET.SubElement(new_way, "nd", attrib={"ref": ref})
-                  for k, v in way_tags:
-                      ET.SubElement(new_way, "tag", attrib={"k": k, "v": v})
+                  for ref in seg: ET.SubElement(new_way, "nd", attrib={"ref": ref})
+                  for k, v in way_tags: ET.SubElement(new_way, "tag", attrib={"k": k, "v": v})
               ways_split += 1
 
-          print(f"  Ways split at barriers: {ways_split} | Ways fully removed: {ways_removed}")
+          print(f"  Ways split: {ways_split} | removed: {ways_removed}")
 
           node_ids_set = {n.get("id") for n in root.findall("node")}
           removed = 0
           for way in list(root.findall("way")):
               refs = {nd.get("ref") for nd in way.findall("nd")}
-              if not refs.issubset(node_ids_set):
-                  root.remove(way)
-                  removed += 1
+              if not refs.issubset(node_ids_set): root.remove(way); removed += 1
           print(f"  Ways removed (missing nodes): {removed}")
           tree.write("routing_clean.osm")
 
@@ -258,26 +260,24 @@ jobs:
           edge_highways    = []
           edge_geoms       = []
           edge_cycleway_nf = []
-          skipped_forbidden = 0
-          skipped_no_access = 0
+          edge_names       = []     # street name on edge
+          edge_sidewalks   = []     # sidewalk tag on edge
+          skipped_forbidden = 0; skipped_no_access = 0
 
           for (u, v, _k), row in edges_gdf.iterrows():
               hw = row.get("highway", "unclassified")
               if isinstance(hw, list): hw = hw[0]
               foot_tag   = str(row.get("foot",   "") or "").strip().lower()
               access_tag = str(row.get("access", "") or "").strip().lower()
-              if foot_tag in FOOT_FORBIDDEN:
-                  skipped_forbidden += 1; continue
-              if access_tag in ACCESS_EXCLUDED:
-                  skipped_no_access += 1; continue
+              if foot_tag in FOOT_FORBIDDEN: skipped_forbidden += 1; continue
+              if access_tag in ACCESS_EXCLUDED: skipped_no_access += 1; continue
+
               base_cost = COST.get(hw, 2.5)
               is_cycleway_no_foot = False
               if hw == "cycleway":
-                  if foot_tag in FOOT_ALLOWED:
-                      base_cost = 1.0
-                  else:
-                      base_cost = 1.8
-                      is_cycleway_no_foot = True
+                  if foot_tag in FOOT_ALLOWED: base_cost = 1.0
+                  else: base_cost = 1.8; is_cycleway_no_foot = True
+
               length = float(row.get("length", 1.0))
               edge_tuples.append((node_map[u], node_map[v]))
               edge_weights.append(length * base_cost)
@@ -285,6 +285,16 @@ jobs:
               edge_highways.append(hw)
               edge_geoms.append(row.geometry)
               edge_cycleway_nf.append(is_cycleway_no_foot)
+
+              # Extract name (can be list in osmnx)
+              ename = row.get("name", "")
+              if isinstance(ename, list): ename = ename[0] if ename else ""
+              edge_names.append(str(ename or ""))
+
+              # Extract sidewalk tag
+              sw = row.get("sidewalk", "")
+              if isinstance(sw, list): sw = sw[0] if sw else ""
+              edge_sidewalks.append(str(sw or "").strip().lower())
 
           print(f"  Edges skipped — foot=no: {skipped_forbidden}, access=no/private: {skipped_no_access}")
 
@@ -298,6 +308,41 @@ jobs:
           g.es["cycleway_nf"] = edge_cycleway_nf
           flow_arr = np.zeros(g.ecount(), dtype=np.int32)
           print(f"  igraph: {g.vcount()} vertices, {g.ecount()} edges")
+
+          # ── 3b. Build sidewalk index per street name ─────────────────────────
+          # For each street name, determine best sidewalk status from road edges
+          print("Building sidewalk index...")
+          street_sidewalk_tags = defaultdict(list)
+          for eid in range(len(edge_names)):
+              name = edge_names[eid]
+              hw   = edge_highways[eid]
+              if not name or hw not in ROAD_TYPES_SIDEWALK_EXPECTED:
+                  continue
+              sw = edge_sidewalks[eid]
+              if sw:
+                  street_sidewalk_tags[name].append(sw)
+
+          def classify_sidewalk(tags):
+              """Return best sidewalk status for a street.
+              Priority: both > left/right > yes > no/none > unknown"""
+              s = set(tags)
+              if "both" in s: return "both"
+              if "yes" in s:  return "both"    # yes = both in most tagging
+              if "left" in s or "right" in s: return "partial"
+              if "no" in s or "none" in s: return "none"
+              return "unknown"
+
+          street_sidewalk_status = {}
+          for name, tags in street_sidewalk_tags.items():
+              street_sidewalk_status[name] = classify_sidewalk(tags)
+
+          sw_counts = defaultdict(int)
+          for v in street_sidewalk_status.values():
+              sw_counts[v] += 1
+          print(f"  Sidewalk status — both: {sw_counts['both']} | partial: {sw_counts['partial']} "
+                f"| none: {sw_counts['none']} | unknown (no tag): {sw_counts['unknown']}")
+          # Streets with no road edges at all won't appear → treated as unknown
+          print(f"  Streets with road edges: {len(street_sidewalk_status)}")
 
           # ── 4. Sample OD points ──────────────────────────────────────────────
           print(f"Sampling OD points ({POINTS_PER_SIDE} per side, even/odd split)...")
@@ -372,6 +417,8 @@ jobs:
           print(f"  Rejected — near: {rejected_near} | far: {rejected_far}")
 
           # ── 7. Route ─────────────────────────────────────────────────────────
+          # Flow accumulation uses ALL edges (unchanged).
+          # Walkability accumulation uses only first/last WALK_RADIUS meters.
           print("Routing pairs with igraph (grouped by source)...")
           t_route = time.time()
 
@@ -387,6 +434,25 @@ jobs:
           n_sources = len(pairs_by_src)
           cyc_nf_arr = np.array(g.es["cycleway_nf"], dtype=bool)
 
+          def accumulate_capped(eids_ordered, cap_m):
+              """Walk along edges up to cap_m meters, return (ped_m, cyc_m, total_m)."""
+              ped = cyc = total = 0.0
+              remaining = cap_m
+              for eid in eids_ordered:
+                  if remaining <= 0:
+                      break
+                  lm_full = edge_lengths[eid]
+                  lm = min(lm_full, remaining)
+                  total += lm
+                  hw  = edge_highways[eid]
+                  cnf = cyc_nf_arr[eid]
+                  if cnf:
+                      cyc += lm
+                  elif hw in PED_TYPES or hw == "cycleway":
+                      ped += lm
+                  remaining -= lm_full  # consume full edge even if capped
+              return ped, cyc, total
+
           for done, (src, targets_info) in enumerate(pairs_by_src.items()):
               if done % 2000 == 0:
                   elapsed = time.time() - t_route
@@ -397,20 +463,25 @@ jobs:
               for (tgt, st_src, st_tgt), eids in zip(targets_info, all_paths):
                   if not eids: continue
                   routed += 1
-                  ped_m = cyc_nf_m = total_m = 0.0
+
+                  # ── Full trip: flow accumulation + total distance (unchanged) ──
+                  trip_dist = 0.0
                   for eid in eids:
                       flow_arr[eid] += 1
-                      lm  = edge_lengths[eid]
-                      hw  = edge_highways[eid]
-                      cnf = cyc_nf_arr[eid]
-                      total_m += lm
-                      if cnf: cyc_nf_m += lm
-                      elif hw in PED_TYPES or hw == "cycleway": ped_m += lm
-                  total_routed_distance += total_m
-                  for st in (st_src, st_tgt):
-                      street_ped_m[st]    += ped_m
-                      street_cyc_nf_m[st] += cyc_nf_m
-                      street_total_m[st]  += total_m
+                      trip_dist += edge_lengths[eid]
+                  total_routed_distance += trip_dist
+
+                  # ── Walkability: only first WALK_RADIUS for src, last for tgt ──
+                  src_ped, src_cyc, src_total = accumulate_capped(eids, WALK_RADIUS)
+                  tgt_ped, tgt_cyc, tgt_total = accumulate_capped(list(reversed(eids)), WALK_RADIUS)
+
+                  street_ped_m[st_src]    += src_ped
+                  street_cyc_nf_m[st_src] += src_cyc
+                  street_total_m[st_src]  += src_total
+
+                  street_ped_m[st_tgt]    += tgt_ped
+                  street_cyc_nf_m[st_tgt] += tgt_cyc
+                  street_total_m[st_tgt]  += tgt_total
 
           routing_time = time.time() - t_route
           avg_distance = total_routed_distance / routed if routed > 0 else 0
@@ -428,6 +499,7 @@ jobs:
               "routing_time_s": round(routing_time, 1),
               "min_dist_m": MIN_DIST_M,
               "max_dist_m": MAX_DIST_M,
+              "walk_score_radius_m": WALK_RADIUS,
           }
           with open("stats.json", "w") as f:
               json.dump(stats, f, indent=2)
@@ -472,25 +544,60 @@ jobs:
           n_fl = save_gdf(rows_flow,            fb_edge, "EPSG:31370", "flow_edges.geojson")
           print(f"  Forced road: {n_fr} | Forced cycleway: {n_fc} | Flow edges: {n_fl}")
 
+          # ── 8b. Walkability scores with sidewalk penalty ─────────────────────
+          print("Computing walkability scores (first/last km + sidewalk penalty)...")
           addr_wgs = addr_gdf.to_crs("EPSG:4326")
           rows_score = []
+          pen_stats = defaultdict(int)
+
           for street, total_m in street_total_m.items():
               if total_m < 1.0: continue
               ped_m = street_ped_m.get(street, 0.0)
               cyc_m = street_cyc_nf_m.get(street, 0.0)
-              score = round(ped_m / total_m, 3)
-              pts   = addr_wgs[addr_wgs["addr:street"] == street].geometry
+
+              # Base score from first/last km only
+              base_score = ped_m / total_m
+
+              # Sidewalk penalty based on street's own road edges
+              sw_status = street_sidewalk_status.get(street, "unknown")
+              if sw_status == "both":
+                  penalty = 1.0
+              elif sw_status == "partial":
+                  penalty = PEN_PARTIAL
+              elif sw_status == "none":
+                  penalty = PEN_NONE
+              else:
+                  # "unknown" = no sidewalk tag on road edges of this street
+                  # If no road edges at all (pure ped street), no penalty
+                  if street not in street_sidewalk_status:
+                      penalty = 1.0   # street has no road edges → probably all ped
+                  else:
+                      penalty = PEN_UNKNOWN
+
+              score = round(min(base_score * penalty, 1.0), 3)
+              pen_stats[sw_status] += 1
+
+              pts = addr_wgs[addr_wgs["addr:street"] == street].geometry
               if pts.empty: continue
               centroid = pts.union_all().centroid
               rows_score.append({
-                  "geometry": centroid, "street": street, "walkability": score,
-                  "ped_meters": round(ped_m, 0), "cycleway_meters": round(cyc_m, 0),
+                  "geometry": centroid, "street": street,
+                  "walkability": score,
+                  "walkability_raw": round(base_score, 3),
+                  "sidewalk": sw_status,
+                  "ped_meters": round(ped_m, 0),
+                  "cycleway_meters": round(cyc_m, 0),
                   "total_meters": round(total_m, 0),
               })
 
-          fb_score = {"geometry": None, "street": "", "walkability": 0.0, "ped_meters": 0.0, "cycleway_meters": 0.0, "total_meters": 0.0}
+          fb_score = {"geometry": None, "street": "", "walkability": 0.0,
+                      "walkability_raw": 0.0, "sidewalk": "",
+                      "ped_meters": 0.0, "cycleway_meters": 0.0, "total_meters": 0.0}
           n_sc = save_gdf(rows_score, fb_score, "EPSG:4326", "street_scores.geojson")
           print(f"  Street scores: {n_sc}")
+          print(f"  Sidewalk penalties applied — both: {pen_stats['both']} | "
+                f"partial: {pen_stats['partial']} | none: {pen_stats['none']} | "
+                f"unknown: {pen_stats['unknown']}")
           print(f"Total time: {time.time()-t0:.1f}s")
           EOF
 
