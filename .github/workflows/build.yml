@@ -612,8 +612,9 @@ jobs:
               lng, lat = transformer.transform(x_proj, y_proj)
               node_coords_wgs.append([round(lat, 6), round(lng, 6)])
 
-          # Highway type lookup
-          hw_types_sorted = sorted(set(edge_highways))
+          # Highway type lookup (force str – some edges have NaN highway)
+          edge_highways_str = [str(h) if isinstance(h, str) else "unclassified" for h in edge_highways]
+          hw_types_sorted = sorted(set(edge_highways_str))
           hw_type_to_idx  = {h: i for i, h in enumerate(hw_types_sorted)}
 
           # Edge data: [src, tgt, weight, length_m, hw_idx, surface_cat, [[lat,lng],...]]
@@ -623,7 +624,7 @@ jobs:
               src_i, tgt_i = edge_tuples[eid]
               w   = round(edge_weights[eid], 1)
               lm  = round(edge_lengths[eid], 1)
-              hw  = edge_highways[eid]
+              hw  = edge_highways_str[eid]
               hw_i = hw_type_to_idx.get(hw, 0)
               cnf  = bool(cyc_nf_arr[eid])
               is_ped = (hw in PED_TYPES) or (hw == "cycleway" and not cnf)
