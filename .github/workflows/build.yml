@@ -598,6 +598,61 @@ jobs:
           print(f"  Sidewalk penalties applied — both: {pen_stats['both']} | "
                 f"partial: {pen_stats['partial']} | none: {pen_stats['none']} | "
                 f"unknown: {pen_stats['unknown']}")
+
+          # ── 9. Export routing graph for client-side navigation ───────────────
+          print("Exporting routing graph for client-side navigation...")
+          from pyproj import Transformer
+          transformer = Transformer.from_crs("EPSG:31370", "EPSG:4326", always_xy=True)
+
+          # Node coordinates in WGS84: [[lat, lng], ...]
+          node_coords_wgs = []
+          for nid in node_list:
+              x_proj = float(nodes_gdf.loc[nid, "x"])
+              y_proj = float(nodes_gdf.loc[nid, "y"])
+              lng, lat = transformer.transform(x_proj, y_proj)
+              node_coords_wgs.append([round(lat, 6), round(lng, 6)])
+
+          # Highway type lookup
+          hw_types_sorted = sorted(set(edge_highways))
+          hw_type_to_idx  = {h: i for i, h in enumerate(hw_types_sorted)}
+
+          # Edge data: [src, tgt, weight, length_m, hw_idx, surface_cat, [[lat,lng],...]]
+          #   surface_cat: 0=pedestrian, 1=road, 2=cycleway_no_foot
+          edges_export = []
+          for eid in range(g.ecount()):
+              src_i, tgt_i = edge_tuples[eid]
+              w   = round(edge_weights[eid], 1)
+              lm  = round(edge_lengths[eid], 1)
+              hw  = edge_highways[eid]
+              hw_i = hw_type_to_idx.get(hw, 0)
+              cnf  = bool(cyc_nf_arr[eid])
+              is_ped = (hw in PED_TYPES) or (hw == "cycleway" and not cnf)
+              sc = 0 if is_ped else (2 if cnf else 1)
+
+              # Edge geometry → WGS84
+              geom = edge_geoms[eid]
+              if geom is not None and not geom.is_empty:
+                  coords = []
+                  for gx, gy in geom.coords:
+                      glng, glat = transformer.transform(gx, gy)
+                      coords.append([round(glat, 6), round(glng, 6)])
+              else:
+                  coords = [node_coords_wgs[src_i], node_coords_wgs[tgt_i]]
+
+              edges_export.append([src_i, tgt_i, w, lm, hw_i, sc, coords])
+
+          graph_data = {
+              "hw": hw_types_sorted,
+              "n": node_coords_wgs,
+              "e": edges_export,
+          }
+          with open("graph.json", "w") as f:
+              json.dump(graph_data, f, separators=(',', ':'))
+
+          sz_mb = os.path.getsize("graph.json") / (1024 * 1024)
+          print(f"  Graph exported: {len(node_coords_wgs)} nodes, {len(edges_export)} edges")
+          print(f"  graph.json size: {sz_mb:.1f} MB")
+
           print(f"Total time: {time.time()-t0:.1f}s")
           EOF
 
@@ -605,7 +660,7 @@ jobs:
         if: always()
         run: |
           echo "=== Files in workspace ==="
-          ls -lh *.geojson stats.json 2>/dev/null || echo "No files found"
+          ls -lh *.geojson stats.json graph.json 2>/dev/null || echo "No files found"
 
       - name: Upload GeoJSON artifacts
         if: always()
@@ -620,6 +675,7 @@ jobs:
             highways.geojson
             addresses.geojson
             stats.json
+            graph.json
           retention-days: 30
           if-no-files-found: warn
 
@@ -646,7 +702,7 @@ jobs:
         run: |
           mv pedestrian.pmtiles pedestrian.pmtiles.gz
           mkdir -p _site
-          cp index.html style.json state.txt stats.json pedestrian.pmtiles.gz _site/
+          cp index.html style.json state.txt stats.json graph.json pedestrian.pmtiles.gz _site/
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
