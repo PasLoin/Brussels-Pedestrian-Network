@@ -25,17 +25,64 @@
     #routing-stats { font-size: 10px; color: #777; margin-top: 4px; line-height: 1.5; }
     #routing-stats span { font-weight: 600; color: #444; }
 
-    #edit-btn {
+    .header-btn {
       display: flex; align-items: center; gap: 6px; margin-top: 10px;
       width: 100%; padding: 7px 10px; border: none; border-radius: 7px;
       font-size: 12px; font-weight: 600; cursor: pointer; text-decoration: none;
       transition: background 0.15s, opacity 0.15s, transform 0.1s;
-      background: #e74c3c; color: #fff;
     }
-    #edit-btn:hover:not(.disabled) { background: #c0392b; transform: translateY(-1px); }
-    #edit-btn.disabled { background: #ddd; color: #aaa; cursor: not-allowed; pointer-events: none; }
-    #edit-btn svg { flex-shrink: 0; }
+    .header-btn:hover:not(.disabled) { transform: translateY(-1px); }
+    .header-btn.disabled { background: #ddd !important; color: #aaa !important; cursor: not-allowed; pointer-events: none; }
+    .header-btn svg { flex-shrink: 0; }
+
+    #edit-btn { background: #e74c3c; color: #fff; }
+    #edit-btn:hover:not(.disabled) { background: #c0392b; }
     #edit-hint { font-size: 10px; color: #aaa; margin-top: 4px; text-align: center; min-height: 14px; }
+
+    #nav-btn { background: #2563eb; color: #fff; }
+    #nav-btn:hover:not(.disabled) { background: #1d4ed8; }
+    #nav-btn.active { background: #16a34a; }
+    #nav-btn.active:hover { background: #15803d; }
+    #nav-btn.loading { background: #9ca3af; pointer-events: none; }
+
+    #nav-hint { font-size: 10px; color: #aaa; margin-top: 4px; text-align: center; min-height: 14px; }
+
+    /* ── Route stats panel ─────────────────────────────────────────────── */
+    #route-panel {
+      position: absolute; bottom: 28px; right: 12px; z-index: 10;
+      background: rgba(255,255,255,0.96); border-radius: 10px;
+      padding: 14px 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+      min-width: 230px; max-width: 280px;
+      display: none;
+    }
+    #route-panel.visible { display: block; }
+    #route-panel h3 { font-size: 13px; font-weight: 700; color: #111; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+    .route-summary { font-size: 20px; font-weight: 800; color: #111; margin-bottom: 2px; }
+    .route-time { font-size: 12px; color: #666; margin-bottom: 10px; }
+
+    .route-bar-container { margin-bottom: 10px; }
+    .route-bar {
+      height: 10px; border-radius: 5px; overflow: hidden; display: flex;
+      background: #e5e7eb;
+    }
+    .route-bar-seg { height: 100%; transition: width 0.3s; }
+    .route-bar-ped { background: #22c55e; }
+    .route-bar-road { background: #ef4444; }
+    .route-bar-cyc { background: #7c3aed; }
+
+    .route-breakdown { font-size: 11px; line-height: 1.8; }
+    .route-row { display: flex; align-items: center; gap: 6px; }
+    .route-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .route-row .rlabel { color: #666; flex: 1; }
+    .route-row .rvalue { font-weight: 600; color: #333; text-align: right; min-width: 50px; }
+    .route-row .rpct { font-weight: 700; color: #111; text-align: right; min-width: 38px; }
+
+    #route-clear {
+      margin-top: 10px; width: 100%; padding: 6px; border: 1px solid #ddd;
+      border-radius: 6px; background: #fff; color: #666; font-size: 11px;
+      font-weight: 600; cursor: pointer; transition: all 0.15s;
+    }
+    #route-clear:hover { background: #f3f4f6; border-color: #bbb; color: #333; }
 
     #legend {
       position: absolute; bottom: 28px; left: 12px; z-index: 10;
@@ -75,6 +122,9 @@
     .popup-row { display: flex; justify-content: space-between; gap: 12px; }
     .popup-row .label { color: #aaa; }
     .popup-row .value { color: #fff; font-weight: 600; }
+
+    /* ── Nav mode cursor ───────────────────────────────────────────────── */
+    .nav-mode-cursor .maplibregl-canvas { cursor: crosshair !important; }
   </style>
 </head>
 <body>
@@ -86,7 +136,16 @@
   <div class="subtitle">Analyse des flux piétons (OSM)</div>
   <div id="last-update">Chargement…</div>
   <div id="routing-stats"></div>
-  <a id="edit-btn" class="disabled" href="#" target="_blank" rel="noopener">
+
+  <button id="nav-btn" class="header-btn loading" onclick="toggleNavMode()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="3 11 22 2 13 21 11 13 3 11"/>
+    </svg>
+    <span id="nav-btn-label">Chargement graphe…</span>
+  </button>
+  <div id="nav-hint"></div>
+
+  <a id="edit-btn" class="header-btn disabled" href="#" target="_blank" rel="noopener">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
       <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
@@ -96,10 +155,328 @@
   <div id="edit-hint">Zoomez au niveau 16+ pour éditer</div>
 </div>
 
+<!-- Route results panel -->
+<div id="route-panel">
+  <h3>🧭 Itinéraire</h3>
+  <div class="route-summary" id="route-dist"></div>
+  <div class="route-time" id="route-time"></div>
+  <div class="route-bar-container">
+    <div class="route-bar">
+      <div class="route-bar-seg route-bar-ped" id="bar-ped"></div>
+      <div class="route-bar-seg route-bar-road" id="bar-road"></div>
+      <div class="route-bar-seg route-bar-cyc" id="bar-cyc"></div>
+    </div>
+  </div>
+  <div class="route-breakdown">
+    <div class="route-row">
+      <div class="route-dot" style="background:#22c55e"></div>
+      <span class="rlabel">Piéton</span>
+      <span class="rvalue" id="stat-ped-m"></span>
+      <span class="rpct" id="stat-ped-pct"></span>
+    </div>
+    <div class="route-row">
+      <div class="route-dot" style="background:#ef4444"></div>
+      <span class="rlabel">Route</span>
+      <span class="rvalue" id="stat-road-m"></span>
+      <span class="rpct" id="stat-road-pct"></span>
+    </div>
+    <div class="route-row">
+      <div class="route-dot" style="background:#7c3aed"></div>
+      <span class="rlabel">Cycleway (no foot)</span>
+      <span class="rvalue" id="stat-cyc-m"></span>
+      <span class="rpct" id="stat-cyc-pct"></span>
+    </div>
+  </div>
+  <button id="route-clear" onclick="clearRoute()">✕ Effacer l'itinéraire</button>
+</div>
+
 <div id="legend"><h2>Légende</h2></div>
 <div id="zoom-badge">z<span id="zoom-val">—</span></div>
 
 <script>
+// ══════════════════════════════════════════════════════════════════════════════
+//  CLIENT-SIDE DIJKSTRA ROUTING
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ── Min-heap (binary heap) ───────────────────────────────────────────────────
+class MinHeap {
+  constructor() { this.d = []; }
+  get size() { return this.d.length; }
+  push(item) { this.d.push(item); this._up(this.d.length - 1); }
+  pop() {
+    const top = this.d[0], last = this.d.pop();
+    if (this.d.length > 0) { this.d[0] = last; this._down(0); }
+    return top;
+  }
+  _up(i) {
+    const d = this.d;
+    while (i > 0) {
+      const p = (i - 1) >> 1;
+      if (d[p][0] <= d[i][0]) break;
+      [d[p], d[i]] = [d[i], d[p]]; i = p;
+    }
+  }
+  _down(i) {
+    const d = this.d, n = d.length;
+    while (true) {
+      let m = i, l = 2*i+1, r = 2*i+2;
+      if (l < n && d[l][0] < d[m][0]) m = l;
+      if (r < n && d[r][0] < d[m][0]) m = r;
+      if (m === i) break;
+      [d[m], d[i]] = [d[i], d[m]]; i = m;
+    }
+  }
+}
+
+// ── Graph state ──────────────────────────────────────────────────────────────
+let graphData = null;   // { hw, n, e }
+let adjList   = null;   // adjList[nodeIdx] = [[neighborIdx, edgeIdx], ...]
+let graphReady = false;
+
+// ── Load graph.json ──────────────────────────────────────────────────────────
+fetch("./graph.json")
+  .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+  .then(data => {
+    graphData = data;
+    // Build adjacency list
+    const nNodes = data.n.length;
+    adjList = new Array(nNodes);
+    for (let i = 0; i < nNodes; i++) adjList[i] = [];
+    data.e.forEach((e, idx) => {
+      // e = [src, tgt, weight, length, hwIdx, surfaceCat, coords]
+      adjList[e[0]].push([e[1], idx]);
+    });
+    graphReady = true;
+    const btn = document.getElementById("nav-btn");
+    btn.classList.remove("loading");
+    document.getElementById("nav-btn-label").textContent = "Navigation";
+    console.log(`Graph loaded: ${data.n.length} nodes, ${data.e.length} edges`);
+  })
+  .catch(err => {
+    console.warn("graph.json not available:", err);
+    document.getElementById("nav-btn-label").textContent = "Navigation (indisponible)";
+    document.getElementById("nav-btn").classList.add("disabled");
+  });
+
+// ── Nearest node (brute force – fine for <100k nodes) ────────────────────────
+function nearestNode(lat, lng) {
+  const nodes = graphData.n;
+  let minD = Infinity, minI = 0;
+  for (let i = 0; i < nodes.length; i++) {
+    const dlat = nodes[i][0] - lat, dlng = nodes[i][1] - lng;
+    const d = dlat * dlat + dlng * dlng;
+    if (d < minD) { minD = d; minI = i; }
+  }
+  return minI;
+}
+
+// ── Dijkstra shortest path ───────────────────────────────────────────────────
+function dijkstra(src, tgt) {
+  const n = graphData.n.length;
+  const dist = new Float64Array(n).fill(Infinity);
+  const prev = new Int32Array(n).fill(-1);
+  const prevEdge = new Int32Array(n).fill(-1);
+  dist[src] = 0;
+
+  const heap = new MinHeap();
+  heap.push([0, src]);
+
+  while (heap.size > 0) {
+    const [d, u] = heap.pop();
+    if (d > dist[u]) continue;
+    if (u === tgt) break;
+    const neighbors = adjList[u];
+    for (let i = 0; i < neighbors.length; i++) {
+      const [v, eidx] = neighbors[i];
+      const nd = d + graphData.e[eidx][2]; // weight
+      if (nd < dist[v]) {
+        dist[v] = nd;
+        prev[v] = u;
+        prevEdge[v] = eidx;
+        heap.push([nd, v]);
+      }
+    }
+  }
+
+  if (dist[tgt] === Infinity) return null;
+
+  // Reconstruct edge path
+  const path = [];
+  let cur = tgt;
+  while (cur !== src) {
+    path.push(prevEdge[cur]);
+    cur = prev[cur];
+  }
+  path.reverse();
+  return path;
+}
+
+// ── Build route GeoJSON + compute stats ──────────────────────────────────────
+function buildRoute(edgePath) {
+  let totalM = 0, pedM = 0, roadM = 0, cycM = 0;
+  const features = [];
+
+  for (const eidx of edgePath) {
+    const e = graphData.e[eidx];
+    // e = [src, tgt, weight, length, hwIdx, surfaceCat, coords]
+    const len = e[3], sc = e[5], coords = e[6];
+    const hw = graphData.hw[e[4]];
+    totalM += len;
+    if (sc === 0) pedM += len;
+    else if (sc === 1) roadM += len;
+    else cycM += len;
+
+    // Color per surface type
+    const color = sc === 0 ? "#22c55e" : sc === 2 ? "#7c3aed" : "#ef4444";
+    features.push({
+      type: "Feature",
+      properties: { surface_cat: sc, highway: hw, length: len, color },
+      geometry: {
+        type: "LineString",
+        // coords are [lat, lng] → GeoJSON needs [lng, lat]
+        coordinates: coords.map(c => [c[1], c[0]])
+      }
+    });
+  }
+
+  const geojson = { type: "FeatureCollection", features };
+  const pedPct  = totalM > 0 ? pedM / totalM * 100 : 0;
+  const roadPct = totalM > 0 ? roadM / totalM * 100 : 0;
+  const cycPct  = totalM > 0 ? cycM / totalM * 100 : 0;
+  const walkMin = Math.round(totalM / 80); // ~4.8 km/h
+
+  return {
+    geojson, totalM: Math.round(totalM),
+    pedM: Math.round(pedM), roadM: Math.round(roadM), cycM: Math.round(cycM),
+    pedPct, roadPct, cycPct, walkMin
+  };
+}
+
+// ── Navigation UI state ──────────────────────────────────────────────────────
+let navMode = false;
+let navStep = 0;   // 0 = waiting for start, 1 = waiting for end, 2 = route shown
+let startMarker = null, endMarker = null;
+let startNode = -1, endNode = -1;
+let mapRef = null;  // set after map init
+
+function toggleNavMode() {
+  if (!graphReady) return;
+  navMode = !navMode;
+  const btn = document.getElementById("nav-btn");
+  const hint = document.getElementById("nav-hint");
+
+  if (navMode) {
+    btn.classList.add("active");
+    document.getElementById("nav-btn-label").textContent = "Navigation (actif)";
+    hint.textContent = "Cliquez sur la carte pour le départ";
+    navStep = 0;
+    document.getElementById("map").classList.add("nav-mode-cursor");
+  } else {
+    btn.classList.remove("active");
+    document.getElementById("nav-btn-label").textContent = "Navigation";
+    hint.textContent = "";
+    clearRoute();
+    document.getElementById("map").classList.remove("nav-mode-cursor");
+  }
+}
+
+function clearRoute() {
+  navStep = 0;
+  if (startMarker) { startMarker.remove(); startMarker = null; }
+  if (endMarker)   { endMarker.remove();   endMarker = null; }
+  document.getElementById("route-panel").classList.remove("visible");
+
+  if (mapRef) {
+    const src = mapRef.getSource("nav-route");
+    if (src) src.setData({ type: "FeatureCollection", features: [] });
+  }
+
+  if (navMode) {
+    document.getElementById("nav-hint").textContent = "Cliquez sur la carte pour le départ";
+  }
+}
+
+function handleNavClick(e) {
+  if (!navMode || !graphReady) return;
+  const { lat, lng } = e.lngLat;
+
+  if (navStep === 0) {
+    // Set start
+    startNode = nearestNode(lat, lng);
+    const sn = graphData.n[startNode];
+    if (startMarker) startMarker.remove();
+    startMarker = new maplibregl.Marker({ color: "#22c55e" })
+      .setLngLat([sn[1], sn[0]])
+      .addTo(mapRef);
+    navStep = 1;
+    document.getElementById("nav-hint").textContent = "Cliquez pour la destination";
+
+  } else if (navStep === 1) {
+    // Set end + route
+    endNode = nearestNode(lat, lng);
+    const en = graphData.n[endNode];
+    if (endMarker) endMarker.remove();
+    endMarker = new maplibregl.Marker({ color: "#ef4444" })
+      .setLngLat([en[1], en[0]])
+      .addTo(mapRef);
+
+    document.getElementById("nav-hint").textContent = "Calcul…";
+
+    // Run Dijkstra (defer to let UI update)
+    requestAnimationFrame(() => {
+      const t0 = performance.now();
+      const path = dijkstra(startNode, endNode);
+      const dt = (performance.now() - t0).toFixed(0);
+
+      if (!path || path.length === 0) {
+        document.getElementById("nav-hint").textContent = "Aucun itinéraire trouvé";
+        navStep = 2;
+        return;
+      }
+
+      const route = buildRoute(path);
+      console.log(`Route: ${route.totalM}m, ${path.length} edges, ${dt}ms`);
+
+      // Draw route on map
+      const src = mapRef.getSource("nav-route");
+      if (src) src.setData(route.geojson);
+
+      // Show stats panel
+      document.getElementById("route-dist").textContent = route.totalM >= 1000
+        ? `${(route.totalM / 1000).toFixed(2)} km`
+        : `${route.totalM} m`;
+      document.getElementById("route-time").textContent = `≈ ${route.walkMin} min à pied`;
+
+      document.getElementById("bar-ped").style.width  = route.pedPct + "%";
+      document.getElementById("bar-road").style.width  = route.roadPct + "%";
+      document.getElementById("bar-cyc").style.width   = route.cycPct + "%";
+
+      document.getElementById("stat-ped-m").textContent  = `${route.pedM} m`;
+      document.getElementById("stat-road-m").textContent = `${route.roadM} m`;
+      document.getElementById("stat-cyc-m").textContent  = `${route.cycM} m`;
+
+      document.getElementById("stat-ped-pct").textContent  = `${route.pedPct.toFixed(0)}%`;
+      document.getElementById("stat-road-pct").textContent = `${route.roadPct.toFixed(0)}%`;
+      document.getElementById("stat-cyc-pct").textContent  = `${route.cycPct.toFixed(0)}%`;
+
+      document.getElementById("route-panel").classList.add("visible");
+      document.getElementById("nav-hint").textContent = `Calculé en ${dt} ms`;
+      navStep = 2;
+    });
+
+  } else {
+    // navStep === 2: clear and restart
+    clearRoute();
+    // Re-trigger as new start click
+    handleNavClick(e);
+  }
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  ORIGINAL MAP CODE
+// ══════════════════════════════════════════════════════════════════════════════
+
 // ── State.txt timestamp ──────────────────────────────────────────────────────
 fetch("./state.txt")
   .then(r => r.text())
@@ -361,6 +738,7 @@ function initMap(style) {
     center: [4.3517, 50.8503], zoom: 12,
     attributionControl: false
   });
+  mapRef = map;
 
   map.addControl(
     new maplibregl.AttributionControl({
@@ -373,6 +751,37 @@ function initMap(style) {
   map.on("load", () => {
     map.addSource("pedestrian", { type: "vector", url: `pmtiles://${PMTILES_URL}` });
     PEDESTRIAN_LAYERS.forEach(layer => map.addLayer(layer));
+
+    // ── Navigation route source + layers ─────────────────────────────────
+    map.addSource("nav-route", {
+      type: "geojson",
+      data: { type: "FeatureCollection", features: [] }
+    });
+
+    // Route casing (dark outline for contrast)
+    map.addLayer({
+      id: "nav-route-casing", type: "line", source: "nav-route",
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: {
+        "line-color": "#000",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 10, 6, 16, 14],
+        "line-opacity": 0.4
+      }
+    });
+
+    // Route colored by surface type
+    map.addLayer({
+      id: "nav-route-line", type: "line", source: "nav-route",
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: {
+        "line-color": ["get", "color"],
+        "line-width": ["interpolate", ["linear"], ["zoom"], 10, 4, 16, 10],
+        "line-opacity": 0.92
+      }
+    });
+
+    // ── Navigation click handler ─────────────────────────────────────────
+    map.on("click", handleNavClick);
 
     // ── Légende ──────────────────────────────────────────────────────────
     const legendEl = document.getElementById("legend");
@@ -408,17 +817,20 @@ function initMap(style) {
     const allHoverIds = HOVER_LAYERS.flatMap(h => h.ids);
 
     map.on("mousemove", (e) => {
+      // Skip hover popups during active navigation
+      if (navMode && navStep < 2) { popup.remove(); return; }
+
       // Query only visible layers among hover-enabled ones
       const visibleIds = allHoverIds.filter(id => {
         try { return map.getLayoutProperty(id, "visibility") !== "none"; }
         catch { return false; }
       });
-      if (!visibleIds.length) { popup.remove(); map.getCanvas().style.cursor = ""; return; }
+      if (!visibleIds.length) { popup.remove(); map.getCanvas().style.cursor = navMode ? "" : ""; return; }
 
       const features = map.queryRenderedFeatures(e.point, { layers: visibleIds });
-      if (!features.length) { popup.remove(); map.getCanvas().style.cursor = ""; return; }
+      if (!features.length) { popup.remove(); if (!navMode) map.getCanvas().style.cursor = ""; return; }
 
-      map.getCanvas().style.cursor = "pointer";
+      if (!navMode) map.getCanvas().style.cursor = "pointer";
       const f = features[0];
       const hoverConf = HOVER_LAYERS.find(h => h.ids.includes(f.layer.id));
       if (!hoverConf) return;
@@ -426,7 +838,7 @@ function initMap(style) {
       popup.setLngLat(e.lngLat).setHTML(hoverConf.format(f.properties)).addTo(map);
     });
 
-    map.on("mouseleave", allHoverIds, () => { popup.remove(); map.getCanvas().style.cursor = ""; });
+    map.on("mouseleave", allHoverIds, () => { popup.remove(); if (!navMode) map.getCanvas().style.cursor = ""; });
   });
 
   map.on("moveend", () => {
