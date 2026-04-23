@@ -48,6 +48,7 @@ class GraphBundle(NamedTuple):
     edge_highways: list[str]
     edge_geoms: list                 # Shapely geometries (projected)
     edge_cycleway_nf: list[bool]     # True if cycleway without foot access
+    edge_foot_tags: list[str]        # normalised foot tag (e.g. "yes", "designated", "")
     edge_names: list[str]            # street name on each edge
     edge_sidewalks: list[str]        # sidewalk tag on each edge
     street_sidewalk_status: dict[str, str]   # street → both|partial|none|unknown
@@ -105,6 +106,7 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
     edge_highways: list[str] = []
     edge_geoms: list = []
     edge_cycleway_nf: list[bool] = []
+    edge_foot_tags: list[str] = []
     edge_names: list[str] = []
     edge_sidewalks: list[str] = []
 
@@ -141,6 +143,7 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
         edge_highways.append(hw)
         edge_geoms.append(row.geometry)
         edge_cycleway_nf.append(is_cycleway_no_foot)
+        edge_foot_tags.append(foot_tag)
         edge_names.append(_first_str(row.get("name", "")))
         edge_sidewalks.append(_first_str(row.get("sidewalk", "")).lower())
 
@@ -191,6 +194,7 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
         edge_highways=edge_highways,
         edge_geoms=edge_geoms,
         edge_cycleway_nf=edge_cycleway_nf,
+        edge_foot_tags=edge_foot_tags,
         edge_names=edge_names,
         edge_sidewalks=edge_sidewalks,
         street_sidewalk_status=street_sidewalk_status,
