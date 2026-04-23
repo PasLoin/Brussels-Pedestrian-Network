@@ -312,6 +312,7 @@ function dijkstra(src, tgt) {
 }
 
 // ── Build route GeoJSON + compute stats ──────────────────────────────────────
+// Surface categories: 0=pedestrian, 1=road, 2=cycleway_no_foot, 3=cycleway_foot_yes
 function buildRoute(edgePath) {
   let totalM = 0, pedM = 0, roadM = 0, cycM = 0;
   const features = [];
@@ -324,10 +325,11 @@ function buildRoute(edgePath) {
     totalM += len;
     if (sc === 0) pedM += len;
     else if (sc === 1) roadM += len;
-    else cycM += len;
+    else if (sc === 2) cycM += len;
+    else pedM += len; // cycleway_foot_yes (sc=3) counts as walkable
 
     // Color per surface type
-    const color = sc === 0 ? "#22c55e" : sc === 2 ? "#7c3aed" : "#ef4444";
+    const color = sc === 0 ? "#22c55e" : sc === 3 ? "#2563eb" : sc === 2 ? "#7c3aed" : "#ef4444";
     features.push({
       type: "Feature",
       properties: { surface_cat: sc, highway: hw, length: len, color },
@@ -624,10 +626,13 @@ const PEDESTRIAN_LAYERS = [
   },
   {
     id: "flow-cycleway", type: "line", source: "pedestrian", "source-layer": "flow_edges",
-    filter: ["==", ["get", "surface_cat"], "cycleway_no_foot"],
+    filter: ["in", ["get", "surface_cat"], ["literal", ["cycleway_no_foot", "cycleway_foot_yes"]]],
     layout: { "line-cap": "round", "line-join": "round", visibility: "visible" },
     paint: {
-      "line-color": ["interpolate", ["linear"], ["get", "flow_pct"], 0, "#ede9fe", 50, "#7c3aed", 100, "#3b0764"],
+      "line-color": ["match", ["get", "surface_cat"],
+        "cycleway_foot_yes", ["interpolate", ["linear"], ["get", "flow_pct"], 0, "#bfdbfe", 50, "#2563eb", 100, "#1e3a5f"],
+        ["interpolate", ["linear"], ["get", "flow_pct"], 0, "#ede9fe", 50, "#7c3aed", 100, "#3b0764"]
+      ],
       "line-width": ["interpolate", ["linear"], ["zoom"], 10, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 0.5, 100, 3], 16, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 1, 100, 8]],
       "line-opacity": 0.85
     }
@@ -805,7 +810,7 @@ function initMap(style) {
     legendEl.appendChild(makeItem({ layerId: "forced-segments", label: "Forcé sur route", color: "#f59e0b", color2: "#991b1b" }));
     legendEl.appendChild(makeItem({ layerId: "forced-cycleway", label: "Forcé sur piste cyclable", color: "#c4b5fd", color2: "#3b0764" }));
     legendEl.appendChild(makeItem({ layerId: "flow-ped", label: "Flux piéton", color: "#bbf7d0", color2: "#14532d" }));
-    legendEl.appendChild(makeItem({ layerId: "flow-cycleway", label: "Flux cycleway (no foot)", color: "#ede9fe", color2: "#3b0764" }));
+    legendEl.appendChild(makeItem({ layerId: "flow-cycleway", label: "Flux cycleway", color: "#bfdbfe", color2: "#3b0764" }));
     legendEl.appendChild(makeItem({ layerId: "flow-road", label: "Flux sur route", color: "#fed7aa", color2: "#7f1d1d" }));
     legendEl.appendChild(makeItem({ layerId: "street-scores", label: "Score marchabilité", color: "#ef4444", color2: "#22c55e", swatchType: "dot" }));
 
