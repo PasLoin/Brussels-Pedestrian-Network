@@ -100,6 +100,7 @@ def main() -> None:
         result.flow_arr,
         gb.edge_highways, gb.edge_geoms,
         gb.edge_lengths, gb.edge_cycleway_nf,
+        gb.edge_foot_tags,
         gb.graph.ecount(),
     )
 
@@ -113,6 +114,7 @@ def main() -> None:
         gb.node_list, gb.nodes_gdf,
         gb.edge_tuples, gb.edge_weights, gb.edge_lengths,
         gb.edge_highways, gb.edge_geoms, gb.edge_cycleway_nf,
+        gb.edge_foot_tags,
     )
 
     print(f"Total time: {time.time() - t0:.1f}s")
