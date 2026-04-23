@@ -48,6 +48,7 @@ class GraphBundle(NamedTuple):
     edge_highways: list[str]
     edge_geoms: list                 # Shapely geometries (projected)
     edge_cycleway_nf: list[bool]     # True if cycleway without foot access
+    edge_foot_tags: list[str]        # normalised foot tag (e.g. "yes", "designated", "")
     edge_names: list[str]            # street name on each edge
     edge_sidewalks: list[str]        # sidewalk tag on each edge
     street_sidewalk_status: dict[str, str]   # street → both|partial|none|unknown
@@ -74,10 +75,28 @@ def _classify_sidewalk(tags: list[str]) -> str:
 
 
 def _first_str(val) -> str:
-    """Normalise a value that may be a list (osmnx quirk) to a string."""
+    """Normalise a value that may be a list or NaN (osmnx quirks) to a string.
+
+    After graph simplification, OSMnx can produce:
+    - ``NaN`` for tags that existed on some but not all merged segments
+    - lists like ``["yes", NaN]`` when merged segments had different values
+    This function extracts the first meaningful string value.
+    """
+    if val is None:
+        return ""
+    if isinstance(val, float) and np.isnan(val):
+        return ""
     if isinstance(val, list):
-        return str(val[0]) if val else ""
-    return str(val) if val else ""
+        for item in val:
+            if item is None:
+                continue
+            if isinstance(item, float) and np.isnan(item):
+                continue
+            s = str(item).strip()
+            if s:
+                return s
+        return ""
+    return str(val).strip() if val else ""
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -89,6 +108,17 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
 
     # ── 2. Load with OSMnx ────────────────────────────────────────────────
     print("Building osmnx graph (simplified)...")
+
+    # Ensure foot/sidewalk tags survive import + simplification.
+    # OSMnx only keeps tags listed in useful_tags_way; foot may be
+    # missing in some versions → add it explicitly.
+    _extra_tags = {"foot", "sidewalk", "segregated"}
+    if hasattr(ox, "settings"):
+        existing = set(getattr(ox.settings, "useful_tags_way", []))
+        if not _extra_tags.issubset(existing):
+            ox.settings.useful_tags_way = list(existing | _extra_tags)
+            print(f"  Added {_extra_tags - existing} to useful_tags_way")
+
     G = ox.graph_from_xml(osm_path, retain_all=True, simplify=True)
     G_proj = ox.project_graph(G, to_crs="EPSG:31370")
     nodes_gdf, edges_gdf = ox.graph_to_gdfs(G_proj)
@@ -105,6 +135,7 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
     edge_highways: list[str] = []
     edge_geoms: list = []
     edge_cycleway_nf: list[bool] = []
+    edge_foot_tags: list[str] = []
     edge_names: list[str] = []
     edge_sidewalks: list[str] = []
 
@@ -141,11 +172,17 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
         edge_highways.append(hw)
         edge_geoms.append(row.geometry)
         edge_cycleway_nf.append(is_cycleway_no_foot)
+        edge_foot_tags.append(foot_tag)
         edge_names.append(_first_str(row.get("name", "")))
         edge_sidewalks.append(_first_str(row.get("sidewalk", "")).lower())
 
     print(f"  Edges skipped — foot=no: {skipped_foot}, "
           f"access=no/private: {skipped_access}")
+
+    # Debug: cycleway classification stats
+    n_cyc_foot = sum(1 for h, c in zip(edge_highways, edge_cycleway_nf) if h == "cycleway" and not c)
+    n_cyc_nf   = sum(1 for h, c in zip(edge_highways, edge_cycleway_nf) if h == "cycleway" and c)
+    print(f"  Cycleways — foot=yes: {n_cyc_foot} | no foot: {n_cyc_nf}")
 
     g = ig.Graph(directed=True, n=len(node_list))
     g.vs["osmid"] = node_list
@@ -191,6 +228,7 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
         edge_highways=edge_highways,
         edge_geoms=edge_geoms,
         edge_cycleway_nf=edge_cycleway_nf,
+        edge_foot_tags=edge_foot_tags,
         edge_names=edge_names,
         edge_sidewalks=edge_sidewalks,
         street_sidewalk_status=street_sidewalk_status,
