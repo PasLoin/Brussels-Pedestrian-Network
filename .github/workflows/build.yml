@@ -64,7 +64,8 @@ env:
   MAX_OD_DISTANCE_KM: 6        # max straight-line distance (km)
   MAX_OD_PAIRS: 900000         # cap on total OD pairs generated
   TOP_RANK_PCT: 15             # top N% of flow edges flagged as "forced"
-  POINTS_PER_SIDE: 5           # addresses sampled per side of each street
+  POINTS_PER_SIDE: 5           # legacy fallback (used when OD_SAMPLE_INTERVAL_M=0)
+  OD_SAMPLE_INTERVAL_M: 100    # one OD point per N metres per side of street
 
   # ── Walkability score tuning ────────────────────────────────────────────
   WALK_SCORE_RADIUS_M: 1000    # only first/last N metres of each trip count
@@ -145,15 +146,18 @@ jobs:
 
       # ── Run the pedestrian routing pipeline ─────────────────────────────
       - name: Compute pedestrian routing flows
+        env:
+          PYTHONPATH: scripts
         run: python3 scripts/main.py
 
-      # ── Debug & artifacts ───────────────────────────────────────────────
+      # ── Debug ───────────────────────────────────────────────────────────
       - name: Debug snapping (Avenue de Messidor)
         if: always()
         env:
           PYTHONPATH: scripts
         run: python3 scripts/debug_snap.py "Avenue de Messidor - Messidorlaan"
-      
+
+      # ── Debug & artifacts ───────────────────────────────────────────────
       - name: List generated files (debug)
         if: always()
         run: |
