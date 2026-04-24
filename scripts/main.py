@@ -50,6 +50,7 @@ from export import (
     export_walkability_scores,
     save_stats,
 )
+from sidewalk_gap import detect_sidewalk_gaps
 
 
 def main() -> None:
@@ -112,6 +113,12 @@ def main() -> None:
     export_walkability_scores(
         result.street_ped_m, result.street_cyc_nf_m, result.street_total_m,
         gb.street_sidewalk_status,
+    )
+
+    # ── Step 8b: Detect sidewalk gaps ─────────────────────────────────────
+    detect_sidewalk_gaps(
+        gb.edge_tuples, gb.edge_highways,
+        gb.edge_geoms, gb.edge_names,
     )
 
     # ── Step 9: Export client-side routing graph ──────────────────────────
