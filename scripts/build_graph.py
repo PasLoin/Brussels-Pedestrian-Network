@@ -51,6 +51,8 @@ class GraphBundle(NamedTuple):
     edge_foot_tags: list[str]        # normalised foot tag (e.g. "yes", "designated", "")
     edge_names: list[str]            # street name on each edge
     edge_sidewalks: list[str]        # sidewalk tag on each edge
+    edge_sidewalk_left: list[str]    # sidewalk:left tag
+    edge_sidewalk_right: list[str]   # sidewalk:right tag
     street_sidewalk_status: dict[str, str]   # street → both|partial|none|unknown
 
 
@@ -112,7 +114,7 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
     # Ensure foot/sidewalk tags survive import + simplification.
     # OSMnx only keeps tags listed in useful_tags_way; foot may be
     # missing in some versions → add it explicitly.
-    _extra_tags = {"foot", "sidewalk", "segregated"}
+    _extra_tags = {"foot", "sidewalk", "sidewalk:left", "sidewalk:right", "segregated"}
     if hasattr(ox, "settings"):
         existing = set(getattr(ox.settings, "useful_tags_way", []))
         if not _extra_tags.issubset(existing):
@@ -138,6 +140,8 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
     edge_foot_tags: list[str] = []
     edge_names: list[str] = []
     edge_sidewalks: list[str] = []
+    edge_sidewalk_left: list[str] = []
+    edge_sidewalk_right: list[str] = []
 
     skipped_foot = skipped_access = 0
 
@@ -175,6 +179,8 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
         edge_foot_tags.append(foot_tag)
         edge_names.append(_first_str(row.get("name", "")))
         edge_sidewalks.append(_first_str(row.get("sidewalk", "")).lower())
+        edge_sidewalk_left.append(_first_str(row.get("sidewalk:left", "")).lower())
+        edge_sidewalk_right.append(_first_str(row.get("sidewalk:right", "")).lower())
 
     print(f"  Edges skipped — foot=no: {skipped_foot}, "
           f"access=no/private: {skipped_access}")
@@ -231,5 +237,7 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
         edge_foot_tags=edge_foot_tags,
         edge_names=edge_names,
         edge_sidewalks=edge_sidewalks,
+        edge_sidewalk_left=edge_sidewalk_left,
+        edge_sidewalk_right=edge_sidewalk_right,
         street_sidewalk_status=street_sidewalk_status,
     )
