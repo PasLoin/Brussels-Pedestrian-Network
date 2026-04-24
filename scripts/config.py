@@ -25,7 +25,13 @@ MAX_OD_PAIRS = int(os.environ.get("MAX_OD_PAIRS", 50_000))
 TOP_RANK_PCT = float(os.environ.get("TOP_RANK_PCT", 5))
 
 # How many evenly-spaced address points to sample per side of each street.
+# DEPRECATED: replaced by OD_SAMPLE_INTERVAL_M for geographic sampling.
 POINTS_PER_SIDE = int(os.environ.get("POINTS_PER_SIDE", 5))
+
+# Distance (metres) between sampled OD points along each side of a street.
+# One address is picked per bin per side.  Shorter interval = more points
+# on long streets.  Set to 0 to fall back to the legacy POINTS_PER_SIDE mode.
+OD_SAMPLE_INTERVAL_M = float(os.environ.get("OD_SAMPLE_INTERVAL_M", 100))
 
 
 # ─── Walkability score ───────────────────────────────────────────────────────
