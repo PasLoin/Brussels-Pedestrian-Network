@@ -56,7 +56,7 @@ env:
   OSM_STATE_URL: https://download.openstreetmap.fr/extracts/europe/belgium/brussels_capital_region.state.txt
 
   # ── Tippecanoe zoom levels ──────────────────────────────────────────────
-  MIN_ZOOM: 8
+  MIN_ZOOM: 9
   MAX_ZOOM: 19
 
   # ── Origin-Destination sampling ─────────────────────────────────────────
@@ -64,6 +64,7 @@ env:
   MAX_OD_DISTANCE_KM: 6        # max straight-line distance (km)
   MAX_OD_PAIRS: 900000         # cap on total OD pairs generated
   TOP_RANK_PCT: 15             # top N% of flow edges flagged as "forced"
+  MIN_FLOW_THRESHOLD: 5        # drop flow edges with fewer trips from PMTiles
   POINTS_PER_SIDE: 5           # legacy fallback (used when OD_SAMPLE_INTERVAL_M=0)
   OD_SAMPLE_INTERVAL_M: 100    # one OD point per N metres per side of street
 
@@ -116,7 +117,7 @@ jobs:
           jq '(.features[] | select(
             .properties.highway == "elevator" or
             .properties.amenity == "elevator"
-          )) |= . + {"tippecanoe": {"minzoom": 8}}' \
+          )) |= . + {"tippecanoe": {"minzoom": 9}}' \
             highways.geojson > highways_fixed.geojson
           mv highways_fixed.geojson highways.geojson
 
@@ -193,7 +194,6 @@ jobs:
             --extend-zooms-if-still-dropping \
             --drop-densest-as-needed \
             --named-layer=highways:highways.geojson \
-            --named-layer=addresses:addresses.geojson \
             --named-layer=flow_edges:flow_edges.geojson \
             --named-layer=forced_segments:forced_segments.geojson \
             --named-layer=forced_cycleway:forced_cycleway.geojson \
