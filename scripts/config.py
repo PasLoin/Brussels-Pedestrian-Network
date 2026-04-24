@@ -24,6 +24,10 @@ MAX_OD_PAIRS = int(os.environ.get("MAX_OD_PAIRS", 50_000))
 # Only the top N% of edges by flow count are flagged as "forced".
 TOP_RANK_PCT = float(os.environ.get("TOP_RANK_PCT", 5))
 
+# Edges with fewer trips than this are excluded from flow_edges output
+# to reduce PMTiles file size.  Does not affect forced_segments/cycleway.
+MIN_FLOW_THRESHOLD = int(os.environ.get("MIN_FLOW_THRESHOLD", 5))
+
 # How many evenly-spaced address points to sample per side of each street.
 # DEPRECATED: replaced by OD_SAMPLE_INTERVAL_M for geographic sampling.
 POINTS_PER_SIDE = int(os.environ.get("POINTS_PER_SIDE", 5))
