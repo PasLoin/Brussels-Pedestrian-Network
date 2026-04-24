@@ -124,13 +124,13 @@ jobs:
       - name: Filter address features
         run: |
           osmium tags-filter brussels.osm.pbf \
-            n/addr:housenumber \
+            nw/addr:housenumber \
             -o addresses_raw.osm.pbf --overwrite
 
       - name: Export addresses GeoJSON
         run: |
           osmium export addresses_raw.osm.pbf \
-            --geometry-types=point \
+            --geometry-types=point,polygon \
             -o addresses.geojson --overwrite
 
       # ── Extract routing features ────────────────────────────────────────
