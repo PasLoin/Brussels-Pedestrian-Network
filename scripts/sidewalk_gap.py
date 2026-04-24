@@ -11,8 +11,9 @@ search zones.  A footway is counted on a given side only if:
 Roads are **excluded** from the analysis if:
 
 - They are ``highway=service`` (driveways, parking aisles…).
-- They carry explicit ``sidewalk:left`` / ``sidewalk:right`` tags,
-  meaning the mapper has already documented the sidewalk situation.
+- They carry explicit ``sidewalk``, ``sidewalk:left``, ``sidewalk:right``,
+  or ``sidewalk:both`` tags (e.g. ``sidewalk:both=separate``), meaning
+  the mapper has already documented the sidewalk situation.
   Flagging these as gaps would be a false positive.
 
 This analysis is purely geometric.  For roads without explicit sidewalk
@@ -54,7 +55,7 @@ _MIN_ROAD_LENGTH = 20.0
 _MIN_FOOTWAY_LENGTH = 5.0
 
 # Sidewalk tag values that indicate the mapper has documented the
-# situation.  Roads with any of these on sidewalk/sidewalk:left/right
+# situation.  Roads with any of these on sidewalk/sidewalk:left/right/both
 # are excluded from gap detection.
 _DOCUMENTED_SIDEWALK_VALUES = frozenset({
     "no", "none", "separate", "yes", "both", "left", "right",
@@ -109,17 +110,20 @@ def _parallel_coverage(
 
 
 def _is_sidewalk_documented(
-    sidewalk: str, sidewalk_left: str, sidewalk_right: str,
+    sidewalk: str, sidewalk_left: str, sidewalk_right: str, sidewalk_both: str,
 ) -> bool:
     """Return True if the mapper has explicitly tagged the sidewalk situation.
 
-    Any explicit ``sidewalk:left`` or ``sidewalk:right`` tag means the
+    Any explicit ``sidewalk:left``, ``sidewalk:right``, or
+    ``sidewalk:both`` tag (e.g. ``sidewalk:both=separate``) means the
     mapper has documented which side has (or lacks) a sidewalk.  The
     general ``sidewalk`` tag is also checked against known values.
     """
     if sidewalk_left in _DOCUMENTED_SIDEWALK_VALUES:
         return True
     if sidewalk_right in _DOCUMENTED_SIDEWALK_VALUES:
+        return True
+    if sidewalk_both in _DOCUMENTED_SIDEWALK_VALUES:
         return True
     if sidewalk in _DOCUMENTED_SIDEWALK_VALUES:
         return True
@@ -134,6 +138,7 @@ def detect_sidewalk_gaps(
     edge_sidewalks: list[str],
     edge_sidewalk_left: list[str],
     edge_sidewalk_right: list[str],
+    edge_sidewalk_both: list[str],
 ) -> None:
     """Detect roads with a footway on one side only.
 
@@ -189,7 +194,8 @@ def detect_sidewalk_gaps(
         sw = edge_sidewalks[eid] if eid < len(edge_sidewalks) else ""
         sw_l = edge_sidewalk_left[eid] if eid < len(edge_sidewalk_left) else ""
         sw_r = edge_sidewalk_right[eid] if eid < len(edge_sidewalk_right) else ""
-        if _is_sidewalk_documented(sw, sw_l, sw_r):
+        sw_b = edge_sidewalk_both[eid] if eid < len(edge_sidewalk_both) else ""
+        if _is_sidewalk_documented(sw, sw_l, sw_r, sw_b):
             n_skipped_documented += 1
             continue
 
