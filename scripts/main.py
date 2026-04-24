@@ -73,7 +73,10 @@ def main() -> None:
 
     # ── Step 4–5: Sample & snap OD points ─────────────────────────────────
     od_points, od_streets, od_sides = sample_od_points("addresses.geojson")
-    snapped = snap_to_graph(od_points, gb.node_list, gb.nodes_gdf)
+    snapped = snap_to_graph(
+        od_points, gb.node_list, gb.nodes_gdf,
+        gb.edge_tuples, gb.edge_geoms,
+    )
 
     # ── Step 6–7: Generate OD pairs & route ───────────────────────────────
     od_pairs, rejected_near, rejected_far = generate_od_pairs(
