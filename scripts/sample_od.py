@@ -179,6 +179,17 @@ def sample_od_points(
         print(f"Sampling OD points (legacy, {POINTS_PER_SIDE} per side)...")
 
     addr = gpd.read_file(addresses_path).to_crs("EPSG:31370")
+
+    # Convert polygon geometries (building outlines) to centroids so that
+    # all addresses are points.  This is needed because OSM addresses can
+    # be tagged on building ways, not just standalone nodes.
+    n_poly = (~addr.geometry.geom_type.isin(["Point"])).sum()
+    if n_poly > 0:
+        addr["geometry"] = addr.geometry.apply(
+            lambda g: g.centroid if g.geom_type != "Point" else g
+        )
+        print(f"  Converted {n_poly} polygon addresses to centroids")
+
     addr["_num"] = addr.get("addr:housenumber", "").apply(_extract_house_number)
     addr = addr.dropna(subset=["_num"])
     addr["_num"] = addr["_num"].astype(int)
