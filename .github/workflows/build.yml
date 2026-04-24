@@ -175,6 +175,7 @@ jobs:
             forced_segments.geojson
             forced_cycleway.geojson
             street_scores.geojson
+            sidewalk_gaps.geojson
             highways.geojson
             addresses.geojson
             stats.json
@@ -191,15 +192,14 @@ jobs:
             --name "Brussels Pedestrian Network" \
             --attribution "© OpenStreetMap contributors" \
             -Z${{ env.MIN_ZOOM }} -z${{ env.MAX_ZOOM }} \
-            --no-feature-limit \
-            --no-tile-size-limit \
             --extend-zooms-if-still-dropping \
             --drop-densest-as-needed \
             --named-layer=highways:highways.geojson \
             --named-layer=flow_edges:flow_edges.geojson \
             --named-layer=forced_segments:forced_segments.geojson \
             --named-layer=forced_cycleway:forced_cycleway.geojson \
-            --named-layer=street_scores:street_scores.geojson
+            --named-layer=street_scores:street_scores.geojson \
+            --named-layer=sidewalk_gaps:sidewalk_gaps.geojson
 
       # ── Deploy ──────────────────────────────────────────────────────────
       - name: Prepare site
