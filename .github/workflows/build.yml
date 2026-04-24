@@ -148,6 +148,10 @@ jobs:
         run: python3 scripts/main.py
 
       # ── Debug & artifacts ───────────────────────────────────────────────
+      - name: Debug snapping (Avenue de Messidor)
+        if: always()
+        run: cd scripts && python3 debug_snap.py "Avenue de Messidor - Messidorlaan"
+      
       - name: List generated files (debug)
         if: always()
         run: |
