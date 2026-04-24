@@ -675,11 +675,8 @@ const HOVER_LAYERS = [
     ids: ["flow-ped", "flow-cycleway", "flow-road"],
     format: p => `
       <div class="popup-title">📊 Flux simulé</div>
-      <div class="popup-row"><span class="label">Type</span><span class="value">${p.highway || "—"}</span></div>
       <div class="popup-row"><span class="label">Infra</span><span class="value">${(p.infra_type || "—").replace("_", " ")}</span></div>
-      <div class="popup-row"><span class="label">Flux</span><span class="value">${p.flow || 0} trajets</span></div>
       <div class="popup-row"><span class="label">Flux relatif</span><span class="value">${p.flow_pct || 0}%</span></div>
-      <div class="popup-row"><span class="label">Longueur</span><span class="value">${p.length_m || 0} m</span></div>
     `
   },
   {
