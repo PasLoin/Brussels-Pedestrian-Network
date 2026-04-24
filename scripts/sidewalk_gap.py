@@ -163,6 +163,7 @@ def detect_sidewalk_gaps(
 
     # ── Check each road segment ───────────────────────────────────────────
     rows: list[dict] = []
+    seen_edges: set[tuple[int, int]] = set()  # deduplicate directed edges
     n_roads = 0
     n_both = 0
     n_none = 0
@@ -176,6 +177,13 @@ def detect_sidewalk_gaps(
         geom = edge_geoms[eid]
         if geom is None or geom.is_empty or geom.length < _MIN_ROAD_LENGTH:
             continue
+
+        # ── Deduplicate: skip reverse direction of same segment ───────────
+        src, tgt = edge_tuples[eid]
+        undirected_key = (min(src, tgt), max(src, tgt))
+        if undirected_key in seen_edges:
+            continue
+        seen_edges.add(undirected_key)
 
         # ── Skip roads with explicit sidewalk tags ────────────────────────
         sw = edge_sidewalks[eid] if eid < len(edge_sidewalks) else ""
