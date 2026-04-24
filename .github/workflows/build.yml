@@ -191,6 +191,8 @@ jobs:
             --name "Brussels Pedestrian Network" \
             --attribution "© OpenStreetMap contributors" \
             -Z${{ env.MIN_ZOOM }} -z${{ env.MAX_ZOOM }} \
+            --no-feature-limit \
+            --no-tile-size-limit \
             --extend-zooms-if-still-dropping \
             --drop-densest-as-needed \
             --named-layer=highways:highways.geojson \
