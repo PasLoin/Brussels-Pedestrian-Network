@@ -8,12 +8,16 @@ search zones.  A footway is counted on a given side only if:
 2. The cumulative length of parallel footways on that side covers at
    least ``SIDEWALK_GAP_MIN_COVERAGE`` % of the road segment length.
 
-This avoids false negatives from short perpendicular footways or tiny
-parallel stubs that don't constitute a real sidewalk.
+Roads are **excluded** from the analysis if:
 
-This analysis is purely geometric.  It does not rely on ``sidewalk=*``
-tags on the road; it checks whether a **separate footway way** has
-been drawn in OSM on each side.
+- They are ``highway=service`` (driveways, parking aisles…).
+- They carry explicit ``sidewalk:left`` / ``sidewalk:right`` tags,
+  meaning the mapper has already documented the sidewalk situation.
+  Flagging these as gaps would be a false positive.
+
+This analysis is purely geometric.  For roads without explicit sidewalk
+tags, it checks whether a **separate footway way** has been drawn in
+OSM on each side.
 """
 
 from __future__ import annotations
@@ -25,6 +29,10 @@ import geopandas as gpd
 from shapely.strtree import STRtree
 
 from config import PED_HIGHWAY_TYPES, ROAD_TYPES_SIDEWALK_EXPECTED
+
+# Road types to analyse.  service is excluded — too noisy (driveways,
+# parking aisles) and rarely has separate footways.
+_GAP_ROAD_TYPES = ROAD_TYPES_SIDEWALK_EXPECTED - {"service"}
 
 # How far from the road centerline to look for footways (metres).
 SIDEWALK_GAP_OFFSET_M = float(os.environ.get("SIDEWALK_GAP_OFFSET_M", 12))
@@ -44,6 +52,13 @@ _MIN_ROAD_LENGTH = 20.0
 
 # Skip footway segments shorter than this for angle comparison.
 _MIN_FOOTWAY_LENGTH = 5.0
+
+# Sidewalk tag values that indicate the mapper has documented the
+# situation.  Roads with any of these on sidewalk/sidewalk:left/right
+# are excluded from gap detection.
+_DOCUMENTED_SIDEWALK_VALUES = frozenset({
+    "no", "none", "separate", "yes", "both", "left", "right",
+})
 
 
 def _line_bearing(geom) -> float | None:
@@ -77,10 +92,7 @@ def _parallel_coverage(
     footway_geoms: list,
     footway_bearings: list,
 ) -> float:
-    """Compute the fraction of road length covered by parallel footways in a zone.
-
-    Returns a value between 0.0 and 1.0+.
-    """
+    """Compute the fraction of road length covered by parallel footways."""
     total_length = 0.0
     for i in candidates:
         if not _is_parallel(road_bearing, footway_bearings[i]):
@@ -88,7 +100,6 @@ def _parallel_coverage(
         fw = footway_geoms[i]
         if not fw.intersects(zone):
             continue
-        # Measure only the part of the footway inside the zone
         try:
             clipped = fw.intersection(zone)
             total_length += clipped.length
@@ -97,11 +108,32 @@ def _parallel_coverage(
     return total_length / road_length if road_length > 0 else 0.0
 
 
+def _is_sidewalk_documented(
+    sidewalk: str, sidewalk_left: str, sidewalk_right: str,
+) -> bool:
+    """Return True if the mapper has explicitly tagged the sidewalk situation.
+
+    Any explicit ``sidewalk:left`` or ``sidewalk:right`` tag means the
+    mapper has documented which side has (or lacks) a sidewalk.  The
+    general ``sidewalk`` tag is also checked against known values.
+    """
+    if sidewalk_left in _DOCUMENTED_SIDEWALK_VALUES:
+        return True
+    if sidewalk_right in _DOCUMENTED_SIDEWALK_VALUES:
+        return True
+    if sidewalk in _DOCUMENTED_SIDEWALK_VALUES:
+        return True
+    return False
+
+
 def detect_sidewalk_gaps(
     edge_tuples: list[tuple[int, int]],
     edge_highways: list[str],
     edge_geoms: list,
     edge_names: list[str],
+    edge_sidewalks: list[str],
+    edge_sidewalk_left: list[str],
+    edge_sidewalk_right: list[str],
 ) -> None:
     """Detect roads with a footway on one side only.
 
@@ -135,13 +167,22 @@ def detect_sidewalk_gaps(
     n_both = 0
     n_none = 0
     n_gap = 0
+    n_skipped_documented = 0
 
     for eid in range(len(edge_tuples)):
         hw = edge_highways[eid]
-        if hw not in ROAD_TYPES_SIDEWALK_EXPECTED:
+        if hw not in _GAP_ROAD_TYPES:
             continue
         geom = edge_geoms[eid]
         if geom is None or geom.is_empty or geom.length < _MIN_ROAD_LENGTH:
+            continue
+
+        # ── Skip roads with explicit sidewalk tags ────────────────────────
+        sw = edge_sidewalks[eid] if eid < len(edge_sidewalks) else ""
+        sw_l = edge_sidewalk_left[eid] if eid < len(edge_sidewalk_left) else ""
+        sw_r = edge_sidewalk_right[eid] if eid < len(edge_sidewalk_right) else ""
+        if _is_sidewalk_documented(sw, sw_l, sw_r):
+            n_skipped_documented += 1
             continue
 
         road_bearing = _line_bearing(geom)
@@ -200,7 +241,8 @@ def detect_sidewalk_gaps(
         gdf = gpd.GeoDataFrame([fb], crs="EPSG:4326")
     gdf.to_file("sidewalk_gaps.geojson", driver="GeoJSON")
 
-    print(f"  Roads analysed: {n_roads}")
+    print(f"  Roads analysed: {n_roads} | "
+          f"Skipped (documented): {n_skipped_documented}")
     print(f"  Both sides: {n_both} | One side (gap): {n_gap} | "
           f"Neither side: {n_none}")
     print(f"  Sidewalk gaps exported: {len(rows)}")
