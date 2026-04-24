@@ -658,7 +658,7 @@ const PEDESTRIAN_LAYERS = [
   },
   {
     id: "sidewalk-gaps", type: "line", source: "pedestrian", "source-layer": "sidewalk_gaps",
-    minzoom: 12, layout: { "line-cap": "round", "line-join": "round", visibility: "visible" },
+    minzoom: 12, layout: { "line-cap": "round", "line-join": "round", visibility: "none" },
     paint: {
       "line-color": "#f59e0b",
       "line-width": ["interpolate", ["linear"], ["zoom"], 12, 2, 16, 6],
@@ -827,6 +827,8 @@ function initMap(style) {
     legendEl.appendChild(makeItem({ layerId: "flow-cycleway", label: "Flux cycleway", color: "#bfdbfe", color2: "#3b0764" }));
     legendEl.appendChild(makeItem({ layerId: "flow-road", label: "Flux sur route", color: "#fed7aa", color2: "#7f1d1d" }));
     legendEl.appendChild(makeItem({ layerId: "street-scores", label: "Score marchabilité", color: "#ef4444", color2: "#22c55e", swatchType: "dot" }));
+
+    addSection("Analyse spatiale (Désactivé)");
     legendEl.appendChild(makeItem({ layerId: "sidewalk-gaps", label: "Trottoir un seul côté", color: "#f59e0b", dashed: true }));
 
     addSection("Réseau de base (Désactivé)");
