@@ -3,8 +3,8 @@ Steps 8–9 — Export results to GeoJSON files and a client-side routing graph.
 
 This module produces:
 
-* **flow_edges.geojson** — every edge with its flow count and surface
-  category (pedestrian / cycleway_foot_yes / cycleway_no_foot / road).
+* **flow_edges.geojson** — every edge with its flow count and infra
+  type (pedestrian / cycleway_foot_yes / cycleway_no_foot / road).
 * **forced_segments.geojson** — high-flow edges on *road* surfaces,
   suggesting a missing pedestrian link.
 * **forced_cycleway.geojson** — high-flow edges on cycleways without
@@ -67,7 +67,7 @@ def export_flow_layers(
 ) -> None:
     """Write flow_edges, forced_segments, and forced_cycleway GeoJSONs.
 
-    Surface categories:
+    Infrastructure types (``infra_type`` property):
 
     * ``pedestrian`` — dedicated pedestrian infrastructure (footway, path…).
     * ``cycleway_foot_yes`` — cycleway with explicit ``foot=yes|designated|permissive``.
@@ -90,7 +90,7 @@ def export_flow_layers(
     rows_forced_cycleway = []
     fb = {
         "geometry": None, "highway": "", "flow": 0,
-        "flow_pct": 0.0, "surface_cat": "", "length_m": 0.0,
+        "flow_pct": 0.0, "infra_type": "", "length_m": 0.0,
     }
 
     for eid in range(n_edges):
@@ -104,21 +104,21 @@ def export_flow_layers(
         foot = edge_foot_tags[eid] if eid < len(edge_foot_tags) else ""
         foot_allowed = foot in FOOT_ALLOWED
 
-        # ── Surface classification ────────────────────────────────────────
+        # ── Infrastructure classification ────────────────────────────────
         # Cycleways get their own category depending on foot permission.
         # This is defensive: even if cycleway_nf was wrongly set (e.g. OSMnx
         # lost the foot tag during simplification), we re-check here.
         if hw == "cycleway":
             if foot_allowed or not cnf:
-                surface_cat = "cycleway_foot_yes"
+                infra_type = "cycleway_foot_yes"
             else:
-                surface_cat = "cycleway_no_foot"
+                infra_type = "cycleway_no_foot"
             is_ped = False
         elif hw in PED_HIGHWAY_TYPES:
-            surface_cat = "pedestrian"
+            infra_type = "pedestrian"
             is_ped = True
         else:
-            surface_cat = "road"
+            infra_type = "road"
             is_ped = False
 
         row = {
@@ -126,18 +126,18 @@ def export_flow_layers(
             "highway": hw,
             "flow": flow,
             "flow_pct": round(flow / max_flow * 100, 2),
-            "surface_cat": surface_cat,
+            "infra_type": infra_type,
             "length_m": round(lm, 1),
         }
         rows_flow.append(row)
 
         # ── Forced classification ─────────────────────────────────────────
-        # Only high-flow edges on truly non-pedestrian surfaces are flagged.
+        # Only high-flow edges on truly non-pedestrian infra are flagged.
         # cycleway_foot_yes is explicitly excluded (issue #6).
         if flow >= threshold:
-            if surface_cat == "cycleway_no_foot":
+            if infra_type == "cycleway_no_foot":
                 rows_forced_cycleway.append(row)
-            elif not is_ped and surface_cat != "cycleway_foot_yes":
+            elif not is_ped and infra_type != "cycleway_foot_yes":
                 rows_forced_road.append(row)
 
     n_fr = _save_gdf(rows_forced_road, fb, "EPSG:31370", "forced_segments.geojson")
@@ -271,10 +271,10 @@ def export_routing_graph(
         {
           "hw": ["cycleway", "footway", …],   # highway type lookup
           "n": [[lat, lng], …],                # node coords (WGS84)
-          "e": [[src, tgt, weight, len, hwIdx, surfCat, [[lat,lng],…]], …]
+          "e": [[src, tgt, weight, len, hwIdx, infraType, [[lat,lng],…]], …]
         }
 
-    ``surfCat``: 0 = pedestrian, 1 = road, 2 = cycleway_no_foot,
+    ``infraType``: 0 = pedestrian, 1 = road, 2 = cycleway_no_foot,
     3 = cycleway_foot_yes.
     """
     print("Exporting routing graph for client-side navigation...")
@@ -307,7 +307,7 @@ def export_routing_graph(
         cnf = bool(cyc_nf[eid])
         foot = edge_foot_tags[eid] if eid < len(edge_foot_tags) else ""
 
-        # Surface category: 0=ped, 1=road, 2=cycleway_no_foot, 3=cycleway_foot_yes
+        # Infra type: 0=ped, 1=road, 2=cycleway_no_foot, 3=cycleway_foot_yes
         if hw == "cycleway":
             sc = 2 if (cnf and foot not in FOOT_ALLOWED) else 3
         elif hw in PED_HIGHWAY_TYPES:
