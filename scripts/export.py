@@ -161,6 +161,10 @@ def export_walkability_scores(
     print("Computing walkability scores (first/last km + sidewalk penalty)...")
 
     addr_wgs = gpd.read_file(addresses_path).to_crs("EPSG:4326")
+    # Convert polygon geometries (building outlines) to centroids
+    addr_wgs["geometry"] = addr_wgs.geometry.apply(
+        lambda g: g.centroid if g.geom_type != "Point" else g
+    )
     pen_stats: dict[str, int] = defaultdict(int)
     rows: list[dict] = []
 
