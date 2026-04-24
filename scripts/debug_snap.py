@@ -45,6 +45,10 @@ edge_tree = STRtree(valid_geoms)
 
 # ── Load addresses for this street ────────────────────────────────────────────
 addr = gpd.read_file("addresses.geojson").to_crs("EPSG:31370")
+# Convert polygon geometries (building outlines) to centroids
+addr["geometry"] = addr.geometry.apply(
+    lambda g: g.centroid if g.geom_type != "Point" else g
+)
 street_addr = addr[addr["addr:street"] == STREET].copy()
 street_addr["_raw_hn"] = street_addr.get("addr:housenumber", "").astype(str)
 street_addr["_num"] = street_addr["_raw_hn"].apply(_extract_house_number)
