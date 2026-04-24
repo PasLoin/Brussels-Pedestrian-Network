@@ -10,22 +10,25 @@ a more realistic pattern.
 Sampling strategy
 -----------------
 For each street (``addr:street``), addresses are split into even and
-odd house numbers (approximating the two sides of the street).  Within
-each side, ``POINTS_PER_SIDE`` evenly-spaced addresses are picked so
-that both ends and the middle of the street are represented.
+odd house numbers (approximating the two sides of the street).
+
+Each side is sampled independently using a geographic interval:
+addresses are projected onto the street's principal axis, then one
+point is picked per spatial bin of ``OD_SAMPLE_INTERVAL_M`` metres.
+This scales naturally with street length: a 200 m street gets ~2 points
+per side, a 1.5 km avenue gets ~15.
+
+Each side is sampled independently, so a bin with 5 houses on one side
+and 0 on the other produces a point only on the populated side.
 
 Snapping strategy
 -----------------
 Each OD point is snapped to the nearest **edge** (point-to-segment
 distance) rather than the nearest node.  This correctly handles streets
-where a footway is mapped on one side only: an address on the north
-side of a road snaps to the road edge, while an address on the south
-side snaps to the footway — purely from geometry, no street-name
-matching needed.
+where a footway is mapped on one side only.
 
 When the nearest-edge result is ambiguous (several edges within a small
-tolerance of the minimum distance, or degenerate geometry), the function
-falls back to global nearest-node snapping.
+tolerance), the function falls back to global nearest-node snapping.
 """
 
 from __future__ import annotations
@@ -37,15 +40,13 @@ import numpy as np
 from shapely.geometry import Point
 from shapely.strtree import STRtree
 
-from config import POINTS_PER_SIDE
+from config import OD_SAMPLE_INTERVAL_M, POINTS_PER_SIDE
 
 # Maximum ratio between runner-up and best edge distance to consider
-# the result ambiguous.  1.05 = edges within 5% of the best are
-# considered tied.
+# the result ambiguous.
 _AMBIGUITY_RATIO = 1.05
 
-# Edges shorter than this (metres) are considered degenerate and
-# skipped during edge snapping.
+# Edges shorter than this (metres) are considered degenerate.
 _MIN_EDGE_LENGTH = 0.5
 
 
@@ -62,13 +63,95 @@ def _extract_house_number(hn) -> int | None:
 def _pick_indices(n: int, k: int) -> list[int]:
     """Return *k* evenly-spaced indices into a sequence of length *n*.
 
-    If *n* < *k*, returns a single index at the midpoint.
+    Legacy helper, used only when ``OD_SAMPLE_INTERVAL_M == 0``.
     """
     if n == 0:
         return []
     if n < k:
         return [n // 2]
     return [int(n * (i + 1) / (k + 1)) for i in range(k)]
+
+
+def _principal_axis(coords: np.ndarray) -> np.ndarray:
+    """Return the unit vector along the principal axis of a point cloud.
+
+    Uses the first eigenvector of the 2D covariance matrix.  If all
+    points are identical (zero variance), returns ``[1, 0]``.
+    """
+    if len(coords) < 2:
+        return np.array([1.0, 0.0])
+    centered = coords - coords.mean(axis=0)
+    cov = np.cov(centered.T)
+    # cov can be scalar if only 1D variation
+    if cov.ndim < 2:
+        return np.array([1.0, 0.0])
+    eigvals, eigvecs = np.linalg.eigh(cov)
+    # eigh returns in ascending order; last eigvec = largest variance
+    axis = eigvecs[:, -1]
+    norm = np.linalg.norm(axis)
+    return axis / norm if norm > 0 else np.array([1.0, 0.0])
+
+
+def _sample_side_geographic(
+    side_grp: gpd.GeoDataFrame,
+    axis: np.ndarray,
+    origin: np.ndarray,
+    interval_m: float,
+    proj_min: float,
+    proj_max: float,
+) -> list[int]:
+    """Pick one address per spatial bin for a single side of the street.
+
+    Parameters
+    ----------
+    side_grp : GeoDataFrame
+        Addresses on one side (even or odd), with geometry in EPSG:31370.
+    axis : ndarray
+        Unit vector along the street's principal axis.
+    origin : ndarray
+        Reference point (centroid of all addresses on the street).
+    interval_m : float
+        Bin width in metres along the axis.
+    proj_min, proj_max : float
+        Projection bounds of the *entire* street (both sides combined)
+        so that bins are aligned across sides.
+
+    Returns
+    -------
+    list of positional indices into *side_grp*.
+    """
+    if side_grp.empty or interval_m <= 0:
+        return []
+
+    coords = np.array([(g.x, g.y) for g in side_grp.geometry])
+    projections = (coords - origin) @ axis
+
+    # Build bins covering the full street extent
+    n_bins = max(1, int(np.ceil((proj_max - proj_min) / interval_m)))
+    bin_edges = np.linspace(proj_min, proj_max, n_bins + 1)
+
+    selected: list[int] = []
+    for i in range(n_bins):
+        lo, hi = bin_edges[i], bin_edges[i + 1]
+        bin_center = (lo + hi) / 2
+
+        # Find addresses in this bin
+        if i < n_bins - 1:
+            mask = (projections >= lo) & (projections < hi)
+        else:
+            # Last bin includes right edge
+            mask = (projections >= lo) & (projections <= hi)
+
+        if not mask.any():
+            continue
+
+        # Pick the address closest to bin center
+        candidates = np.where(mask)[0]
+        dists = np.abs(projections[candidates] - bin_center)
+        best = candidates[np.argmin(dists)]
+        selected.append(int(best))
+
+    return selected
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -89,7 +172,11 @@ def sample_od_points(
     od_sides : list of str
         ``"even"`` or ``"odd"`` for each point.
     """
-    print(f"Sampling OD points ({POINTS_PER_SIDE} per side, even/odd split)...")
+    use_geographic = OD_SAMPLE_INTERVAL_M > 0
+    if use_geographic:
+        print(f"Sampling OD points (geographic, interval={OD_SAMPLE_INTERVAL_M}m)...")
+    else:
+        print(f"Sampling OD points (legacy, {POINTS_PER_SIDE} per side)...")
 
     addr = gpd.read_file(addresses_path).to_crs("EPSG:31370")
     addr["_num"] = addr.get("addr:housenumber", "").apply(_extract_house_number)
@@ -107,21 +194,54 @@ def sample_od_points(
     streets_both = streets_one = 0
 
     for street, grp in addr.groupby("addr:street"):
-        sides_sampled = 0
-        for side_name, side_grp in [
-            ("even", grp[grp["_num"] % 2 == 0]),
-            ("odd", grp[grp["_num"] % 2 == 1]),
-        ]:
-            sorted_side = side_grp.sort_values("_num")
-            idxs = _pick_indices(len(sorted_side), POINTS_PER_SIDE)
-            if not idxs:
-                continue
-            for i in idxs:
-                row = sorted_side.iloc[i]
-                od_points.append((row.geometry.x, row.geometry.y))
-                od_streets.append(str(street))
-                od_sides.append(side_name)
-            sides_sampled += 1
+        if use_geographic:
+            # ── Geographic sampling ───────────────────────────────────────
+            all_coords = np.array([(g.x, g.y) for g in grp.geometry])
+            origin = all_coords.mean(axis=0)
+            axis = _principal_axis(all_coords)
+
+            # Project all addresses to get global min/max
+            all_proj = (all_coords - origin) @ axis
+            proj_min = float(all_proj.min())
+            proj_max = float(all_proj.max())
+
+            sides_sampled = 0
+            for side_name, side_grp in [
+                ("even", grp[grp["_num"] % 2 == 0]),
+                ("odd", grp[grp["_num"] % 2 == 1]),
+            ]:
+                if side_grp.empty:
+                    continue
+                selected = _sample_side_geographic(
+                    side_grp, axis, origin,
+                    OD_SAMPLE_INTERVAL_M, proj_min, proj_max,
+                )
+                if not selected:
+                    continue
+                for i in selected:
+                    row = side_grp.iloc[i]
+                    od_points.append((row.geometry.x, row.geometry.y))
+                    od_streets.append(str(street))
+                    od_sides.append(side_name)
+                sides_sampled += 1
+
+        else:
+            # ── Legacy sampling (POINTS_PER_SIDE) ─────────────────────────
+            sides_sampled = 0
+            for side_name, side_grp in [
+                ("even", grp[grp["_num"] % 2 == 0]),
+                ("odd", grp[grp["_num"] % 2 == 1]),
+            ]:
+                sorted_side = side_grp.sort_values("_num")
+                idxs = _pick_indices(len(sorted_side), POINTS_PER_SIDE)
+                if not idxs:
+                    continue
+                for i in idxs:
+                    row = sorted_side.iloc[i]
+                    od_points.append((row.geometry.x, row.geometry.y))
+                    od_streets.append(str(street))
+                    od_sides.append(side_name)
+                sides_sampled += 1
 
         if sides_sampled == 2:
             streets_both += 1
@@ -175,7 +295,6 @@ def snap_to_graph(
     node_tree = STRtree([Point(x, y) for x, y in node_xy])
 
     # ── Build edge spatial index ──────────────────────────────────────────
-    # Filter out degenerate edges (None, empty, too short)
     valid_edge_indices: list[int] = []
     valid_edge_geoms: list = []
     for eid, geom in enumerate(edge_geoms):
@@ -206,14 +325,11 @@ def snap_to_graph(
     for x, y in od_points:
         pt = Point(x, y)
 
-        # Find nearest valid edge
         nearest_valid_idx = edge_tree.nearest(pt)
         nearest_geom = valid_edge_geoms[nearest_valid_idx]
         best_dist = nearest_geom.distance(pt)
 
         # ── Ambiguity check ───────────────────────────────────────────────
-        # If more than 2 edges are at near-equal distance, the point is
-        # probably at a junction — fall back to nearest node.
         use_fallback = False
         if best_dist > 0:
             search_dist = best_dist * _AMBIGUITY_RATIO
