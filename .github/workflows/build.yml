@@ -157,13 +157,6 @@ jobs:
           PYTHONPATH: scripts
         run: python3 scripts/main.py
 
-      # ── Debug ───────────────────────────────────────────────────────────
-      - name: Debug snapping (Avenue de Messidor)
-        if: always()
-        env:
-          PYTHONPATH: scripts
-        run: python3 scripts/debug_snap.py "Avenue de Messidor - Messidorlaan"
-
       # ── Debug & artifacts ───────────────────────────────────────────────
       - name: List generated files (debug)
         if: always()
