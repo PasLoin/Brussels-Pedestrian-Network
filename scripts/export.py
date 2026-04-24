@@ -29,6 +29,7 @@ from pyproj import Transformer
 from config import (
     FOOT_ALLOWED,
     MAX_OD_DISTANCE_M,
+    MIN_FLOW_THRESHOLD,
     MIN_OD_DISTANCE_M,
     PED_HIGHWAY_TYPES,
     SIDEWALK_PENALTY_NONE,
@@ -88,10 +89,14 @@ def export_flow_layers(
     rows_flow = []
     rows_forced_road = []
     rows_forced_cycleway = []
-    fb = {
+    fb_flow = {
+        "geometry": None, "flow_pct": 0.0, "infra_type": "",
+    }
+    fb_forced = {
         "geometry": None, "highway": "", "flow": 0,
         "flow_pct": 0.0, "infra_type": "", "length_m": 0.0,
     }
+    n_dropped_low_flow = 0
 
     for eid in range(n_edges):
         flow = int(flow_arr[eid])
@@ -105,9 +110,6 @@ def export_flow_layers(
         foot_allowed = foot in FOOT_ALLOWED
 
         # ── Infrastructure classification ────────────────────────────────
-        # Cycleways get their own category depending on foot permission.
-        # This is defensive: even if cycleway_nf was wrongly set (e.g. OSMnx
-        # lost the foot tag during simplification), we re-check here.
         if hw == "cycleway":
             if foot_allowed or not cnf:
                 infra_type = "cycleway_foot_yes"
@@ -121,29 +123,39 @@ def export_flow_layers(
             infra_type = "road"
             is_ped = False
 
-        row = {
-            "geometry": edge_geoms[eid],
-            "highway": hw,
-            "flow": flow,
-            "flow_pct": round(flow / max_flow * 100, 2),
-            "infra_type": infra_type,
-            "length_m": round(lm, 1),
-        }
-        rows_flow.append(row)
+        flow_pct = round(flow / max_flow * 100, 2)
 
-        # ── Forced classification ─────────────────────────────────────────
-        # Only high-flow edges on truly non-pedestrian infra are flagged.
-        # cycleway_foot_yes is explicitly excluded (issue #6).
+        # ── Forced classification (full properties, unaffected by min threshold)
         if flow >= threshold:
+            forced_row = {
+                "geometry": edge_geoms[eid],
+                "highway": hw,
+                "flow": flow,
+                "flow_pct": flow_pct,
+                "infra_type": infra_type,
+                "length_m": round(lm, 1),
+            }
             if infra_type == "cycleway_no_foot":
-                rows_forced_cycleway.append(row)
+                rows_forced_cycleway.append(forced_row)
             elif not is_ped and infra_type != "cycleway_foot_yes":
-                rows_forced_road.append(row)
+                rows_forced_road.append(forced_row)
 
-    n_fr = _save_gdf(rows_forced_road, fb, "EPSG:31370", "forced_segments.geojson")
-    n_fc = _save_gdf(rows_forced_cycleway, fb, "EPSG:31370", "forced_cycleway.geojson")
-    n_fl = _save_gdf(rows_flow, fb, "EPSG:31370", "flow_edges.geojson")
+        # ── Flow edges (slim properties, filtered by min threshold) ───────
+        if flow < MIN_FLOW_THRESHOLD:
+            n_dropped_low_flow += 1
+            continue
+
+        rows_flow.append({
+            "geometry": edge_geoms[eid],
+            "flow_pct": flow_pct,
+            "infra_type": infra_type,
+        })
+
+    n_fr = _save_gdf(rows_forced_road, fb_forced, "EPSG:31370", "forced_segments.geojson")
+    n_fc = _save_gdf(rows_forced_cycleway, fb_forced, "EPSG:31370", "forced_cycleway.geojson")
+    n_fl = _save_gdf(rows_flow, fb_flow, "EPSG:31370", "flow_edges.geojson")
     print(f"  Forced road: {n_fr} | Forced cycleway: {n_fc} | Flow edges: {n_fl}")
+    print(f"  Dropped (flow < {MIN_FLOW_THRESHOLD}): {n_dropped_low_flow}")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
