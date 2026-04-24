@@ -74,6 +74,12 @@ env:
   SIDEWALK_PENALTY_PARTIAL: 0.6 # multiplier when sidewalk on one side only
   SIDEWALK_PENALTY_UNKNOWN: 0.5 # multiplier when no sidewalk tag on road edges
 
+  # ── Sidewalk gap detection ─────────────────────────────────────────────
+  SIDEWALK_GAP_OFFSET_M: 12    # distance from road centerline to search
+  SIDEWALK_GAP_SEARCH_M: 8     # buffer radius around offset line
+  SIDEWALK_GAP_MAX_ANGLE: 35   # max angle diff (°) for parallel check
+  SIDEWALK_GAP_MIN_COVERAGE: 0.4  # min fraction of road length covered by footway
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
