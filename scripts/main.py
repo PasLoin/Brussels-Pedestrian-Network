@@ -32,6 +32,7 @@ from config import (
     MAX_OD_DISTANCE_M,
     MAX_OD_PAIRS,
     MIN_OD_DISTANCE_M,
+    OD_SAMPLE_INTERVAL_M,
     POINTS_PER_SIDE,
     SIDEWALK_PENALTY_NONE,
     SIDEWALK_PENALTY_PARTIAL,
@@ -59,7 +60,8 @@ def main() -> None:
           f"MAX_DIST={MAX_OD_DISTANCE_M}m "
           f"MAX_PAIRS={MAX_OD_PAIRS} "
           f"TOP_PCT={TOP_RANK_PCT} "
-          f"POINTS_PER_SIDE={POINTS_PER_SIDE}")
+          f"OD_INTERVAL={OD_SAMPLE_INTERVAL_M}m "
+          f"(legacy POINTS_PER_SIDE={POINTS_PER_SIDE})")
     print(f"Walkability: radius={WALK_SCORE_RADIUS_M}m "
           f"penalties: none={SIDEWALK_PENALTY_NONE} "
           f"partial={SIDEWALK_PENALTY_PARTIAL} "
