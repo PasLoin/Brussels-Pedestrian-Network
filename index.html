@@ -243,7 +243,7 @@ fetch("./graph.json")
     adjList = new Array(nNodes);
     for (let i = 0; i < nNodes; i++) adjList[i] = [];
     data.e.forEach((e, idx) => {
-      // e = [src, tgt, weight, length, hwIdx, surfaceCat, coords]
+      // e = [src, tgt, weight, length, hwIdx, infraType, coords]
       adjList[e[0]].push([e[1], idx]);
     });
     graphReady = true;
@@ -312,14 +312,14 @@ function dijkstra(src, tgt) {
 }
 
 // ── Build route GeoJSON + compute stats ──────────────────────────────────────
-// Surface categories: 0=pedestrian, 1=road, 2=cycleway_no_foot, 3=cycleway_foot_yes
+// Infra types: 0=pedestrian, 1=road, 2=cycleway_no_foot, 3=cycleway_foot_yes
 function buildRoute(edgePath) {
   let totalM = 0, pedM = 0, roadM = 0, cycM = 0;
   const features = [];
 
   for (const eidx of edgePath) {
     const e = graphData.e[eidx];
-    // e = [src, tgt, weight, length, hwIdx, surfaceCat, coords]
+    // e = [src, tgt, weight, length, hwIdx, infraType, coords]
     const len = e[3], sc = e[5], coords = e[6];
     const hw = graphData.hw[e[4]];
     totalM += len;
@@ -328,11 +328,11 @@ function buildRoute(edgePath) {
     else if (sc === 2) cycM += len;
     else pedM += len; // cycleway_foot_yes (sc=3) counts as walkable
 
-    // Color per surface type
+    // Color per infra type
     const color = sc === 0 ? "#22c55e" : sc === 3 ? "#2563eb" : sc === 2 ? "#7c3aed" : "#ef4444";
     features.push({
       type: "Feature",
-      properties: { surface_cat: sc, highway: hw, length: len, color },
+      properties: { infra_type: sc, highway: hw, length: len, color },
       geometry: {
         type: "LineString",
         // coords are [lat, lng] → GeoJSON needs [lng, lat]
@@ -616,7 +616,7 @@ const PEDESTRIAN_LAYERS = [
   },
   {
     id: "flow-ped", type: "line", source: "pedestrian", "source-layer": "flow_edges",
-    filter: ["==", ["get", "surface_cat"], "pedestrian"],
+    filter: ["==", ["get", "infra_type"], "pedestrian"],
     layout: { "line-cap": "round", "line-join": "round", visibility: "visible" },
     paint: {
       "line-color": ["interpolate", ["linear"], ["get", "flow_pct"], 0, "#bbf7d0", 50, "#16a34a", 100, "#14532d"],
@@ -626,10 +626,10 @@ const PEDESTRIAN_LAYERS = [
   },
   {
     id: "flow-cycleway", type: "line", source: "pedestrian", "source-layer": "flow_edges",
-    filter: ["in", ["get", "surface_cat"], ["literal", ["cycleway_no_foot", "cycleway_foot_yes"]]],
+    filter: ["in", ["get", "infra_type"], ["literal", ["cycleway_no_foot", "cycleway_foot_yes"]]],
     layout: { "line-cap": "round", "line-join": "round", visibility: "visible" },
     paint: {
-      "line-color": ["match", ["get", "surface_cat"],
+      "line-color": ["match", ["get", "infra_type"],
         "cycleway_foot_yes", ["interpolate", ["linear"], ["get", "flow_pct"], 0, "#bfdbfe", 50, "#2563eb", 100, "#1e3a5f"],
         ["interpolate", ["linear"], ["get", "flow_pct"], 0, "#ede9fe", 50, "#7c3aed", 100, "#3b0764"]
       ],
@@ -639,7 +639,7 @@ const PEDESTRIAN_LAYERS = [
   },
   {
     id: "flow-road", type: "line", source: "pedestrian", "source-layer": "flow_edges",
-    filter: ["==", ["get", "surface_cat"], "road"],
+    filter: ["==", ["get", "infra_type"], "road"],
     layout: { "line-cap": "round", "line-join": "round", visibility: "visible" },
     paint: {
       "line-color": ["interpolate", ["linear"], ["get", "flow_pct"], 0, "#fdba74", 50, "#ef4444", 100, "#7f1d1d"],
@@ -665,7 +665,7 @@ const HOVER_LAYERS = [
     format: p => `
       <div class="popup-title">⚠ Segment forcé</div>
       <div class="popup-row"><span class="label">Type</span><span class="value">${p.highway || "—"}</span></div>
-      <div class="popup-row"><span class="label">Surface</span><span class="value">${p.surface_cat || "—"}</span></div>
+      <div class="popup-row"><span class="label">Infra</span><span class="value">${p.infra_type || "—"}</span></div>
       <div class="popup-row"><span class="label">Flux</span><span class="value">${p.flow || 0} trajets</span></div>
       <div class="popup-row"><span class="label">Flux relatif</span><span class="value">${p.flow_pct || 0}%</span></div>
       <div class="popup-row"><span class="label">Longueur</span><span class="value">${p.length_m || 0} m</span></div>
@@ -676,7 +676,7 @@ const HOVER_LAYERS = [
     format: p => `
       <div class="popup-title">📊 Flux simulé</div>
       <div class="popup-row"><span class="label">Type</span><span class="value">${p.highway || "—"}</span></div>
-      <div class="popup-row"><span class="label">Surface</span><span class="value">${(p.surface_cat || "—").replace("_", " ")}</span></div>
+      <div class="popup-row"><span class="label">Infra</span><span class="value">${(p.infra_type || "—").replace("_", " ")}</span></div>
       <div class="popup-row"><span class="label">Flux</span><span class="value">${p.flow || 0} trajets</span></div>
       <div class="popup-row"><span class="label">Flux relatif</span><span class="value">${p.flow_pct || 0}%</span></div>
       <div class="popup-row"><span class="label">Longueur</span><span class="value">${p.length_m || 0} m</span></div>
@@ -774,7 +774,7 @@ function initMap(style) {
       }
     });
 
-    // Route colored by surface type
+    // Route colored by infra type
     map.addLayer({
       id: "nav-route-line", type: "line", source: "nav-route",
       layout: { "line-cap": "round", "line-join": "round" },
