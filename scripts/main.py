@@ -119,6 +119,7 @@ def main() -> None:
     detect_sidewalk_gaps(
         gb.edge_tuples, gb.edge_highways,
         gb.edge_geoms, gb.edge_names,
+        gb.edge_sidewalks, gb.edge_sidewalk_left, gb.edge_sidewalk_right,
     )
 
     # ── Step 9: Export client-side routing graph ──────────────────────────
