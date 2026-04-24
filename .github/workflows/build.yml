@@ -9,6 +9,8 @@ on:
       - ".github/workflows/build.yml"
       - "scripts/**"
       - "index.html"
+      - "app.js"
+      - "app.css"
       - "style.json"
   workflow_dispatch:
 
@@ -205,7 +207,7 @@ jobs:
         run: |
           mv pedestrian.pmtiles pedestrian.pmtiles.gz
           mkdir -p _site
-          cp index.html style.json state.txt stats.json graph.json pedestrian.pmtiles.gz _site/
+          cp index.html app.js app.css style.json state.txt stats.json graph.json pedestrian.pmtiles.gz _site/
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
