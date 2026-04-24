@@ -655,11 +655,28 @@ const PEDESTRIAN_LAYERS = [
       "circle-radius": ["interpolate", ["linear"], ["zoom"], 13, 5, 16, 10],
       "circle-stroke-color": "#fff", "circle-stroke-width": 1.5
     }
+  },
+  {
+    id: "sidewalk-gaps", type: "line", source: "pedestrian", "source-layer": "sidewalk_gaps",
+    minzoom: 12, layout: { "line-cap": "round", "line-join": "round", visibility: "none" },
+    paint: {
+      "line-color": "#f59e0b",
+      "line-width": ["interpolate", ["linear"], ["zoom"], 12, 2, 16, 6],
+      "line-opacity": 0.85,
+      "line-dasharray": [4, 3]
+    }
   }
 ];
 
 // ── Hover popup config ───────────────────────────────────────────────────────
 const HOVER_LAYERS = [
+  {
+    ids: ["sidewalk-gaps"],
+    format: p => `
+      <div class="popup-title">🚧 Trottoir un seul côté</div>
+      <div class="popup-row"><span class="label">Rue</span><span class="value">${p.name || "—"}</span></div>
+    `
+  },
   {
     ids: ["forced-segments", "forced-cycleway"],
     format: p => `
@@ -675,11 +692,8 @@ const HOVER_LAYERS = [
     ids: ["flow-ped", "flow-cycleway", "flow-road"],
     format: p => `
       <div class="popup-title">📊 Flux simulé</div>
-      <div class="popup-row"><span class="label">Type</span><span class="value">${p.highway || "—"}</span></div>
       <div class="popup-row"><span class="label">Infra</span><span class="value">${(p.infra_type || "—").replace("_", " ")}</span></div>
-      <div class="popup-row"><span class="label">Flux</span><span class="value">${p.flow || 0} trajets</span></div>
       <div class="popup-row"><span class="label">Flux relatif</span><span class="value">${p.flow_pct || 0}%</span></div>
-      <div class="popup-row"><span class="label">Longueur</span><span class="value">${p.length_m || 0} m</span></div>
     `
   },
   {
@@ -813,6 +827,9 @@ function initMap(style) {
     legendEl.appendChild(makeItem({ layerId: "flow-cycleway", label: "Flux cycleway", color: "#bfdbfe", color2: "#3b0764" }));
     legendEl.appendChild(makeItem({ layerId: "flow-road", label: "Flux sur route", color: "#fed7aa", color2: "#7f1d1d" }));
     legendEl.appendChild(makeItem({ layerId: "street-scores", label: "Score marchabilité", color: "#ef4444", color2: "#22c55e", swatchType: "dot" }));
+
+    addSection("Analyse spatiale (Désactivé)");
+    legendEl.appendChild(makeItem({ layerId: "sidewalk-gaps", label: "Trottoir un seul côté", color: "#f59e0b", dashed: true }));
 
     addSection("Réseau de base (Désactivé)");
     HIGHWAY_LAYERS.forEach(l => legendEl.appendChild(makeItem({ layerId: `highway-${l.id}`, label: l.label, color: l.color, dashed: l.dash })));

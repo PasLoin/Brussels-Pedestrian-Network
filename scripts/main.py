@@ -32,6 +32,7 @@ from config import (
     MAX_OD_DISTANCE_M,
     MAX_OD_PAIRS,
     MIN_OD_DISTANCE_M,
+    OD_SAMPLE_INTERVAL_M,
     POINTS_PER_SIDE,
     SIDEWALK_PENALTY_NONE,
     SIDEWALK_PENALTY_PARTIAL,
@@ -49,6 +50,7 @@ from export import (
     export_walkability_scores,
     save_stats,
 )
+from sidewalk_gap import detect_sidewalk_gaps
 
 
 def main() -> None:
@@ -59,7 +61,8 @@ def main() -> None:
           f"MAX_DIST={MAX_OD_DISTANCE_M}m "
           f"MAX_PAIRS={MAX_OD_PAIRS} "
           f"TOP_PCT={TOP_RANK_PCT} "
-          f"POINTS_PER_SIDE={POINTS_PER_SIDE}")
+          f"OD_INTERVAL={OD_SAMPLE_INTERVAL_M}m "
+          f"(legacy POINTS_PER_SIDE={POINTS_PER_SIDE})")
     print(f"Walkability: radius={WALK_SCORE_RADIUS_M}m "
           f"penalties: none={SIDEWALK_PENALTY_NONE} "
           f"partial={SIDEWALK_PENALTY_PARTIAL} "
@@ -73,7 +76,10 @@ def main() -> None:
 
     # ── Step 4–5: Sample & snap OD points ─────────────────────────────────
     od_points, od_streets, od_sides = sample_od_points("addresses.geojson")
-    snapped = snap_to_graph(od_points, gb.node_list, gb.nodes_gdf)
+    snapped = snap_to_graph(
+        od_points, gb.node_list, gb.nodes_gdf,
+        gb.edge_tuples, gb.edge_geoms,
+    )
 
     # ── Step 6–7: Generate OD pairs & route ───────────────────────────────
     od_pairs, rejected_near, rejected_far = generate_od_pairs(
@@ -107,6 +113,13 @@ def main() -> None:
     export_walkability_scores(
         result.street_ped_m, result.street_cyc_nf_m, result.street_total_m,
         gb.street_sidewalk_status,
+    )
+
+    # ── Step 8b: Detect sidewalk gaps ─────────────────────────────────────
+    detect_sidewalk_gaps(
+        gb.edge_tuples, gb.edge_highways,
+        gb.edge_geoms, gb.edge_names,
+        gb.edge_sidewalks, gb.edge_sidewalk_left, gb.edge_sidewalk_right,
     )
 
     # ── Step 9: Export client-side routing graph ──────────────────────────

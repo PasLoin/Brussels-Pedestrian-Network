@@ -56,7 +56,7 @@ env:
   OSM_STATE_URL: https://download.openstreetmap.fr/extracts/europe/belgium/brussels_capital_region.state.txt
 
   # ── Tippecanoe zoom levels ──────────────────────────────────────────────
-  MIN_ZOOM: 8
+  MIN_ZOOM: 9
   MAX_ZOOM: 19
 
   # ── Origin-Destination sampling ─────────────────────────────────────────
@@ -64,13 +64,21 @@ env:
   MAX_OD_DISTANCE_KM: 6        # max straight-line distance (km)
   MAX_OD_PAIRS: 900000         # cap on total OD pairs generated
   TOP_RANK_PCT: 15             # top N% of flow edges flagged as "forced"
-  POINTS_PER_SIDE: 5           # addresses sampled per side of each street
+  MIN_FLOW_THRESHOLD: 5        # drop flow edges with fewer trips from PMTiles
+  POINTS_PER_SIDE: 5           # legacy fallback (used when OD_SAMPLE_INTERVAL_M=0)
+  OD_SAMPLE_INTERVAL_M: 100    # one OD point per N metres per side of street
 
   # ── Walkability score tuning ────────────────────────────────────────────
   WALK_SCORE_RADIUS_M: 1000    # only first/last N metres of each trip count
   SIDEWALK_PENALTY_NONE: 0.3   # multiplier when street has sidewalk=no
   SIDEWALK_PENALTY_PARTIAL: 0.6 # multiplier when sidewalk on one side only
   SIDEWALK_PENALTY_UNKNOWN: 0.5 # multiplier when no sidewalk tag on road edges
+
+  # ── Sidewalk gap detection ─────────────────────────────────────────────
+  SIDEWALK_GAP_OFFSET_M: 12    # distance from road centerline to search
+  SIDEWALK_GAP_SEARCH_M: 8     # buffer radius around offset line
+  SIDEWALK_GAP_MAX_ANGLE: 35   # max angle diff (°) for parallel check
+  SIDEWALK_GAP_MIN_COVERAGE: 0.4  # min fraction of road length covered by footway
 
 jobs:
   build-and-deploy:
@@ -115,7 +123,7 @@ jobs:
           jq '(.features[] | select(
             .properties.highway == "elevator" or
             .properties.amenity == "elevator"
-          )) |= . + {"tippecanoe": {"minzoom": 8}}' \
+          )) |= . + {"tippecanoe": {"minzoom": 9}}' \
             highways.geojson > highways_fixed.geojson
           mv highways_fixed.geojson highways.geojson
 
@@ -123,13 +131,13 @@ jobs:
       - name: Filter address features
         run: |
           osmium tags-filter brussels.osm.pbf \
-            n/addr:housenumber \
+            nw/addr:housenumber \
             -o addresses_raw.osm.pbf --overwrite
 
       - name: Export addresses GeoJSON
         run: |
           osmium export addresses_raw.osm.pbf \
-            --geometry-types=point \
+            --geometry-types=point,polygon \
             -o addresses.geojson --overwrite
 
       # ── Extract routing features ────────────────────────────────────────
@@ -145,6 +153,8 @@ jobs:
 
       # ── Run the pedestrian routing pipeline ─────────────────────────────
       - name: Compute pedestrian routing flows
+        env:
+          PYTHONPATH: scripts
         run: python3 scripts/main.py
 
       # ── Debug & artifacts ───────────────────────────────────────────────
@@ -164,6 +174,7 @@ jobs:
             forced_segments.geojson
             forced_cycleway.geojson
             street_scores.geojson
+            sidewalk_gaps.geojson
             highways.geojson
             addresses.geojson
             stats.json
@@ -180,16 +191,14 @@ jobs:
             --name "Brussels Pedestrian Network" \
             --attribution "© OpenStreetMap contributors" \
             -Z${{ env.MIN_ZOOM }} -z${{ env.MAX_ZOOM }} \
-            --no-feature-limit \
-            --no-tile-size-limit \
             --extend-zooms-if-still-dropping \
             --drop-densest-as-needed \
             --named-layer=highways:highways.geojson \
-            --named-layer=addresses:addresses.geojson \
             --named-layer=flow_edges:flow_edges.geojson \
             --named-layer=forced_segments:forced_segments.geojson \
             --named-layer=forced_cycleway:forced_cycleway.geojson \
-            --named-layer=street_scores:street_scores.geojson
+            --named-layer=street_scores:street_scores.geojson \
+            --named-layer=sidewalk_gaps:sidewalk_gaps.geojson
 
       # ── Deploy ──────────────────────────────────────────────────────────
       - name: Prepare site
