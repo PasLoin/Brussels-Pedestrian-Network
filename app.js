@@ -292,12 +292,23 @@ function handleNavClick(e) {
 fetch("./state.txt")
   .then(r => r.text())
   .then(txt => {
-    const match = txt.match(/timestamp=(.+)/);
-    if (!match) return;
-    const date = new Date(match[1].trim().replace(/\\:/g, ":"));
-    document.getElementById("last-update").textContent = `MAJ : ${date.toLocaleString("fr-BE", { dateStyle: "short", timeStyle: "short" })}`;
+    const fmtOpts = { dateStyle: "short", timeStyle: "short" };
+
+    const osmMatch = txt.match(/timestamp=(.+)/);
+    if (osmMatch) {
+      const osmDate = new Date(osmMatch[1].trim().replace(/\\:/g, ":"));
+      document.getElementById("osm-date").textContent = `OSM : ${osmDate.toLocaleString("fr-BE", fmtOpts)}`;
+    }
+
+    const buildMatch = txt.match(/build_timestamp=(.+)/);
+    if (buildMatch) {
+      const buildDate = new Date(buildMatch[1].trim());
+      document.getElementById("build-date").textContent = `MAJ : ${buildDate.toLocaleString("fr-BE", fmtOpts)}`;
+    }
   })
-  .catch(() => { document.getElementById("last-update").textContent = "MAJ inconnue"; });
+  .catch(() => {
+    document.getElementById("osm-date").textContent = "OSM : inconnue";
+  });
 
 // ── Stats.json ───────────────────────────────────────────────────────────────
 fetch("./stats.json")
@@ -383,6 +394,9 @@ const HIGHWAY_LAYERS = [
   { id: "steps",         label: "Escaliers",         color: "#166534", width: 2,   dash: true,  hidden: true },
 ];
 
+// Helper: null-safe flow_pct getter
+const FLOW_PCT = ["to-number", ["get", "flow_pct"], 0];
+
 const PEDESTRIAN_LAYERS = [
   ...HIGHWAY_LAYERS.map(({ id, color, width, dash, hidden }) => ({
     id: `highway-${id}`, type: "line", source: "pedestrian", "source-layer": "highways",
@@ -410,7 +424,7 @@ const PEDESTRIAN_LAYERS = [
     layout: { "line-cap": "round", "line-join": "round", visibility: "visible" },
     paint: {
       "line-color": ["match", ["get", "highway"], ["residential", "service"], "#f59e0b", ["unclassified"], "#f97316", ["tertiary", "tertiary_link"], "#ef4444", ["secondary", "secondary_link"], "#dc2626", ["primary", "primary_link"], "#991b1b", "#f97316"],
-      "line-width": ["interpolate", ["linear"], ["zoom"], 10, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 1, 100, 4], 16, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 2.5, 100, 12]],
+      "line-width": ["interpolate", ["linear"], ["zoom"], 10, ["interpolate", ["linear"], FLOW_PCT, 0, 1, 100, 4], 16, ["interpolate", ["linear"], FLOW_PCT, 0, 2.5, 100, 12]],
       "line-opacity": 0.88
     }
   },
@@ -419,7 +433,7 @@ const PEDESTRIAN_LAYERS = [
     layout: { "line-cap": "round", "line-join": "round", visibility: "visible" },
     paint: {
       "line-color": "#7c3aed",
-      "line-width": ["interpolate", ["linear"], ["zoom"], 10, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 1, 100, 4], 16, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 2.5, 100, 12]],
+      "line-width": ["interpolate", ["linear"], ["zoom"], 10, ["interpolate", ["linear"], FLOW_PCT, 0, 1, 100, 4], 16, ["interpolate", ["linear"], FLOW_PCT, 0, 2.5, 100, 12]],
       "line-opacity": 0.88
     }
   },
@@ -428,8 +442,8 @@ const PEDESTRIAN_LAYERS = [
     filter: ["==", ["get", "infra_type"], "pedestrian"],
     layout: { "line-cap": "round", "line-join": "round", visibility: "visible" },
     paint: {
-      "line-color": ["interpolate", ["linear"], ["get", "flow_pct"], 0, "#bbf7d0", 50, "#16a34a", 100, "#14532d"],
-      "line-width": ["interpolate", ["linear"], ["zoom"], 10, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 0.5, 100, 3], 16, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 1, 100, 8]],
+      "line-color": ["interpolate", ["linear"], FLOW_PCT, 0, "#bbf7d0", 50, "#16a34a", 100, "#14532d"],
+      "line-width": ["interpolate", ["linear"], ["zoom"], 10, ["interpolate", ["linear"], FLOW_PCT, 0, 0.5, 100, 3], 16, ["interpolate", ["linear"], FLOW_PCT, 0, 1, 100, 8]],
       "line-opacity": 0.85
     }
   },
@@ -439,10 +453,10 @@ const PEDESTRIAN_LAYERS = [
     layout: { "line-cap": "round", "line-join": "round", visibility: "visible" },
     paint: {
       "line-color": ["match", ["get", "infra_type"],
-        "cycleway_foot_yes", ["interpolate", ["linear"], ["get", "flow_pct"], 0, "#bfdbfe", 50, "#2563eb", 100, "#1e3a5f"],
-        ["interpolate", ["linear"], ["get", "flow_pct"], 0, "#ede9fe", 50, "#7c3aed", 100, "#3b0764"]
+        "cycleway_foot_yes", ["interpolate", ["linear"], FLOW_PCT, 0, "#bfdbfe", 50, "#2563eb", 100, "#1e3a5f"],
+        ["interpolate", ["linear"], FLOW_PCT, 0, "#ede9fe", 50, "#7c3aed", 100, "#3b0764"]
       ],
-      "line-width": ["interpolate", ["linear"], ["zoom"], 10, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 0.5, 100, 3], 16, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 1, 100, 8]],
+      "line-width": ["interpolate", ["linear"], ["zoom"], 10, ["interpolate", ["linear"], FLOW_PCT, 0, 0.5, 100, 3], 16, ["interpolate", ["linear"], FLOW_PCT, 0, 1, 100, 8]],
       "line-opacity": 0.85
     }
   },
@@ -451,8 +465,8 @@ const PEDESTRIAN_LAYERS = [
     filter: ["==", ["get", "infra_type"], "road"],
     layout: { "line-cap": "round", "line-join": "round", visibility: "visible" },
     paint: {
-      "line-color": ["interpolate", ["linear"], ["get", "flow_pct"], 0, "#fdba74", 50, "#ef4444", 100, "#7f1d1d"],
-      "line-width": ["interpolate", ["linear"], ["zoom"], 10, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 0.8, 100, 4], 16, ["interpolate", ["linear"], ["get", "flow_pct"], 0, 1.2, 100, 8.5]],
+      "line-color": ["interpolate", ["linear"], FLOW_PCT, 0, "#fdba74", 50, "#ef4444", 100, "#7f1d1d"],
+      "line-width": ["interpolate", ["linear"], ["zoom"], 10, ["interpolate", ["linear"], FLOW_PCT, 0, 0.8, 100, 4], 16, ["interpolate", ["linear"], FLOW_PCT, 0, 1.2, 100, 8.5]],
       "line-opacity": 0.8
     }
   },
@@ -460,7 +474,7 @@ const PEDESTRIAN_LAYERS = [
     id: "street-scores", type: "circle", source: "pedestrian", "source-layer": "street_scores",
     minzoom: 13, layout: { visibility: "none" },
     paint: {
-      "circle-color": ["interpolate", ["linear"], ["get", "walkability"], 0, "#ef4444", 1, "#22c55e"],
+      "circle-color": ["interpolate", ["linear"], ["to-number", ["get", "walkability"], 0], 0, "#ef4444", 1, "#22c55e"],
       "circle-radius": ["interpolate", ["linear"], ["zoom"], 13, 5, 16, 10],
       "circle-stroke-color": "#fff", "circle-stroke-width": 1.5
     }

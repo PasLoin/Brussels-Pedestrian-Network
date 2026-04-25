@@ -11,7 +11,8 @@ body { font-family: "Inter", system-ui, sans-serif; background: #1a1a1a; }
 }
 #header h1 { font-size: 14px; font-weight: 700; color: #111; line-height: 1.2; }
 #header .subtitle { font-size: 11px; color: #666; margin-top: 2px; }
-#last-update { font-size: 10px; color: #999; margin-top: 6px; }
+#osm-date { font-size: 10px; color: #999; margin-top: 6px; }
+#build-date { font-size: 10px; color: #999; margin-top: 2px; }
 #routing-stats { font-size: 10px; color: #777; margin-top: 4px; line-height: 1.5; }
 #routing-stats span { font-weight: 600; color: #444; }
 

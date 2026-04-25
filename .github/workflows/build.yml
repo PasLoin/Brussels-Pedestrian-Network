@@ -203,6 +203,9 @@ jobs:
             --named-layer=sidewalk_gaps:sidewalk_gaps.geojson
 
       # ── Deploy ──────────────────────────────────────────────────────────
+      - name: Add build timestamp to state.txt
+        run: echo "build_timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> state.txt
+
       - name: Prepare site
         run: |
           mv pedestrian.pmtiles pedestrian.pmtiles.gz
