@@ -1,15 +1,4 @@
 // ══════════════════════════════════════════════════════════════════════════════
-//  DEBUG: Trace null-type warnings from MapLibre
-// ══════════════════════════════════════════════════════════════════════════════
-const _origWarn = console.warn;
-console.warn = function(...args) {
-  if (args[0] && typeof args[0] === 'string' && args[0].includes('Expected value to be of type')) {
-    console.trace('NULL VALUE WARNING:', args[0]);
-  }
-  _origWarn.apply(console, args);
-};
-
-// ══════════════════════════════════════════════════════════════════════════════
 //  LEGEND TOGGLE
 // ══════════════════════════════════════════════════════════════════════════════
 
