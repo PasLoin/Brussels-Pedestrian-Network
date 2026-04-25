@@ -384,7 +384,7 @@ const HIGHWAY_LAYERS = [
 ];
 
 // Helper: null-safe flow_pct getter
-const FLOW_PCT = ["coalesce", ["get", "flow_pct"], 0];
+const FLOW_PCT = ["to-number", ["get", "flow_pct"], 0];
 
 const PEDESTRIAN_LAYERS = [
   ...HIGHWAY_LAYERS.map(({ id, color, width, dash, hidden }) => ({
@@ -463,7 +463,7 @@ const PEDESTRIAN_LAYERS = [
     id: "street-scores", type: "circle", source: "pedestrian", "source-layer": "street_scores",
     minzoom: 13, layout: { visibility: "none" },
     paint: {
-      "circle-color": ["interpolate", ["linear"], ["coalesce", ["get", "walkability"], 0], 0, "#ef4444", 1, "#22c55e"],
+      "circle-color": ["interpolate", ["linear"], ["to-number", ["get", "walkability"], 0], 0, "#ef4444", 1, "#22c55e"],
       "circle-radius": ["interpolate", ["linear"], ["zoom"], 13, 5, 16, 10],
       "circle-stroke-color": "#fff", "circle-stroke-width": 1.5
     }
