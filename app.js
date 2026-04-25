@@ -292,12 +292,23 @@ function handleNavClick(e) {
 fetch("./state.txt")
   .then(r => r.text())
   .then(txt => {
-    const match = txt.match(/timestamp=(.+)/);
-    if (!match) return;
-    const date = new Date(match[1].trim().replace(/\\:/g, ":"));
-    document.getElementById("last-update").textContent = `MAJ : ${date.toLocaleString("fr-BE", { dateStyle: "short", timeStyle: "short" })}`;
+    const fmtOpts = { dateStyle: "short", timeStyle: "short" };
+
+    const osmMatch = txt.match(/timestamp=(.+)/);
+    if (osmMatch) {
+      const osmDate = new Date(osmMatch[1].trim().replace(/\\:/g, ":"));
+      document.getElementById("osm-date").textContent = `OSM : ${osmDate.toLocaleString("fr-BE", fmtOpts)}`;
+    }
+
+    const buildMatch = txt.match(/build_timestamp=(.+)/);
+    if (buildMatch) {
+      const buildDate = new Date(buildMatch[1].trim());
+      document.getElementById("build-date").textContent = `MAJ : ${buildDate.toLocaleString("fr-BE", fmtOpts)}`;
+    }
   })
-  .catch(() => { document.getElementById("last-update").textContent = "MAJ inconnue"; });
+  .catch(() => {
+    document.getElementById("osm-date").textContent = "OSM : inconnue";
+  });
 
 // ── Stats.json ───────────────────────────────────────────────────────────────
 fetch("./stats.json")
