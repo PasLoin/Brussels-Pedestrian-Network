@@ -5,6 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Brussels Pedestrian Flow Analysis</title>
 
+  <!-- DEBUG: Intercepter les warnings null AVANT le chargement de MapLibre -->
+  <script>
+  const _origWarn = console.warn;
+  console.warn = function(...args) {
+    if (args[0] && typeof args[0] === 'string' && args[0].includes('Expected value to be of type')) {
+      console.log('🔴 NULL VALUE WARNING:', args[0]);
+      console.log('🔴 STACK:', new Error().stack);
+      debugger; // Pause si DevTools est ouvert — supprimer après debug
+    }
+    _origWarn.apply(console, args);
+  };
+  </script>
+
   <link href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css" rel="stylesheet" />
   <link href="./app.css" rel="stylesheet" />
   <script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
