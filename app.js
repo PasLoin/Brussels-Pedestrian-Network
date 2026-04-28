@@ -465,8 +465,8 @@ const PEDESTRIAN_LAYERS = [
     filter: ["==", ["get", "infra_type"], "road"],
     layout: { "line-cap": "round", "line-join": "round", visibility: "visible" },
     paint: {
-      "line-color": ["interpolate", ["linear"], FLOW_PCT, 0, "#fdba74", 50, "#ef4444", 100, "#7f1d1d"],
-      "line-width": ["interpolate", ["linear"], ["zoom"], 10, ["interpolate", ["linear"], FLOW_PCT, 0, 0.8, 100, 4], 16, ["interpolate", ["linear"], FLOW_PCT, 0, 1.2, 100, 8.5]],
+      "line-color": ["interpolate", ["linear"], FLOW_PCT, 0, "#fdba74", 20, "#f97316", 40, "#ef4444", 60, "#dc2626", 80, "#991b1b", 100, "#450a0a"],
+      "line-width": ["interpolate", ["linear"], ["zoom"], 10, ["interpolate", ["linear"], FLOW_PCT, 0, 0.96, 100, 4.8], 16, ["interpolate", ["linear"], FLOW_PCT, 0, 1.44, 100, 10.2]],
       "line-opacity": 0.8
     }
   },
@@ -681,7 +681,7 @@ function initMap(style) {
     legendEl.appendChild(makeItem({ layerId: "forced-cycleway", label: "Forcé sur piste cyclable", color: "#c4b5fd", color2: "#3b0764" }));
     legendEl.appendChild(makeItem({ layerId: "flow-ped", label: "Flux piéton", color: "#bbf7d0", color2: "#14532d" }));
     legendEl.appendChild(makeItem({ layerId: "flow-cycleway", label: "Flux cycleway", color: "#bfdbfe", color2: "#3b0764" }));
-    legendEl.appendChild(makeItem({ layerId: "flow-road", label: "Flux sur route", color: "#fed7aa", color2: "#7f1d1d" }));
+    legendEl.appendChild(makeItem({ layerId: "flow-road", label: "Flux sur route", color: "#fdba74", color2: "#450a0a" }));
     legendEl.appendChild(makeItem({ layerId: "street-scores", label: "Score marchabilité", color: "#ef4444", color2: "#22c55e", swatchType: "dot" }));
 
     addSection("Analyse spatiale et qualité");
