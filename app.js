@@ -494,11 +494,11 @@ const PEDESTRIAN_LAYERS = [
     minzoom: 13, layout: { "line-cap": "round", "line-join": "round", visibility: "none" },
     paint: {
       "line-color": ["match", ["get", "sw"],
-        "separate",   "#15803d",
+        "separate",   "#22c55e",
         "yes",        "#06b6d4",
         "documented", "#22c55e",
-        "partial",    "#f59e0b",
-        "unknown",    "#9ca3af",
+        "partial",    "#f5700b",
+        "unknown",    "#b587c7",
         "#9ca3af"
       ],
       "line-width": ["interpolate", ["linear"], ["zoom"], 13, 2, 16, 5, 18, 8],
