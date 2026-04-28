@@ -1,25 +1,39 @@
 """
-Export sidewalk tag status on road edges — lightweight layer for QA.
+Export sidewalk tag status on road edges — QA layer for OSM mappers.
 
 Produces ``sidewalk_roads.geojson`` with two properties per feature:
 
-* ``sw`` — classified sidewalk status: ``separate``, ``both``,
-  ``left``, ``right``, ``no``, or ``unknown``.
+* ``sw`` — classified sidewalk documentation status.
 * ``name`` — street name (for popups).
 
-Only road types from ``ROAD_TYPES_SIDEWALK_EXPECTED`` are included
-(residential, tertiary, secondary, primary…).  Directed edges are
-deduplicated so each physical road segment appears once.
+This is a **mapping completeness** tool, not a walkability assessment.
+A road tagged ``sidewalk=no`` is just as green as ``sidewalk=both``
+because the mapper has documented the situation.
 
-Classification priority
------------------------
-1. ``sidewalk:both`` set → fully documented (separate / both / no).
-2. **Both** ``sidewalk:left`` **and** ``sidewalk:right`` set →
-   fully documented.  Even ``left=no`` + ``right=separate`` counts
-   as complete (green), because the mapper has recorded both sides.
-3. General ``sidewalk`` tag (both / yes / left / right / no / separate).
-4. Only one of ``sidewalk:left`` or ``sidewalk:right`` set → partial.
-5. Nothing → ``unknown`` (not exported, saves PMTiles space).
+Classification (``sw`` values)
+------------------------------
+``separate``
+    Best practice.  ``sidewalk:both=separate``, or both left and right
+    tagged as ``separate``.  The sidewalks are mapped as distinct ways.
+
+``yes``
+    Positive but upgradeable.  ``sidewalk=yes``, ``sidewalk=both``, or
+    ``sidewalk:both=yes``.  Sidewalk exists but isn't mapped as a
+    separate way yet — could become ``separate`` in OSM.
+
+``documented``
+    Both sides are explicitly tagged, even if the value is ``no``.
+    This includes ``sidewalk=no``, ``sidewalk:both=no``,
+    ``sidewalk:left=no + sidewalk:right=no``, or any combination where
+    both sides have an explicit value.  The mapper did the work.
+
+``partial``
+    Only one side (``sidewalk:left`` or ``sidewalk:right``) is tagged.
+    The other side is undocumented.
+
+``unknown``
+    No sidewalk tag at all.  Missing data — not an error, just a gap
+    in documentation that a mapper could fill.
 """
 
 from __future__ import annotations
@@ -36,69 +50,48 @@ _ROAD_TYPES = ROAD_TYPES_SIDEWALK_EXPECTED - {"service"}
 # Minimum edge length (metres) to include.
 _MIN_LENGTH = 15.0
 
-# Tag values that indicate "yes, there's a sidewalk on this side".
-_POSITIVE = frozenset({"yes", "separate", "both"})
-
-# Tag values that indicate "no sidewalk on this side".
-_NEGATIVE = frozenset({"no", "none"})
-
 
 def _classify_edge_sidewalk(
     sw: str, sw_left: str, sw_right: str, sw_both: str,
 ) -> str:
-    """Classify the sidewalk situation of a single road edge.
+    """Classify sidewalk documentation completeness for a road edge.
 
-    Returns one of: ``separate``, ``both``, ``left``, ``right``,
-    ``no``, ``unknown``.
-
-    The key insight: if **both** ``sidewalk:left`` and
-    ``sidewalk:right`` are set, the mapper has fully documented the
-    situation — even when one side is ``no``.  That gets green
-    (``both`` or ``separate``), not amber.  Only when *both* sides
-    are explicitly ``no`` does the result become ``no`` (red).
+    Returns one of: ``separate``, ``yes``, ``documented``, ``partial``,
+    ``unknown``.
     """
     # ── 1. sidewalk:both takes priority ───────────────────────────────────
     if sw_both:
         if sw_both == "separate":
             return "separate"
-        if sw_both in _POSITIVE:
-            return "both"
-        if sw_both in _NEGATIVE:
-            return "no"
-        # Any other value (e.g. "mapped") → documented
-        return "both"
+        if sw_both in ("yes", "both"):
+            return "yes"
+        # Any other explicit value (no, none, mapped, …) → documented
+        return "documented"
 
     # ── 2. Both left AND right documented ─────────────────────────────────
     if sw_left and sw_right:
-        left_pos = sw_left in _POSITIVE
-        right_pos = sw_right in _POSITIVE
-
-        if left_pos or right_pos:
-            # At least one side has a sidewalk → fully documented
-            if sw_left == "separate" or sw_right == "separate":
-                return "separate"
-            return "both"
-
-        # Both sides set, but both negative → no sidewalk at all
-        return "no"
+        if sw_left == "separate" and sw_right == "separate":
+            return "separate"
+        if sw_left == "separate" or sw_right == "separate":
+            # One side separate, other side explicitly tagged → documented
+            return "documented"
+        # Both sides have an explicit value (yes, no, none, …)
+        return "documented"
 
     # ── 3. General sidewalk tag ───────────────────────────────────────────
-    if sw == "separate":
-        return "separate"
-    if sw in ("both", "yes"):
-        return "both"
-    if sw == "left":
-        return "left"
-    if sw == "right":
-        return "right"
-    if sw in _NEGATIVE:
-        return "no"
+    if sw:
+        if sw == "separate":
+            return "separate"
+        if sw in ("both", "yes"):
+            return "yes"
+        if sw in ("left", "right"):
+            return "partial"
+        # Any other explicit value (no, none, …) → documented
+        return "documented"
 
     # ── 4. Only one side documented → partial ─────────────────────────────
-    if sw_left:
-        return "left"
-    if sw_right:
-        return "right"
+    if sw_left or sw_right:
+        return "partial"
 
     # ── 5. Nothing documented ─────────────────────────────────────────────
     return "unknown"
@@ -116,14 +109,13 @@ def export_sidewalk_roads(
 ) -> None:
     """Write ``sidewalk_roads.geojson`` with per-edge sidewalk tag status.
 
-    Only road edges with an actual sidewalk tag (status != ``unknown``)
-    are exported to keep the layer lightweight.
+    All road edges are exported, including ``unknown`` (no tag), so
+    mappers can see where documentation is missing.
     """
-    print("Exporting sidewalk tag status on roads...")
+    print("Exporting sidewalk tag status on roads (QA layer)...")
 
     rows: list[dict] = []
     seen: set[tuple[int, int]] = set()
-    n_unknown = 0
 
     for eid in range(len(edge_tuples)):
         hw = edge_highways[eid]
@@ -147,10 +139,6 @@ def export_sidewalk_roads(
 
         status = _classify_edge_sidewalk(sw, sw_l, sw_r, sw_b)
 
-        if status == "unknown":
-            n_unknown += 1
-            continue  # skip untagged roads to keep PMTiles lean
-
         rows.append({
             "geometry": geom,
             "sw": status,
@@ -165,11 +153,9 @@ def export_sidewalk_roads(
         gdf = gpd.GeoDataFrame([fb], crs="EPSG:4326")
     gdf.to_file("sidewalk_roads.geojson", driver="GeoJSON")
 
-    n_total = len(rows) + n_unknown
-    print(f"  Road edges analysed: {n_total}")
-    print(f"  Tagged (exported): {len(rows)} | Unknown (skipped): {n_unknown}")
+    print(f"  Road edges exported: {len(rows)}")
 
     # Breakdown by status
     counts = Counter(r["sw"] for r in rows)
-    for st in ("separate", "both", "left", "right", "no"):
+    for st in ("separate", "yes", "documented", "partial", "unknown"):
         print(f"    {st}: {counts.get(st, 0)}")
