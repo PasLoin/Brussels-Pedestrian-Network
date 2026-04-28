@@ -51,6 +51,25 @@ _ROAD_TYPES = ROAD_TYPES_SIDEWALK_EXPECTED - {"service"}
 _MIN_LENGTH = 15.0
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _canon_geom_hash(geom) -> int:
+    """Direction-independent hash of a LineString geometry.
+
+    Two directed versions of the same physical segment (u→v and v→u)
+    will have reversed coordinate order but are the same road — this
+    function normalises them to the same hash.  Distinct parallel
+    segments between the same nodes will produce different hashes.
+    """
+    coords = geom.coords[:]
+    if coords[0] > coords[-1]:
+        coords = coords[::-1]
+    # Round to 1 decimal (~10 cm in EPSG:31370) to absorb float noise
+    return hash(tuple(round(c, 1) for pt in coords for c in pt))
+
+
 def _classify_edge_sidewalk(
     sw: str, sw_left: str, sw_right: str, sw_both: str,
 ) -> str:
@@ -97,6 +116,10 @@ def _classify_edge_sidewalk(
     return "unknown"
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Public entry point
+# ─────────────────────────────────────────────────────────────────────────────
+
 def export_sidewalk_roads(
     edge_tuples: list[tuple[int, int]],
     edge_highways: list[str],
@@ -111,11 +134,15 @@ def export_sidewalk_roads(
 
     All road edges are exported, including ``unknown`` (no tag), so
     mappers can see where documentation is missing.
+
+    Deduplication uses (node pair + geometry hash) so that distinct
+    multigraph edges between the same nodes are preserved while
+    directed duplicates (u→v / v→u of the same segment) are dropped.
     """
     print("Exporting sidewalk tag status on roads (QA layer)...")
 
     rows: list[dict] = []
-    seen: set[tuple[int, int]] = set()
+    seen: set[tuple[int, int, int]] = set()
 
     for eid in range(len(edge_tuples)):
         hw = edge_highways[eid]
@@ -125,9 +152,12 @@ def export_sidewalk_roads(
         if geom is None or geom.is_empty or geom.length < _MIN_LENGTH:
             continue
 
-        # Deduplicate directed edges
+        # Deduplicate directed edges while keeping distinct multigraph
+        # segments.  The geometry hash is direction-independent so
+        # u→v and v→u of the same road collapse, but parallel roads
+        # between the same nodes stay separate.
         src, tgt = edge_tuples[eid]
-        key = (min(src, tgt), max(src, tgt))
+        key = (min(src, tgt), max(src, tgt), _canon_geom_hash(geom))
         if key in seen:
             continue
         seen.add(key)
