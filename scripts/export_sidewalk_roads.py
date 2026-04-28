@@ -11,8 +11,15 @@ Only road types from ``ROAD_TYPES_SIDEWALK_EXPECTED`` are included
 (residential, tertiary, secondary, primary…).  Directed edges are
 deduplicated so each physical road segment appears once.
 
-This module is intentionally separate from ``export.py`` to keep the
-diff small and the responsibility clear.
+Classification priority
+-----------------------
+1. ``sidewalk:both`` set → fully documented (separate / both / no).
+2. **Both** ``sidewalk:left`` **and** ``sidewalk:right`` set →
+   fully documented.  Even ``left=no`` + ``right=separate`` counts
+   as complete (green), because the mapper has recorded both sides.
+3. General ``sidewalk`` tag (both / yes / left / right / no / separate).
+4. Only one of ``sidewalk:left`` or ``sidewalk:right`` set → partial.
+5. Nothing → ``unknown`` (not exported, saves PMTiles space).
 """
 
 from __future__ import annotations
@@ -32,6 +39,9 @@ _MIN_LENGTH = 15.0
 # Tag values that indicate "yes, there's a sidewalk on this side".
 _POSITIVE = frozenset({"yes", "separate", "both"})
 
+# Tag values that indicate "no sidewalk on this side".
+_NEGATIVE = frozenset({"no", "none"})
+
 
 def _classify_edge_sidewalk(
     sw: str, sw_left: str, sw_right: str, sw_both: str,
@@ -40,34 +50,57 @@ def _classify_edge_sidewalk(
 
     Returns one of: ``separate``, ``both``, ``left``, ``right``,
     ``no``, ``unknown``.
-    """
-    # ── Explicit "separate" documentation ─────────────────────────────────
-    if sw_both == "separate" or sw == "separate":
-        return "separate"
 
-    # ── Both sides present ────────────────────────────────────────────────
-    if sw_both in ("yes",):
+    The key insight: if **both** ``sidewalk:left`` and
+    ``sidewalk:right`` are set, the mapper has fully documented the
+    situation — even when one side is ``no``.  That gets green
+    (``both`` or ``separate``), not amber.  Only when *both* sides
+    are explicitly ``no`` does the result become ``no`` (red).
+    """
+    # ── 1. sidewalk:both takes priority ───────────────────────────────────
+    if sw_both:
+        if sw_both == "separate":
+            return "separate"
+        if sw_both in _POSITIVE:
+            return "both"
+        if sw_both in _NEGATIVE:
+            return "no"
+        # Any other value (e.g. "mapped") → documented
         return "both"
+
+    # ── 2. Both left AND right documented ─────────────────────────────────
+    if sw_left and sw_right:
+        left_pos = sw_left in _POSITIVE
+        right_pos = sw_right in _POSITIVE
+
+        if left_pos or right_pos:
+            # At least one side has a sidewalk → fully documented
+            if sw_left == "separate" or sw_right == "separate":
+                return "separate"
+            return "both"
+
+        # Both sides set, but both negative → no sidewalk at all
+        return "no"
+
+    # ── 3. General sidewalk tag ───────────────────────────────────────────
+    if sw == "separate":
+        return "separate"
     if sw in ("both", "yes"):
         return "both"
-
-    has_left = sw_left in _POSITIVE or sw == "left"
-    has_right = sw_right in _POSITIVE or sw == "right"
-
-    if has_left and has_right:
-        return "both"
-    if has_left:
+    if sw == "left":
         return "left"
-    if has_right:
+    if sw == "right":
+        return "right"
+    if sw in _NEGATIVE:
+        return "no"
+
+    # ── 4. Only one side documented → partial ─────────────────────────────
+    if sw_left:
+        return "left"
+    if sw_right:
         return "right"
 
-    # ── Explicitly no sidewalk ────────────────────────────────────────────
-    if sw in ("no", "none"):
-        return "no"
-    if sw_left in ("no", "none") and sw_right in ("no", "none"):
-        return "no"
-
-    # ── Nothing documented ────────────────────────────────────────────────
+    # ── 5. Nothing documented ─────────────────────────────────────────────
     return "unknown"
 
 
