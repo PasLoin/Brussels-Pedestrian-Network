@@ -494,15 +494,18 @@ const PEDESTRIAN_LAYERS = [
     minzoom: 13, layout: { "line-cap": "round", "line-join": "round", visibility: "none" },
     paint: {
       "line-color": ["match", ["get", "sw"],
-        "separate", "#06b6d4",
-        "both",     "#22c55e",
-        "left",     "#f59e0b",
-        "right",    "#f97316",
-        "no",       "#ef4444",
+        "separate",   "#15803d",
+        "yes",        "#06b6d4",
+        "documented", "#22c55e",
+        "partial",    "#f59e0b",
+        "unknown",    "#9ca3af",
         "#9ca3af"
       ],
       "line-width": ["interpolate", ["linear"], ["zoom"], 13, 2, 16, 5, 18, 8],
-      "line-opacity": 0.85
+      "line-opacity": ["match", ["get", "sw"],
+        "unknown", 0.45,
+        0.85
+      ]
     }
   }
 ];
@@ -520,11 +523,11 @@ const HOVER_LAYERS = [
     ids: ["sidewalk-roads"],
     format: p => {
       const swLabels = {
-        separate: "✅ Trottoirs séparés (ways)",
-        both: "✅ Documenté deux côtés",
-        left: "⚠️ Seul côté gauche documenté",
-        right: "⚠️ Seul côté droit documenté",
-        no: "❌ Aucun trottoir"
+        separate:   "✅ sidewalk:both=separate",
+        yes:        "✅ sidewalk=yes — mappable en separate",
+        documented: "✅ Deux côtés documentés",
+        partial:    "⚠️ Un seul côté documenté",
+        unknown:    "— Aucun tag sidewalk"
       };
       return `
         <div class="popup-title">🏷 Tags trottoir</div>
@@ -683,7 +686,7 @@ function initMap(style) {
 
     addSection("Analyse spatiale (Désactivé)");
     legendEl.appendChild(makeItem({ layerId: "sidewalk-gaps", label: "Trottoir un seul côté", color: "#f59e0b", dashed: true }));
-    legendEl.appendChild(makeItem({ layerId: "sidewalk-roads", label: "Tags sidewalk", color: "#ef4444", color2: "#22c55e" }));
+    legendEl.appendChild(makeItem({ layerId: "sidewalk-roads", label: "Tags sidewalk", color: "#9ca3af", color2: "#15803d" }));
 
     addSection("Réseau de base (Désactivé)");
     HIGHWAY_LAYERS.forEach(l => legendEl.appendChild(makeItem({ layerId: `highway-${l.id}`, label: l.label, color: l.color, dashed: l.dash })));
