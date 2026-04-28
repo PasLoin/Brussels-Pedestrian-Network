@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-04-28
+
+### Ajout sidewalk* tags
+
+- **Nouveau layer** : En plus de l'analyse spatiale qui identifie la présence d'un sidewalk séparé mappé on prend en compte la présence des tags de la route principale , l'outil permet de visualiser en combinaison avec les layers existant les lacunes et erreurs sur la carte
+
 ## 2026-04-24
 
 ### Refactoring
