@@ -115,7 +115,7 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
     # Ensure foot/sidewalk tags survive import + simplification.
     # OSMnx only keeps tags listed in useful_tags_way; foot may be
     # missing in some versions → add it explicitly.
-    _extra_tags = {"foot", "sidewalk", "sidewalk:left", "sidewalk:right", "sidewalk:both", "segregated"}
+    _extra_tags = {"foot", "route", "sidewalk", "sidewalk:left", "sidewalk:right", "sidewalk:both", "segregated"}
     if hasattr(ox, "settings"):
         existing = set(getattr(ox.settings, "useful_tags_way", []))
         if not _extra_tags.issubset(existing):
@@ -145,14 +145,18 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
     edge_sidewalk_right: list[str] = []
     edge_sidewalk_both: list[str] = []
 
-    skipped_foot = skipped_access = 0
+    skipped_foot = skipped_access = skipped_ferry = 0
 
     for (u, v, _k), row in edges_gdf.iterrows():
+        route_tag = _first_str(row.get("route", "")).lower()
         hw = _first_str(row.get("highway", "unclassified")) or "unclassified"
         foot_tag = _first_str(row.get("foot", "")).lower()
         access_tag = _first_str(row.get("access", "")).lower()
 
         # ── Access filtering ──────────────────────────────────────────────
+        if route_tag == "ferry":
+            skipped_ferry += 1
+            continue
         if foot_tag in FOOT_FORBIDDEN:
             skipped_foot += 1
             continue
@@ -185,7 +189,7 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
         edge_sidewalk_right.append(_first_str(row.get("sidewalk:right", "")).lower())
         edge_sidewalk_both.append(_first_str(row.get("sidewalk:both", "")).lower())
 
-    print(f"  Edges skipped — foot=no: {skipped_foot}, "
+    print(f"  Edges skipped — ferry: {skipped_ferry}, foot=no: {skipped_foot}, "
           f"access=no/private: {skipped_access}")
 
     # Debug: cycleway classification stats
