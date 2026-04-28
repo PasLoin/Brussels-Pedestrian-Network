@@ -488,6 +488,22 @@ const PEDESTRIAN_LAYERS = [
       "line-opacity": 0.85,
       "line-dasharray": [4, 3]
     }
+  },
+  {
+    id: "sidewalk-roads", type: "line", source: "pedestrian", "source-layer": "sidewalk_roads",
+    minzoom: 13, layout: { "line-cap": "round", "line-join": "round", visibility: "none" },
+    paint: {
+      "line-color": ["match", ["get", "sw"],
+        "separate", "#06b6d4",
+        "both",     "#22c55e",
+        "left",     "#f59e0b",
+        "right",    "#f97316",
+        "no",       "#ef4444",
+        "#9ca3af"
+      ],
+      "line-width": ["interpolate", ["linear"], ["zoom"], 13, 2, 16, 5, 18, 8],
+      "line-opacity": 0.85
+    }
   }
 ];
 
@@ -499,6 +515,23 @@ const HOVER_LAYERS = [
       <div class="popup-title">🚧 Trottoir un seul côté</div>
       <div class="popup-row"><span class="label">Rue</span><span class="value">${p.name || "—"}</span></div>
     `
+  },
+  {
+    ids: ["sidewalk-roads"],
+    format: p => {
+      const swLabels = {
+        separate: "✅ Séparés (ways)",
+        both: "✅ Deux côtés",
+        left: "⚠️ Gauche uniquement",
+        right: "⚠️ Droite uniquement",
+        no: "❌ Aucun trottoir"
+      };
+      return `
+        <div class="popup-title">🏷 Tags trottoir</div>
+        <div class="popup-row"><span class="label">Rue</span><span class="value">${p.name || "—"}</span></div>
+        <div class="popup-row"><span class="label">Statut</span><span class="value">${swLabels[p.sw] || p.sw || "?"}</span></div>
+      `;
+    }
   },
   {
     ids: ["forced-segments", "forced-cycleway"],
@@ -650,6 +683,7 @@ function initMap(style) {
 
     addSection("Analyse spatiale (Désactivé)");
     legendEl.appendChild(makeItem({ layerId: "sidewalk-gaps", label: "Trottoir un seul côté", color: "#f59e0b", dashed: true }));
+    legendEl.appendChild(makeItem({ layerId: "sidewalk-roads", label: "Tags sidewalk", color: "#ef4444", color2: "#22c55e" }));
 
     addSection("Réseau de base (Désactivé)");
     HIGHWAY_LAYERS.forEach(l => legendEl.appendChild(makeItem({ layerId: `highway-${l.id}`, label: l.label, color: l.color, dashed: l.dash })));
