@@ -520,10 +520,10 @@ const HOVER_LAYERS = [
     ids: ["sidewalk-roads"],
     format: p => {
       const swLabels = {
-        separate: "✅ Séparés (ways)",
-        both: "✅ Deux côtés",
-        left: "⚠️ Gauche uniquement",
-        right: "⚠️ Droite uniquement",
+        separate: "✅ Trottoirs séparés (ways)",
+        both: "✅ Documenté deux côtés",
+        left: "⚠️ Seul côté gauche documenté",
+        right: "⚠️ Seul côté droit documenté",
         no: "❌ Aucun trottoir"
       };
       return `
