@@ -51,6 +51,7 @@ from export import (
     save_stats,
 )
 from sidewalk_gap import detect_sidewalk_gaps
+from export_sidewalk_roads import export_sidewalk_roads
 
 
 def main() -> None:
@@ -117,6 +118,14 @@ def main() -> None:
 
     # ── Step 8b: Detect sidewalk gaps ─────────────────────────────────────
     detect_sidewalk_gaps(
+        gb.edge_tuples, gb.edge_highways,
+        gb.edge_geoms, gb.edge_names,
+        gb.edge_sidewalks, gb.edge_sidewalk_left, gb.edge_sidewalk_right,
+        gb.edge_sidewalk_both,
+    )
+
+    # ── Step 8c: Export sidewalk tag status on roads ──────────────────────
+    export_sidewalk_roads(
         gb.edge_tuples, gb.edge_highways,
         gb.edge_geoms, gb.edge_names,
         gb.edge_sidewalks, gb.edge_sidewalk_left, gb.edge_sidewalk_right,
