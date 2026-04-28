@@ -488,6 +488,25 @@ const PEDESTRIAN_LAYERS = [
       "line-opacity": 0.85,
       "line-dasharray": [4, 3]
     }
+  },
+  {
+    id: "sidewalk-roads", type: "line", source: "pedestrian", "source-layer": "sidewalk_roads",
+    minzoom: 13, layout: { "line-cap": "round", "line-join": "round", visibility: "none" },
+    paint: {
+      "line-color": ["match", ["get", "sw"],
+        "separate",   "#22c55e",
+        "yes",        "#06b6d4",
+        "documented", "#22c55e",
+        "partial",    "#f5700b",
+        "unknown",    "#b587c7",
+        "#9ca3af"
+      ],
+      "line-width": ["interpolate", ["linear"], ["zoom"], 13, 2, 16, 5, 18, 8],
+      "line-opacity": ["match", ["get", "sw"],
+        "unknown", 0.45,
+        0.85
+      ]
+    }
   }
 ];
 
@@ -499,6 +518,23 @@ const HOVER_LAYERS = [
       <div class="popup-title">🚧 Trottoir un seul côté</div>
       <div class="popup-row"><span class="label">Rue</span><span class="value">${p.name || "—"}</span></div>
     `
+  },
+  {
+    ids: ["sidewalk-roads"],
+    format: p => {
+      const swLabels = {
+        separate:   "✅ sidewalk:both=separate",
+        yes:        "✅ sidewalk=yes — mappable en separate",
+        documented: "✅ Deux côtés documentés",
+        partial:    "⚠️ Un seul côté documenté",
+        unknown:    "— Aucun tag sidewalk"
+      };
+      return `
+        <div class="popup-title">🏷 Tags trottoir</div>
+        <div class="popup-row"><span class="label">Rue</span><span class="value">${p.name || "—"}</span></div>
+        <div class="popup-row"><span class="label">Statut</span><span class="value">${swLabels[p.sw] || p.sw || "?"}</span></div>
+      `;
+    }
   },
   {
     ids: ["forced-segments", "forced-cycleway"],
@@ -648,10 +684,11 @@ function initMap(style) {
     legendEl.appendChild(makeItem({ layerId: "flow-road", label: "Flux sur route", color: "#fed7aa", color2: "#7f1d1d" }));
     legendEl.appendChild(makeItem({ layerId: "street-scores", label: "Score marchabilité", color: "#ef4444", color2: "#22c55e", swatchType: "dot" }));
 
-    addSection("Analyse spatiale (Désactivé)");
+    addSection("Analyse spatiale et qualité");
     legendEl.appendChild(makeItem({ layerId: "sidewalk-gaps", label: "Trottoir un seul côté", color: "#f59e0b", dashed: true }));
+    legendEl.appendChild(makeItem({ layerId: "sidewalk-roads", label: "Tags sidewalk", color: "#9ca3af", color2: "#15803d" }));
 
-    addSection("Réseau de base (Désactivé)");
+    addSection("Réseau de base");
     HIGHWAY_LAYERS.forEach(l => legendEl.appendChild(makeItem({ layerId: `highway-${l.id}`, label: l.label, color: l.color, dashed: l.dash })));
 
     // ── Hover popups ─────────────────────────────────────────────────────
