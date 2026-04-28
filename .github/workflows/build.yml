@@ -177,6 +177,7 @@ jobs:
             forced_cycleway.geojson
             street_scores.geojson
             sidewalk_gaps.geojson
+            sidewalk_roads.geojson
             highways.geojson
             addresses.geojson
             stats.json
@@ -200,7 +201,8 @@ jobs:
             --named-layer=forced_segments:forced_segments.geojson \
             --named-layer=forced_cycleway:forced_cycleway.geojson \
             --named-layer=street_scores:street_scores.geojson \
-            --named-layer=sidewalk_gaps:sidewalk_gaps.geojson
+            --named-layer=sidewalk_gaps:sidewalk_gaps.geojson \
+            --named-layer=sidewalk_roads:sidewalk_roads.geojson
 
       # ── Deploy ──────────────────────────────────────────────────────────
       - name: Add build timestamp to state.txt
