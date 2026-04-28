@@ -62,6 +62,20 @@ _DOCUMENTED_SIDEWALK_VALUES = frozenset({
 })
 
 
+def _canon_geom_hash(geom) -> int:
+    """Direction-independent hash of a LineString geometry.
+
+    Two directed versions of the same physical segment (u→v and v→u)
+    will have reversed coordinate order but are the same road — this
+    function normalises them to the same hash.  Distinct parallel
+    segments between the same nodes will produce different hashes.
+    """
+    coords = geom.coords[:]
+    if coords[0] > coords[-1]:
+        coords = coords[::-1]
+    return hash(tuple(round(c, 1) for pt in coords for c in pt))
+
+
 def _line_bearing(geom) -> float | None:
     """Return the bearing (0–180°) of a LineString, or None if degenerate."""
     coords = list(geom.coords)
@@ -143,6 +157,10 @@ def detect_sidewalk_gaps(
     """Detect roads with a footway on one side only.
 
     Writes ``sidewalk_gaps.geojson`` with one feature per gap segment.
+
+    Deduplication uses (node pair + geometry hash) so that distinct
+    multigraph edges between the same nodes are preserved while
+    directed duplicates (u→v / v→u of the same segment) are dropped.
     """
     print("Detecting sidewalk gaps (footway on one side only)...")
     print(f"  Offset: {SIDEWALK_GAP_OFFSET_M}m | "
@@ -168,7 +186,7 @@ def detect_sidewalk_gaps(
 
     # ── Check each road segment ───────────────────────────────────────────
     rows: list[dict] = []
-    seen_edges: set[tuple[int, int]] = set()  # deduplicate directed edges
+    seen_edges: set[tuple[int, int, int]] = set()
     n_roads = 0
     n_both = 0
     n_none = 0
@@ -184,8 +202,10 @@ def detect_sidewalk_gaps(
             continue
 
         # ── Deduplicate: skip reverse direction of same segment ───────────
+        # Use geometry hash so distinct multigraph edges between the
+        # same nodes are preserved.
         src, tgt = edge_tuples[eid]
-        undirected_key = (min(src, tgt), max(src, tgt))
+        undirected_key = (min(src, tgt), max(src, tgt), _canon_geom_hash(geom))
         if undirected_key in seen_edges:
             continue
         seen_edges.add(undirected_key)
