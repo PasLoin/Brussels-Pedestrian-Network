@@ -6,9 +6,11 @@ Produces ``sidewalk_roads.geojson`` with two properties per feature:
 * ``sw`` — classified sidewalk documentation status.
 * ``name`` — street name (for popups).
 
-This is a **mapping completeness** tool, not a walkability assessment.
-A road tagged ``sidewalk=no`` is just as green as ``sidewalk=both``
-because the mapper has documented the situation.
+This module reads **raw road ways** exported directly by osmium (one
+OSM way = one GeoJSON feature).  This avoids the tag-bleeding bug
+caused by OSMnx graph simplification, where two adjacent ways merged
+at a degree-2 node would share the sidewalk tag of whichever segment
+had one — even if the other segment had no tag at all.
 
 Classification (``sw`` values)
 ------------------------------
@@ -55,19 +57,19 @@ _MIN_LENGTH = 15.0
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _canon_geom_hash(geom) -> int:
-    """Direction-independent hash of a LineString geometry.
+def _safe_str(val) -> str:
+    """Normalise a GeoJSON property value to a lowercase string.
 
-    Two directed versions of the same physical segment (u→v and v→u)
-    will have reversed coordinate order but are the same road — this
-    function normalises them to the same hash.  Distinct parallel
-    segments between the same nodes will produce different hashes.
+    Handles None, NaN, and missing values that geopandas may produce
+    when reading GeoJSON features with heterogeneous properties.
     """
-    coords = geom.coords[:]
-    if coords[0] > coords[-1]:
-        coords = coords[::-1]
-    # Round to 1 decimal (~10 cm in EPSG:31370) to absorb float noise
-    return hash(tuple(round(c, 1) for pt in coords for c in pt))
+    if val is None:
+        return ""
+    if isinstance(val, float):
+        import math
+        if math.isnan(val):
+            return ""
+    return str(val).strip().lower()
 
 
 def _classify_edge_sidewalk(
@@ -121,69 +123,57 @@ def _classify_edge_sidewalk(
 # ─────────────────────────────────────────────────────────────────────────────
 
 def export_sidewalk_roads(
-    edge_tuples: list[tuple[int, int]],
-    edge_highways: list[str],
-    edge_geoms: list,
-    edge_names: list[str],
-    edge_sidewalks: list[str],
-    edge_sidewalk_left: list[str],
-    edge_sidewalk_right: list[str],
-    edge_sidewalk_both: list[str],
+    raw_geojson_path: str = "sidewalk_roads_raw.geojson",
 ) -> None:
-    """Write ``sidewalk_roads.geojson`` with per-edge sidewalk tag status.
+    """Write ``sidewalk_roads.geojson`` with per-way sidewalk tag status.
 
-    All road edges are exported, including ``unknown`` (no tag), so
-    mappers can see where documentation is missing.
-
-    Deduplication uses (node pair + geometry hash) so that distinct
-    multigraph edges between the same nodes are preserved while
-    directed duplicates (u→v / v→u of the same segment) are dropped.
+    Reads the raw road GeoJSON produced by osmium export (one OSM way
+    = one feature, with original tags as properties).  This bypasses
+    OSMnx graph simplification entirely, so each way keeps its own
+    accurate tags and geometry.
     """
     print("Exporting sidewalk tag status on roads (QA layer)...")
+    print(f"  Reading raw roads from: {raw_geojson_path}")
+
+    gdf = gpd.read_file(raw_geojson_path)
+
+    # Filter for LineString geometries only
+    gdf = gdf[gdf.geometry.geom_type == "LineString"].copy()
+
+    # Project to EPSG:31370 for length calculation
+    gdf_proj = gdf.to_crs("EPSG:31370")
+
+    # Filter by road type and minimum length
+    gdf_proj = gdf_proj[gdf_proj["highway"].isin(_ROAD_TYPES)]
+    gdf_proj = gdf_proj[gdf_proj.geometry.length >= _MIN_LENGTH]
+
+    print(f"  Road ways after filtering: {len(gdf_proj)}")
 
     rows: list[dict] = []
-    seen: set[tuple[int, int, int]] = set()
 
-    for eid in range(len(edge_tuples)):
-        hw = edge_highways[eid]
-        if hw not in _ROAD_TYPES:
-            continue
-        geom = edge_geoms[eid]
-        if geom is None or geom.is_empty or geom.length < _MIN_LENGTH:
-            continue
-
-        # Deduplicate directed edges while keeping distinct multigraph
-        # segments.  The geometry hash is direction-independent so
-        # u→v and v→u of the same road collapse, but parallel roads
-        # between the same nodes stay separate.
-        src, tgt = edge_tuples[eid]
-        key = (min(src, tgt), max(src, tgt), _canon_geom_hash(geom))
-        if key in seen:
-            continue
-        seen.add(key)
-
-        sw = edge_sidewalks[eid] if eid < len(edge_sidewalks) else ""
-        sw_l = edge_sidewalk_left[eid] if eid < len(edge_sidewalk_left) else ""
-        sw_r = edge_sidewalk_right[eid] if eid < len(edge_sidewalk_right) else ""
-        sw_b = edge_sidewalk_both[eid] if eid < len(edge_sidewalk_both) else ""
+    for _, row in gdf_proj.iterrows():
+        sw = _safe_str(row.get("sidewalk"))
+        sw_l = _safe_str(row.get("sidewalk:left"))
+        sw_r = _safe_str(row.get("sidewalk:right"))
+        sw_b = _safe_str(row.get("sidewalk:both"))
 
         status = _classify_edge_sidewalk(sw, sw_l, sw_r, sw_b)
 
         rows.append({
-            "geometry": geom,
+            "geometry": row.geometry,
             "sw": status,
-            "name": edge_names[eid] if eid < len(edge_names) else "",
+            "name": _safe_str(row.get("name")) or "",
         })
 
     # Write output
     fb = {"geometry": None, "sw": "", "name": ""}
     if rows:
-        gdf = gpd.GeoDataFrame(rows, crs="EPSG:31370").to_crs("EPSG:4326")
+        out_gdf = gpd.GeoDataFrame(rows, crs="EPSG:31370").to_crs("EPSG:4326")
     else:
-        gdf = gpd.GeoDataFrame([fb], crs="EPSG:4326")
-    gdf.to_file("sidewalk_roads.geojson", driver="GeoJSON")
+        out_gdf = gpd.GeoDataFrame([fb], crs="EPSG:4326")
+    out_gdf.to_file("sidewalk_roads.geojson", driver="GeoJSON")
 
-    print(f"  Road edges exported: {len(rows)}")
+    print(f"  Road ways exported: {len(rows)}")
 
     # Breakdown by status
     counts = Counter(r["sw"] for r in rows)
