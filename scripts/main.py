@@ -117,20 +117,19 @@ def main() -> None:
     )
 
     # ── Step 8b: Detect sidewalk gaps ─────────────────────────────────────
+    # Road edges are read from raw osmium export (one OSM way = one
+    # feature) to avoid tag bleeding from graph simplification.
+    # Footway index still comes from graph edges (simplification is
+    # harmless for footway geometries).
     detect_sidewalk_gaps(
-        gb.edge_tuples, gb.edge_highways,
-        gb.edge_geoms, gb.edge_names,
-        gb.edge_sidewalks, gb.edge_sidewalk_left, gb.edge_sidewalk_right,
-        gb.edge_sidewalk_both,
+        "sidewalk_roads_raw.geojson",
+        gb.edge_highways,
+        gb.edge_geoms,
     )
 
     # ── Step 8c: Export sidewalk tag status on roads ──────────────────────
-    export_sidewalk_roads(
-        gb.edge_tuples, gb.edge_highways,
-        gb.edge_geoms, gb.edge_names,
-        gb.edge_sidewalks, gb.edge_sidewalk_left, gb.edge_sidewalk_right,
-        gb.edge_sidewalk_both,
-    )
+    # Same raw GeoJSON source — each OSM way keeps its own tags.
+    export_sidewalk_roads("sidewalk_roads_raw.geojson")
 
     # ── Step 9: Export client-side routing graph ──────────────────────────
     export_routing_graph(
