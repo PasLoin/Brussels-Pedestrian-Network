@@ -16,6 +16,12 @@ Roads are **excluded** from the analysis if:
   the mapper has already documented the sidewalk situation.
   Flagging these as gaps would be a false positive.
 
+Road data is read from a **raw GeoJSON** exported by osmium (one OSM
+way = one feature).  This avoids the tag-bleeding bug caused by OSMnx
+graph simplification.  Footway geometries for the spatial index still
+come from the graph edges (simplification doesn't affect the spatial
+analysis — it only makes some footways longer).
+
 This analysis is purely geometric.  For roads without explicit sidewalk
 tags, it checks whether a **separate footway way** has been drawn in
 OSM on each side.
@@ -62,18 +68,14 @@ _DOCUMENTED_SIDEWALK_VALUES = frozenset({
 })
 
 
-def _canon_geom_hash(geom) -> int:
-    """Direction-independent hash of a LineString geometry.
-
-    Two directed versions of the same physical segment (u→v and v→u)
-    will have reversed coordinate order but are the same road — this
-    function normalises them to the same hash.  Distinct parallel
-    segments between the same nodes will produce different hashes.
-    """
-    coords = geom.coords[:]
-    if coords[0] > coords[-1]:
-        coords = coords[::-1]
-    return hash(tuple(round(c, 1) for pt in coords for c in pt))
+def _safe_str(val) -> str:
+    """Normalise a GeoJSON property value to a lowercase string."""
+    if val is None:
+        return ""
+    if isinstance(val, float):
+        if math.isnan(val):
+            return ""
+    return str(val).strip().lower()
 
 
 def _line_bearing(geom) -> float | None:
@@ -124,43 +126,41 @@ def _parallel_coverage(
 
 
 def _is_sidewalk_documented(
-    sidewalk: str, sidewalk_left: str, sidewalk_right: str, sidewalk_both: str,
+    sw: str, sw_left: str, sw_right: str, sw_both: str,
 ) -> bool:
-    """Return True if the mapper has explicitly tagged the sidewalk situation.
-
-    Any explicit ``sidewalk:left``, ``sidewalk:right``, or
-    ``sidewalk:both`` tag (e.g. ``sidewalk:both=separate``) means the
-    mapper has documented which side has (or lacks) a sidewalk.  The
-    general ``sidewalk`` tag is also checked against known values.
-    """
-    if sidewalk_left in _DOCUMENTED_SIDEWALK_VALUES:
+    """Return True if the mapper has explicitly tagged the sidewalk situation."""
+    if sw_left in _DOCUMENTED_SIDEWALK_VALUES:
         return True
-    if sidewalk_right in _DOCUMENTED_SIDEWALK_VALUES:
+    if sw_right in _DOCUMENTED_SIDEWALK_VALUES:
         return True
-    if sidewalk_both in _DOCUMENTED_SIDEWALK_VALUES:
+    if sw_both in _DOCUMENTED_SIDEWALK_VALUES:
         return True
-    if sidewalk in _DOCUMENTED_SIDEWALK_VALUES:
+    if sw in _DOCUMENTED_SIDEWALK_VALUES:
         return True
     return False
 
 
 def detect_sidewalk_gaps(
-    edge_tuples: list[tuple[int, int]],
+    roads_geojson_path: str,
     edge_highways: list[str],
     edge_geoms: list,
-    edge_names: list[str],
-    edge_sidewalks: list[str],
-    edge_sidewalk_left: list[str],
-    edge_sidewalk_right: list[str],
-    edge_sidewalk_both: list[str],
 ) -> None:
     """Detect roads with a footway on one side only.
 
-    Writes ``sidewalk_gaps.geojson`` with one feature per gap segment.
+    Parameters
+    ----------
+    roads_geojson_path : str
+        Path to the raw roads GeoJSON (one OSM way = one feature).
+        Used for the road edges to analyse — avoids tag-bleeding
+        from OSMnx graph simplification.
+    edge_highways : list[str]
+        Highway types from the routing graph (all edges).  Used to
+        build the footway spatial index.
+    edge_geoms : list
+        Geometries from the routing graph (all edges, EPSG:31370).
+        Used to build the footway spatial index.
 
-    Deduplication uses (node pair + geometry hash) so that distinct
-    multigraph edges between the same nodes are preserved while
-    directed duplicates (u→v / v→u of the same segment) are dropped.
+    Writes ``sidewalk_gaps.geojson`` with one feature per gap segment.
     """
     print("Detecting sidewalk gaps (footway on one side only)...")
     print(f"  Offset: {SIDEWALK_GAP_OFFSET_M}m | "
@@ -168,10 +168,13 @@ def detect_sidewalk_gaps(
           f"Max angle: {MAX_ANGLE_DIFF}° | "
           f"Min coverage: {SIDEWALK_GAP_MIN_COVERAGE:.0%}")
 
-    # ── Collect footway geometries + precompute bearings ──────────────────
+    # ── Build footway spatial index from graph edges ──────────────────────
+    # Graph simplification is fine for footways: merging two footway
+    # segments into one longer LineString doesn't affect the spatial
+    # analysis (bearing and distance checks still work).
     footway_geoms: list = []
     footway_bearings: list[float | None] = []
-    for eid in range(len(edge_tuples)):
+    for eid in range(len(edge_highways)):
         hw = edge_highways[eid]
         geom = edge_geoms[eid]
         if hw in PED_HIGHWAY_TYPES and geom is not None and not geom.is_empty:
@@ -184,37 +187,31 @@ def detect_sidewalk_gaps(
     footway_tree = STRtree(footway_geoms)
     print(f"  Footway segments indexed: {len(footway_geoms)}")
 
-    # ── Check each road segment ───────────────────────────────────────────
+    # ── Load raw road ways ────────────────────────────────────────────────
+    print(f"  Reading raw roads from: {roads_geojson_path}")
+    roads_gdf = gpd.read_file(roads_geojson_path)
+    roads_gdf = roads_gdf[roads_gdf.geometry.geom_type == "LineString"].copy()
+    roads_gdf = roads_gdf.to_crs("EPSG:31370")
+    roads_gdf = roads_gdf[roads_gdf["highway"].isin(_GAP_ROAD_TYPES)]
+    roads_gdf = roads_gdf[roads_gdf.geometry.length >= _MIN_ROAD_LENGTH]
+    print(f"  Road ways after filtering: {len(roads_gdf)}")
+
+    # ── Check each road way ───────────────────────────────────────────────
     rows: list[dict] = []
-    seen_edges: set[tuple[int, int, int]] = set()
     n_roads = 0
     n_both = 0
     n_none = 0
     n_gap = 0
     n_skipped_documented = 0
 
-    for eid in range(len(edge_tuples)):
-        hw = edge_highways[eid]
-        if hw not in _GAP_ROAD_TYPES:
-            continue
-        geom = edge_geoms[eid]
-        if geom is None or geom.is_empty or geom.length < _MIN_ROAD_LENGTH:
-            continue
-
-        # ── Deduplicate: skip reverse direction of same segment ───────────
-        # Use geometry hash so distinct multigraph edges between the
-        # same nodes are preserved.
-        src, tgt = edge_tuples[eid]
-        undirected_key = (min(src, tgt), max(src, tgt), _canon_geom_hash(geom))
-        if undirected_key in seen_edges:
-            continue
-        seen_edges.add(undirected_key)
+    for _, road in roads_gdf.iterrows():
+        geom = road.geometry
 
         # ── Skip roads with explicit sidewalk tags ────────────────────────
-        sw = edge_sidewalks[eid] if eid < len(edge_sidewalks) else ""
-        sw_l = edge_sidewalk_left[eid] if eid < len(edge_sidewalk_left) else ""
-        sw_r = edge_sidewalk_right[eid] if eid < len(edge_sidewalk_right) else ""
-        sw_b = edge_sidewalk_both[eid] if eid < len(edge_sidewalk_both) else ""
+        sw = _safe_str(road.get("sidewalk"))
+        sw_l = _safe_str(road.get("sidewalk:left"))
+        sw_r = _safe_str(road.get("sidewalk:right"))
+        sw_b = _safe_str(road.get("sidewalk:both"))
         if _is_sidewalk_documented(sw, sw_l, sw_r, sw_b):
             n_skipped_documented += 1
             continue
@@ -264,7 +261,7 @@ def detect_sidewalk_gaps(
             n_gap += 1
             rows.append({
                 "geometry": geom,
-                "name": edge_names[eid] if eid < len(edge_names) else "",
+                "name": _safe_str(road.get("name")) or "",
             })
 
     # ── Save output ───────────────────────────────────────────────────────
