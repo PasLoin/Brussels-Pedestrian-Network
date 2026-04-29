@@ -1,0 +1,12 @@
+{
+  "routed_trips": 884104,
+  "avg_distance_m": 4846.8,
+  "od_points": 28994,
+  "od_pairs_generated": 900000,
+  "rejected_near": 3964,
+  "rejected_far": 735574,
+  "routing_time_s": 695.2,
+  "min_dist_m": 300.0,
+  "max_dist_m": 6000.0,
+  "walk_score_radius_m": 1000.0
+}
