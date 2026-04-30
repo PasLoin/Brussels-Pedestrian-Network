@@ -54,6 +54,20 @@ env:
     n/highway=crossing
     n/amenity=elevator
 
+  # Road types exported separately for sidewalk QA layers.
+  # These are exported raw (no graph simplification) so that each OSM
+  # way keeps its own tags and geometry — avoids tag bleeding when
+  # OSMnx merges adjacent ways with different sidewalk tags.
+  HIGHWAY_TYPES_ROADS: >-
+    w/highway=residential
+    w/highway=unclassified
+    w/highway=tertiary
+    w/highway=tertiary_link
+    w/highway=secondary
+    w/highway=secondary_link
+    w/highway=primary
+    w/highway=primary_link
+
   OSM_PBF_URL: https://download.openstreetmap.fr/extracts/europe/belgium/brussels_capital_region-latest.osm.pbf
   OSM_STATE_URL: https://download.openstreetmap.fr/extracts/europe/belgium/brussels_capital_region.state.txt
 
@@ -142,6 +156,21 @@ jobs:
             --geometry-types=point,polygon \
             -o addresses.geojson --overwrite
 
+      # ── Extract raw road ways for sidewalk QA layers ────────────────────
+      # Exported separately from the routing graph so that each OSM way
+      # keeps its own geometry and tags.  OSMnx graph simplification
+      # merges adjacent ways at degree-2 nodes, which causes tags from
+      # one way to bleed onto the other (e.g. sidewalk:both=separate
+      # on a tagged segment propagates to an adjacent untagged segment).
+      - name: Export road ways for sidewalk analysis
+        run: |
+          osmium tags-filter brussels.osm.pbf \
+            ${{ env.HIGHWAY_TYPES_ROADS }} \
+            -o roads_sidewalk.osm.pbf --overwrite
+          osmium export roads_sidewalk.osm.pbf \
+            --geometry-types=linestring \
+            -o sidewalk_roads_raw.geojson --overwrite
+
       # ── Extract routing features ────────────────────────────────────────
       - name: Filter routing features
         run: |
@@ -178,6 +207,7 @@ jobs:
             street_scores.geojson
             sidewalk_gaps.geojson
             sidewalk_roads.geojson
+            sidewalk_roads_raw.geojson
             highways.geojson
             addresses.geojson
             stats.json

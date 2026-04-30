@@ -102,6 +102,49 @@ def _first_str(val) -> str:
     return str(val).strip() if val else ""
 
 
+def _unanimous_str(val) -> str:
+    """Return a tag value only if ALL merged segments agree.
+
+    Unlike ``_first_str`` which picks the first non-empty value,
+    this function returns "" when:
+    - some segments have the tag and others don't (mixed NaN),
+    - segments disagree on the value.
+
+    This prevents a tag present on one OSM way from "bleeding" onto
+    adjacent ways that were merged during OSMnx graph simplification.
+
+    Use this for tags where per-segment accuracy matters (e.g. sidewalk
+    tags), NOT for tags where "first wins" is acceptable (e.g. street
+    name, foot access).
+    """
+    if val is None:
+        return ""
+    if isinstance(val, float) and np.isnan(val):
+        return ""
+    if isinstance(val, list):
+        values: list[str] = []
+        for item in val:
+            if item is None or (isinstance(item, float) and np.isnan(item)):
+                # At least one segment has no value → not unanimous
+                return ""
+            s = str(item).strip()
+            values.append(s)
+        if not values:
+            return ""
+        # Check all non-empty values are identical
+        non_empty = [v for v in values if v]
+        if not non_empty:
+            return ""
+        if len(non_empty) < len(values):
+            # Some segments had empty string, others had a value → not unanimous
+            return ""
+        if len(set(non_empty)) != 1:
+            # Segments disagree on the value
+            return ""
+        return non_empty[0]
+    return str(val).strip() if val else ""
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Public entry point
 # ─────────────────────────────────────────────────────────────────────────────
@@ -184,10 +227,17 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
         edge_cycleway_nf.append(is_cycleway_no_foot)
         edge_foot_tags.append(foot_tag)
         edge_names.append(_first_str(row.get("name", "")))
-        edge_sidewalks.append(_first_str(row.get("sidewalk", "")).lower())
-        edge_sidewalk_left.append(_first_str(row.get("sidewalk:left", "")).lower())
-        edge_sidewalk_right.append(_first_str(row.get("sidewalk:right", "")).lower())
-        edge_sidewalk_both.append(_first_str(row.get("sidewalk:both", "")).lower())
+
+        # ── Sidewalk tags: use _unanimous_str to avoid tag bleeding ───────
+        # When OSMnx merges two ways (e.g. one with sidewalk:both=separate
+        # and one without any tag), _first_str would return "separate" for
+        # the whole edge.  _unanimous_str returns "" unless ALL merged
+        # segments carry the same value — preventing false positives in
+        # the sidewalk QA layer.
+        edge_sidewalks.append(_unanimous_str(row.get("sidewalk", "")).lower())
+        edge_sidewalk_left.append(_unanimous_str(row.get("sidewalk:left", "")).lower())
+        edge_sidewalk_right.append(_unanimous_str(row.get("sidewalk:right", "")).lower())
+        edge_sidewalk_both.append(_unanimous_str(row.get("sidewalk:both", "")).lower())
 
     print(f"  Edges skipped — ferry: {skipped_ferry}, foot=no: {skipped_foot}, "
           f"access=no/private: {skipped_access}")
