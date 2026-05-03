@@ -94,9 +94,7 @@ def _classify_edge_sidewalk(
         if sw_left == "separate" and sw_right == "separate":
             return "separate"
         if sw_left == "separate" or sw_right == "separate":
-            # One side separate, other side explicitly tagged → documented
             return "documented"
-        # Both sides have an explicit value (yes, no, none, …)
         return "documented"
 
     # ── 3. General sidewalk tag ───────────────────────────────────────────
@@ -107,7 +105,6 @@ def _classify_edge_sidewalk(
             return "yes"
         if sw in ("left", "right"):
             return "partial"
-        # Any other explicit value (no, none, …) → documented
         return "documented"
 
     # ── 4. Only one side documented → partial ─────────────────────────────
@@ -124,13 +121,10 @@ def _classify_edge_sidewalk(
 
 def export_sidewalk_roads(
     raw_geojson_path: str = "sidewalk_roads_raw.geojson",
-) -> None:
+) -> dict:
     """Write ``sidewalk_roads.geojson`` with per-way sidewalk tag status.
 
-    Reads the raw road GeoJSON produced by osmium export (one OSM way
-    = one feature, with original tags as properties).  This bypasses
-    OSMnx graph simplification entirely, so each way keeps its own
-    accurate tags and geometry.
+    Returns a dict of statistics for stats.json.
     """
     print("Exporting sidewalk tag status on roads (QA layer)...")
     print(f"  Reading raw roads from: {raw_geojson_path}")
@@ -150,6 +144,7 @@ def export_sidewalk_roads(
     print(f"  Road ways after filtering: {len(gdf_proj)}")
 
     rows: list[dict] = []
+    length_by_status: dict[str, float] = {}
 
     for _, row in gdf_proj.iterrows():
         sw = _safe_str(row.get("sidewalk"))
@@ -158,6 +153,9 @@ def export_sidewalk_roads(
         sw_b = _safe_str(row.get("sidewalk:both"))
 
         status = _classify_edge_sidewalk(sw, sw_l, sw_r, sw_b)
+
+        road_length = row.geometry.length
+        length_by_status[status] = length_by_status.get(status, 0.0) + road_length
 
         rows.append({
             "geometry": row.geometry,
@@ -179,3 +177,20 @@ def export_sidewalk_roads(
     counts = Counter(r["sw"] for r in rows)
     for st in ("separate", "yes", "documented", "partial", "unknown"):
         print(f"    {st}: {counts.get(st, 0)}")
+
+    total_ways = len(rows)
+
+    return {
+        "total_road_ways": total_ways,
+        "by_status": {
+            st: counts.get(st, 0) for st in ("separate", "yes", "documented", "partial", "unknown")
+        },
+        "pct_by_status": {
+            st: round(counts.get(st, 0) / total_ways * 100, 1) if total_ways > 0 else 0
+            for st in ("separate", "yes", "documented", "partial", "unknown")
+        },
+        "km_by_status": {
+            st: round(length_by_status.get(st, 0) / 1000, 2)
+            for st in ("separate", "yes", "documented", "partial", "unknown")
+        },
+    }
