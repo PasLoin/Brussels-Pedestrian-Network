@@ -232,12 +232,14 @@ def export_walkability_scores(
 
         score = round(min(base_score * penalty, 1.0), 3)
         pen_stats[sw_status] += 1
-        scores.append(score)
 
         pts = addr_wgs[addr_wgs["addr:street"] == street].geometry
         if pts.empty:
             continue
         centroid = pts.union_all().centroid
+
+        # Only count scores for streets that will appear in the GeoJSON
+        scores.append(score)
 
         rows.append({
             "geometry": centroid,
@@ -262,21 +264,27 @@ def export_walkability_scores(
           f"unknown: {pen_stats['unknown']}")
 
     # Compute score distribution
-    scores_arr = np.array(scores) if scores else np.array([0.0])
-    score_buckets = {
-        "0_20": int(np.sum((scores_arr >= 0) & (scores_arr < 0.2))),
-        "20_40": int(np.sum((scores_arr >= 0.2) & (scores_arr < 0.4))),
-        "40_60": int(np.sum((scores_arr >= 0.4) & (scores_arr < 0.6))),
-        "60_80": int(np.sum((scores_arr >= 0.6) & (scores_arr < 0.8))),
-        "80_100": int(np.sum((scores_arr >= 0.8) & (scores_arr <= 1.0))),
-    }
+    if scores:
+        scores_arr = np.array(scores)
+        score_buckets = {
+            "0_20": int(np.sum((scores_arr >= 0) & (scores_arr < 0.2))),
+            "20_40": int(np.sum((scores_arr >= 0.2) & (scores_arr < 0.4))),
+            "40_60": int(np.sum((scores_arr >= 0.4) & (scores_arr < 0.6))),
+            "60_80": int(np.sum((scores_arr >= 0.6) & (scores_arr < 0.8))),
+            "80_100": int(np.sum((scores_arr >= 0.8) & (scores_arr <= 1.0))),
+        }
+    else:
+        scores_arr = np.array([])
+        score_buckets = {
+            "0_20": 0, "20_40": 0, "40_60": 0, "60_80": 0, "80_100": 0,
+        }
 
     return {
         "streets_scored": n_sc,
-        "walkability_mean": round(float(scores_arr.mean()), 3) if len(scores) > 0 else 0,
-        "walkability_median": round(float(np.median(scores_arr)), 3) if len(scores) > 0 else 0,
-        "walkability_min": round(float(scores_arr.min()), 3) if len(scores) > 0 else 0,
-        "walkability_max": round(float(scores_arr.max()), 3) if len(scores) > 0 else 0,
+        "walkability_mean": round(float(scores_arr.mean()), 3) if len(scores_arr) > 0 else 0,
+        "walkability_median": round(float(np.median(scores_arr)), 3) if len(scores_arr) > 0 else 0,
+        "walkability_min": round(float(scores_arr.min()), 3) if len(scores_arr) > 0 else 0,
+        "walkability_max": round(float(scores_arr.max()), 3) if len(scores_arr) > 0 else 0,
         "score_distribution": score_buckets,
         "sidewalk_penalties": dict(pen_stats),
     }
