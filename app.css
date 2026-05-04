@@ -7,8 +7,34 @@ body { font-family: "Inter", system-ui, sans-serif; background: #1a1a1a; }
 #header {
   position: absolute; top: 12px; left: 12px; z-index: 10;
   background: rgba(255,255,255,0.96); border-radius: 10px;
-  padding: 12px 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.15); max-width: 260px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.15); max-width: 260px;
+  transition: max-height 0.3s ease, padding 0.3s ease;
 }
+#header.open { padding: 0; }
+#header.closed { max-height: 40px; overflow: hidden; padding: 0; }
+
+#header-toggle {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; padding: 10px 14px;
+  border: none; background: transparent; cursor: pointer;
+  font-size: 12px; font-weight: 700; color: #333;
+  text-align: left;
+}
+#header-toggle:hover { color: #111; }
+#header-toggle .chevron {
+  width: 16px; height: 16px; transition: transform 0.25s ease;
+  flex-shrink: 0;
+}
+#header.closed #header-toggle .chevron { transform: rotate(180deg); }
+
+#header-content {
+  overflow: hidden;
+  transition: max-height 0.3s ease, opacity 0.2s ease;
+  padding: 0 14px 12px;
+}
+#header.open #header-content { max-height: 600px; opacity: 1; }
+#header.closed #header-content { max-height: 0; opacity: 0; padding: 0 14px; }
+
 #header h1 { font-size: 14px; font-weight: 700; color: #111; line-height: 1.2; }
 #header .subtitle { font-size: 11px; color: #666; margin-top: 2px; }
 #osm-date { font-size: 10px; color: #999; margin-top: 6px; }
@@ -146,7 +172,7 @@ body { font-family: "Inter", system-ui, sans-serif; background: #1a1a1a; }
 
 /* ── Mobile responsive ────────────────────────────────────────────────────── */
 @media (max-width: 600px) {
-  #header { max-width: 200px; padding: 10px 12px; }
+  #header { max-width: 200px; }
   #header h1 { font-size: 12px; }
   #legend { min-width: 180px; bottom: 16px; left: 8px; }
   #route-panel { bottom: 16px; right: 8px; min-width: 200px; max-width: 240px; }
