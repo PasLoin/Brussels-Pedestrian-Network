@@ -621,7 +621,7 @@ function initMap(style) {
   map.addControl(
     new maplibregl.AttributionControl({
       compact: false,
-      customAttribution: ['<a href="https://github.com/PasLoin/Brussels-Pedestrian-Network" target="_blank" rel="noopener">PasLoin</a>']
+      customAttribution: ['<a href="https://github.com/PasLoin/Brussels-Pedestrian-Network" target="_blank" rel="noopener">PasLoin</a> · <a href="./stats.html">Stats</a>']
     }),
     "bottom-right"
   );
