@@ -45,6 +45,7 @@ from build_graph import build_graph
 from sample_od import sample_od_points, snap_to_graph
 from routing import generate_od_pairs, route_pairs
 from export import (
+    compute_network_stats,
     export_flow_layers,
     export_routing_graph,
     export_walkability_scores,
@@ -75,12 +76,43 @@ def main() -> None:
     # ── Step 2–3: Build graph ─────────────────────────────────────────────
     gb = build_graph("routing_clean.osm")
 
+    # Collect graph-level stats
+    graph_stats = {
+        "nodes": gb.graph.vcount(),
+        "edges": gb.graph.ecount(),
+        "cycleways_foot_yes": sum(
+            1 for h, c in zip(gb.edge_highways, gb.edge_cycleway_nf)
+            if h == "cycleway" and not c
+        ),
+        "cycleways_no_foot": sum(
+            1 for h, c in zip(gb.edge_highways, gb.edge_cycleway_nf)
+            if h == "cycleway" and c
+        ),
+        "streets_with_sidewalk_tags": len(gb.street_sidewalk_status),
+    }
+
+    # Compute base network stats
+    network_stats = compute_network_stats(
+        gb.edge_highways, gb.edge_lengths,
+        gb.edge_cycleway_nf, gb.edge_foot_tags,
+    )
+
     # ── Step 4–5: Sample & snap OD points ─────────────────────────────────
     od_points, od_streets, od_sides = sample_od_points("addresses.geojson")
     snapped = snap_to_graph(
         od_points, gb.node_list, gb.nodes_gdf,
         gb.edge_tuples, gb.edge_geoms,
     )
+
+    # Collect OD sampling stats
+    n_streets_both = len(set(
+        s for s, side in zip(od_streets, od_sides)
+    ))
+    od_sampling_stats = {
+        "streets_sampled": n_streets_both,
+        "points_even": sum(1 for s in od_sides if s == "even"),
+        "points_odd": sum(1 for s in od_sides if s == "odd"),
+    }
 
     # ── Step 6–7: Generate OD pairs & route ───────────────────────────────
     od_pairs, rejected_near, rejected_far = generate_od_pairs(
@@ -91,7 +123,31 @@ def main() -> None:
         gb.edge_lengths, gb.edge_highways, gb.edge_cycleway_nf,
     )
 
-    # ── Step 7b: Save stats ───────────────────────────────────────────────
+    # ── Step 8: Export GeoJSON layers ─────────────────────────────────────
+    flow_stats = export_flow_layers(
+        result.flow_arr,
+        gb.edge_highways, gb.edge_geoms,
+        gb.edge_lengths, gb.edge_cycleway_nf,
+        gb.edge_foot_tags,
+        gb.graph.ecount(),
+    )
+
+    walkability_stats = export_walkability_scores(
+        result.street_ped_m, result.street_cyc_nf_m, result.street_total_m,
+        gb.street_sidewalk_status,
+    )
+
+    # ── Step 8b: Detect sidewalk gaps ─────────────────────────────────────
+    sidewalk_gap_stats = detect_sidewalk_gaps(
+        "sidewalk_roads_raw.geojson",
+        gb.edge_highways,
+        gb.edge_geoms,
+    )
+
+    # ── Step 8c: Export sidewalk tag status on roads ──────────────────────
+    sidewalk_road_stats = export_sidewalk_roads("sidewalk_roads_raw.geojson")
+
+    # ── Step 7b: Save stats (after all layers so we can include everything)
     save_stats(
         routed=result.routed,
         total_routed_distance=result.total_routed_distance,
@@ -100,36 +156,14 @@ def main() -> None:
         rejected_near=rejected_near,
         rejected_far=rejected_far,
         routing_time_s=result.routing_time_s,
+        graph_stats=graph_stats,
+        flow_stats=flow_stats,
+        walkability_stats=walkability_stats,
+        sidewalk_gap_stats=sidewalk_gap_stats,
+        sidewalk_road_stats=sidewalk_road_stats,
+        network_stats=network_stats,
+        od_sampling_stats=od_sampling_stats,
     )
-
-    # ── Step 8: Export GeoJSON layers ─────────────────────────────────────
-    export_flow_layers(
-        result.flow_arr,
-        gb.edge_highways, gb.edge_geoms,
-        gb.edge_lengths, gb.edge_cycleway_nf,
-        gb.edge_foot_tags,
-        gb.graph.ecount(),
-    )
-
-    export_walkability_scores(
-        result.street_ped_m, result.street_cyc_nf_m, result.street_total_m,
-        gb.street_sidewalk_status,
-    )
-
-    # ── Step 8b: Detect sidewalk gaps ─────────────────────────────────────
-    # Road edges are read from raw osmium export (one OSM way = one
-    # feature) to avoid tag bleeding from graph simplification.
-    # Footway index still comes from graph edges (simplification is
-    # harmless for footway geometries).
-    detect_sidewalk_gaps(
-        "sidewalk_roads_raw.geojson",
-        gb.edge_highways,
-        gb.edge_geoms,
-    )
-
-    # ── Step 8c: Export sidewalk tag status on roads ──────────────────────
-    # Same raw GeoJSON source — each OSM way keeps its own tags.
-    export_sidewalk_roads("sidewalk_roads_raw.geojson")
 
     # ── Step 9: Export client-side routing graph ──────────────────────────
     export_routing_graph(

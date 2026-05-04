@@ -144,21 +144,22 @@ def detect_sidewalk_gaps(
     roads_geojson_path: str,
     edge_highways: list[str],
     edge_geoms: list,
-) -> None:
+) -> dict:
     """Detect roads with a footway on one side only.
 
     Parameters
     ----------
     roads_geojson_path : str
         Path to the raw roads GeoJSON (one OSM way = one feature).
-        Used for the road edges to analyse — avoids tag-bleeding
-        from OSMnx graph simplification.
     edge_highways : list[str]
-        Highway types from the routing graph (all edges).  Used to
-        build the footway spatial index.
+        Highway types from the routing graph (all edges).
     edge_geoms : list
         Geometries from the routing graph (all edges, EPSG:31370).
-        Used to build the footway spatial index.
+
+    Returns
+    -------
+    dict
+        Statistics about the gap detection for stats.json.
 
     Writes ``sidewalk_gaps.geojson`` with one feature per gap segment.
     """
@@ -169,9 +170,6 @@ def detect_sidewalk_gaps(
           f"Min coverage: {SIDEWALK_GAP_MIN_COVERAGE:.0%}")
 
     # ── Build footway spatial index from graph edges ──────────────────────
-    # Graph simplification is fine for footways: merging two footway
-    # segments into one longer LineString doesn't affect the spatial
-    # analysis (bearing and distance checks still work).
     footway_geoms: list = []
     footway_bearings: list[float | None] = []
     for eid in range(len(edge_highways)):
@@ -203,6 +201,9 @@ def detect_sidewalk_gaps(
     n_none = 0
     n_gap = 0
     n_skipped_documented = 0
+    gap_length_m = 0.0
+    both_length_m = 0.0
+    none_length_m = 0.0
 
     for _, road in roads_gdf.iterrows():
         geom = road.geometry
@@ -255,10 +256,13 @@ def detect_sidewalk_gaps(
 
         if has_left and has_right:
             n_both += 1
+            both_length_m += road_length
         elif not has_left and not has_right:
             n_none += 1
+            none_length_m += road_length
         else:
             n_gap += 1
+            gap_length_m += road_length
             rows.append({
                 "geometry": geom,
                 "name": _safe_str(road.get("name")) or "",
@@ -277,3 +281,15 @@ def detect_sidewalk_gaps(
     print(f"  Both sides: {n_both} | One side (gap): {n_gap} | "
           f"Neither side: {n_none}")
     print(f"  Sidewalk gaps exported: {len(rows)}")
+
+    return {
+        "roads_analysed": n_roads,
+        "skipped_documented": n_skipped_documented,
+        "both_sides": n_both,
+        "one_side_gap": n_gap,
+        "neither_side": n_none,
+        "gap_length_km": round(gap_length_m / 1000, 2),
+        "both_length_km": round(both_length_m / 1000, 2),
+        "neither_length_km": round(none_length_m / 1000, 2),
+        "footway_segments_indexed": len(footway_geoms),
+    }

@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import json
 import os
-from collections import defaultdict
+from collections import Counter, defaultdict
 
 import geopandas as gpd
 import numpy as np
@@ -65,16 +65,10 @@ def export_flow_layers(
     edge_cycleway_nf: list[bool],
     edge_foot_tags: list[str],
     n_edges: int,
-) -> None:
+) -> dict:
     """Write flow_edges, forced_segments, and forced_cycleway GeoJSONs.
 
-    Infrastructure types (``infra_type`` property):
-
-    * ``pedestrian`` — dedicated pedestrian infrastructure (footway, path…).
-    * ``cycleway_foot_yes`` — cycleway with explicit ``foot=yes|designated|permissive``.
-      These are walkable by definition, so they are **excluded** from forced_cycleway.
-    * ``cycleway_no_foot`` — cycleway without explicit foot permission.
-    * ``road`` — motor-vehicle road.
+    Returns a dict of flow-layer statistics for stats.json.
     """
     print("Building flow GeoJSONs...")
 
@@ -97,6 +91,11 @@ def export_flow_layers(
         "flow_pct": 0.0, "infra_type": "", "length_m": 0.0,
     }
     n_dropped_low_flow = 0
+
+    # Track flow distribution by infra type
+    flow_by_infra: dict[str, int] = defaultdict(int)
+    edges_by_infra: dict[str, int] = defaultdict(int)
+    length_by_infra: dict[str, float] = defaultdict(float)
 
     for eid in range(n_edges):
         flow = int(flow_arr[eid])
@@ -124,6 +123,11 @@ def export_flow_layers(
             is_ped = False
 
         flow_pct = round(flow / max_flow * 100, 2)
+
+        # Accumulate stats
+        flow_by_infra[infra_type] += flow
+        edges_by_infra[infra_type] += 1
+        length_by_infra[infra_type] += lm
 
         # ── Forced classification (full properties, unaffected by min threshold)
         if flow >= threshold:
@@ -157,6 +161,26 @@ def export_flow_layers(
     print(f"  Forced road: {n_fr} | Forced cycleway: {n_fc} | Flow edges: {n_fl}")
     print(f"  Dropped (flow < {MIN_FLOW_THRESHOLD}): {n_dropped_low_flow}")
 
+    # Compute forced road length
+    forced_road_length_m = sum(r["length_m"] for r in rows_forced_road)
+    forced_cycleway_length_m = sum(r["length_m"] for r in rows_forced_cycleway)
+
+    return {
+        "forced_road_segments": n_fr,
+        "forced_cycleway_segments": n_fc,
+        "flow_edges_exported": n_fl,
+        "flow_edges_dropped_low": n_dropped_low_flow,
+        "flow_threshold_trips": round(threshold, 0),
+        "max_flow_trips": max_flow,
+        "forced_road_length_m": round(forced_road_length_m, 0),
+        "forced_cycleway_length_m": round(forced_cycleway_length_m, 0),
+        "flow_by_infra": dict(flow_by_infra),
+        "edges_with_flow_by_infra": dict(edges_by_infra),
+        "length_with_flow_by_infra_m": {
+            k: round(v, 0) for k, v in length_by_infra.items()
+        },
+    }
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Walkability scores
@@ -168,8 +192,11 @@ def export_walkability_scores(
     street_total_m: dict[str, float],
     street_sidewalk_status: dict[str, str],
     addresses_path: str = "addresses.geojson",
-) -> None:
-    """Write street_scores.geojson with sidewalk-penalised walkability."""
+) -> dict:
+    """Write street_scores.geojson with sidewalk-penalised walkability.
+
+    Returns a dict of walkability statistics for stats.json.
+    """
     print("Computing walkability scores (first/last km + sidewalk penalty)...")
 
     addr_wgs = gpd.read_file(addresses_path).to_crs("EPSG:4326")
@@ -179,6 +206,7 @@ def export_walkability_scores(
     )
     pen_stats: dict[str, int] = defaultdict(int)
     rows: list[dict] = []
+    scores: list[float] = []
 
     for street, total_m in street_total_m.items():
         if total_m < 1.0:
@@ -210,6 +238,9 @@ def export_walkability_scores(
             continue
         centroid = pts.union_all().centroid
 
+        # Only count scores for streets that will appear in the GeoJSON
+        scores.append(score)
+
         rows.append({
             "geometry": centroid,
             "street": street,
@@ -232,6 +263,32 @@ def export_walkability_scores(
           f"partial: {pen_stats['partial']} | none: {pen_stats['none']} | "
           f"unknown: {pen_stats['unknown']}")
 
+    # Compute score distribution
+    if scores:
+        scores_arr = np.array(scores)
+        score_buckets = {
+            "0_20": int(np.sum((scores_arr >= 0) & (scores_arr < 0.2))),
+            "20_40": int(np.sum((scores_arr >= 0.2) & (scores_arr < 0.4))),
+            "40_60": int(np.sum((scores_arr >= 0.4) & (scores_arr < 0.6))),
+            "60_80": int(np.sum((scores_arr >= 0.6) & (scores_arr < 0.8))),
+            "80_100": int(np.sum((scores_arr >= 0.8) & (scores_arr <= 1.0))),
+        }
+    else:
+        scores_arr = np.array([])
+        score_buckets = {
+            "0_20": 0, "20_40": 0, "40_60": 0, "60_80": 0, "80_100": 0,
+        }
+
+    return {
+        "streets_scored": n_sc,
+        "walkability_mean": round(float(scores_arr.mean()), 3) if len(scores_arr) > 0 else 0,
+        "walkability_median": round(float(np.median(scores_arr)), 3) if len(scores_arr) > 0 else 0,
+        "walkability_min": round(float(scores_arr.min()), 3) if len(scores_arr) > 0 else 0,
+        "walkability_max": round(float(scores_arr.max()), 3) if len(scores_arr) > 0 else 0,
+        "score_distribution": score_buckets,
+        "sidewalk_penalties": dict(pen_stats),
+    }
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Stats
@@ -245,24 +302,103 @@ def save_stats(
     rejected_near: int,
     rejected_far: int,
     routing_time_s: float,
+    *,
+    graph_stats: dict | None = None,
+    flow_stats: dict | None = None,
+    walkability_stats: dict | None = None,
+    sidewalk_gap_stats: dict | None = None,
+    sidewalk_road_stats: dict | None = None,
+    network_stats: dict | None = None,
+    od_sampling_stats: dict | None = None,
 ) -> None:
-    """Write stats.json with run summary."""
+    """Write stats.json with comprehensive run summary."""
     avg_dist = total_routed_distance / routed if routed > 0 else 0
-    stats = {
+    stats: dict = {
+        "routing": {
+            "routed_trips": routed,
+            "avg_distance_m": round(avg_dist, 1),
+            "total_distance_km": round(total_routed_distance / 1000, 1),
+            "routing_time_s": routing_time_s,
+        },
+        "od_sampling": {
+            "od_points": n_od_points,
+            "od_pairs_generated": n_od_pairs,
+            "rejected_near": rejected_near,
+            "rejected_far": rejected_far,
+            "min_dist_m": MIN_OD_DISTANCE_M,
+            "max_dist_m": MAX_OD_DISTANCE_M,
+            "walk_score_radius_m": WALK_SCORE_RADIUS_M,
+        },
+        # Legacy top-level keys for backward compatibility with the
+        # existing front-end (app.js reads these directly).
         "routed_trips": routed,
         "avg_distance_m": round(avg_dist, 1),
-        "od_points": n_od_points,
-        "od_pairs_generated": n_od_pairs,
-        "rejected_near": rejected_near,
-        "rejected_far": rejected_far,
-        "routing_time_s": routing_time_s,
-        "min_dist_m": MIN_OD_DISTANCE_M,
-        "max_dist_m": MAX_OD_DISTANCE_M,
-        "walk_score_radius_m": WALK_SCORE_RADIUS_M,
     }
+
+    if od_sampling_stats:
+        stats["od_sampling"].update(od_sampling_stats)
+    if graph_stats:
+        stats["graph"] = graph_stats
+    if network_stats:
+        stats["network"] = network_stats
+    if flow_stats:
+        stats["flow"] = flow_stats
+    if walkability_stats:
+        stats["walkability"] = walkability_stats
+    if sidewalk_gap_stats:
+        stats["sidewalk_gaps"] = sidewalk_gap_stats
+    if sidewalk_road_stats:
+        stats["sidewalk_roads"] = sidewalk_road_stats
+
     with open("stats.json", "w") as f:
         json.dump(stats, f, indent=2)
     print("  Stats saved to stats.json")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Network stats (base graph, before routing)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def compute_network_stats(
+    edge_highways: list[str],
+    edge_lengths: list[float],
+    edge_cycleway_nf: list[bool],
+    edge_foot_tags: list[str],
+) -> dict:
+    """Compute base network statistics by highway type.
+
+    Returns a dict with km totals per highway type and infra category.
+    """
+    km_by_highway: dict[str, float] = defaultdict(float)
+    km_by_category: dict[str, float] = defaultdict(float)
+    count_by_highway: dict[str, int] = defaultdict(int)
+
+    for eid in range(len(edge_highways)):
+        hw = edge_highways[eid]
+        lm = edge_lengths[eid]
+        km_by_highway[hw] += lm / 1000
+        count_by_highway[hw] += 1
+
+        # Categorise
+        if hw == "cycleway":
+            foot = edge_foot_tags[eid] if eid < len(edge_foot_tags) else ""
+            if foot in FOOT_ALLOWED:
+                km_by_category["cycleway_foot_yes"] += lm / 1000
+            else:
+                km_by_category["cycleway_no_foot"] += lm / 1000
+        elif hw in PED_HIGHWAY_TYPES:
+            km_by_category["pedestrian"] += lm / 1000
+        else:
+            km_by_category["road"] += lm / 1000
+
+    total_km = sum(km_by_highway.values())
+
+    return {
+        "total_km": round(total_km, 2),
+        "km_by_highway": {k: round(v, 2) for k, v in sorted(km_by_highway.items(), key=lambda x: -x[1])},
+        "edges_by_highway": dict(sorted(count_by_highway.items(), key=lambda x: -x[1])),
+        "km_by_category": {k: round(v, 2) for k, v in sorted(km_by_category.items(), key=lambda x: -x[1])},
+    }
 
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -1,6 +1,12 @@
 // ══════════════════════════════════════════════════════════════════════════════
-//  LEGEND TOGGLE
+//  PANEL TOGGLES
 // ══════════════════════════════════════════════════════════════════════════════
+
+function toggleHeader() {
+  const el = document.getElementById("header");
+  el.classList.toggle("open");
+  el.classList.toggle("closed");
+}
 
 function toggleLegend() {
   const el = document.getElementById("legend");
@@ -8,12 +14,15 @@ function toggleLegend() {
   el.classList.toggle("closed");
 }
 
-// Auto-close legend on narrow screens
+// Auto-close panels on narrow screens
 (function () {
   if (window.innerWidth <= 600) {
-    const el = document.getElementById("legend");
-    el.classList.remove("open");
-    el.classList.add("closed");
+    const legend = document.getElementById("legend");
+    legend.classList.remove("open");
+    legend.classList.add("closed");
+    const header = document.getElementById("header");
+    header.classList.remove("open");
+    header.classList.add("closed");
   }
 })();
 
@@ -621,7 +630,7 @@ function initMap(style) {
   map.addControl(
     new maplibregl.AttributionControl({
       compact: false,
-      customAttribution: ['<a href="https://github.com/PasLoin/Brussels-Pedestrian-Network" target="_blank" rel="noopener">PasLoin</a>']
+      customAttribution: ['<a href="https://github.com/PasLoin/Brussels-Pedestrian-Network" target="_blank" rel="noopener">PasLoin</a> · <a href="./stats.html">Stats</a>']
     }),
     "bottom-right"
   );
