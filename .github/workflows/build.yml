@@ -69,12 +69,12 @@ env:
     w/highway=primary
     w/highway=primary_link
 
-  ##OSM_PBF_URL: https://download.openstreetmap.fr/extracts/europe/belgium/brussels_capital_region-latest.osm.pbf
-  ##OSM_STATE_URL: https://download.openstreetmap.fr/extracts/europe/belgium/brussels_capital_region.state.txt
+  OSM_PBF_URL: https://download.openstreetmap.fr/extracts/europe/belgium/brussels_capital_region-latest.osm.pbf
+  OSM_STATE_URL: https://download.openstreetmap.fr/extracts/europe/belgium/brussels_capital_region.state.txt
 
   
-  OSM_PBF_URL: https://github.com/PasLoin/Osm-python-analyse_Belgium/blob/main/pbf_analyse/history/Brussels-daily.pbf
-  OSM_STATE_URL: https://github.com/PasLoin/Osm-python-analyse_Belgium/blob/main/pbf_analyse/history/state.txt
+  ##OSM_PBF_URL: https://github.com/PasLoin/Osm-python-analyse_Belgium/blob/main/pbf_analyse/history/Brussels-daily.pbf
+  ##OSM_STATE_URL: https://github.com/PasLoin/Osm-python-analyse_Belgium/blob/main/pbf_analyse/history/state.txt
 
   # ── Tippecanoe zoom levels ──────────────────────────────────────────────
   MIN_ZOOM: 9
