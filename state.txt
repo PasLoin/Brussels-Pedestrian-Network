@@ -1,2 +1,12 @@
-sequenceNumber=7056843
-timestamp=2026-04-05T01\:26\:38Z
+{
+  "uuid": "ea11602f-d7c6-47eb-be77-7b1fa66c8b9c",
+  "timestamp": "2026-05-12T00:15:07Z",
+  "size_bytes": 45660294,
+  "elapsed": 17.462662131,
+  "bbox": [
+    50.749369,
+    4.202947,
+    50.94491,
+    4.512645
+  ]
+}build_timestamp=2026-05-12T01:15:23Z
