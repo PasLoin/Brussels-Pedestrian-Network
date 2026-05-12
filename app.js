@@ -303,10 +303,15 @@ fetch("./state.txt")
   .then(txt => {
     const fmtOpts = { dateStyle: "short", timeStyle: "short" };
 
-    const osmMatch = txt.match(/timestamp=(.+)/);
-    if (osmMatch) {
-      const osmDate = new Date(osmMatch[1].trim().replace(/\\:/g, ":"));
-      document.getElementById("osm-date").textContent = `OSM : ${osmDate.toLocaleString("fr-BE", fmtOpts)}`;
+    const jsonMatch = txt.match(/\{[\s\S]*?\}/);
+    if (jsonMatch) {
+      try {
+        const state = JSON.parse(jsonMatch[0]);
+        if (state.timestamp) {
+          const osmDate = new Date(state.timestamp);
+          document.getElementById("osm-date").textContent = `OSM : ${osmDate.toLocaleString("fr-BE", fmtOpts)}`;
+        }
+      } catch (e) { console.warn("state.txt JSON parse error:", e); }
     }
 
     const buildMatch = txt.match(/build_timestamp=(.+)/);
