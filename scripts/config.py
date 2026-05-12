@@ -15,7 +15,8 @@ import os
 MIN_OD_DISTANCE_M = float(os.environ.get("MIN_OD_DISTANCE_M", 300))
 
 # Maximum straight-line distance (km / m) between an OD pair.
-MAX_OD_DISTANCE_KM = float(os.environ.get("MAX_OD_DISTANCE_KM", 5))
+MAX_OD_DISTANCE_KM = float(os.environ.get("MAX_OD_DISTANCE_KM", 15))
+#MAX_OD_DISTANCE_KM  was 5 test 15
 MAX_OD_DISTANCE_M = MAX_OD_DISTANCE_KM * 1000
 
 # Upper bound on the number of OD pairs generated.  Caps runtime.
