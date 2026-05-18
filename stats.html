@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Brussels Pedestrian Network — Statistiques</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f5f3f0;
+      --surface: #fff;
+      --border: #ddd;
+      --text: #222;
+      --text-dim: #555;
+      --text-muted: #888;
+      --green: #2d8a4e;
+      --red: #c0392b;
+      --orange: #c27d2a;
+      --blue: #2563eb;
+      --purple: #6c3bbd;
+      --cyan: #0e7490;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+      font-size: 13px;
+    }
+
+    .page-header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 0;
+    }
+    .page-header-inner {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 20px;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .page-header h1 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .page-header-right {
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .page-header-right a {
+      color: var(--text-dim);
+      text-decoration: none;
+    }
+    .page-header-right a:hover { text-decoration: underline; }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 20px 20px 48px;
+    }
+
+    .section { margin-bottom: 28px; }
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-dim);
+      margin-bottom: 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: 8px;
+    }
+    .kpi {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 10px 12px;
+    }
+    .kpi-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+      margin-bottom: 2px;
+    }
+    .kpi-val {
+      font-size: 20px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+    .kpi-unit {
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--text-dim);
+    }
+    .kpi-sub {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 1px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .charts {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .chart-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 14px;
+    }
+    .chart-card h3 {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-bottom: 10px;
+    }
+    .chart-wrap { position: relative; max-height: 260px; }
+    .chart-wrap canvas { width: 100% !important; max-height: 260px; }
+
+    .loading {
+      text-align: center;
+      padding: 48px 20px;
+      color: var(--text-muted);
+    }
+
+    .footer {
+      text-align: center;
+      padding: 16px 20px;
+      font-size: 10px;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border);
+    }
+    .footer a { color: var(--text-dim); text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+
+    @media (max-width: 600px) {
+      .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+      .charts { grid-template-columns: 1fr; }
+      .kpi-val { font-size: 17px; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="page-header">
+  <div class="page-header-inner">
+    <h1>Brussels Pedestrian Network — Statistiques</h1>
+    <div class="page-header-right">
+      <span id="build-date"></span>
+      <a href="./">Carte</a>
+    </div>
+  </div>
+</header>
+
+<main class="container" id="main">
+  <div class="loading" id="loading">Chargement…</div>
+</main>
+
+<footer class="footer">
+  Données : <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>
+  · <a href="https://github.com/PasLoin/Brussels-Pedestrian-Network" target="_blank" rel="noopener">Source</a>
+</footer>
+
+<script>
+Chart.defaults.color = '#888';
+Chart.defaults.borderColor = '#ddd';
+Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.plugins.legend.labels.usePointStyle = true;
+Chart.defaults.plugins.legend.labels.pointStyleWidth = 8;
+Chart.defaults.plugins.legend.labels.padding = 12;
+
+const C = {
+  green: '#2d8a4e', red: '#c0392b', orange: '#c27d2a',
+  blue: '#2563eb', purple: '#6c3bbd', cyan: '#0e7490', gray: '#999',
+};
+const INFRA_C = { pedestrian: C.green, road: C.red, cycleway_foot_yes: C.blue, cycleway_no_foot: C.purple };
+const INFRA_L = { pedestrian: 'Piéton', road: 'Route', cycleway_foot_yes: 'Cycleway (foot=yes)', cycleway_no_foot: 'Cycleway (no foot)' };
+const SW_C = { separate: C.green, yes: C.cyan, documented: C.green, partial: C.orange, unknown: '#aaa' };
+const SW_L = { separate: 'separate', yes: 'yes', documented: 'documenté', partial: 'partiel', unknown: 'inconnu' };
+
+const fmt = v => v != null ? v.toLocaleString('fr-BE') : '—';
+const fkm = v => v != null ? v.toLocaleString('fr-BE', { maximumFractionDigits: 1 }) : '—';
+const fpct = v => v != null ? v.toFixed(1) + ' %' : '—';
+
+fetch('./state.txt').then(r => r.text()).then(txt => {
+  const m = txt.match(/build_timestamp=(.+)/);
+  if (m) {
+    const d = new Date(m[1].trim());
+    document.getElementById('build-date').textContent =
+      'MAJ ' + d.toLocaleString('fr-BE', { dateStyle: 'short', timeStyle: 'short' });
+  }
+}).catch(() => {});
+
+fetch('./stats.json')
+  .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+  .then(render)
+  .catch(e => { document.getElementById('loading').textContent = 'Erreur : ' + e; });
+
+function render(s) {
+  const el = document.getElementById('main');
+  el.innerHTML = '';
+
+  const net = s.network || {};
+  const graph = s.graph || {};
+  const swRoad = s.sidewalk_roads || {};
+  const gaps = s.sidewalk_gaps || {};
+  const walk = s.walkability || {};
+  const routing = s.routing || {};
+  const od = s.od_sampling || {};
+  const catD = net.km_by_category || {};
+
+  // ── 1. Réseau ──────────────────────────────────────────────────────────
+  el.innerHTML += `
+    <div class="section">
+      <div class="section-title">Réseau</div>
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="kpi-label">Longueur totale</div>
+          <div class="kpi-val">${fkm(net.total_km)} <span class="kpi-unit">km</span></div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Noeuds</div>
+          <div class="kpi-val">${fmt(graph.nodes)}</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Arêtes</div>
+          <div class="kpi-val">${fmt(graph.edges)}</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Piéton dédié</div>
+          <div class="kpi-val">${fkm(catD.pedestrian)} <span class="kpi-unit">km</span></div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Routes</div>
+          <div class="kpi-val">${fkm(catD.road)} <span class="kpi-unit">km</span></div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Cycleways</div>
+          <div class="kpi-val">${fkm((catD.cycleway_foot_yes || 0) + (catD.cycleway_no_foot || 0))} <span class="kpi-unit">km</span></div>
+          <div class="kpi-sub">foot=yes : ${fkm(catD.cycleway_foot_yes)} · no foot : ${fkm(catD.cycleway_no_foot)}</div>
+        </div>
+      </div>
+      <div class="charts">
+        <div class="chart-card">
+          <h3>km par catégorie</h3>
+          <div class="chart-wrap"><canvas id="c-cat"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>km par type highway</h3>
+          <div class="chart-wrap"><canvas id="c-hw"></canvas></div>
+        </div>
+      </div>
+    </div>`;
+
+  // ── 2. Tags sidewalk ───────────────────────────────────────────────────
+  const byS = swRoad.by_status || {};
+  const pctS = swRoad.pct_by_status || {};
+  const docPct = (pctS.separate || 0) + (pctS.yes || 0) + (pctS.documented || 0);
+
+  el.innerHTML += `
+    <div class="section">
+      <div class="section-title">Tags sidewalk</div>
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="kpi-label">Segments routiers</div>
+          <div class="kpi-val">${fmt(swRoad.total_road_ways)}</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Documentés</div>
+          <div class="kpi-val">${fpct(docPct)}</div>
+          <div class="kpi-sub">separate + yes + documenté</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Partiels</div>
+          <div class="kpi-val">${fpct(pctS.partial)}</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Sans tag</div>
+          <div class="kpi-val">${fpct(pctS.unknown)}</div>
+        </div>
+      </div>
+      <div class="charts">
+        <div class="chart-card">
+          <h3>Segments par statut</h3>
+          <div class="chart-wrap"><canvas id="c-sw-n"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>km par statut</h3>
+          <div class="chart-wrap"><canvas id="c-sw-km"></canvas></div>
+        </div>
+      </div>
+    </div>`;
+
+  // ── 3. Analyse spatiale ────────────────────────────────────────────────
+  el.innerHTML += `
+    <div class="section">
+      <div class="section-title">Analyse spatiale — trottoirs</div>
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="kpi-label">Routes analysées</div>
+          <div class="kpi-val">${fmt(gaps.roads_analysed)}</div>
+          <div class="kpi-sub">${fmt(gaps.skipped_documented)} exclues (documentées)</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Deux côtés</div>
+          <div class="kpi-val">${fmt(gaps.both_sides)}</div>
+          <div class="kpi-sub">${fkm(gaps.both_length_km)} km</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Un seul côté</div>
+          <div class="kpi-val">${fmt(gaps.one_side_gap)}</div>
+          <div class="kpi-sub">${fkm(gaps.gap_length_km)} km</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Aucun côté</div>
+          <div class="kpi-val">${fmt(gaps.neither_side)}</div>
+          <div class="kpi-sub">${fkm(gaps.neither_length_km)} km</div>
+        </div>
+      </div>
+      <div class="charts">
+        <div class="chart-card">
+          <h3>Résultat par segment</h3>
+          <div class="chart-wrap"><canvas id="c-gap"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>Marchabilité — distribution des scores</h3>
+          <div class="chart-wrap"><canvas id="c-walk"></canvas></div>
+        </div>
+      </div>
+    </div>`;
+
+  // ── 4. Marchabilité ────────────────────────────────────────────────────
+  el.innerHTML += `
+    <div class="section">
+      <div class="section-title">Marchabilité</div>
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="kpi-label">Rues évaluées</div>
+          <div class="kpi-val">${fmt(walk.streets_scored)}</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Score moyen</div>
+          <div class="kpi-val">${walk.walkability_mean != null ? (walk.walkability_mean * 100).toFixed(0) : '—'} <span class="kpi-unit">%</span></div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Médian</div>
+          <div class="kpi-val">${walk.walkability_median != null ? (walk.walkability_median * 100).toFixed(0) : '—'} <span class="kpi-unit">%</span></div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Plage</div>
+          <div class="kpi-val">${walk.walkability_min != null ? (walk.walkability_min * 100).toFixed(0) : '—'}–${walk.walkability_max != null ? (walk.walkability_max * 100).toFixed(0) : '—'} <span class="kpi-unit">%</span></div>
+        </div>
+      </div>
+    </div>`;
+
+  // ── 5. Simulation ──────────────────────────────────────────────────────
+  el.innerHTML += `
+    <div class="section">
+      <div class="section-title">Simulation</div>
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="kpi-label">Trajets routés</div>
+          <div class="kpi-val">${fmt(routing.routed_trips)}</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Distance moyenne</div>
+          <div class="kpi-val">${routing.avg_distance_m != null ? (routing.avg_distance_m / 1000).toFixed(2) : '—'} <span class="kpi-unit">km</span></div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Points OD</div>
+          <div class="kpi-val">${fmt(od.od_points)}</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Temps de calcul</div>
+          <div class="kpi-val">${routing.routing_time_s != null ? routing.routing_time_s.toFixed(1) : '—'} <span class="kpi-unit">s</span></div>
+        </div>
+      </div>
+    </div>`;
+
+  requestAnimationFrame(() => renderCharts(s));
+}
+
+function renderCharts(s) {
+  const net = s.network || {};
+  const swRoad = s.sidewalk_roads || {};
+  const gaps = s.sidewalk_gaps || {};
+  const walk = s.walkability || {};
+
+  const dOpts = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'right' } },
+  };
+  const bOpts = u => ({
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false } },
+      y: { grid: { color: '#eee' }, title: { display: true, text: u, font: { size: 10 } } },
+    },
+  });
+
+  // category doughnut
+  const catD = net.km_by_category || {};
+  const ck = Object.keys(catD);
+  if (ck.length) {
+    new Chart(document.getElementById('c-cat'), {
+      type: 'doughnut',
+      data: {
+        labels: ck.map(k => INFRA_L[k] || k),
+        datasets: [{ data: ck.map(k => catD[k]), backgroundColor: ck.map(k => INFRA_C[k] || C.gray), borderWidth: 0 }],
+      },
+      options: { ...dOpts, plugins: { ...dOpts.plugins, tooltip: { callbacks: { label: c => c.label + ' : ' + fkm(c.raw) + ' km' } } } },
+    });
+  }
+
+  // highway bar
+  const hwD = net.km_by_highway || {};
+  const hk = Object.keys(hwD).slice(0, 12);
+  if (hk.length) {
+    const hwC = k => ['footway','pedestrian','path','living_street','steps'].includes(k) ? C.green : k === 'cycleway' ? C.blue : C.red;
+    new Chart(document.getElementById('c-hw'), {
+      type: 'bar',
+      data: {
+        labels: hk,
+        datasets: [{ data: hk.map(k => hwD[k]), backgroundColor: hk.map(hwC), borderRadius: 3, borderSkipped: false }],
+      },
+      options: { ...bOpts('km'), indexAxis: 'y' },
+    });
+  }
+
+  // sidewalk status
+  const swK = ['separate', 'yes', 'documented', 'partial', 'unknown'];
+  const byS = swRoad.by_status || {};
+  new Chart(document.getElementById('c-sw-n'), {
+    type: 'bar',
+    data: {
+      labels: swK.map(k => SW_L[k]),
+      datasets: [{ data: swK.map(k => byS[k] || 0), backgroundColor: swK.map(k => SW_C[k]), borderRadius: 3, borderSkipped: false }],
+    },
+    options: bOpts('segments'),
+  });
+
+  const kmS = swRoad.km_by_status || {};
+  new Chart(document.getElementById('c-sw-km'), {
+    type: 'bar',
+    data: {
+      labels: swK.map(k => SW_L[k]),
+      datasets: [{ data: swK.map(k => kmS[k] || 0), backgroundColor: swK.map(k => SW_C[k]), borderRadius: 3, borderSkipped: false }],
+    },
+    options: bOpts('km'),
+  });
+
+  // gap doughnut
+  if (gaps.both_sides != null) {
+    new Chart(document.getElementById('c-gap'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Deux côtés', 'Un seul côté', 'Aucun côté'],
+        datasets: [{ data: [gaps.both_sides || 0, gaps.one_side_gap || 0, gaps.neither_side || 0], backgroundColor: [C.green, C.orange, C.red], borderWidth: 0 }],
+      },
+      options: { ...dOpts, plugins: { ...dOpts.plugins, tooltip: { callbacks: { label: c => c.label + ' : ' + fmt(c.raw) } } } },
+    });
+  }
+
+  // walkability distribution
+  const sd = walk.score_distribution || {};
+  const bk = ['0_20', '20_40', '40_60', '60_80', '80_100'];
+  const bl = ['0–20 %', '20–40 %', '40–60 %', '60–80 %', '80–100 %'];
+  const bc = [C.red, C.orange, '#b8860b', C.cyan, C.green];
+  new Chart(document.getElementById('c-walk'), {
+    type: 'bar',
+    data: {
+      labels: bl,
+      datasets: [{ data: bk.map(k => sd[k] || 0), backgroundColor: bc, borderRadius: 3, borderSkipped: false }],
+    },
+    options: bOpts('rues'),
+  });
+}
+</script>
+</body>
+</html>
