@@ -31,13 +31,12 @@
     <div id="routing-stats"></div>
 
     <!-- ── Flow threshold slider ─────────────────────────────────────────
-         Hides flow_edges features whose flow_pct is below the chosen
-         value.  Helps cut visual clutter on very dense networks by
-         surfacing only the most-used corridors.
+         Masque les flux sur route dont le flow_pct est inférieur au seuil.
+         N'affecte pas les flux piétons ni les flux cycleway.
     ──────────────────────────────────────────────────────────────────── -->
     <div class="flow-filter-wrap">
       <div class="flow-filter-label">
-        Flux min affiché : <span id="flow-threshold-val">0 %</span>
+        Flux route min : <span id="flow-threshold-val">0 %</span>
       </div>
       <input
         id="flow-threshold-slider"
