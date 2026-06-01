@@ -32,6 +32,7 @@ function toggleLegend() {
 // ══════════════════════════════════════════════════════════════════════════════
 
 // Called by the range input in index.html whenever the user moves the slider.
+// Only affects flow-road — flux piéton and flux cycleway are unaffected.
 function updateFlowFilter(rawValue) {
   const minPct = parseInt(rawValue, 10);
   document.getElementById("flow-threshold-val").textContent = minPct + " %";
@@ -42,9 +43,7 @@ function updateFlowFilter(rawValue) {
     ? [">=", ["to-number", ["get", "flow_pct"], 0], minPct]
     : null; // null removes any filter (show everything)
 
-  for (const lid of ["flow-ped", "flow-cycleway", "flow-road"]) {
-    try { mapRef.setFilter(lid, filter); } catch (_) { /* layer not yet added */ }
-  }
+  try { mapRef.setFilter("flow-road", filter); } catch (_) { /* layer not yet added */ }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
