@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-06-01
+ 
+### Fusion des couches "forced" dans flow_edges (issue #24)
+ 
+- **Suppression des layers PMTiles `forced_segments` et `forced_cycleway`** : ces deux couches ne sont plus incluses dans l'archive PMTiles. L'information qu'elles portaient est désormais disponible via la propriété `highway=*` ajoutée à `flow_edges`, ce qui permet un rendu par type de route directement dans la couche de flux.
+- **`flow_edges` enrichi** : la propriété `highway` (ex. `primary`, `residential`, `tertiary`…) est maintenant exportée dans `flow_edges.geojson`. Les propriétés de la couche PMTiles sont donc : `highway`, `flow_pct`, `infra_type`.
+- **`forced_segments.geojson` / `forced_cycleway.geojson`** : toujours produits avec toutes leurs propriétés (`flow`, `length_m`…) et uploadés comme artifacts CI pour usage statistique. Ils ne sont simplement plus dans le PMTiles.
+- **Épaisseur de ligne par type de route (`flow-road`)** : la largeur des segments de flux sur route varie désormais selon `highway=*` — les routes primaires apparaissent plus épaisses que les voiries résidentielles à flux équivalent, rendant la hiérarchie routière visible sans couche dédiée.
+- **Slider "Flux route min"** : nouveau contrôle dans le panneau header permettant de masquer les segments `flow-road` dont le `flow_pct` est inférieur au seuil choisi (0–95 %, pas de 5 %). N'affecte pas `flow-ped` ni `flow-cycleway`.
+  - le filtre du slider est toujours combiné avec `["==", infra_type, "road"]` pour éviter que les features piétonnes ne basculent dans la couche rouge lors de l'application du seuil.
+- **Allègement du layer `highways`** : step `jq` ajouté dans `build.yml` pour ne conserver que les propriétés utiles au frontend (`highway`, `amenity`, `name`, `foot`, `bicycle`, `access`, `segregated`). Supprime les tags OSM non utilisés (surface, lit, tram, steps:count, etc.) et réduit la taille du PMTiles.
+
 ## 2026-04-28
 
 ### Ajout sidewalk* tags
