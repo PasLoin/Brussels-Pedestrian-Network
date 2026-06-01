@@ -1,175 +1,159 @@
 # Brussels Pedestrian Network
 
-Application web destinée aux contributeurs OpenStreetMap confirmés pour analyser la continuité du réseau piéton à Bruxelles et identifier les ruptures de connectivité.
+Carte interactive des flux piétons simulés à Bruxelles, construite à partir des données OpenStreetMap.
 
-## Objectif
+**[Voir la carte](https://pasloin.github.io/Brussels-Pedestrian-Network/)**  
+**[Statistiques](https://pasloin.github.io/Brussels-Pedestrian-Network/stats.html)**
 
-Cet outil aide à repérer les zones où le réseau piéton semble incomplet dans OpenStreetMap. L'enjeu principal est de détecter les discontinuités qui empêchent une continuité logique entre rues, traversées, accès et espaces publics.
+---
 
-## Architecture du projet
+## Principe
 
-Le traitement est organisé en modules Python dans le dossier `scripts/` :
+Le pipeline simule des trajets piétons entre des paires origine-destination échantillonnées depuis les adresses OSM. Les chemins les plus courts sont calculés sur le graphe de voirie via Dijkstra (igraph), puis les passages sont agrégés par arête pour produire des couches de flux.
+
+Le résultat permet d'identifier :
+- les **corridors piétons les plus fréquentés** (flux sur footway/pedestrian/path)
+- les **routes où les piétons sont forcés de marcher sur la chaussée** (flux sur road, sans infrastructure dédiée à proximité)
+- les **pistes cyclables empruntées faute d'alternative** (flux sur cycleway sans `foot=yes`)
+- les **lacunes du réseau** : trottoirs mappés d'un seul côté, absence de tags sidewalk
+
+---
+
+## Couches PMTiles
+
+| Couche | Description |
+|--------|-------------|
+| `highways` | Réseau piéton de base (footway, pedestrian, path, steps, cycleway…) |
+| `flow_edges` | Flux simulés — propriétés : `infra_type`, `flow_pct`, `highway` |
+| `street_scores` | Score de marchabilité par rue (0–1), pénalisé selon les tags sidewalk |
+| `sidewalk_gaps` | Routes avec un trottoir mappé d'un seul côté (analyse spatiale) |
+| `sidewalk_roads` | Tags sidewalk sur routes (QA cartographique) |
+
+> **Note** : les couches `forced_segments` et `forced_cycleway` ont été fusionnées dans `flow_edges` via la propriété `highway=*`. Leurs GeoJSON complets sont toujours produits comme artifacts CI.
+
+### Propriétés de `flow_edges`
+
+| Propriété | Valeurs | Description |
+|-----------|---------|-------------|
+| `infra_type` | `pedestrian`, `road`, `cycleway_foot_yes`, `cycleway_no_foot` | Type d'infrastructure |
+| `flow_pct` | 0–100 | Flux relatif (% du max global) |
+| `highway` | `footway`, `primary`, `residential`… | Tag OSM d'origine |
+
+---
+
+## Pipeline de build
+
+```
+brussels.osm.pbf
+    │
+    ├─ osmium tags-filter → highways_ped.osm.pbf → highways.geojson  (visual layer)
+    ├─ osmium tags-filter → roads_sidewalk.osm.pbf → sidewalk_roads_raw.geojson
+    ├─ osmium tags-filter → routing_raw.osm.pbf → routing_raw.osm
+    └─ osmium tags-filter → addresses_raw.osm.pbf → addresses.geojson
+              │
+    scripts/main.py
+              │
+    ├─ clean_osm.py       — split ways aux barrières bloquées
+    ├─ build_graph.py     — OSMnx → igraph, index sidewalk
+    ├─ sample_od.py       — échantillonnage OD géographique + snapping par arête
+    ├─ routing.py         — Dijkstra groupé par source, accumulation flux
+    ├─ export.py          — flow_edges / forced_* / street_scores / graph.json
+    ├─ sidewalk_gap.py    — détection spatiale trottoirs unilatéraux
+    └─ export_sidewalk_roads.py — QA tags sidewalk
+              │
+    tippecanoe → pedestrian.pmtiles
+              │
+    GitHub Pages
+```
+
+---
+
+## Modules Python (`scripts/`)
 
 | Fichier | Rôle |
-|---|---|
-| `config.py` | Paramètres configurables (lus depuis les variables d'environnement) |
-| `clean_osm.py` | Nettoyage XML OSM : coupe les ways aux barrières bloquantes |
-| `build_graph.py` | Construction du graphe OSMnx → igraph avec pondération |
-| `sample_od.py` | Échantillonnage des adresses et snapping sur le graphe |
-| `routing.py` | Génération des paires OD et routage Dijkstra |
-| `export.py` | Export GeoJSON (flux, segments forcés, scores, graphe client) |
-| `sidewalk_gap.py` | Détection spatiale des trottoirs dessinés d'un seul côté |
-| `main.py` | Orchestrateur : enchaîne toutes les étapes |
+|---------|------|
+| `config.py` | Tous les paramètres (lus depuis variables d'env) |
+| `clean_osm.py` | Nettoyage OSM XML, split aux barrières |
+| `build_graph.py` | Construction graphe igraph, index sidewalk |
+| `sample_od.py` | Échantillonnage OD depuis adresses, snapping |
+| `routing.py` | Génération paires OD, Dijkstra, accumulation |
+| `export.py` | Export GeoJSON + graph.json + stats.json |
+| `sidewalk_gap.py` | Détection lacunes trottoirs (analyse spatiale) |
+| `export_sidewalk_roads.py` | Export tags sidewalk sur routes (QA) |
+| `debug_snap.py` | Diagnostic snapping adresses (usage local) |
 
-Le workflow `.github/workflows/build.yml` exécute `python3 scripts/main.py` après les étapes d'extraction OSM.
-
-## Algorithme
-
-### 1. Construction du graphe réseau
-
-Le workflow filtre un extrait OSM de Bruxelles avec une liste étendue de voies marchables et routières potentiellement praticables à pied. Les données filtrées sont converties en graphe avec OSMnx, puis reprojetées en Lambert belge (EPSG:31370) pour les calculs de distance. Le graphe est converti en graphe orienté igraph pour accélérer le calcul d'itinéraires.
-
-Chaque arête reçoit un coût pondéré égal à `longueur × pénalité` selon le type de voie :
-
-- Infrastructure piétonne dédiée (footway, pedestrian) : coût faible
-- Steps et living_street : coût intermédiaire
-- Routes motorisées (tertiary, secondary, primary) : coût élevé
-- Cycleway avec `foot=yes/designated/permissive` : coût faible (traité comme infra piétonne)
-- Cycleway sans autorisation piétonne explicite : coût pénalisé
-
-Exclusions appliquées :
-
-- Arêtes avec `foot=no` : retirées
-- Arêtes avec `access=no` ou `access=private` : retirées
-- Ways coupés aux barrières avec `barrier=gate` + `access=private` ou `access=no`
-
-Les tags `foot`, `sidewalk`, `sidewalk:left` et `sidewalk:right` sont explicitement préservés lors de l'import OSMnx pour éviter leur perte pendant la simplification du graphe.
-
-### 2. Échantillonnage des origines-destinations
-
-Les points OD sont échantillonnés à partir des adresses OSM (nœuds **et** polygones de bâtiments, convertis en centroïdes). Pour chaque rue, les adresses sont séparées en côté pair et impair.
-
-L'échantillonnage est **géographique** : les adresses de chaque côté sont projetées sur l'axe principal de la rue, puis découpées en bins de `OD_SAMPLE_INTERVAL_M` mètres (défaut : 100 m). Un point est choisi par bin par côté. Cela scale naturellement avec la longueur de la rue : une rue de 200 m donne ~2 points par côté, une avenue de 1,5 km donne ~15 points.
-
-Chaque côté est échantillonné indépendamment : un bin avec 5 maisons paires et 0 impaires produit un point pair uniquement.
-
-### 3. Snapping sur le graphe
-
-Les points OD sont snappés sur l'**arête** la plus proche (distance point-segment) plutôt que sur le nœud le plus proche. Cela résout le problème des rues avec un trottoir dessiné d'un seul côté : une adresse au nord d'une route snappe sur l'arête route, tandis qu'une adresse au sud snappe sur le footway — purement par géométrie.
-
-Si le résultat est ambigu (plus de 2 arêtes à distance quasi égale), le snapping retombe sur le nœud le plus proche.
-
-### 4. Routage et flux
-
-Le routage utilise igraph en plus court chemin pondéré. Les paires sont regroupées par source pour lancer un Dijkstra par source au lieu d'un Dijkstra par paire. Le passage sur chaque arête incrémente un compteur de flux.
-
-Le seuil de flux élevé est calculé sur le top `TOP_RANK_PCT` % des arêtes non nulles. Les arêtes avec un flux inférieur à `MIN_FLOW_THRESHOLD` (défaut : 5) sont exclues de la sortie pour alléger le fichier PMTiles.
-
-### 5. Classification des arêtes
-
-Chaque arête reçoit un type d'infrastructure (`infra_type`) :
-
-- `pedestrian` : infrastructure piétonne dédiée (footway, path, pedestrian…)
-- `cycleway_foot_yes` : cycleway avec `foot=yes/designated/permissive`
-- `cycleway_no_foot` : cycleway sans autorisation piétonne explicite
-- `road` : route motorisée
-
-Les cycleways avec `foot=yes` sont **exclus** de la couche `forced_cycleway` car ils sont praticables à pied par définition.
-
-### 6. Détection des sidewalk gaps
-
-Une analyse spatiale détecte les routes où un trottoir (footway) est dessiné d'un seul côté :
-
-1. Pour chaque segment de route, la géométrie est décalée de 12 m à gauche et à droite
-2. Dans chaque zone de recherche, seuls les footways **parallèles** à la route sont comptés (angle < 35°)
-3. La longueur cumulée des footways parallèles doit couvrir au moins 40 % de la longueur du segment pour compter comme "trottoir présent"
-4. Si un côté a un trottoir et l'autre non → gap détecté
-
-Sont exclus de cette analyse :
-
-- `highway=service` (allées, parkings)
-- Les routes avec des tags explicites `sidewalk:left`, `sidewalk:right` ou `sidewalk` documentant la situation
-
-Tous les paramètres (offset, rayon, angle, couverture) sont configurables dans le workflow.
-
-### 7. Sorties produites
-
-Le workflow produit plusieurs couches GeoJSON intégrées dans `pedestrian.pmtiles` :
-
-- `flow_edges` : intensité de flux par arête (propriétés : `flow_pct`, `infra_type`)
-- `forced_segments` : flux élevé sur routes non piétonnes (propriétés complètes)
-- `forced_cycleway` : flux élevé sur cycleways sans droit piéton explicite
-- `street_scores` : score de marchabilité agrégé par rue avec pénalité trottoir
-- `sidewalk_gaps` : routes avec un trottoir dessiné d'un seul côté
-- `highways` : réseau piéton de base (footway, cycleway, path…)
-
-Un fichier `graph.json` est aussi produit pour la navigation client-side (Dijkstra dans le navigateur).
+---
 
 ## Paramètres configurables
 
-Tous les paramètres sont définis comme variables d'environnement dans `.github/workflows/build.yml` :
+Tous les paramètres sont des variables d'environnement définies dans `.github/workflows/build.yml` :
 
-| Paramètre | Défaut | Description |
-|---|---|---|
-| `OD_SAMPLE_INTERVAL_M` | 100 | Un point OD tous les N mètres par côté de rue |
-| `MIN_OD_DISTANCE_M` | 300 | Distance min entre paires OD |
-| `MAX_OD_DISTANCE_KM` | 6 | Distance max entre paires OD |
-| `MAX_OD_PAIRS` | 900000 | Nombre max de paires OD |
-| `TOP_RANK_PCT` | 15 | Seuil de flux élevé (top N %) |
-| `MIN_FLOW_THRESHOLD` | 5 | Flux min pour inclusion dans PMTiles |
-| `WALK_SCORE_RADIUS_M` | 1000 | Rayon pour le score de marchabilité |
-| `SIDEWALK_GAP_OFFSET_M` | 12 | Distance de recherche depuis l'axe de la route |
-| `SIDEWALK_GAP_SEARCH_M` | 8 | Rayon autour de la ligne de recherche |
-| `SIDEWALK_GAP_MAX_ANGLE` | 35 | Angle max pour considérer un footway parallèle |
-| `SIDEWALK_GAP_MIN_COVERAGE` | 0.4 | Couverture min pour compter un trottoir |
+### Échantillonnage OD
+| Variable | Défaut | Description |
+|----------|--------|-------------|
+| `OD_SAMPLE_INTERVAL_M` | 100 | Intervalle géographique entre points OD (m) |
+| `MIN_OD_DISTANCE_M` | 900 | Distance min entre paires OD |
+| `MAX_OD_DISTANCE_KM` | 1 | Distance max entre paires OD |
+| `MAX_OD_PAIRS` | 900 000 | Cap sur le nombre de paires |
 
-## Ce que montre la carte
+### Flux et export
+| Variable | Défaut | Description |
+|----------|--------|-------------|
+| `TOP_RANK_PCT` | 15 | Top N% de flux → artifacts forced_* |
+| `MIN_FLOW_THRESHOLD` | 5 | Seuil min pour inclure une arête dans flow_edges PMTiles |
 
-- Les segments piétons présents dans OpenStreetMap.
-- Les flux de déplacement simulés sur le graphe de marche.
-- Les zones où la continuité du réseau paraît interrompue.
-- Les routes avec un trottoir dessiné d'un seul côté (sidewalk gaps).
-- Les endroits à vérifier en priorité pour améliorer la complétude du graphe piéton.
-- Un outil de navigation client-side pour visualiser les itinéraires piétons avec décomposition par type d'infrastructure.
+### Marchabilité
+| Variable | Défaut | Description |
+|----------|--------|-------------|
+| `WALK_SCORE_RADIUS_M` | 1000 | Longueur début/fin de trajet comptabilisée |
+| `SIDEWALK_PENALTY_NONE` | 0.3 | Multiplicateur si `sidewalk=no` |
+| `SIDEWALK_PENALTY_PARTIAL` | 0.6 | Multiplicateur si sidewalk un seul côté |
+| `SIDEWALK_PENALTY_UNKNOWN` | 0.5 | Multiplicateur si aucun tag sidewalk |
 
-## Pour qui
+### Détection de lacunes
+| Variable | Défaut | Description |
+|----------|--------|-------------|
+| `SIDEWALK_GAP_OFFSET_M` | 12 | Distance du centreaxe pour chercher un footway |
+| `SIDEWALK_GAP_SEARCH_M` | 8 | Rayon de recherche autour de l'offset |
+| `SIDEWALK_GAP_MAX_ANGLE` | 35 | Angle max (°) pour considérer un footway parallèle |
+| `SIDEWALK_GAP_MIN_COVERAGE` | 0.4 | Couverture min (fraction) pour valider un côté |
 
-Contributeurs OpenStreetMap confirmés.
+---
 
-## Utilisation
+## Coût des arêtes (routage)
 
-1. Ouvrir l'application dans un navigateur.
-2. Examiner les couches de flux et les segments signalés.
-3. Activer la couche "Trottoir un seul côté" pour identifier les sidewalk gaps.
-4. Vérifier localement ou avec des sources compatibles OpenStreetMap.
-5. Corriger les données dans OpenStreetMap avec un commentaire de modification explicite.
-6. Contrôler à nouveau la zone dans l'application après mise à jour des données.
+| Highway | Coût |
+|---------|------|
+| `pedestrian`, `footway` | 1.0 |
+| `path`, `living_street` | 1.2 |
+| `cycleway` (foot=yes) | 1.0 |
+| `cycleway` (sans foot) | 1.8 |
+| `steps` | 1.5 |
+| `residential`, `service` | 2.0 |
+| `unclassified` | 2.2 |
+| `tertiary` | 3.5 |
+| `secondary` | 5.0 |
+| `primary` | 8.0 |
 
-Lien public de l'application :
+---
 
-https://pasloin.github.io/Brussels-Pedestrian-Network/
+## Interface
 
-## Bonnes pratiques OpenStreetMap
+- **Flux piéton** (vert) — infrastructure dédiée : footway, pedestrian, path, living_street
+- **Flux cycleway** (bleu/violet) — pistes cyclables avec ou sans `foot=yes`
+- **Flux sur route** (orange→rouge) — chaussée sans infrastructure piétonne séparée ; épaisseur variable selon la classe de route (`primary` > `secondary` > `tertiary` > `residential`)
+- **Slider "Flux route min"** — masque les segments de flux sur route sous un seuil de `flow_pct` (n'affecte pas les flux piétons ni cycleway)
+- **Score marchabilité** — point par rue, couleur 0 (rouge) → 1 (vert)
+- **Trottoir un seul côté** — segments routiers avec footway mappé d'un seul côté
+- **Tags sidewalk** — état de la documentation OSM par segment de route
+- **Navigation** — routage Dijkstra client-side depuis `graph.json`
+- **Éditer dans OSM** — lien direct vers l'éditeur OSM au niveau de zoom actuel (activé à partir du zoom 16)
 
-- Respecter les règles de vérifiabilité et de traçabilité des modifications.
-- Éviter les ajouts incertains sans confirmation terrain ou source autorisée.
-- Documenter clairement les corrections liées aux discontinuités du réseau piéton.
+---
 
-## Limites de l'algorithme
+## Données
 
-- Le modèle dépend des tags OSM présents. Une erreur de tag influence directement le graphe et les flux calculés.
-- Les pondérations de coût sont des choix méthodologiques. Elles orientent les chemins simulés et peuvent surestimer ou sous-estimer certaines pratiques piétonnes.
-- L'échantillonnage des origines-destinations à partir des adresses ne représente pas tous les usages réels de la marche.
-- Le plafonnement du nombre de paires OD améliore la performance mais réduit la couverture exhaustive du réseau.
-- La détection des sidewalk gaps est géométrique : elle ne détecte pas les cas où un trottoir existe physiquement mais n'a pas été dessiné des deux côtés dans OSM.
-- Les résultats peuvent contenir des faux positifs et des faux négatifs.
-- Une rupture détectée ne signifie pas automatiquement une erreur. Elle peut provenir d'un choix de modélisation légitime.
-- La validation humaine reste indispensable avant toute édition.
-
-## Licence
-
-Programme : [MIT License](https://opensource.org/licenses/MIT).
-
-Données cartographiques : [Open Database License (ODbL)](https://opendatacommons.org/licenses/odbl/).
-
-© [OpenStreetMap contributors](https://www.openstreetmap.org/copyright).
+- **Source OSM** : extrait quotidien Brussels Capital Region
+- **Mise à jour** : tous les lundis à 3h UTC (cron GitHub Actions)
+- **Licence** : données © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright) (ODbL)
+- **Tuiles de fond** : [OpenFreeMap](https://openfreemap.org/) Liberty style
