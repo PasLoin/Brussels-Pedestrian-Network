@@ -33,15 +33,19 @@ function toggleLegend() {
 
 // Called by the range input in index.html whenever the user moves the slider.
 // Only affects flow-road — flux piéton and flux cycleway are unaffected.
+// IMPORTANT: always AND with the base infra_type=road filter — replacing it
+// with only the threshold would cause pedestrian features to bleed into this
+// layer and appear red over the green sidewalk geometries.
 function updateFlowFilter(rawValue) {
   const minPct = parseInt(rawValue, 10);
   document.getElementById("flow-threshold-val").textContent = minPct + " %";
 
   if (!mapRef) return;
 
+  const baseFilter = ["==", ["get", "infra_type"], "road"];
   const filter = minPct > 0
-    ? [">=", ["to-number", ["get", "flow_pct"], 0], minPct]
-    : null; // null removes any filter (show everything)
+    ? ["all", baseFilter, [">=", ["to-number", ["get", "flow_pct"], 0], minPct]]
+    : baseFilter;
 
   try { mapRef.setFilter("flow-road", filter); } catch (_) { /* layer not yet added */ }
 }
