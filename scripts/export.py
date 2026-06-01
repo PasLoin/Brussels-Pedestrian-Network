@@ -4,11 +4,13 @@ Steps 8–9 — Export results to GeoJSON files and a client-side routing graph.
 This module produces:
 
 * **flow_edges.geojson** — every edge with its flow count and infra
-  type (pedestrian / cycleway_foot_yes / cycleway_no_foot / road).
+  type (pedestrian / cycleway_foot_yes / cycleway_no_foot / road),
+  plus ``highway`` tag for per-type styling in the frontend.
 * **forced_segments.geojson** — high-flow edges on *road* surfaces,
-  suggesting a missing pedestrian link.
+  suggesting a missing pedestrian link.  Full properties kept for
+  artifact/stats purposes but NOT included in PMTiles.
 * **forced_cycleway.geojson** — high-flow edges on cycleways without
-  explicit pedestrian permission (``foot=yes`` edges are excluded).
+  explicit pedestrian permission.  Same artifact-only policy.
 * **street_scores.geojson** — per-street walkability score (0–1) with
   a sidewalk penalty applied.
 * **stats.json** — summary statistics for the run.
@@ -68,6 +70,14 @@ def export_flow_layers(
 ) -> dict:
     """Write flow_edges, forced_segments, and forced_cycleway GeoJSONs.
 
+    ``flow_edges`` now carries ``highway``, ``flow_pct``, and ``infra_type``
+    so the frontend can apply per-highway-type line-width without separate
+    forced layers in PMTiles.
+
+    ``forced_segments`` and ``forced_cycleway`` are still written as full
+    artifact outputs (with flow counts and length) but are no longer bundled
+    into the PMTiles tile archive.
+
     Returns a dict of flow-layer statistics for stats.json.
     """
     print("Building flow GeoJSONs...")
@@ -83,8 +93,10 @@ def export_flow_layers(
     rows_flow = []
     rows_forced_road = []
     rows_forced_cycleway = []
+
+    # Fallback rows for empty outputs
     fb_flow = {
-        "geometry": None, "flow_pct": 0.0, "infra_type": "",
+        "geometry": None, "flow_pct": 0.0, "infra_type": "", "highway": "",
     }
     fb_forced = {
         "geometry": None, "highway": "", "flow": 0,
@@ -129,7 +141,9 @@ def export_flow_layers(
         edges_by_infra[infra_type] += 1
         length_by_infra[infra_type] += lm
 
-        # ── Forced classification (full properties, unaffected by min threshold)
+        # ── Forced classification (full properties, artifact-only) ────────
+        # These files are uploaded as CI artifacts and feed stats.json but
+        # are NOT included in the PMTiles archive anymore (see build.yml).
         if flow >= threshold:
             forced_row = {
                 "geometry": edge_geoms[eid],
@@ -144,7 +158,9 @@ def export_flow_layers(
             elif not is_ped and infra_type != "cycleway_foot_yes":
                 rows_forced_road.append(forced_row)
 
-        # ── Flow edges (slim properties, filtered by min threshold) ───────
+        # ── Flow edges (highway + flow_pct + infra_type, min threshold) ──
+        # ``highway`` is now included so the frontend can vary line width
+        # by road type without needing the separate forced layers.
         if flow < MIN_FLOW_THRESHOLD:
             n_dropped_low_flow += 1
             continue
@@ -153,6 +169,7 @@ def export_flow_layers(
             "geometry": edge_geoms[eid],
             "flow_pct": flow_pct,
             "infra_type": infra_type,
+            "highway": hw,          # ← NEW: enables per-type styling
         })
 
     n_fr = _save_gdf(rows_forced_road, fb_forced, "EPSG:31370", "forced_segments.geojson")

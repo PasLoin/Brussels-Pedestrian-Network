@@ -150,6 +150,28 @@ jobs:
             highways.geojson > highways_fixed.geojson
           mv highways_fixed.geojson highways.geojson
 
+      # ── Slim highways layer — strip unused OSM tags ─────────────────────
+      # Keeps only the properties actually consumed by the frontend popup
+      # and layer filters.  Drops surface, lit, tram, steps:count, etc.
+      # This meaningfully reduces the PMTiles size for the highways layer.
+      - name: Slim highways GeoJSON properties
+        run: |
+          jq '
+            .features |= map(
+              .properties |= {
+                highway:    .highway,
+                amenity:    .amenity,
+                name:       .name,
+                foot:       .foot,
+                bicycle:    .bicycle,
+                access:     .access,
+                segregated: .segregated
+              }
+              | with_entries(select(.value != null and .value != ""))
+            ) | {type: "FeatureCollection", features: .}
+          ' highways.geojson > highways_slim.geojson
+          mv highways_slim.geojson highways.geojson
+
       # ── Extract address features (OD sampling) ─────────────────────────
       - name: Filter address features
         run: |
@@ -223,6 +245,10 @@ jobs:
           if-no-files-found: warn
 
       # ── Build tile archive ──────────────────────────────────────────────
+      # Note: forced_segments and forced_cycleway are no longer separate
+      # PMTiles layers.  Their information is now carried by flow_edges
+      # via the highway= property, enabling per-type styling in the
+      # frontend without bloating the tile archive.
       - name: Build PMTiles with tippecanoe
         run: |
           tippecanoe \
@@ -235,8 +261,6 @@ jobs:
             --drop-densest-as-needed \
             --named-layer=highways:highways.geojson \
             --named-layer=flow_edges:flow_edges.geojson \
-            --named-layer=forced_segments:forced_segments.geojson \
-            --named-layer=forced_cycleway:forced_cycleway.geojson \
             --named-layer=street_scores:street_scores.geojson \
             --named-layer=sidewalk_gaps:sidewalk_gaps.geojson \
             --named-layer=sidewalk_roads:sidewalk_roads.geojson

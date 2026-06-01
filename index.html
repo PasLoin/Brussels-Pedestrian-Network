@@ -30,6 +30,22 @@
     <div id="build-date"></div>
     <div id="routing-stats"></div>
 
+    <!-- ── Flow threshold slider ─────────────────────────────────────────
+         Masque les flux sur route dont le flow_pct est inférieur au seuil.
+         N'affecte pas les flux piétons ni les flux cycleway.
+    ──────────────────────────────────────────────────────────────────── -->
+    <div class="flow-filter-wrap">
+      <div class="flow-filter-label">
+        Flux route min : <span id="flow-threshold-val">0 %</span>
+      </div>
+      <input
+        id="flow-threshold-slider"
+        type="range"
+        min="0" max="95" step="5" value="0"
+        oninput="updateFlowFilter(this.value)"
+      />
+    </div>
+
     <button id="nav-btn" class="header-btn loading" onclick="toggleNavMode()">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <polygon points="3 11 22 2 13 21 11 13 3 11"/>

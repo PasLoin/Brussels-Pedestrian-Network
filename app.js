@@ -27,6 +27,30 @@ function toggleLegend() {
 })();
 
 // ══════════════════════════════════════════════════════════════════════════════
+//  FLOW THRESHOLD FILTER
+//  Hides flow_edges features whose flow_pct is below the slider value.
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Called by the range input in index.html whenever the user moves the slider.
+// Only affects flow-road — flux piéton and flux cycleway are unaffected.
+// IMPORTANT: always AND with the base infra_type=road filter — replacing it
+// with only the threshold would cause pedestrian features to bleed into this
+// layer and appear red over the green sidewalk geometries.
+function updateFlowFilter(rawValue) {
+  const minPct = parseInt(rawValue, 10);
+  document.getElementById("flow-threshold-val").textContent = minPct + " %";
+
+  if (!mapRef) return;
+
+  const baseFilter = ["==", ["get", "infra_type"], "road"];
+  const filter = minPct > 0
+    ? ["all", baseFilter, [">=", ["to-number", ["get", "flow_pct"], 0], minPct]]
+    : baseFilter;
+
+  try { mapRef.setFilter("flow-road", filter); } catch (_) { /* layer not yet added */ }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 //  CLIENT-SIDE DIJKSTRA ROUTING
 // ══════════════════════════════════════════════════════════════════════════════
 
@@ -411,6 +435,18 @@ const HIGHWAY_LAYERS = [
 // Helper: null-safe flow_pct getter
 const FLOW_PCT = ["to-number", ["get", "flow_pct"], 0];
 
+// ── Highway-type width multiplier for road flow layer ─────────────────────────
+// Returns a base width coefficient per road class.  Combined with the
+// flow_pct interpolation this gives primary roads a heavier stroke than
+// residential roads at the same flow level, making the hierarchy visible.
+const ROAD_HW_WIDTH = ["match", ["get", "highway"],
+  ["primary",   "primary_link"],   2.4,
+  ["secondary", "secondary_link"], 1.9,
+  ["tertiary",  "tertiary_link"],  1.5,
+  ["residential", "unclassified"], 1.1,
+  /* service / default */          0.8,
+];
+
 const PEDESTRIAN_LAYERS = [
   ...HIGHWAY_LAYERS.map(({ id, color, width, dash, hidden }) => ({
     id: `highway-${id}`, type: "line", source: "pedestrian", "source-layer": "highways",
@@ -433,31 +469,20 @@ const PEDESTRIAN_LAYERS = [
       "circle-stroke-color": "#15803d", "circle-stroke-width": 1
     }
   },
-  {
-    id: "forced-segments", type: "line", source: "pedestrian", "source-layer": "forced_segments",
-    layout: { "line-cap": "round", "line-join": "round", visibility: "visible" },
-    paint: {
-      "line-color": ["match", ["get", "highway"], ["residential", "service"], "#f59e0b", ["unclassified"], "#f97316", ["tertiary", "tertiary_link"], "#ef4444", ["secondary", "secondary_link"], "#dc2626", ["primary", "primary_link"], "#991b1b", "#f97316"],
-      "line-width": ["interpolate", ["linear"], ["zoom"], 10, ["interpolate", ["linear"], FLOW_PCT, 0, 1, 100, 4], 16, ["interpolate", ["linear"], FLOW_PCT, 0, 2.5, 100, 12]],
-      "line-opacity": 0.88
-    }
-  },
-  {
-    id: "forced-cycleway", type: "line", source: "pedestrian", "source-layer": "forced_cycleway",
-    layout: { "line-cap": "round", "line-join": "round", visibility: "visible" },
-    paint: {
-      "line-color": "#7c3aed",
-      "line-width": ["interpolate", ["linear"], ["zoom"], 10, ["interpolate", ["linear"], FLOW_PCT, 0, 1, 100, 4], 16, ["interpolate", ["linear"], FLOW_PCT, 0, 2.5, 100, 12]],
-      "line-opacity": 0.88
-    }
-  },
+  // ── Flow layers ────────────────────────────────────────────────────────────
+  // forced_segments and forced_cycleway are no longer separate layers.
+  // Road-type flow is now in flow-road with highway= driving line-width,
+  // so high-flow road segments naturally stand out via their thicker stroke.
   {
     id: "flow-ped", type: "line", source: "pedestrian", "source-layer": "flow_edges",
     filter: ["==", ["get", "infra_type"], "pedestrian"],
     layout: { "line-cap": "round", "line-join": "round", visibility: "visible" },
     paint: {
       "line-color": ["interpolate", ["linear"], FLOW_PCT, 0, "#bbf7d0", 50, "#16a34a", 100, "#14532d"],
-      "line-width": ["interpolate", ["linear"], ["zoom"], 10, ["interpolate", ["linear"], FLOW_PCT, 0, 0.5, 100, 3], 16, ["interpolate", ["linear"], FLOW_PCT, 0, 1, 100, 8]],
+      "line-width": ["interpolate", ["linear"], ["zoom"],
+        10, ["interpolate", ["linear"], FLOW_PCT, 0, 0.5, 100, 3],
+        16, ["interpolate", ["linear"], FLOW_PCT, 0, 1,   100, 8]
+      ],
       "line-opacity": 0.85
     }
   },
@@ -470,17 +495,49 @@ const PEDESTRIAN_LAYERS = [
         "cycleway_foot_yes", ["interpolate", ["linear"], FLOW_PCT, 0, "#bfdbfe", 50, "#2563eb", 100, "#1e3a5f"],
         ["interpolate", ["linear"], FLOW_PCT, 0, "#ede9fe", 50, "#7c3aed", 100, "#3b0764"]
       ],
-      "line-width": ["interpolate", ["linear"], ["zoom"], 10, ["interpolate", ["linear"], FLOW_PCT, 0, 0.5, 100, 3], 16, ["interpolate", ["linear"], FLOW_PCT, 0, 1, 100, 8]],
+      "line-width": ["interpolate", ["linear"], ["zoom"],
+        10, ["interpolate", ["linear"], FLOW_PCT, 0, 0.5, 100, 3],
+        16, ["interpolate", ["linear"], FLOW_PCT, 0, 1,   100, 8]
+      ],
       "line-opacity": 0.85
     }
   },
   {
+    // Road-type flow: width scales both with flow_pct AND highway class,
+    // replacing the old forced_segments visual emphasis.
     id: "flow-road", type: "line", source: "pedestrian", "source-layer": "flow_edges",
     filter: ["==", ["get", "infra_type"], "road"],
     layout: { "line-cap": "round", "line-join": "round", visibility: "visible" },
     paint: {
-      "line-color": ["interpolate", ["linear"], FLOW_PCT, 0, "#fdba74", 20, "#f97316", 40, "#ef4444", 60, "#dc2626", 80, "#991b1b", 100, "#450a0a"],
-      "line-width": ["interpolate", ["linear"], ["zoom"], 10, ["interpolate", ["linear"], FLOW_PCT, 0, 0.96, 100, 4.8], 16, ["interpolate", ["linear"], FLOW_PCT, 0, 1.44, 100, 10.2]],
+      "line-color": ["interpolate", ["linear"], FLOW_PCT,
+        0,  "#fdba74",
+        20, "#f97316",
+        40, "#ef4444",
+        60, "#dc2626",
+        80, "#991b1b",
+        100,"#450a0a"
+      ],
+      // Width = base flow width × per-highway-class multiplier.
+      // MapLibre doesn't support runtime multiplication of two expressions,
+      // so we encode the combined result as nested match × interpolate using
+      // a step-based approach: pick the interpolated flow width for each
+      // road class explicitly.
+      "line-width": ["interpolate", ["linear"], ["zoom"],
+        10, ["match", ["get", "highway"],
+          ["primary",   "primary_link"],   ["interpolate", ["linear"], FLOW_PCT, 0, 1.4, 100, 7.0],
+          ["secondary", "secondary_link"], ["interpolate", ["linear"], FLOW_PCT, 0, 1.1, 100, 5.5],
+          ["tertiary",  "tertiary_link"],  ["interpolate", ["linear"], FLOW_PCT, 0, 0.9, 100, 4.5],
+          ["residential","unclassified"],  ["interpolate", ["linear"], FLOW_PCT, 0, 0.7, 100, 3.5],
+          /* service / default */          ["interpolate", ["linear"], FLOW_PCT, 0, 0.5, 100, 2.5]
+        ],
+        16, ["match", ["get", "highway"],
+          ["primary",   "primary_link"],   ["interpolate", ["linear"], FLOW_PCT, 0, 3.0, 100, 15.0],
+          ["secondary", "secondary_link"], ["interpolate", ["linear"], FLOW_PCT, 0, 2.4, 100, 12.0],
+          ["tertiary",  "tertiary_link"],  ["interpolate", ["linear"], FLOW_PCT, 0, 1.9, 100,  9.5],
+          ["residential","unclassified"],  ["interpolate", ["linear"], FLOW_PCT, 0, 1.4, 100,  7.5],
+          /* service / default */          ["interpolate", ["linear"], FLOW_PCT, 0, 1.0, 100,  5.5]
+        ]
+      ],
       "line-opacity": 0.8
     }
   },
@@ -551,22 +608,14 @@ const HOVER_LAYERS = [
     }
   },
   {
-    ids: ["forced-segments", "forced-cycleway"],
-    format: p => `
-      <div class="popup-title">⚠ Segment forcé</div>
-      <div class="popup-row"><span class="label">Type</span><span class="value">${p.highway || "—"}</span></div>
-      <div class="popup-row"><span class="label">Infra</span><span class="value">${p.infra_type || "—"}</span></div>
-      <div class="popup-row"><span class="label">Flux</span><span class="value">${p.flow || 0} trajets</span></div>
-      <div class="popup-row"><span class="label">Flux relatif</span><span class="value">${p.flow_pct || 0}%</span></div>
-      <div class="popup-row"><span class="label">Longueur</span><span class="value">${p.length_m || 0} m</span></div>
-    `
-  },
-  {
+    // Unified flow popup — works for all three flow layers.
+    // Shows highway type (useful now that forced layers are merged in).
     ids: ["flow-ped", "flow-cycleway", "flow-road"],
     format: p => `
       <div class="popup-title">📊 Flux simulé</div>
-      <div class="popup-row"><span class="label">Infra</span><span class="value">${(p.infra_type || "—").replace("_", " ")}</span></div>
-      <div class="popup-row"><span class="label">Flux relatif</span><span class="value">${p.flow_pct || 0}%</span></div>
+      <div class="popup-row"><span class="label">Infra</span><span class="value">${(p.infra_type || "—").replace(/_/g, " ")}</span></div>
+      <div class="popup-row"><span class="label">Highway</span><span class="value">${p.highway || "—"}</span></div>
+      <div class="popup-row"><span class="label">Flux relatif</span><span class="value">${p.flow_pct || 0} %</span></div>
     `
   },
   {
@@ -674,7 +723,12 @@ function initMap(style) {
 
     // ── Légende ──────────────────────────────────────────────────────────
     const legendEl = document.getElementById("legend-content");
-    const addSection = (txt) => { const s = document.createElement("div"); s.className = "legend-section"; s.textContent = txt; legendEl.appendChild(s); };
+    const addSection = (txt) => {
+      const s = document.createElement("div");
+      s.className = "legend-section";
+      s.textContent = txt;
+      legendEl.appendChild(s);
+    };
 
     const makeItem = ({ layerId, label, color, color2, swatchType = "line", dashed = false }) => {
       const item = document.createElement("div"); item.className = "legend-item";
@@ -686,21 +740,23 @@ function initMap(style) {
       item.append(swatch, lbl);
       const updateState = () => item.classList.toggle("hidden", map.getLayoutProperty(layerId, "visibility") === "none");
       updateState();
-      item.onclick = () => { const v = map.getLayoutProperty(layerId, "visibility") === "none" ? "visible" : "none"; map.setLayoutProperty(layerId, "visibility", v); updateState(); };
+      item.onclick = () => {
+        const v = map.getLayoutProperty(layerId, "visibility") === "none" ? "visible" : "none";
+        map.setLayoutProperty(layerId, "visibility", v);
+        updateState();
+      };
       return item;
     };
 
     addSection("Routage simulé");
-    legendEl.appendChild(makeItem({ layerId: "forced-segments", label: "Forcé sur route", color: "#f59e0b", color2: "#991b1b" }));
-    legendEl.appendChild(makeItem({ layerId: "forced-cycleway", label: "Forcé sur piste cyclable", color: "#c4b5fd", color2: "#3b0764" }));
-    legendEl.appendChild(makeItem({ layerId: "flow-ped", label: "Flux piéton", color: "#bbf7d0", color2: "#14532d" }));
-    legendEl.appendChild(makeItem({ layerId: "flow-cycleway", label: "Flux cycleway", color: "#bfdbfe", color2: "#3b0764" }));
-    legendEl.appendChild(makeItem({ layerId: "flow-road", label: "Flux sur route", color: "#fdba74", color2: "#450a0a" }));
-    legendEl.appendChild(makeItem({ layerId: "street-scores", label: "Score marchabilité", color: "#ef4444", color2: "#22c55e", swatchType: "dot" }));
+    legendEl.appendChild(makeItem({ layerId: "flow-ped",      label: "Flux piéton",        color: "#bbf7d0", color2: "#14532d" }));
+    legendEl.appendChild(makeItem({ layerId: "flow-cycleway",  label: "Flux cycleway",       color: "#bfdbfe", color2: "#3b0764" }));
+    legendEl.appendChild(makeItem({ layerId: "flow-road",      label: "Flux sur route",      color: "#fdba74", color2: "#450a0a" }));
+    legendEl.appendChild(makeItem({ layerId: "street-scores",  label: "Score marchabilité",  color: "#ef4444", color2: "#22c55e", swatchType: "dot" }));
 
     addSection("Analyse spatiale et qualité");
-    legendEl.appendChild(makeItem({ layerId: "sidewalk-gaps", label: "Trottoir un seul côté", color: "#f59e0b", dashed: true }));
-    legendEl.appendChild(makeItem({ layerId: "sidewalk-roads", label: "Tags sidewalk", color: "#9ca3af", color2: "#15803d" }));
+    legendEl.appendChild(makeItem({ layerId: "sidewalk-gaps",  label: "Trottoir un seul côté", color: "#f59e0b", dashed: true }));
+    legendEl.appendChild(makeItem({ layerId: "sidewalk-roads", label: "Tags sidewalk",          color: "#9ca3af", color2: "#15803d" }));
 
     addSection("Réseau de base");
     HIGHWAY_LAYERS.forEach(l => legendEl.appendChild(makeItem({ layerId: `highway-${l.id}`, label: l.label, color: l.color, dashed: l.dash })));
@@ -716,7 +772,7 @@ function initMap(style) {
         try { return map.getLayoutProperty(id, "visibility") !== "none"; }
         catch { return false; }
       });
-      if (!visibleIds.length) { popup.remove(); map.getCanvas().style.cursor = navMode ? "" : ""; return; }
+      if (!visibleIds.length) { popup.remove(); return; }
 
       const features = map.queryRenderedFeatures(e.point, { layers: visibleIds });
       if (!features.length) { popup.remove(); if (!navMode) map.getCanvas().style.cursor = ""; return; }
@@ -736,7 +792,11 @@ function initMap(style) {
     const z = map.getZoom(); const c = map.getCenter();
     document.getElementById("zoom-val").textContent = z.toFixed(1);
     const btn = document.getElementById("edit-btn");
-    if (z >= EDIT_MIN_ZOOM) { btn.href = `https://www.openstreetmap.org/edit#map=${Math.round(z)}/${c.lat.toFixed(5)}/${c.lng.toFixed(5)}`; btn.classList.remove("disabled"); }
-    else btn.classList.add("disabled");
+    if (z >= EDIT_MIN_ZOOM) {
+      btn.href = `https://www.openstreetmap.org/edit#map=${Math.round(z)}/${c.lat.toFixed(5)}/${c.lng.toFixed(5)}`;
+      btn.classList.remove("disabled");
+    } else {
+      btn.classList.add("disabled");
+    }
   });
 }
