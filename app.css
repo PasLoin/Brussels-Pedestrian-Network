@@ -196,6 +196,34 @@ body { font-family: "Inter", system-ui, sans-serif; background: #1a1a1a; }
 .legend-dot.gradient-dot { background: linear-gradient(135deg, var(--c1) 0%, var(--c2) 100%); }
 .legend-label { font-size: 12px; color: #333; }
 
+/* ── Sub-filter under a legend item ───────────────────────────────────────── */
+.legend-sub {
+  margin: 2px 0 8px 18px;
+  padding-left: 8px;
+  border-left: 2px solid #e5e7eb;
+}
+.legend-sub-header {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 9px; text-transform: uppercase; letter-spacing: 0.04em;
+  color: #999; margin: 2px 0 4px;
+}
+.legend-sub-reset {
+  background: none; border: none; cursor: pointer;
+  font-size: 9px; color: #2563eb; padding: 0;
+  text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600;
+}
+.legend-sub-reset:hover { color: #1d4ed8; text-decoration: underline; }
+.legend-sub-item {
+  display: flex; align-items: center; gap: 6px;
+  padding: 2px 0; cursor: pointer; user-select: none;
+  font-size: 11px;
+}
+.legend-sub-item.hidden { opacity: 0.3; }
+.legend-sub-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+.legend-sub-label { color: #444; }
+
 /* ── Zoom badge ───────────────────────────────────────────────────────────── */
 #zoom-badge {
   position: absolute; top: 12px; right: 52px; z-index: 10;
