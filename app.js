@@ -51,6 +51,34 @@ function updateFlowFilter(rawValue) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+//  SIDEWALK STATUS FILTER
+//  Multi-select sub-filter under the "Tags sidewalk" legend item.
+//  All statuses are active by default; clicking a status toggles it.
+// ══════════════════════════════════════════════════════════════════════════════
+
+const SIDEWALK_STATUSES = [
+  { value: "separate",   label: "separate",          color: "#22c55e" },
+  { value: "yes",        label: "yes",               color: "#06b6d4" },
+  { value: "documented", label: "documenté (both)",  color: "#22c55e" },
+  { value: "partial",    label: "partial (1 côté)",  color: "#f5700b" },
+  { value: "unknown",    label: "aucun tag",         color: "#b587c7" },
+];
+const activeSidewalkStatuses = new Set(SIDEWALK_STATUSES.map(s => s.value));
+
+function updateSidewalkFilter() {
+  if (!mapRef) return;
+  let filter;
+  if (activeSidewalkStatuses.size === 0) {
+    filter = ["==", ["get", "sw"], "__none__"];          // hide all
+  } else if (activeSidewalkStatuses.size === SIDEWALK_STATUSES.length) {
+    filter = null;                                       // show all
+  } else {
+    filter = ["in", ["get", "sw"], ["literal", [...activeSidewalkStatuses]]];
+  }
+  try { mapRef.setFilter("sidewalk-roads", filter); } catch (_) { /* not added yet */ }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 //  CLIENT-SIDE DIJKSTRA ROUTING
 // ══════════════════════════════════════════════════════════════════════════════
 
@@ -756,7 +784,64 @@ function initMap(style) {
 
     addSection("Analyse spatiale et qualité");
     legendEl.appendChild(makeItem({ layerId: "sidewalk-gaps",  label: "Trottoir un seul côté", color: "#f59e0b", dashed: true }));
-    legendEl.appendChild(makeItem({ layerId: "sidewalk-roads", label: "Tags sidewalk",          color: "#9ca3af", color2: "#15803d" }));
+
+    // ── Tags sidewalk + sub-filter ───────────────────────────────────────
+    legendEl.appendChild(makeItem({ layerId: "sidewalk-roads", label: "Tags sidewalk", color: "#9ca3af", color2: "#15803d" }));
+
+    const swSub = document.createElement("div");
+    swSub.className = "legend-sub";
+
+    const swHeader = document.createElement("div");
+    swHeader.className = "legend-sub-header";
+    swHeader.innerHTML = `<span>Filtrer par statut</span>`;
+    const swReset = document.createElement("button");
+    swReset.className = "legend-sub-reset";
+    swReset.type = "button";
+    swReset.textContent = "Aucun";
+    swReset.onclick = (e) => {
+      e.stopPropagation();
+      const allOn = activeSidewalkStatuses.size === SIDEWALK_STATUSES.length;
+      activeSidewalkStatuses.clear();
+      if (!allOn) SIDEWALK_STATUSES.forEach(s => activeSidewalkStatuses.add(s.value));
+      swSub.querySelectorAll(".legend-sub-item").forEach(el => {
+        el.classList.toggle("hidden", !activeSidewalkStatuses.has(el.dataset.status));
+      });
+      swReset.textContent = activeSidewalkStatuses.size === SIDEWALK_STATUSES.length ? "Aucun" : "Tout";
+      updateSidewalkFilter();
+    };
+    swHeader.appendChild(swReset);
+    swSub.appendChild(swHeader);
+
+    SIDEWALK_STATUSES.forEach(status => {
+      const item = document.createElement("div");
+      item.className = "legend-sub-item";
+      item.dataset.status = status.value;
+
+      const dot = document.createElement("div");
+      dot.className = "legend-sub-dot";
+      dot.style.background = status.color;
+
+      const lbl = document.createElement("span");
+      lbl.className = "legend-sub-label";
+      lbl.textContent = status.label;
+
+      item.append(dot, lbl);
+      item.onclick = (e) => {
+        e.stopPropagation();
+        if (activeSidewalkStatuses.has(status.value)) {
+          activeSidewalkStatuses.delete(status.value);
+          item.classList.add("hidden");
+        } else {
+          activeSidewalkStatuses.add(status.value);
+          item.classList.remove("hidden");
+        }
+        swReset.textContent = activeSidewalkStatuses.size === SIDEWALK_STATUSES.length ? "Aucun" : "Tout";
+        updateSidewalkFilter();
+      };
+      swSub.appendChild(item);
+    });
+
+    legendEl.appendChild(swSub);
 
     addSection("Réseau de base");
     HIGHWAY_LAYERS.forEach(l => legendEl.appendChild(makeItem({ layerId: `highway-${l.id}`, label: l.label, color: l.color, dashed: l.dash })));
