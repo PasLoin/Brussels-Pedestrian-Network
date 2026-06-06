@@ -21,6 +21,11 @@ body { font-family: "Inter", system-ui, sans-serif; background: #1a1a1a; }
   text-align: left;
 }
 #header-toggle:hover { color: #111; }
+#header-toggle:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
+  background: rgba(37, 99, 235, 0.05);
+}
 #header-toggle .chevron {
   width: 16px; height: 16px; transition: transform 0.25s ease;
   flex-shrink: 0;
@@ -103,6 +108,7 @@ body { font-family: "Inter", system-ui, sans-serif; background: #1a1a1a; }
   transition: background 0.15s, opacity 0.15s, transform 0.1s;
 }
 .header-btn:hover:not(.disabled) { transform: translateY(-1px); }
+.header-btn:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
 .header-btn.disabled { background: #ddd !important; color: #aaa !important; cursor: not-allowed; pointer-events: none; }
 .header-btn svg { flex-shrink: 0; }
 
@@ -173,6 +179,11 @@ body { font-family: "Inter", system-ui, sans-serif; background: #1a1a1a; }
   letter-spacing: 0.05em; color: #444;
 }
 #legend-toggle:hover { color: #111; }
+#legend-toggle:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
+  background: rgba(37, 99, 235, 0.05);
+}
 #legend-toggle .chevron {
   width: 16px; height: 16px; transition: transform 0.25s ease;
   flex-shrink: 0;
@@ -187,7 +198,12 @@ body { font-family: "Inter", system-ui, sans-serif; background: #1a1a1a; }
 #legend.closed #legend-content { max-height: 0; opacity: 0; }
 
 .legend-section { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: #888; margin: 10px 0 4px; }
-.legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; cursor: pointer; user-select: none; }
+.legend-item {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 5px; cursor: pointer; user-select: none;
+  padding: 2px 4px; border-radius: 4px; transition: background 0.1s;
+}
+.legend-item:hover { background: rgba(0,0,0,0.04); }
+.legend-item:focus-visible { outline: 2px solid #2563eb; outline-offset: 1px; }
 .legend-item.hidden { opacity: 0.25; }
 .legend-line { width: 26px; height: 4px; border-radius: 2px; flex-shrink: 0; }
 .legend-line.dashed { background: repeating-linear-gradient(to right, var(--c) 0px, var(--c) 6px, transparent 6px, transparent 10px); }
@@ -215,9 +231,11 @@ body { font-family: "Inter", system-ui, sans-serif; background: #1a1a1a; }
 .legend-sub-reset:hover { color: #1d4ed8; text-decoration: underline; }
 .legend-sub-item {
   display: flex; align-items: center; gap: 6px;
-  padding: 2px 0; cursor: pointer; user-select: none;
-  font-size: 11px;
+  padding: 2px 4px; cursor: pointer; user-select: none;
+  font-size: 11px; border-radius: 4px; transition: background 0.1s;
 }
+.legend-sub-item:hover { background: rgba(0,0,0,0.04); }
+.legend-sub-item:focus-visible { outline: 2px solid #2563eb; outline-offset: 1px; }
 .legend-sub-item.hidden { opacity: 0.3; }
 .legend-sub-dot {
   width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
