@@ -4,14 +4,16 @@
 
 function toggleHeader() {
   const el = document.getElementById("header");
-  el.classList.toggle("open");
+  const isOpen = el.classList.toggle("open");
   el.classList.toggle("closed");
+  document.getElementById("header-toggle").setAttribute("aria-expanded", isOpen);
 }
 
 function toggleLegend() {
   const el = document.getElementById("legend");
-  el.classList.toggle("open");
+  const isOpen = el.classList.toggle("open");
   el.classList.toggle("closed");
+  document.getElementById("legend-toggle").setAttribute("aria-expanded", isOpen);
 }
 
 // Auto-close panels on narrow screens
@@ -20,9 +22,12 @@ function toggleLegend() {
     const legend = document.getElementById("legend");
     legend.classList.remove("open");
     legend.classList.add("closed");
+    document.getElementById("legend-toggle").setAttribute("aria-expanded", "false");
+
     const header = document.getElementById("header");
     header.classList.remove("open");
     header.classList.add("closed");
+    document.getElementById("header-toggle").setAttribute("aria-expanded", "false");
   }
 })();
 
@@ -759,20 +764,33 @@ function initMap(style) {
     };
 
     const makeItem = ({ layerId, label, color, color2, swatchType = "line", dashed = false }) => {
-      const item = document.createElement("div"); item.className = "legend-item";
+      const item = document.createElement("div");
+      item.className = "legend-item";
+      item.setAttribute("role", "button");
+      item.setAttribute("tabindex", "0");
+
       const swatch = document.createElement("div"); swatch.className = `legend-${swatchType}`;
       if (color2) { swatch.classList.add(swatchType === "dot" ? "gradient-dot" : "gradient"); swatch.style.setProperty("--c1", color); swatch.style.setProperty("--c2", color2); }
       else if (dashed) { swatch.classList.add("dashed"); swatch.style.setProperty("--c", color); }
       else { swatch.style.background = color; }
       const lbl = document.createElement("span"); lbl.className = "legend-label"; lbl.textContent = label;
       item.append(swatch, lbl);
-      const updateState = () => item.classList.toggle("hidden", map.getLayoutProperty(layerId, "visibility") === "none");
+
+      const updateState = () => {
+        const isHidden = map.getLayoutProperty(layerId, "visibility") === "none";
+        item.classList.toggle("hidden", isHidden);
+        item.setAttribute("aria-pressed", !isHidden);
+      };
       updateState();
-      item.onclick = () => {
+
+      const toggle = () => {
         const v = map.getLayoutProperty(layerId, "visibility") === "none" ? "visible" : "none";
         map.setLayoutProperty(layerId, "visibility", v);
         updateState();
       };
+      item.onclick = toggle;
+      item.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } };
+
       return item;
     };
 
@@ -816,6 +834,9 @@ function initMap(style) {
       const item = document.createElement("div");
       item.className = "legend-sub-item";
       item.dataset.status = status.value;
+      item.setAttribute("role", "button");
+      item.setAttribute("tabindex", "0");
+      item.setAttribute("aria-pressed", "true");
 
       const dot = document.createElement("div");
       dot.className = "legend-sub-dot";
@@ -826,18 +847,25 @@ function initMap(style) {
       lbl.textContent = status.label;
 
       item.append(dot, lbl);
-      item.onclick = (e) => {
+
+      const toggle = (e) => {
         e.stopPropagation();
-        if (activeSidewalkStatuses.has(status.value)) {
+        const isActive = activeSidewalkStatuses.has(status.value);
+        if (isActive) {
           activeSidewalkStatuses.delete(status.value);
           item.classList.add("hidden");
         } else {
           activeSidewalkStatuses.add(status.value);
           item.classList.remove("hidden");
         }
+        item.setAttribute("aria-pressed", !isActive);
         swReset.textContent = activeSidewalkStatuses.size === SIDEWALK_STATUSES.length ? "Aucun" : "Tout";
         updateSidewalkFilter();
       };
+
+      item.onclick = toggle;
+      item.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(e); } };
+
       swSub.appendChild(item);
     });
 
