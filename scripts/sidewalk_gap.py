@@ -1,54 +1,37 @@
 """
-Detect sidewalk gaps — roads with a footway=sidewalk drawn on one side
-but not the other in OSM.
+Detect sidewalk gaps — roads with a footway on one side but not the other.
 
-This is a purely **spatial** analysis: for each road segment, the
-geometry is offset left and right, and we check whether a separately
-mapped sidewalk (`highway=footway footway=sidewalk`) is actually drawn
-parallel to each side.
+For each road segment, the geometry is offset left and right to create
+search zones.  A footway is counted on a given side only if the portion
+of it lying inside the search zone is roughly **parallel** to the road
+(within ``MAX_ANGLE_DIFF``).  Coverage is summed per side; the side
+must reach ``SIDEWALK_GAP_MIN_COVERAGE`` of the road length to count.
 
-The goal is to surface places where OSM mapping of separate sidewalks
-is incomplete — drawing sidewalks is tedious, so mappers often map
-just one side and leave the other for later.  Our pedestrian flow
-simulation avoids the road wherever a separate sidewalk exists, so a
-"white" road in our flow layer is a signal that the sidewalk on that
-side might be missing.
+The parallel check is done **per clipped sub-piece**, not on the
+footway as a whole.  This avoids a class of false positives where a
+single OSM ``way`` traces multiple sides of a block (e.g. a footway
+drawn all the way around a triangular pâté de maisons).  In that case
+the way's first→last bearing is meaningless — it can even be zero if
+the way is closed — but the portion of the way running alongside any
+given road is locally parallel, and the per-piece check picks that up.
 
-Tags on the road are **not** used to determine whether a sidewalk
-exists — that's a separate concept handled by ``export_sidewalk_roads``
-in the "tags sidewalks" QA layer.  Here, we only use tags to decide
-whether to **exclude** a road from analysis, in one specific case:
+Roads are **excluded** from the analysis if:
 
-  When the asymmetry is **explicitly documented** in OSM as the
-  physical reality (e.g. ``sidewalk:left=yes sidewalk:right=no``,
-  ``sidewalk=left``).  In those cases, a single drawn footway is
-  correct — the other side genuinely has no sidewalk on the ground.
+- They are ``highway=service`` (driveways, parking aisles…).
+- They carry explicit ``sidewalk``, ``sidewalk:left``, ``sidewalk:right``,
+  or ``sidewalk:both`` tags (e.g. ``sidewalk:both=separate``), meaning
+  the mapper has already documented the sidewalk situation.
+  Flagging these as gaps would be a false positive.
 
-Everything else (`sidewalk=both`, `sidewalk=yes`, `sidewalk=separate`,
-`sidewalk:both=separate`, no tag at all) is analysed geometrically.
-In particular, ``sidewalk=both`` is NOT a reason to skip: it documents
-physical reality, but says nothing about whether the sidewalk has
-been drawn as a separate way in OSM — which is exactly what this
-layer is meant to detect.
+Road data is read from a **raw GeoJSON** exported by osmium (one OSM
+way = one feature).  This avoids the tag-bleeding bug caused by OSMnx
+graph simplification.  Footway geometries for the spatial index still
+come from the graph edges (simplification doesn't affect the spatial
+analysis — it only makes some footways longer).
 
-Other exclusions:
-- ``highway=service`` roads (driveways, parking aisles) — too noisy.
-- Roads shorter than ``_MIN_ROAD_LENGTH``.
-
-Footway data is read from a **raw GeoJSON** exported by osmium, with
-the ``footway`` sub-tag preserved.  A way counts as a sidewalk when
-either:
-
-- ``highway=footway`` with ``footway=sidewalk`` or ``footway=link``
-  (canonical sidewalk tagging, plus link connectors at corners), or
-- ``highway=pedestrian`` (used in pedestrian zones, where mappers
-  commonly tag the sidewalk-equivalent ways this way rather than as
-  ``footway=sidewalk``).
-
-Other footways (park paths, plaza crossings, shortcuts, generic
-``highway=footway`` without a ``footway`` sub-tag) are ignored —
-they would otherwise cause false positives like the park path at
-Place du Grand Sablon being mistaken for a parallel sidewalk.
+This analysis is purely geometric.  For roads without explicit sidewalk
+tags, it checks whether a **separate footway way** has been drawn in
+OSM on each side.
 """
 
 from __future__ import annotations
@@ -59,7 +42,7 @@ import os
 import geopandas as gpd
 from shapely.strtree import STRtree
 
-from config import ROAD_TYPES_SIDEWALK_EXPECTED
+from config import PED_HIGHWAY_TYPES, ROAD_TYPES_SIDEWALK_EXPECTED
 
 # Road types to analyse.  service is excluded — too noisy (driveways,
 # parking aisles) and rarely has separate footways.
@@ -71,28 +54,27 @@ SIDEWALK_GAP_OFFSET_M = float(os.environ.get("SIDEWALK_GAP_OFFSET_M", 12))
 # Buffer radius around the offset line (metres).
 SIDEWALK_GAP_SEARCH_M = float(os.environ.get("SIDEWALK_GAP_SEARCH_M", 8))
 
-# Maximum angle difference (degrees) between road and footway.
+# Maximum angle difference (degrees) between road and footway sub-piece.
 MAX_ANGLE_DIFF = float(os.environ.get("SIDEWALK_GAP_MAX_ANGLE", 35))
 
-# Minimum coverage: parallel footways on a side must cover at least
-# this fraction of the road length to count as "has sidewalk".
+# Minimum coverage: parallel footway pieces on a side must cover at
+# least this fraction of the road length to count as "has sidewalk".
 SIDEWALK_GAP_MIN_COVERAGE = float(os.environ.get("SIDEWALK_GAP_MIN_COVERAGE", 0.4))
 
 # Skip road segments shorter than this (metres).
 _MIN_ROAD_LENGTH = 20.0
 
-# Skip footway segments shorter than this for angle comparison.
-_MIN_FOOTWAY_LENGTH = 5.0
+# Minimum length (m) of a clipped footway sub-piece for its bearing
+# to be reliable enough to test parallelism.  Below this, the piece
+# is too short to draw a meaningful direction from and is ignored.
+_MIN_CLIPPED_LENGTH = 3.0
 
-# Values of the `footway` sub-tag that count as a real sidewalk.
-# `sidewalk` is the canonical one.  `link` is sometimes used at corners
-# to connect two sidewalk segments — fine to include.  Anything else
-# 
-_SIDEWALK_FOOTWAY_VALUES = frozenset({"sidewalk", "link", "crossing", "traffic_island"})
-
-# Tag values used by the skip logic.
-_POSITIVE_SIDE = frozenset({"yes", "separate", "both", "left", "right"})
-_NEGATIVE_SIDE = frozenset({"no"})
+# Sidewalk tag values that indicate the mapper has documented the
+# situation.  Roads with any of these on sidewalk/sidewalk:left/right/both
+# are excluded from gap detection.
+_DOCUMENTED_SIDEWALK_VALUES = frozenset({
+    "no", "none", "separate", "yes", "both", "left", "right",
+})
 
 
 def _safe_str(val) -> str:
@@ -106,7 +88,14 @@ def _safe_str(val) -> str:
 
 
 def _line_bearing(geom) -> float | None:
-    """Return the bearing (0–180°) of a LineString, or None if degenerate."""
+    """Return the bearing (0–180°) of a LineString, or None if degenerate.
+
+    Computed from the first and last coordinate of the geometry.  This
+    is only meaningful for short, roughly straight LineStrings — used
+    here on road ways (typically straight between intersections in the
+    raw osmium export) and on clipped footway sub-pieces, not on whole
+    footway ways which can wrap around a block.
+    """
     coords = list(geom.coords)
     if len(coords) < 2:
         return None
@@ -128,91 +117,101 @@ def _is_parallel(road_bearing: float, footway_bearing: float | None) -> bool:
     return diff <= MAX_ANGLE_DIFF
 
 
+def _iter_linestrings(geom):
+    """Yield each ``LineString`` contained in *geom*.
+
+    A ``shapely.intersection`` result can be:
+
+    * ``LineString`` — the common case;
+    * ``MultiLineString`` — when the footway enters/exits the zone
+      several times (e.g. a way that wraps around a block re-enters
+      the same side's buffer multiple times);
+    * ``GeometryCollection`` — mixed with stray ``Point`` parts at
+      touch boundaries.
+
+    Point and Polygon parts are silently dropped.
+    """
+    gt = geom.geom_type
+    if gt == "LineString":
+        yield geom
+    elif gt == "MultiLineString":
+        yield from geom.geoms
+    elif gt == "GeometryCollection":
+        for sub in geom.geoms:
+            yield from _iter_linestrings(sub)
+
+
 def _parallel_coverage(
     zone,
     road_bearing: float,
     road_length: float,
     candidates,
     footway_geoms: list,
-    footway_bearings: list,
 ) -> float:
-    """Compute the fraction of road length covered by parallel footways."""
+    """Compute the fraction of road length covered by parallel footways.
+
+    Each candidate footway is **clipped to the search zone first**, then
+    each resulting LineString piece is tested for parallelism on its own.
+    This is the key fix for footway ways that wrap multiple sides of a
+    block: their global first→last bearing is meaningless, but the
+    portion lying inside any given side's zone is locally parallel and
+    is picked up here.
+
+    Pieces shorter than ``_MIN_CLIPPED_LENGTH`` are skipped — too short
+    to draw a reliable direction from (they would be over-sensitive to
+    micro-jitter in the OSM geometry).
+    """
     total_length = 0.0
     for i in candidates:
-        if not _is_parallel(road_bearing, footway_bearings[i]):
-            continue
         fw = footway_geoms[i]
         if not fw.intersects(zone):
             continue
         try:
             clipped = fw.intersection(zone)
-            total_length += clipped.length
         except Exception:
             continue
+        if clipped.is_empty:
+            continue
+        for piece in _iter_linestrings(clipped):
+            piece_length = piece.length
+            if piece_length < _MIN_CLIPPED_LENGTH:
+                continue
+            piece_bearing = _line_bearing(piece)
+            if _is_parallel(road_bearing, piece_bearing):
+                total_length += piece_length
     return total_length / road_length if road_length > 0 else 0.0
 
 
-def _should_skip_road(sw: str, sw_l: str, sw_r: str, sw_b: str) -> bool:
-    """Determine if a road should be excluded from geometric gap detection.
-
-    We skip ONLY when the OSM tags explicitly document a physical reality
-    that is genuinely one-sided (or zero-sided), so a single drawn
-    footway (or none) is correct and not a mapping gap to surface.
-
-    Skip cases:
-
-    1. Asymmetric per-side tags — one side positive, other side negative
-       (e.g. ``sidewalk:left=yes sidewalk:right=no``,
-       ``sidewalk:left=separate sidewalk:right=no``).  The mapper has
-       said "there's a sidewalk on this side, not on that one".
-    2. ``sidewalk=left`` or ``sidewalk=right`` — explicit single side.
-    3. ``sidewalk=no`` or ``sidewalk:both=no`` — no sidewalk at all.
-       Not a one-sided situation; a different QA concern.
-
-    DO NOT skip:
-
-    - ``sidewalk=both``, ``sidewalk=yes``, ``sidewalk:both=yes``,
-      ``sidewalk=separate``, ``sidewalk:both=separate``, missing tags…
-      These say something about physical reality, but tell us nothing
-      about whether OSM actually has both sidewalks **drawn** as
-      separate ways — which is what this layer is meant to detect.
-    """
-    # ── 1. Per-side asymmetry explicitly documented ───────────────────────
-    if sw_l in _POSITIVE_SIDE and sw_r in _NEGATIVE_SIDE:
+def _is_sidewalk_documented(
+    sw: str, sw_left: str, sw_right: str, sw_both: str,
+) -> bool:
+    """Return True if the mapper has explicitly tagged the sidewalk situation."""
+    if sw_left in _DOCUMENTED_SIDEWALK_VALUES:
         return True
-    if sw_r in _POSITIVE_SIDE and sw_l in _NEGATIVE_SIDE:
+    if sw_right in _DOCUMENTED_SIDEWALK_VALUES:
         return True
-
-    # ── 2. Single-side explicit ───────────────────────────────────────────
-    if sw in ("left", "right"):
+    if sw_both in _DOCUMENTED_SIDEWALK_VALUES:
         return True
-
-    # ── 3. No sidewalk at all (different problem) ─────────────────────────
-    if sw in _NEGATIVE_SIDE:
+    if sw in _DOCUMENTED_SIDEWALK_VALUES:
         return True
-    if sw_b in _NEGATIVE_SIDE:
-        return True
-
     return False
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Public entry point
-# ─────────────────────────────────────────────────────────────────────────────
-
 def detect_sidewalk_gaps(
     roads_geojson_path: str,
-    footways_geojson_path: str = "sidewalk_footways_raw.geojson",
+    edge_highways: list[str],
+    edge_geoms: list,
 ) -> dict:
-    """Detect roads with a footway=sidewalk drawn on one side only.
+    """Detect roads with a footway on one side only.
 
     Parameters
     ----------
     roads_geojson_path : str
         Path to the raw roads GeoJSON (one OSM way = one feature).
-    footways_geojson_path : str
-        Path to the raw footways GeoJSON (one OSM way = one feature,
-        with the `footway` sub-tag preserved).
+    edge_highways : list[str]
+        Highway types from the routing graph (all edges).
+    edge_geoms : list
+        Geometries from the routing graph (all edges, EPSG:31370).
 
     Returns
     -------
@@ -221,70 +220,27 @@ def detect_sidewalk_gaps(
 
     Writes ``sidewalk_gaps.geojson`` with one feature per gap segment.
     """
-    print("Detecting sidewalk gaps (footway=sidewalk drawn on one side only)...")
+    print("Detecting sidewalk gaps (footway on one side only)...")
     print(f"  Offset: {SIDEWALK_GAP_OFFSET_M}m | "
           f"Search radius: {SIDEWALK_GAP_SEARCH_M}m | "
           f"Max angle: {MAX_ANGLE_DIFF}° | "
           f"Min coverage: {SIDEWALK_GAP_MIN_COVERAGE:.0%}")
 
-    # ── Build footway spatial index from raw footways ─────────────────────
-    # A way counts as a sidewalk for gap detection when it is either:
-    #   - highway=footway + footway=sidewalk/link  (canonical sidewalk)
-    #   - highway=pedestrian (any sub-tag)         (pedestrian-zone sidewalks)
-    # Generic footways (park paths, plaza crossings, shortcuts) are
-    # excluded — without this filter, the park path at Place du Grand
-    # Sablon was mistaken for a parallel sidewalk.
-    print(f"  Reading footways from: {footways_geojson_path}")
-    fw_gdf = gpd.read_file(footways_geojson_path)
-    fw_gdf = fw_gdf[fw_gdf.geometry.geom_type == "LineString"].copy()
-    fw_gdf = fw_gdf.to_crs("EPSG:31370")
-    total_fw = len(fw_gdf)
-
-    hw_col = fw_gdf.get("highway")
-    fw_col = fw_gdf.get("footway")
-
-    if hw_col is None:
-        # Highway tag missing entirely — severely degraded; accept all
-        # features and warn loudly.
-        print("  WARN: 'highway' tag missing from export, using all features")
-        sw_fw = fw_gdf
-    else:
-        hw_lower = hw_col.fillna("").astype(str).str.lower()
-        is_pedestrian = hw_lower == "pedestrian"
-        if fw_col is None:
-            # No footway sub-tag info — keep highway=pedestrian, and fall
-            # back to all highway=footway (will produce some false
-            # positives at parks but is still better than nothing).
-            print("  WARN: 'footway' sub-tag missing, accepting all footways")
-            is_sidewalk_footway = hw_lower == "footway"
-        else:
-            fw_lower = fw_col.fillna("").astype(str).str.lower()
-            is_sidewalk_footway = (
-                (hw_lower == "footway")
-                & fw_lower.isin(_SIDEWALK_FOOTWAY_VALUES)
-            )
-        sw_fw = fw_gdf[is_pedestrian | is_sidewalk_footway]
-        n_pedestrian = int(is_pedestrian.sum())
-        n_sidewalk_fw = int(is_sidewalk_footway.sum())
-        print(f"  Sources — highway=pedestrian: {n_pedestrian} | "
-              f"footway=sidewalk/link: {n_sidewalk_fw}")
-
-    print(f"  Footway ways total: {total_fw} | "
-          f"kept as sidewalk: {len(sw_fw)}")
-
+    # ── Build footway spatial index from graph edges ──────────────────────
+    # NOTE: bearings are NOT precomputed here anymore.  The global
+    # first→last bearing of a whole footway can be totally misleading
+    # (e.g. a way drawn around several sides of a block, or a closed
+    # loop where first ≈ last).  Bearings are now computed on each
+    # clipped sub-piece inside _parallel_coverage().
     footway_geoms: list = []
-    footway_bearings: list[float | None] = []
-    for geom in sw_fw.geometry:
-        if geom is None or geom.is_empty:
-            continue
-        footway_geoms.append(geom)
-        if geom.length >= _MIN_FOOTWAY_LENGTH:
-            footway_bearings.append(_line_bearing(geom))
-        else:
-            footway_bearings.append(None)
+    for eid in range(len(edge_highways)):
+        hw = edge_highways[eid]
+        geom = edge_geoms[eid]
+        if hw in PED_HIGHWAY_TYPES and geom is not None and not geom.is_empty:
+            footway_geoms.append(geom)
 
     footway_tree = STRtree(footway_geoms)
-    print(f"  Sidewalk-equivalent segments indexed: {len(footway_geoms)}")
+    print(f"  Footway segments indexed: {len(footway_geoms)}")
 
     # ── Load raw road ways ────────────────────────────────────────────────
     print(f"  Reading raw roads from: {roads_geojson_path}")
@@ -309,12 +265,12 @@ def detect_sidewalk_gaps(
     for _, road in roads_gdf.iterrows():
         geom = road.geometry
 
-        # ── Skip only when asymmetry is explicitly documented ─────────────
+        # ── Skip roads with explicit sidewalk tags ────────────────────────
         sw = _safe_str(road.get("sidewalk"))
         sw_l = _safe_str(road.get("sidewalk:left"))
         sw_r = _safe_str(road.get("sidewalk:right"))
         sw_b = _safe_str(road.get("sidewalk:both"))
-        if _should_skip_road(sw, sw_l, sw_r, sw_b):
+        if _is_sidewalk_documented(sw, sw_l, sw_r, sw_b):
             n_skipped_documented += 1
             continue
 
@@ -345,11 +301,11 @@ def detect_sidewalk_gaps(
         # Compute coverage on each side
         left_cov = _parallel_coverage(
             left_zone, road_bearing, road_length,
-            left_candidates, footway_geoms, footway_bearings,
+            left_candidates, footway_geoms,
         )
         right_cov = _parallel_coverage(
             right_zone, road_bearing, road_length,
-            right_candidates, footway_geoms, footway_bearings,
+            right_candidates, footway_geoms,
         )
 
         has_left = left_cov >= SIDEWALK_GAP_MIN_COVERAGE
@@ -378,9 +334,9 @@ def detect_sidewalk_gaps(
     gdf.to_file("sidewalk_gaps.geojson", driver="GeoJSON")
 
     print(f"  Roads analysed: {n_roads} | "
-          f"Skipped (documented asymmetry / no sidewalk): {n_skipped_documented}")
-    print(f"  Both sides drawn: {n_both} | One side (gap): {n_gap} | "
-          f"Neither side drawn: {n_none}")
+          f"Skipped (documented): {n_skipped_documented}")
+    print(f"  Both sides: {n_both} | One side (gap): {n_gap} | "
+          f"Neither side: {n_none}")
     print(f"  Sidewalk gaps exported: {len(rows)}")
 
     return {
@@ -392,6 +348,5 @@ def detect_sidewalk_gaps(
         "gap_length_km": round(gap_length_m / 1000, 2),
         "both_length_km": round(both_length_m / 1000, 2),
         "neither_length_km": round(none_length_m / 1000, 2),
-        "footway_sidewalk_segments_indexed": len(footway_geoms),
-        "footway_total_segments": total_fw,
+        "footway_segments_indexed": len(footway_geoms),
     }
