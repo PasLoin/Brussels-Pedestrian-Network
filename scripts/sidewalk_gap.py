@@ -1,35 +1,45 @@
 """
-Detect sidewalk gaps — roads with a footway on one side but not the other.
+Detect sidewalk gaps — roads with a footway=sidewalk drawn on one side
+but not the other in OSM.
 
-For each road segment, the geometry is offset left and right to create
-search zones.  A footway is counted on a given side only if:
+This is a purely **spatial** analysis: for each road segment, the
+geometry is offset left and right, and we check whether a separately
+mapped sidewalk (`highway=footway footway=sidewalk`) is actually drawn
+parallel to each side.
 
-1. It is tagged ``footway=sidewalk`` (or close equivalent).  Generic
-   footways, park paths, crossings, etc. are ignored — they aren't
-   sidewalks and previously caused false positives (e.g. Sablon: park
-   path mistaken for a sidewalk on one side).
-2. It is roughly **parallel** to the road (within ``MAX_ANGLE_DIFF``).
-3. The cumulative length of parallel sidewalk-footways on that side
-   covers at least ``SIDEWALK_GAP_MIN_COVERAGE`` % of the road length.
+The goal is to surface places where OSM mapping of separate sidewalks
+is incomplete — drawing sidewalks is tedious, so mappers often map
+just one side and leave the other for later.  Our pedestrian flow
+simulation avoids the road wherever a separate sidewalk exists, so a
+"white" road in our flow layer is a signal that the sidewalk on that
+side might be missing.
 
-Roads are **excluded** from the analysis if:
+Tags on the road are **not** used to determine whether a sidewalk
+exists — that's a separate concept handled by ``export_sidewalk_roads``
+in the "tags sidewalks" QA layer.  Here, we only use tags to decide
+whether to **exclude** a road from analysis, in one specific case:
 
-- They are ``highway=service`` (driveways, parking aisles…).
-- Both sides are unambiguously documented with non-``separate`` values
-  (e.g. ``sidewalk=both``, ``sidewalk=no``, ``sidewalk:left=yes
-  sidewalk:right=yes``).
+  When the asymmetry is **explicitly documented** in OSM as the
+  physical reality (e.g. ``sidewalk:left=yes sidewalk:right=no``,
+  ``sidewalk=left``).  In those cases, a single drawn footway is
+  correct — the other side genuinely has no sidewalk on the ground.
 
-Roads tagged ``sidewalk=separate`` (or ``sidewalk:both=separate``) are
-**NOT** skipped — we verify geometrically that a ``footway=sidewalk``
-exists on each side.  Previously, "separate" was treated as proof of
-both-sided sidewalks, but in practice mappers often write "separate"
-even when only one side has been mapped as a separate way.  This was
-the main reason gaps on major streets (e.g. Rue Haute, Rue Blaes) were
-never flagged.
+Everything else (`sidewalk=both`, `sidewalk=yes`, `sidewalk=separate`,
+`sidewalk:both=separate`, no tag at all) is analysed geometrically.
+In particular, ``sidewalk=both`` is NOT a reason to skip: it documents
+physical reality, but says nothing about whether the sidewalk has
+been drawn as a separate way in OSM — which is exactly what this
+layer is meant to detect.
 
-Footway data is read from a **raw GeoJSON** exported by osmium (one
-OSM way = one feature).  This preserves the ``footway`` sub-tag,
-which OSMnx graph simplification can drop or mangle.
+Other exclusions:
+- ``highway=service`` roads (driveways, parking aisles) — too noisy.
+- Roads shorter than ``_MIN_ROAD_LENGTH``.
+
+Footway data is read from a **raw GeoJSON** exported by osmium, with
+the ``footway`` sub-tag preserved.  We filter to ``footway=sidewalk``
+(plus ``link`` for corner connectors) so park paths, plaza crossings,
+and shortcuts are not mistaken for parallel sidewalks (this was the
+cause of false positives at Place du Grand Sablon).
 """
 
 from __future__ import annotations
@@ -65,19 +75,15 @@ _MIN_ROAD_LENGTH = 20.0
 # Skip footway segments shorter than this for angle comparison.
 _MIN_FOOTWAY_LENGTH = 5.0
 
-# Values of the `footway` sub-tag that we accept as a real sidewalk.
-# `sidewalk` is the canonical one; `link` is sometimes used at corners
-# to connect two sidewalk segments and is OK to include.  Anything
-# else (crossing, traffic_island, access_aisle, …) is ignored.
+# Values of the `footway` sub-tag that count as a real sidewalk.
+# `sidewalk` is the canonical one.  `link` is sometimes used at corners
+# to connect two sidewalk segments — fine to include.  Anything else
+# (crossing, traffic_island, access_aisle, …) is ignored.
 _SIDEWALK_FOOTWAY_VALUES = frozenset({"sidewalk", "link"})
 
-# Sidewalk tag values that fully document both sides — these allow
-# the road to be skipped from geometric gap detection.
-# Note: "separate" is intentionally NOT here.  When a mapper writes
-# `sidewalk=separate`, they CLAIM the sidewalks are mapped as separate
-# ways — but we must verify this geometrically because a single side
-# being mapped is a common mistake.
-_FULLY_DOCUMENTED_VALUES = frozenset({"yes", "no", "none", "both"})
+# Tag values used by the skip logic.
+_POSITIVE_SIDE = frozenset({"yes", "separate", "both", "left", "right"})
+_NEGATIVE_SIDE = frozenset({"no"})
 
 
 def _safe_str(val) -> str:
@@ -138,41 +144,44 @@ def _parallel_coverage(
 
 
 def _should_skip_road(sw: str, sw_l: str, sw_r: str, sw_b: str) -> bool:
-    """Determine if a road should be skipped from geometric gap detection.
+    """Determine if a road should be excluded from geometric gap detection.
 
-    We skip when both sides are *unambiguously* documented — meaning we
-    trust the tags so much that geometric verification would just add
-    noise.
+    We skip ONLY when the OSM tags explicitly document a physical reality
+    that is genuinely one-sided (or zero-sided), so a single drawn
+    footway (or none) is correct and not a mapping gap to surface.
 
-    We do NOT skip when `sidewalk=separate` (or `sidewalk:both=separate`)
-    is involved.  "Separate" says the sidewalks are mapped as separate
-    ways elsewhere, but a common mistake is to write "separate" while
-    only mapping one side.  By keeping these roads in the geometric pass,
-    we catch those documentation/data mismatches — which is exactly the
-    kind of gap a mapper would want to fix.
+    Skip cases:
 
-    Cases skipped:
-    - `sidewalk:both=yes|no|none|both` (any side covered explicitly)
-    - `sidewalk:left` AND `sidewalk:right` both present with non-separate
-      values (both sides explicitly documented)
-    - `sidewalk=yes|no|none|both` with no left/right overrides
+    1. Asymmetric per-side tags — one side positive, other side negative
+       (e.g. ``sidewalk:left=yes sidewalk:right=no``,
+       ``sidewalk:left=separate sidewalk:right=no``).  The mapper has
+       said "there's a sidewalk on this side, not on that one".
+    2. ``sidewalk=left`` or ``sidewalk=right`` — explicit single side.
+    3. ``sidewalk=no`` or ``sidewalk:both=no`` — no sidewalk at all.
+       Not a one-sided situation; a different QA concern.
 
-    Cases NOT skipped (analysed geometrically):
-    - Anything involving "separate"
-    - Only one of left/right tagged (already a documented one-sided case,
-      worth verifying)
-    - No tags at all
+    DO NOT skip:
+
+    - ``sidewalk=both``, ``sidewalk=yes``, ``sidewalk:both=yes``,
+      ``sidewalk=separate``, ``sidewalk:both=separate``, missing tags…
+      These say something about physical reality, but tell us nothing
+      about whether OSM actually has both sidewalks **drawn** as
+      separate ways — which is what this layer is meant to detect.
     """
-    # sidewalk:both = strongest signal, unless it's "separate"
-    if sw_b in _FULLY_DOCUMENTED_VALUES:
+    # ── 1. Per-side asymmetry explicitly documented ───────────────────────
+    if sw_l in _POSITIVE_SIDE and sw_r in _NEGATIVE_SIDE:
+        return True
+    if sw_r in _POSITIVE_SIDE and sw_l in _NEGATIVE_SIDE:
         return True
 
-    # Both left and right explicitly tagged, neither is "separate"
-    if sw_l and sw_r and sw_l != "separate" and sw_r != "separate":
+    # ── 2. Single-side explicit ───────────────────────────────────────────
+    if sw in ("left", "right"):
         return True
 
-    # General sidewalk tag, definitive value, no left/right override
-    if sw in _FULLY_DOCUMENTED_VALUES and not sw_l and not sw_r:
+    # ── 3. No sidewalk at all (different problem) ─────────────────────────
+    if sw in _NEGATIVE_SIDE:
+        return True
+    if sw_b in _NEGATIVE_SIDE:
         return True
 
     return False
@@ -186,7 +195,7 @@ def detect_sidewalk_gaps(
     roads_geojson_path: str,
     footways_geojson_path: str = "sidewalk_footways_raw.geojson",
 ) -> dict:
-    """Detect roads with a footway=sidewalk on one side only.
+    """Detect roads with a footway=sidewalk drawn on one side only.
 
     Parameters
     ----------
@@ -203,28 +212,27 @@ def detect_sidewalk_gaps(
 
     Writes ``sidewalk_gaps.geojson`` with one feature per gap segment.
     """
-    print("Detecting sidewalk gaps (footway=sidewalk on one side only)...")
+    print("Detecting sidewalk gaps (footway=sidewalk drawn on one side only)...")
     print(f"  Offset: {SIDEWALK_GAP_OFFSET_M}m | "
           f"Search radius: {SIDEWALK_GAP_SEARCH_M}m | "
           f"Max angle: {MAX_ANGLE_DIFF}° | "
           f"Min coverage: {SIDEWALK_GAP_MIN_COVERAGE:.0%}")
 
     # ── Build footway spatial index from raw footways ─────────────────────
-    # Read raw footways and filter to footway=sidewalk only.  Generic
-    # footways (park paths, plaza crossings, shortcuts) are excluded —
-    # they used to cause false positives like at Place du Grand Sablon
-    # where a park path is mistaken for a parallel sidewalk.
+    # Filter to footway=sidewalk only — generic footways (park paths,
+    # plaza crossings, shortcuts) are excluded.  Without this filter,
+    # the park path at Place du Grand Sablon was mistaken for a
+    # parallel sidewalk.
     print(f"  Reading footways from: {footways_geojson_path}")
     fw_gdf = gpd.read_file(footways_geojson_path)
     fw_gdf = fw_gdf[fw_gdf.geometry.geom_type == "LineString"].copy()
     fw_gdf = fw_gdf.to_crs("EPSG:31370")
     total_fw = len(fw_gdf)
 
-    # Filter to footway=sidewalk (and footway=link for corner connectors)
     fw_tag = fw_gdf.get("footway")
     if fw_tag is None:
         # Tag missing entirely from export — fall back to all footways
-        # (degraded behaviour, will produce more false positives)
+        # (degraded behaviour, will produce more false positives at parks).
         print("  WARN: 'footway' tag missing from export, using all footways")
         sw_fw = fw_gdf
     else:
@@ -264,8 +272,6 @@ def detect_sidewalk_gaps(
     n_none = 0
     n_gap = 0
     n_skipped_documented = 0
-    n_separate_verified_ok = 0
-    n_separate_verified_gap = 0
     gap_length_m = 0.0
     both_length_m = 0.0
     none_length_m = 0.0
@@ -273,7 +279,7 @@ def detect_sidewalk_gaps(
     for _, road in roads_gdf.iterrows():
         geom = road.geometry
 
-        # ── Skip roads with fully documented sidewalk tags ────────────────
+        # ── Skip only when asymmetry is explicitly documented ─────────────
         sw = _safe_str(road.get("sidewalk"))
         sw_l = _safe_str(road.get("sidewalk:left"))
         sw_r = _safe_str(road.get("sidewalk:right"))
@@ -281,15 +287,6 @@ def detect_sidewalk_gaps(
         if _should_skip_road(sw, sw_l, sw_r, sw_b):
             n_skipped_documented += 1
             continue
-
-        # Flag whether this road claims "separate" somewhere — used
-        # for stats only.  Geometric pass still runs.
-        claims_separate = (
-            sw == "separate"
-            or sw_b == "separate"
-            or sw_l == "separate"
-            or sw_r == "separate"
-        )
 
         road_bearing = _line_bearing(geom)
         if road_bearing is None:
@@ -331,27 +328,19 @@ def detect_sidewalk_gaps(
         if has_left and has_right:
             n_both += 1
             both_length_m += road_length
-            if claims_separate:
-                n_separate_verified_ok += 1
         elif not has_left and not has_right:
             n_none += 1
             none_length_m += road_length
         else:
             n_gap += 1
             gap_length_m += road_length
-            if claims_separate:
-                n_separate_verified_gap += 1
             rows.append({
                 "geometry": geom,
                 "name": _safe_str(road.get("name")) or "",
-                # Track whether this gap was caught because the mapper
-                # claimed "separate" but only one side is actually
-                # mapped — useful for QA prioritisation.
-                "claims_separate": bool(claims_separate),
             })
 
     # ── Save output ───────────────────────────────────────────────────────
-    fb = {"geometry": None, "name": "", "claims_separate": False}
+    fb = {"geometry": None, "name": ""}
     if rows:
         gdf = gpd.GeoDataFrame(rows, crs="EPSG:31370").to_crs("EPSG:4326")
     else:
@@ -359,11 +348,9 @@ def detect_sidewalk_gaps(
     gdf.to_file("sidewalk_gaps.geojson", driver="GeoJSON")
 
     print(f"  Roads analysed: {n_roads} | "
-          f"Skipped (fully documented): {n_skipped_documented}")
-    print(f"  Both sides: {n_both} | One side (gap): {n_gap} | "
-          f"Neither side: {n_none}")
-    print(f"  Of which claimed 'separate' — OK: {n_separate_verified_ok} | "
-          f"actually one-sided: {n_separate_verified_gap}")
+          f"Skipped (documented asymmetry / no sidewalk): {n_skipped_documented}")
+    print(f"  Both sides drawn: {n_both} | One side (gap): {n_gap} | "
+          f"Neither side drawn: {n_none}")
     print(f"  Sidewalk gaps exported: {len(rows)}")
 
     return {
@@ -372,8 +359,6 @@ def detect_sidewalk_gaps(
         "both_sides": n_both,
         "one_side_gap": n_gap,
         "neither_side": n_none,
-        "separate_verified_ok": n_separate_verified_ok,
-        "separate_verified_gap": n_separate_verified_gap,
         "gap_length_km": round(gap_length_m / 1000, 2),
         "both_length_km": round(both_length_m / 1000, 2),
         "neither_length_km": round(none_length_m / 1000, 2),
