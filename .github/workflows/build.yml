@@ -83,7 +83,7 @@ env:
   MAX_ZOOM: 19
 
   # ── Origin-Destination sampling ─────────────────────────────────────────
-  MIN_OD_DISTANCE_M: 300       # min straight-line distance between OD pair # was 300
+  MIN_OD_DISTANCE_M: 600       # min straight-line distance between OD pair # was 300
   MAX_OD_DISTANCE_KM: 2        # max straight-line distance (km) #was 6 -2 
   MAX_OD_PAIRS: 900000         # cap on total OD pairs generated
   TOP_RANK_PCT: 15             # top N% of flow edges flagged as "forced"
