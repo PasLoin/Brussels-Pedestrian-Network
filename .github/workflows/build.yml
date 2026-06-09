@@ -200,6 +200,22 @@ jobs:
             --geometry-types=linestring \
             -o sidewalk_roads_raw.geojson --overwrite
 
+      # ── Extract raw footways for sidewalk gap detection ─────────────────
+      # Exported separately so the `footway` sub-tag (sidewalk / crossing /
+      # link / …) is preserved.  The simplified routing graph from OSMnx
+      # drops this tag, causing park paths and crossings to be mistaken
+      # for sidewalks when checking if a road has a parallel footway.
+      # Filtering downstream to footway=sidewalk eliminates false
+      # positives like the Sablon (park path mistaken for a sidewalk).
+      - name: Export footways for sidewalk gap detection
+        run: |
+          osmium tags-filter brussels.osm.pbf \
+            w/highway=footway \
+            -o footways_sidewalk.osm.pbf --overwrite
+          osmium export footways_sidewalk.osm.pbf \
+            --geometry-types=linestring \
+            -o sidewalk_footways_raw.geojson --overwrite
+
       # ── Extract routing features ────────────────────────────────────────
       - name: Filter routing features
         run: |
@@ -237,6 +253,7 @@ jobs:
             sidewalk_gaps.geojson
             sidewalk_roads.geojson
             sidewalk_roads_raw.geojson
+            sidewalk_footways_raw.geojson
             highways.geojson
             addresses.geojson
             stats.json
