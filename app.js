@@ -763,7 +763,7 @@ function initMap(style) {
       legendEl.appendChild(s);
     };
 
-    const makeItem = ({ layerId, label, color, color2, swatchType = "line", dashed = false }) => {
+    const makeItem = ({ layerId, label, color, color2, swatchType = "line", dashed = false, onToggle = null }) => {
       const item = document.createElement("div");
       item.className = "legend-item";
       item.setAttribute("role", "button");
@@ -780,6 +780,7 @@ function initMap(style) {
         const isHidden = map.getLayoutProperty(layerId, "visibility") === "none";
         item.classList.toggle("hidden", isHidden);
         item.setAttribute("aria-pressed", !isHidden);
+        if (onToggle) onToggle(!isHidden);
       };
       updateState();
 
@@ -804,10 +805,28 @@ function initMap(style) {
     legendEl.appendChild(makeItem({ layerId: "sidewalk-gaps",  label: "Trottoir un seul côté", color: "#f59e0b", dashed: true }));
 
     // ── Tags sidewalk + sub-filter ───────────────────────────────────────
-    legendEl.appendChild(makeItem({ layerId: "sidewalk-roads", label: "Tags sidewalk", color: "#9ca3af", color2: "#15803d" }));
-
     const swSub = document.createElement("div");
     swSub.className = "legend-sub";
+
+    const updateResetLabel = () => {
+      swReset.textContent = activeSidewalkStatuses.size === SIDEWALK_STATUSES.length ? "tout" : "aucun";
+    };
+
+    legendEl.appendChild(makeItem({
+      layerId: "sidewalk-roads",
+      label: "Tags sidewalk",
+      color: "#9ca3af",
+      color2: "#15803d",
+      onToggle: (isVisible) => {
+        swSub.classList.toggle("parent-hidden", !isVisible);
+        if (isVisible) {
+           SIDEWALK_STATUSES.forEach(s => activeSidewalkStatuses.add(s.value));
+           swSub.querySelectorAll(".legend-sub-item").forEach(el => el.classList.remove("hidden"));
+           updateResetLabel();
+           updateSidewalkFilter();
+        }
+      }
+    }));
 
     const swHeader = document.createElement("div");
     swHeader.className = "legend-sub-header";
@@ -815,7 +834,6 @@ function initMap(style) {
     const swReset = document.createElement("button");
     swReset.className = "legend-sub-reset";
     swReset.type = "button";
-    swReset.textContent = "aucun";
     swReset.onclick = (e) => {
       e.stopPropagation();
       const allOn = activeSidewalkStatuses.size === SIDEWALK_STATUSES.length;
@@ -824,7 +842,7 @@ function initMap(style) {
       swSub.querySelectorAll(".legend-sub-item").forEach(el => {
         el.classList.toggle("hidden", !activeSidewalkStatuses.has(el.dataset.status));
       });
-      swReset.textContent = activeSidewalkStatuses.size === SIDEWALK_STATUSES.length ? "aucun" : "tout";
+      updateResetLabel();
       updateSidewalkFilter();
     };
     swHeader.appendChild(swReset);
@@ -859,7 +877,7 @@ function initMap(style) {
           item.classList.remove("hidden");
         }
         item.setAttribute("aria-pressed", !isActive);
-        swReset.textContent = activeSidewalkStatuses.size === SIDEWALK_STATUSES.length ? "aucun" : "tout";
+        updateResetLabel();
         updateSidewalkFilter();
       };
 
@@ -869,6 +887,7 @@ function initMap(style) {
       swSub.appendChild(item);
     });
 
+    updateResetLabel();
     legendEl.appendChild(swSub);
 
     addSection("Réseau de base");
