@@ -2,11 +2,18 @@
 Detect sidewalk gaps — roads with a footway on one side but not the other.
 
 For each road segment, the geometry is offset left and right to create
-search zones.  A footway is counted on a given side only if:
+search zones.  A footway is counted on a given side only if the portion
+of it lying inside the search zone is roughly **parallel** to the road
+(within ``MAX_ANGLE_DIFF``).  Coverage is summed per side; the side
+must reach ``SIDEWALK_GAP_MIN_COVERAGE`` of the road length to count.
 
-1. It is roughly **parallel** to the road (within ``MAX_ANGLE_DIFF``).
-2. The cumulative length of parallel footways on that side covers at
-   least ``SIDEWALK_GAP_MIN_COVERAGE`` % of the road segment length.
+The parallel check is done **per clipped sub-piece**, not on the
+footway as a whole.  This avoids a class of false positives where a
+single OSM ``way`` traces multiple sides of a block (e.g. a footway
+drawn all the way around a triangular pâté de maisons).  In that case
+the way's first→last bearing is meaningless — it can even be zero if
+the way is closed — but the portion of the way running alongside any
+given road is locally parallel, and the per-piece check picks that up.
 
 Roads are **excluded** from the analysis if:
 
@@ -47,18 +54,20 @@ SIDEWALK_GAP_OFFSET_M = float(os.environ.get("SIDEWALK_GAP_OFFSET_M", 12))
 # Buffer radius around the offset line (metres).
 SIDEWALK_GAP_SEARCH_M = float(os.environ.get("SIDEWALK_GAP_SEARCH_M", 8))
 
-# Maximum angle difference (degrees) between road and footway.
+# Maximum angle difference (degrees) between road and footway sub-piece.
 MAX_ANGLE_DIFF = float(os.environ.get("SIDEWALK_GAP_MAX_ANGLE", 35))
 
-# Minimum coverage: parallel footways on a side must cover at least
-# this fraction of the road length to count as "has sidewalk".
+# Minimum coverage: parallel footway pieces on a side must cover at
+# least this fraction of the road length to count as "has sidewalk".
 SIDEWALK_GAP_MIN_COVERAGE = float(os.environ.get("SIDEWALK_GAP_MIN_COVERAGE", 0.4))
 
 # Skip road segments shorter than this (metres).
 _MIN_ROAD_LENGTH = 20.0
 
-# Skip footway segments shorter than this for angle comparison.
-_MIN_FOOTWAY_LENGTH = 5.0
+# Minimum length (m) of a clipped footway sub-piece for its bearing
+# to be reliable enough to test parallelism.  Below this, the piece
+# is too short to draw a meaningful direction from and is ignored.
+_MIN_CLIPPED_LENGTH = 3.0
 
 # Sidewalk tag values that indicate the mapper has documented the
 # situation.  Roads with any of these on sidewalk/sidewalk:left/right/both
@@ -79,7 +88,14 @@ def _safe_str(val) -> str:
 
 
 def _line_bearing(geom) -> float | None:
-    """Return the bearing (0–180°) of a LineString, or None if degenerate."""
+    """Return the bearing (0–180°) of a LineString, or None if degenerate.
+
+    Computed from the first and last coordinate of the geometry.  This
+    is only meaningful for short, roughly straight LineStrings — used
+    here on road ways (typically straight between intersections in the
+    raw osmium export) and on clipped footway sub-pieces, not on whole
+    footway ways which can wrap around a block.
+    """
     coords = list(geom.coords)
     if len(coords) < 2:
         return None
@@ -101,27 +117,68 @@ def _is_parallel(road_bearing: float, footway_bearing: float | None) -> bool:
     return diff <= MAX_ANGLE_DIFF
 
 
+def _iter_linestrings(geom):
+    """Yield each ``LineString`` contained in *geom*.
+
+    A ``shapely.intersection`` result can be:
+
+    * ``LineString`` — the common case;
+    * ``MultiLineString`` — when the footway enters/exits the zone
+      several times (e.g. a way that wraps around a block re-enters
+      the same side's buffer multiple times);
+    * ``GeometryCollection`` — mixed with stray ``Point`` parts at
+      touch boundaries.
+
+    Point and Polygon parts are silently dropped.
+    """
+    gt = geom.geom_type
+    if gt == "LineString":
+        yield geom
+    elif gt == "MultiLineString":
+        yield from geom.geoms
+    elif gt == "GeometryCollection":
+        for sub in geom.geoms:
+            yield from _iter_linestrings(sub)
+
+
 def _parallel_coverage(
     zone,
     road_bearing: float,
     road_length: float,
     candidates,
     footway_geoms: list,
-    footway_bearings: list,
 ) -> float:
-    """Compute the fraction of road length covered by parallel footways."""
+    """Compute the fraction of road length covered by parallel footways.
+
+    Each candidate footway is **clipped to the search zone first**, then
+    each resulting LineString piece is tested for parallelism on its own.
+    This is the key fix for footway ways that wrap multiple sides of a
+    block: their global first→last bearing is meaningless, but the
+    portion lying inside any given side's zone is locally parallel and
+    is picked up here.
+
+    Pieces shorter than ``_MIN_CLIPPED_LENGTH`` are skipped — too short
+    to draw a reliable direction from (they would be over-sensitive to
+    micro-jitter in the OSM geometry).
+    """
     total_length = 0.0
     for i in candidates:
-        if not _is_parallel(road_bearing, footway_bearings[i]):
-            continue
         fw = footway_geoms[i]
         if not fw.intersects(zone):
             continue
         try:
             clipped = fw.intersection(zone)
-            total_length += clipped.length
         except Exception:
             continue
+        if clipped.is_empty:
+            continue
+        for piece in _iter_linestrings(clipped):
+            piece_length = piece.length
+            if piece_length < _MIN_CLIPPED_LENGTH:
+                continue
+            piece_bearing = _line_bearing(piece)
+            if _is_parallel(road_bearing, piece_bearing):
+                total_length += piece_length
     return total_length / road_length if road_length > 0 else 0.0
 
 
@@ -170,17 +227,17 @@ def detect_sidewalk_gaps(
           f"Min coverage: {SIDEWALK_GAP_MIN_COVERAGE:.0%}")
 
     # ── Build footway spatial index from graph edges ──────────────────────
+    # NOTE: bearings are NOT precomputed here anymore.  The global
+    # first→last bearing of a whole footway can be totally misleading
+    # (e.g. a way drawn around several sides of a block, or a closed
+    # loop where first ≈ last).  Bearings are now computed on each
+    # clipped sub-piece inside _parallel_coverage().
     footway_geoms: list = []
-    footway_bearings: list[float | None] = []
     for eid in range(len(edge_highways)):
         hw = edge_highways[eid]
         geom = edge_geoms[eid]
         if hw in PED_HIGHWAY_TYPES and geom is not None and not geom.is_empty:
             footway_geoms.append(geom)
-            if geom.length >= _MIN_FOOTWAY_LENGTH:
-                footway_bearings.append(_line_bearing(geom))
-            else:
-                footway_bearings.append(None)
 
     footway_tree = STRtree(footway_geoms)
     print(f"  Footway segments indexed: {len(footway_geoms)}")
@@ -244,11 +301,11 @@ def detect_sidewalk_gaps(
         # Compute coverage on each side
         left_cov = _parallel_coverage(
             left_zone, road_bearing, road_length,
-            left_candidates, footway_geoms, footway_bearings,
+            left_candidates, footway_geoms,
         )
         right_cov = _parallel_coverage(
             right_zone, road_bearing, road_length,
-            right_candidates, footway_geoms, footway_bearings,
+            right_candidates, footway_geoms,
         )
 
         has_left = left_cov >= SIDEWALK_GAP_MIN_COVERAGE

@@ -138,10 +138,12 @@ def main() -> None:
     )
 
     # ── Step 8b: Detect sidewalk gaps ─────────────────────────────────────
+    # Both inputs are raw GeoJSONs exported directly by osmium — keeps
+    # per-way tags intact (no OSMnx tag bleeding) and preserves the
+    # `footway` sub-tag needed to filter true sidewalks vs park paths.
     sidewalk_gap_stats = detect_sidewalk_gaps(
         "sidewalk_roads_raw.geojson",
-        gb.edge_highways,
-        gb.edge_geoms,
+        "sidewalk_footways_raw.geojson",
     )
 
     # ── Step 8c: Export sidewalk tag status on roads ──────────────────────

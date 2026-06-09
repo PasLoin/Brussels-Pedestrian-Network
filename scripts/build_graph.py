@@ -64,15 +64,19 @@ class GraphBundle(NamedTuple):
 def _classify_sidewalk(tags: list[str]) -> str:
     """Determine best sidewalk status for a street from its road edges.
 
-    Priority: ``both`` > ``yes`` > ``left``/``right`` > ``no``/``none``
-    > ``unknown``.
+    Priority of OSM tag values: ``both`` > ``yes`` > ``left``/``right`` >
+    ``no`` > ``unknown``.
+
+    The returned status ``"none"`` is an internal label meaning "no
+    sidewalk on either side" — it is NOT an OSM tag value (which would
+    be ``no``).
     """
     s = set(tags)
     if "both" in s or "yes" in s:
         return "both"
     if "left" in s or "right" in s:
         return "partial"
-    if "no" in s or "none" in s:
+    if "no" in s:
         return "none"
     return "unknown"
 
