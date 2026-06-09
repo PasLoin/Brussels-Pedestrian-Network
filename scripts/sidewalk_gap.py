@@ -87,8 +87,8 @@ _MIN_FOOTWAY_LENGTH = 5.0
 # Values of the `footway` sub-tag that count as a real sidewalk.
 # `sidewalk` is the canonical one.  `link` is sometimes used at corners
 # to connect two sidewalk segments — fine to include.  Anything else
-# (crossing, traffic_island, access_aisle, …) is ignored.
-_SIDEWALK_FOOTWAY_VALUES = frozenset({"sidewalk", "link"})
+# 
+_SIDEWALK_FOOTWAY_VALUES = frozenset({"sidewalk", "link", "crossing", "traffic_island"})
 
 # Tag values used by the skip logic.
 _POSITIVE_SIDE = frozenset({"yes", "separate", "both", "left", "right"})
