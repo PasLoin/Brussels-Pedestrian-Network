@@ -83,8 +83,8 @@ env:
   MAX_ZOOM: 19
 
   # ── Origin-Destination sampling ─────────────────────────────────────────
-  MIN_OD_DISTANCE_M: 300      # min straight-line distance between OD pair # was 300
-  MAX_OD_DISTANCE_KM: 2        # max straight-line distance (km) #was 6 -2 
+  MIN_OD_DISTANCE_M: 900       # min straight-line distance between OD pair # was 300
+  MAX_OD_DISTANCE_KM: 1        # max straight-line distance (km) #was 6 -2 
   MAX_OD_PAIRS: 900000         # cap on total OD pairs generated
   TOP_RANK_PCT: 15             # top N% of flow edges flagged as "forced"
   MIN_FLOW_THRESHOLD: 5        # drop flow edges with fewer trips from PMTiles
@@ -99,8 +99,8 @@ env:
 
   # ── Sidewalk gap detection ─────────────────────────────────────────────
   SIDEWALK_GAP_OFFSET_M: 12    # distance from road centerline to search
-  SIDEWALK_GAP_SEARCH_M: 9     # buffer radius around offset line #8
-  SIDEWALK_GAP_MAX_ANGLE: 40   # max angle diff (°) for parallel check #35
+  SIDEWALK_GAP_SEARCH_M: 8     # buffer radius around offset line
+  SIDEWALK_GAP_MAX_ANGLE: 35   # max angle diff (°) for parallel check
   SIDEWALK_GAP_MIN_COVERAGE: 0.4  # min fraction of road length covered by footway
 
 jobs:
@@ -207,10 +207,14 @@ jobs:
       # for sidewalks when checking if a road has a parallel footway.
       # Filtering downstream to footway=sidewalk eliminates false
       # positives like the Sablon (park path mistaken for a sidewalk).
+      #
+      # highway=pedestrian is also included because in pedestrian zones,
+      # sidewalks running through (or along the edge of) the zone are
+      # commonly tagged as highway=pedestrian rather than footway=sidewalk.
       - name: Export footways for sidewalk gap detection
         run: |
           osmium tags-filter brussels.osm.pbf \
-            w/highway=footway \
+            w/highway=footway w/highway=pedestrian \
             -o footways_sidewalk.osm.pbf --overwrite
           osmium export footways_sidewalk.osm.pbf \
             --geometry-types=linestring \
