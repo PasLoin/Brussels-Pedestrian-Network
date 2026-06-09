@@ -33,13 +33,17 @@ for both layers:
   paths, crossings, and shortcut links — all of which share
   ``highway=footway``.
 
-Roads are **excluded** from the analysis if:
+Roads are **excluded** from the analysis only if:
 
 - They are ``highway=service`` (driveways, parking aisles…).
-- They carry explicit ``sidewalk``, ``sidewalk:left``, ``sidewalk:right``,
-  or ``sidewalk:both`` tags, meaning the mapper has already documented
-  the sidewalk situation.  Flagging these as gaps would be a false
-  positive.
+- They carry ``sidewalk:both=no`` — the mapper has explicitly
+  documented absence of sidewalks on both sides.
+
+Every other sidewalk-tag combination is analysed geometrically.  In
+particular, ``sidewalk:both=separate`` is treated as a CLAIM that
+sidewalks are mapped as separate ways on both sides — not as a
+guarantee.  This catches the common OSM mistake where ``separate``
+is tagged but only one sidewalk was actually drawn.
 
 Footways are filtered down to actual sidewalks:
 
@@ -68,10 +72,10 @@ from config import ROAD_TYPES_SIDEWALK_EXPECTED
 _GAP_ROAD_TYPES = ROAD_TYPES_SIDEWALK_EXPECTED - {"service"}
 
 # How far from the road centerline to look for footways (metres).
-SIDEWALK_GAP_OFFSET_M = float(os.environ.get("SIDEWALK_GAP_OFFSET_M", 12))
+SIDEWALK_GAP_OFFSET_M = float(os.environ.get("SIDEWALK_GAP_OFFSET_M", 7))
 
 # Buffer radius around the offset line (metres).
-SIDEWALK_GAP_SEARCH_M = float(os.environ.get("SIDEWALK_GAP_SEARCH_M", 8))
+SIDEWALK_GAP_SEARCH_M = float(os.environ.get("SIDEWALK_GAP_SEARCH_M", 7))
 
 # Maximum angle difference (degrees) between road and footway sub-piece.
 MAX_ANGLE_DIFF = float(os.environ.get("SIDEWALK_GAP_MAX_ANGLE", 35))
@@ -87,13 +91,6 @@ _MIN_ROAD_LENGTH = 20.0
 # to be reliable enough to test parallelism.  Below this, the piece
 # is too short to draw a meaningful direction from and is ignored.
 _MIN_CLIPPED_LENGTH = 3.0
-
-# Sidewalk tag values that indicate the mapper has documented the
-# situation.  Roads with any of these on sidewalk/sidewalk:left/right/both
-# are excluded from gap detection.
-_DOCUMENTED_SIDEWALK_VALUES = frozenset({
-    "no", "none", "separate", "yes", "both", "left", "right",
-})
 
 
 def _safe_str(val) -> str:
@@ -201,19 +198,29 @@ def _parallel_coverage(
     return total_length / road_length if road_length > 0 else 0.0
 
 
-def _is_sidewalk_documented(
-    sw: str, sw_left: str, sw_right: str, sw_both: str,
-) -> bool:
-    """Return True if the mapper has explicitly tagged the sidewalk situation."""
-    if sw_left in _DOCUMENTED_SIDEWALK_VALUES:
-        return True
-    if sw_right in _DOCUMENTED_SIDEWALK_VALUES:
-        return True
-    if sw_both in _DOCUMENTED_SIDEWALK_VALUES:
-        return True
-    if sw in _DOCUMENTED_SIDEWALK_VALUES:
-        return True
-    return False
+def _should_skip_road(sw: str, sw_left: str, sw_right: str, sw_both: str) -> bool:
+    """Return True if the road should be skipped from gap detection.
+
+    We only skip when ``sidewalk:both=no`` — the mapper has explicitly
+    documented absence of sidewalks on both sides, so flagging the
+    road would be a false positive against a confirmed negative.
+
+    Every other tag combination is analysed geometrically:
+
+    * ``sidewalk:both=separate`` is a CLAIM that both sidewalks exist
+      as separate ways.  We verify the claim by looking for the
+      separate footway ways — catches the common case where
+      ``separate`` is tagged but only one sidewalk was drawn.
+    * ``sidewalk=yes`` / ``sidewalk:both=yes`` doesn't guarantee
+      the sidewalks were drawn as separate ways either; same logic.
+    * ``sidewalk:left=*`` or ``sidewalk:right=*`` alone are partial
+      and worth verifying.
+
+    If you also want to skip the broader OSM convention ``sidewalk=no``
+    (which means "no sidewalk on either side", same semantic as
+    ``sidewalk:both=no``), add ``or sw == "no"`` below.
+    """
+    return sw_both == "no"
 
 
 def _load_sidewalk_footways(footways_geojson_path: str) -> tuple[list, dict]:
@@ -331,7 +338,7 @@ def detect_sidewalk_gaps(
     n_both = 0
     n_none = 0
     n_gap = 0
-    n_skipped_documented = 0
+    n_skipped_no_sidewalk = 0
     gap_length_m = 0.0
     both_length_m = 0.0
     none_length_m = 0.0
@@ -339,13 +346,13 @@ def detect_sidewalk_gaps(
     for _, road in roads_gdf.iterrows():
         geom = road.geometry
 
-        # ── Skip roads with explicit sidewalk tags ────────────────────────
+        # ── Skip only roads explicitly tagged sidewalk:both=no ────────────
         sw = _safe_str(road.get("sidewalk"))
         sw_l = _safe_str(road.get("sidewalk:left"))
         sw_r = _safe_str(road.get("sidewalk:right"))
         sw_b = _safe_str(road.get("sidewalk:both"))
-        if _is_sidewalk_documented(sw, sw_l, sw_r, sw_b):
-            n_skipped_documented += 1
+        if _should_skip_road(sw, sw_l, sw_r, sw_b):
+            n_skipped_no_sidewalk += 1
             continue
 
         road_bearing = _line_bearing(geom)
@@ -412,14 +419,14 @@ def detect_sidewalk_gaps(
     gdf.to_file("sidewalk_gaps.geojson", driver="GeoJSON")
 
     print(f"  Roads analysed: {n_roads} | "
-          f"Skipped (documented): {n_skipped_documented}")
+          f"Skipped (sidewalk:both=no): {n_skipped_no_sidewalk}")
     print(f"  Both sides: {n_both} | One side (gap): {n_gap} | "
           f"Neither side: {n_none}")
     print(f"  Sidewalk gaps exported: {len(rows)}")
 
     return {
         "roads_analysed": n_roads,
-        "skipped_documented": n_skipped_documented,
+        "skipped_no_sidewalk": n_skipped_no_sidewalk,
         "both_sides": n_both,
         "one_side_gap": n_gap,
         "neither_side": n_none,
