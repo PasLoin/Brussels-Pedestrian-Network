@@ -4,14 +4,16 @@
 
 function toggleHeader() {
   const el = document.getElementById("header");
-  el.classList.toggle("open");
+  const isOpen = el.classList.toggle("open");
   el.classList.toggle("closed");
+  document.getElementById("header-toggle").setAttribute("aria-expanded", isOpen);
 }
 
 function toggleLegend() {
   const el = document.getElementById("legend");
-  el.classList.toggle("open");
+  const isOpen = el.classList.toggle("open");
   el.classList.toggle("closed");
+  document.getElementById("legend-toggle").setAttribute("aria-expanded", isOpen);
 }
 
 // Auto-close panels on narrow screens
@@ -20,9 +22,12 @@ function toggleLegend() {
     const legend = document.getElementById("legend");
     legend.classList.remove("open");
     legend.classList.add("closed");
+    document.getElementById("legend-toggle").setAttribute("aria-expanded", "false");
+
     const header = document.getElementById("header");
     header.classList.remove("open");
     header.classList.add("closed");
+    document.getElementById("header-toggle").setAttribute("aria-expanded", "false");
   }
 })();
 
@@ -48,6 +53,34 @@ function updateFlowFilter(rawValue) {
     : baseFilter;
 
   try { mapRef.setFilter("flow-road", filter); } catch (_) { /* layer not yet added */ }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  SIDEWALK STATUS FILTER
+//  Multi-select sub-filter under the "Tags sidewalk" legend item.
+//  All statuses are active by default; clicking a status toggles it.
+// ══════════════════════════════════════════════════════════════════════════════
+
+const SIDEWALK_STATUSES = [
+  { value: "separate",   label: "separate",          color: "#22c55e" },
+  { value: "yes",        label: "yes",               color: "#06b6d4" },
+  { value: "documented", label: "documenté (both)",  color: "#22c55e" },
+  { value: "partial",    label: "partial (1 côté)",  color: "#f5700b" },
+  { value: "unknown",    label: "aucun tag",         color: "#b587c7" },
+];
+const activeSidewalkStatuses = new Set(SIDEWALK_STATUSES.map(s => s.value));
+
+function updateSidewalkFilter() {
+  if (!mapRef) return;
+  let filter;
+  if (activeSidewalkStatuses.size === 0) {
+    filter = ["==", ["get", "sw"], "__none__"];          // hide all
+  } else if (activeSidewalkStatuses.size === SIDEWALK_STATUSES.length) {
+    filter = null;                                       // show all
+  } else {
+    filter = ["in", ["get", "sw"], ["literal", [...activeSidewalkStatuses]]];
+  }
+  try { mapRef.setFilter("sidewalk-roads", filter); } catch (_) { /* not added yet */ }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -730,21 +763,35 @@ function initMap(style) {
       legendEl.appendChild(s);
     };
 
-    const makeItem = ({ layerId, label, color, color2, swatchType = "line", dashed = false }) => {
-      const item = document.createElement("div"); item.className = "legend-item";
+    const makeItem = ({ layerId, label, color, color2, swatchType = "line", dashed = false, onToggle = null }) => {
+      const item = document.createElement("div");
+      item.className = "legend-item";
+      item.setAttribute("role", "button");
+      item.setAttribute("tabindex", "0");
+
       const swatch = document.createElement("div"); swatch.className = `legend-${swatchType}`;
       if (color2) { swatch.classList.add(swatchType === "dot" ? "gradient-dot" : "gradient"); swatch.style.setProperty("--c1", color); swatch.style.setProperty("--c2", color2); }
       else if (dashed) { swatch.classList.add("dashed"); swatch.style.setProperty("--c", color); }
       else { swatch.style.background = color; }
       const lbl = document.createElement("span"); lbl.className = "legend-label"; lbl.textContent = label;
       item.append(swatch, lbl);
-      const updateState = () => item.classList.toggle("hidden", map.getLayoutProperty(layerId, "visibility") === "none");
+
+      const updateState = () => {
+        const isHidden = map.getLayoutProperty(layerId, "visibility") === "none";
+        item.classList.toggle("hidden", isHidden);
+        item.setAttribute("aria-pressed", !isHidden);
+        if (onToggle) onToggle(!isHidden);
+      };
       updateState();
-      item.onclick = () => {
+
+      const toggle = () => {
         const v = map.getLayoutProperty(layerId, "visibility") === "none" ? "visible" : "none";
         map.setLayoutProperty(layerId, "visibility", v);
         updateState();
       };
+      item.onclick = toggle;
+      item.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } };
+
       return item;
     };
 
@@ -756,7 +803,92 @@ function initMap(style) {
 
     addSection("Analyse spatiale et qualité");
     legendEl.appendChild(makeItem({ layerId: "sidewalk-gaps",  label: "Trottoir un seul côté", color: "#f59e0b", dashed: true }));
-    legendEl.appendChild(makeItem({ layerId: "sidewalk-roads", label: "Tags sidewalk",          color: "#9ca3af", color2: "#15803d" }));
+
+    // ── Tags sidewalk + sub-filter ───────────────────────────────────────
+    const swSub = document.createElement("div");
+    swSub.className = "legend-sub";
+
+    const updateResetLabel = () => {
+      swReset.textContent = activeSidewalkStatuses.size === SIDEWALK_STATUSES.length ? "aucun" : "tout";
+    };
+
+    legendEl.appendChild(makeItem({
+      layerId: "sidewalk-roads",
+      label: "Tags sidewalk",
+      color: "#9ca3af",
+      color2: "#15803d",
+      onToggle: (isVisible) => {
+        swSub.classList.toggle("parent-hidden", !isVisible);
+        if (isVisible) {
+           SIDEWALK_STATUSES.forEach(s => activeSidewalkStatuses.add(s.value));
+           swSub.querySelectorAll(".legend-sub-item").forEach(el => el.classList.remove("hidden"));
+           updateResetLabel();
+           updateSidewalkFilter();
+        }
+      }
+    }));
+
+    const swHeader = document.createElement("div");
+    swHeader.className = "legend-sub-header";
+    swHeader.innerHTML = `<span>Filtrer par statut</span>`;
+    const swReset = document.createElement("button");
+    swReset.className = "legend-sub-reset";
+    swReset.type = "button";
+    swReset.onclick = (e) => {
+      e.stopPropagation();
+      const allOn = activeSidewalkStatuses.size === SIDEWALK_STATUSES.length;
+      activeSidewalkStatuses.clear();
+      if (!allOn) SIDEWALK_STATUSES.forEach(s => activeSidewalkStatuses.add(s.value));
+      swSub.querySelectorAll(".legend-sub-item").forEach(el => {
+        el.classList.toggle("hidden", !activeSidewalkStatuses.has(el.dataset.status));
+      });
+      updateResetLabel();
+      updateSidewalkFilter();
+    };
+    swHeader.appendChild(swReset);
+    swSub.appendChild(swHeader);
+
+    SIDEWALK_STATUSES.forEach(status => {
+      const item = document.createElement("div");
+      item.className = "legend-sub-item";
+      item.dataset.status = status.value;
+      item.setAttribute("role", "button");
+      item.setAttribute("tabindex", "0");
+      item.setAttribute("aria-pressed", "true");
+
+      const dot = document.createElement("div");
+      dot.className = "legend-sub-dot";
+      dot.style.background = status.color;
+
+      const lbl = document.createElement("span");
+      lbl.className = "legend-sub-label";
+      lbl.textContent = status.label;
+
+      item.append(dot, lbl);
+
+      const toggle = (e) => {
+        e.stopPropagation();
+        const isActive = activeSidewalkStatuses.has(status.value);
+        if (isActive) {
+          activeSidewalkStatuses.delete(status.value);
+          item.classList.add("hidden");
+        } else {
+          activeSidewalkStatuses.add(status.value);
+          item.classList.remove("hidden");
+        }
+        item.setAttribute("aria-pressed", !isActive);
+        updateResetLabel();
+        updateSidewalkFilter();
+      };
+
+      item.onclick = toggle;
+      item.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(e); } };
+
+      swSub.appendChild(item);
+    });
+
+    updateResetLabel();
+    legendEl.appendChild(swSub);
 
     addSection("Réseau de base");
     HIGHWAY_LAYERS.forEach(l => legendEl.appendChild(makeItem({ layerId: `highway-${l.id}`, label: l.label, color: l.color, dashed: l.dash })));
