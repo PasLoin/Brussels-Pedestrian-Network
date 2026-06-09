@@ -815,7 +815,7 @@ function initMap(style) {
     const swReset = document.createElement("button");
     swReset.className = "legend-sub-reset";
     swReset.type = "button";
-    swReset.textContent = "Aucun";
+    swReset.textContent = "aucun";
     swReset.onclick = (e) => {
       e.stopPropagation();
       const allOn = activeSidewalkStatuses.size === SIDEWALK_STATUSES.length;
@@ -824,7 +824,7 @@ function initMap(style) {
       swSub.querySelectorAll(".legend-sub-item").forEach(el => {
         el.classList.toggle("hidden", !activeSidewalkStatuses.has(el.dataset.status));
       });
-      swReset.textContent = activeSidewalkStatuses.size === SIDEWALK_STATUSES.length ? "Aucun" : "Tout";
+      swReset.textContent = activeSidewalkStatuses.size === SIDEWALK_STATUSES.length ? "aucun" : "tout";
       updateSidewalkFilter();
     };
     swHeader.appendChild(swReset);
@@ -859,7 +859,7 @@ function initMap(style) {
           item.classList.remove("hidden");
         }
         item.setAttribute("aria-pressed", !isActive);
-        swReset.textContent = activeSidewalkStatuses.size === SIDEWALK_STATUSES.length ? "Aucun" : "Tout";
+        swReset.textContent = activeSidewalkStatuses.size === SIDEWALK_STATUSES.length ? "aucun" : "tout";
         updateSidewalkFilter();
       };
 
