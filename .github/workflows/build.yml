@@ -98,8 +98,8 @@ env:
   SIDEWALK_PENALTY_UNKNOWN: 0.5 # multiplier when no sidewalk tag on road edges
 
   # ── Sidewalk gap detection ─────────────────────────────────────────────
-  SIDEWALK_GAP_OFFSET_M: 13    # distance from road centerline to search
-  SIDEWALK_GAP_SEARCH_M: 9     # buffer radius around offset line
+  SIDEWALK_GAP_OFFSET_M: 7    # distance from road centerline to search
+  SIDEWALK_GAP_SEARCH_M: 7     # buffer radius around offset line
   SIDEWALK_GAP_MAX_ANGLE: 65   # max angle diff (°) for parallel check
   SIDEWALK_GAP_MIN_COVERAGE: 0.4  # min fraction of road length covered by footway
 
