@@ -809,7 +809,7 @@ function initMap(style) {
     swSub.className = "legend-sub";
 
     const updateResetLabel = () => {
-      swReset.textContent = activeSidewalkStatuses.size === SIDEWALK_STATUSES.length ? "tout" : "aucun";
+      swReset.textContent = activeSidewalkStatuses.size === SIDEWALK_STATUSES.length ? "aucun" : "tout";
     };
 
     legendEl.appendChild(makeItem({
