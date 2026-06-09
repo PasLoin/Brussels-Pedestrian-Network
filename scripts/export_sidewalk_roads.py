@@ -86,7 +86,7 @@ def _classify_edge_sidewalk(
             return "separate"
         if sw_both in ("yes", "both"):
             return "yes"
-        # Any other explicit value (no, none, mapped, …) → documented
+        # Any other explicit value (no, mapped, …) → documented
         return "documented"
 
     # ── 2. Both left AND right documented ─────────────────────────────────
