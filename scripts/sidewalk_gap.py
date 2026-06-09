@@ -36,10 +36,19 @@ Other exclusions:
 - Roads shorter than ``_MIN_ROAD_LENGTH``.
 
 Footway data is read from a **raw GeoJSON** exported by osmium, with
-the ``footway`` sub-tag preserved.  We filter to ``footway=sidewalk``
-(plus ``link`` for corner connectors) so park paths, plaza crossings,
-and shortcuts are not mistaken for parallel sidewalks (this was the
-cause of false positives at Place du Grand Sablon).
+the ``footway`` sub-tag preserved.  A way counts as a sidewalk when
+either:
+
+- ``highway=footway`` with ``footway=sidewalk`` or ``footway=link``
+  (canonical sidewalk tagging, plus link connectors at corners), or
+- ``highway=pedestrian`` (used in pedestrian zones, where mappers
+  commonly tag the sidewalk-equivalent ways this way rather than as
+  ``footway=sidewalk``).
+
+Other footways (park paths, plaza crossings, shortcuts, generic
+``highway=footway`` without a ``footway`` sub-tag) are ignored —
+they would otherwise cause false positives like the park path at
+Place du Grand Sablon being mistaken for a parallel sidewalk.
 """
 
 from __future__ import annotations
@@ -219,28 +228,49 @@ def detect_sidewalk_gaps(
           f"Min coverage: {SIDEWALK_GAP_MIN_COVERAGE:.0%}")
 
     # ── Build footway spatial index from raw footways ─────────────────────
-    # Filter to footway=sidewalk only — generic footways (park paths,
-    # plaza crossings, shortcuts) are excluded.  Without this filter,
-    # the park path at Place du Grand Sablon was mistaken for a
-    # parallel sidewalk.
+    # A way counts as a sidewalk for gap detection when it is either:
+    #   - highway=footway + footway=sidewalk/link  (canonical sidewalk)
+    #   - highway=pedestrian (any sub-tag)         (pedestrian-zone sidewalks)
+    # Generic footways (park paths, plaza crossings, shortcuts) are
+    # excluded — without this filter, the park path at Place du Grand
+    # Sablon was mistaken for a parallel sidewalk.
     print(f"  Reading footways from: {footways_geojson_path}")
     fw_gdf = gpd.read_file(footways_geojson_path)
     fw_gdf = fw_gdf[fw_gdf.geometry.geom_type == "LineString"].copy()
     fw_gdf = fw_gdf.to_crs("EPSG:31370")
     total_fw = len(fw_gdf)
 
-    fw_tag = fw_gdf.get("footway")
-    if fw_tag is None:
-        # Tag missing entirely from export — fall back to all footways
-        # (degraded behaviour, will produce more false positives at parks).
-        print("  WARN: 'footway' tag missing from export, using all footways")
+    hw_col = fw_gdf.get("highway")
+    fw_col = fw_gdf.get("footway")
+
+    if hw_col is None:
+        # Highway tag missing entirely — severely degraded; accept all
+        # features and warn loudly.
+        print("  WARN: 'highway' tag missing from export, using all features")
         sw_fw = fw_gdf
     else:
-        sw_mask = fw_tag.fillna("").astype(str).str.lower().isin(_SIDEWALK_FOOTWAY_VALUES)
-        sw_fw = fw_gdf[sw_mask]
+        hw_lower = hw_col.fillna("").astype(str).str.lower()
+        is_pedestrian = hw_lower == "pedestrian"
+        if fw_col is None:
+            # No footway sub-tag info — keep highway=pedestrian, and fall
+            # back to all highway=footway (will produce some false
+            # positives at parks but is still better than nothing).
+            print("  WARN: 'footway' sub-tag missing, accepting all footways")
+            is_sidewalk_footway = hw_lower == "footway"
+        else:
+            fw_lower = fw_col.fillna("").astype(str).str.lower()
+            is_sidewalk_footway = (
+                (hw_lower == "footway")
+                & fw_lower.isin(_SIDEWALK_FOOTWAY_VALUES)
+            )
+        sw_fw = fw_gdf[is_pedestrian | is_sidewalk_footway]
+        n_pedestrian = int(is_pedestrian.sum())
+        n_sidewalk_fw = int(is_sidewalk_footway.sum())
+        print(f"  Sources — highway=pedestrian: {n_pedestrian} | "
+              f"footway=sidewalk/link: {n_sidewalk_fw}")
 
     print(f"  Footway ways total: {total_fw} | "
-          f"with footway=sidewalk: {len(sw_fw)}")
+          f"kept as sidewalk: {len(sw_fw)}")
 
     footway_geoms: list = []
     footway_bearings: list[float | None] = []
@@ -254,7 +284,7 @@ def detect_sidewalk_gaps(
             footway_bearings.append(None)
 
     footway_tree = STRtree(footway_geoms)
-    print(f"  Footway=sidewalk segments indexed: {len(footway_geoms)}")
+    print(f"  Sidewalk-equivalent segments indexed: {len(footway_geoms)}")
 
     # ── Load raw road ways ────────────────────────────────────────────────
     print(f"  Reading raw roads from: {roads_geojson_path}")
