@@ -100,7 +100,7 @@ env:
   # ── Sidewalk gap detection ─────────────────────────────────────────────
   SIDEWALK_GAP_OFFSET_M: 12    # distance from road centerline to search
   SIDEWALK_GAP_SEARCH_M: 9     # buffer radius around offset line #8
-  SIDEWALK_GAP_MAX_ANGLE: 35   # max angle diff (°) for parallel check
+  SIDEWALK_GAP_MAX_ANGLE: 40   # max angle diff (°) for parallel check #35
   SIDEWALK_GAP_MIN_COVERAGE: 0.4  # min fraction of road length covered by footway
 
 jobs:
