@@ -41,6 +41,7 @@ from config import (
     TOP_RANK_PCT,
     WALK_SCORE_RADIUS_M,
 )
+from timing import step
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -490,14 +491,15 @@ def export_routing_graph(
     # nodes_gdf.loc[node_list, "x"] is a vectorised label-based lookup
     # over the whole node_list — much faster than a per-node .loc inside
     # a Python loop.
-    node_xs = nodes_gdf.loc[node_list, "x"].to_numpy(dtype=np.float64)
-    node_ys = nodes_gdf.loc[node_list, "y"].to_numpy(dtype=np.float64)
-    node_lngs, node_lats = transformer.transform(node_xs, node_ys)
-    node_lats = np.round(node_lats, 6)
-    node_lngs = np.round(node_lngs, 6)
-    node_coords: list[list[float]] = [
-        [float(lat), float(lng)] for lat, lng in zip(node_lats, node_lngs)
-    ]
+    with step("node coords transform"):
+        node_xs = nodes_gdf.loc[node_list, "x"].to_numpy(dtype=np.float64)
+        node_ys = nodes_gdf.loc[node_list, "y"].to_numpy(dtype=np.float64)
+        node_lngs, node_lats = transformer.transform(node_xs, node_ys)
+        node_lats = np.round(node_lats, 6)
+        node_lngs = np.round(node_lngs, 6)
+        node_coords: list[list[float]] = [
+            [float(lat), float(lng)] for lat, lng in zip(node_lats, node_lngs)
+        ]
 
     # Highway type lookup table
     hw_strs = [
@@ -513,63 +515,67 @@ def export_routing_graph(
     # slice of each edge.  Then a single transformer.transform call covers
     # the entire dataset.  Splitting back into per-edge coords becomes a
     # cheap array slice in the loop below.
-    all_xs: list[float] = []
-    all_ys: list[float] = []
-    edge_slices: list[tuple[int, int] | None] = []
-    for geom in edge_geoms:
-        if geom is not None and not geom.is_empty:
-            start = len(all_xs)
-            for gx, gy in geom.coords:
-                all_xs.append(gx)
-                all_ys.append(gy)
-            edge_slices.append((start, len(all_xs)))
+    with step("edge vertices flatten"):
+        all_xs: list[float] = []
+        all_ys: list[float] = []
+        edge_slices: list[tuple[int, int] | None] = []
+        for geom in edge_geoms:
+            if geom is not None and not geom.is_empty:
+                start = len(all_xs)
+                for gx, gy in geom.coords:
+                    all_xs.append(gx)
+                    all_ys.append(gy)
+                edge_slices.append((start, len(all_xs)))
+            else:
+                edge_slices.append(None)
+
+    with step("edge vertices transform"):
+        if all_xs:
+            all_xs_arr = np.asarray(all_xs, dtype=np.float64)
+            all_ys_arr = np.asarray(all_ys, dtype=np.float64)
+            all_lngs, all_lats = transformer.transform(all_xs_arr, all_ys_arr)
+            all_lats = np.round(all_lats, 6)
+            all_lngs = np.round(all_lngs, 6)
         else:
-            edge_slices.append(None)
+            all_lats = np.array([])
+            all_lngs = np.array([])
 
-    if all_xs:
-        all_xs_arr = np.asarray(all_xs, dtype=np.float64)
-        all_ys_arr = np.asarray(all_ys, dtype=np.float64)
-        all_lngs, all_lats = transformer.transform(all_xs_arr, all_ys_arr)
-        all_lats = np.round(all_lats, 6)
-        all_lngs = np.round(all_lngs, 6)
-    else:
-        all_lats = np.array([])
-        all_lngs = np.array([])
+    with step("edge dict build loop"):
+        edges: list = []
+        for eid in range(len(edge_tuples)):
+            src_i, tgt_i = edge_tuples[eid]
+            w = round(edge_weights[eid], 1)
+            lm = round(edge_lengths[eid], 1)
+            hw = hw_strs[eid]
+            hw_i = hw_to_idx.get(hw, 0)
+            cnf = bool(cyc_nf[eid])
+            foot = edge_foot_tags[eid] if eid < len(edge_foot_tags) else ""
 
-    edges: list = []
-    for eid in range(len(edge_tuples)):
-        src_i, tgt_i = edge_tuples[eid]
-        w = round(edge_weights[eid], 1)
-        lm = round(edge_lengths[eid], 1)
-        hw = hw_strs[eid]
-        hw_i = hw_to_idx.get(hw, 0)
-        cnf = bool(cyc_nf[eid])
-        foot = edge_foot_tags[eid] if eid < len(edge_foot_tags) else ""
+            # Infra type: 0=ped, 1=road, 2=cycleway_no_foot, 3=cycleway_foot_yes
+            if hw == "cycleway":
+                sc = 2 if (cnf and foot not in FOOT_ALLOWED) else 3
+            elif hw in PED_HIGHWAY_TYPES:
+                sc = 0
+            else:
+                sc = 1
 
-        # Infra type: 0=ped, 1=road, 2=cycleway_no_foot, 3=cycleway_foot_yes
-        if hw == "cycleway":
-            sc = 2 if (cnf and foot not in FOOT_ALLOWED) else 3
-        elif hw in PED_HIGHWAY_TYPES:
-            sc = 0
-        else:
-            sc = 1
+            # Pull this edge's pre-transformed vertices out of the batch result.
+            slc = edge_slices[eid]
+            if slc is not None:
+                start, end = slc
+                coords = [
+                    [float(all_lats[i]), float(all_lngs[i])]
+                    for i in range(start, end)
+                ]
+            else:
+                coords = [node_coords[src_i], node_coords[tgt_i]]
 
-        # Pull this edge's pre-transformed vertices out of the batch result.
-        slc = edge_slices[eid]
-        if slc is not None:
-            start, end = slc
-            coords = [
-                [float(all_lats[i]), float(all_lngs[i])]
-                for i in range(start, end)
-            ]
-        else:
-            coords = [node_coords[src_i], node_coords[tgt_i]]
+            edges.append([src_i, tgt_i, w, lm, hw_i, sc, coords])
 
-        edges.append([src_i, tgt_i, w, lm, hw_i, sc, coords])
-
-    graph_data = {"hw": hw_types, "n": node_coords, "e": edges}
-    with open("graph.json", "w") as f:
-        json.dump(graph_data, f, separators=(",", ":"))
+    with step("json.dump graph.json"):
+        graph_data = {"hw": hw_types, "n": node_coords, "e": edges}
+        with open("graph.json", "w") as f:
+            json.dump(graph_data, f, separators=(",", ":"))
 
     sz_mb = os.path.getsize("graph.json") / (1024 * 1024)
     print(f"  Graph exported: {len(node_coords)} nodes, {len(edges)} edges")
