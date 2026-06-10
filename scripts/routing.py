@@ -123,8 +123,8 @@ def _accumulate_capped(
     eids: list[int],
     cap_m: float,
     edge_lengths: list[float],
-    edge_highways: list[str],
-    cyc_nf_arr: np.ndarray,
+    is_ped_mask: np.ndarray,
+    is_cyc_nf_mask: np.ndarray,
 ) -> tuple[float, float, float]:
     """Walk along edges up to *cap_m* metres.
 
@@ -138,9 +138,9 @@ def _accumulate_capped(
         full_len = edge_lengths[eid]
         used_len = min(full_len, remaining)
         total += used_len
-        if cyc_nf_arr[eid]:
+        if is_cyc_nf_mask[eid]:
             cyc += used_len
-        elif edge_highways[eid] in PED_HIGHWAY_TYPES or edge_highways[eid] == "cycleway":
+        elif is_ped_mask[eid]:
             ped += used_len
         remaining -= full_len  # consume full edge even if capped
     return ped, cyc, total
@@ -161,8 +161,17 @@ def route_pairs(
     print("Routing pairs with igraph (grouped by source)...")
     t_route = time.time()
 
-    flow_arr = np.zeros(graph.ecount(), dtype=np.int32)
-    cyc_nf_arr = np.array(edge_cycleway_nf, dtype=bool)
+    n_edges = graph.ecount()
+    flow_arr = np.zeros(n_edges, dtype=np.int32)
+    # Chunking eids to avoid excessive memory usage for very large OD pair counts
+    chunk_traversed_eids: list[int] = []
+
+    # Pre-calculate boolean masks for high-performance lookups in _accumulate_capped
+    is_cyc_nf_mask = np.array(edge_cycleway_nf, dtype=bool)
+    is_ped_mask = np.array([
+        (hw in PED_HIGHWAY_TYPES or hw == "cycleway")
+        for hw in edge_highways
+    ], dtype=bool)
 
     # Group pairs by source node
     pairs_by_src: dict[int, list[tuple[int, str, str]]] = defaultdict(list)
@@ -173,7 +182,6 @@ def route_pairs(
     street_cyc_nf_m: dict[str, float] = defaultdict(float)
     street_total_m: dict[str, float] = defaultdict(float)
     routed = 0
-    total_routed_distance = 0.0
     n_sources = len(pairs_by_src)
 
     for done, (src, targets_info) in enumerate(pairs_by_src.items()):
@@ -192,22 +200,18 @@ def route_pairs(
                 continue
             routed += 1
 
-            # Full trip: flow accumulation
-            trip_dist = 0.0
-            for eid in eids:
-                flow_arr[eid] += 1
-                trip_dist += edge_lengths[eid]
-            total_routed_distance += trip_dist
+            # Store eids for bulk accumulation via np.bincount
+            chunk_traversed_eids.extend(eids)
 
             # Walkability: first WALK_SCORE_RADIUS_M for source street
             src_ped, src_cyc, src_total = _accumulate_capped(
                 eids, WALK_SCORE_RADIUS_M,
-                edge_lengths, edge_highways, cyc_nf_arr,
+                edge_lengths, is_ped_mask, is_cyc_nf_mask,
             )
             # … and last WALK_SCORE_RADIUS_M for target street
             tgt_ped, tgt_cyc, tgt_total = _accumulate_capped(
                 list(reversed(eids)), WALK_SCORE_RADIUS_M,
-                edge_lengths, edge_highways, cyc_nf_arr,
+                edge_lengths, is_ped_mask, is_cyc_nf_mask,
             )
 
             street_ped_m[st_src] += src_ped
@@ -217,6 +221,19 @@ def route_pairs(
             street_ped_m[st_tgt] += tgt_ped
             street_cyc_nf_m[st_tgt] += tgt_cyc
             street_total_m[st_tgt] += tgt_total
+        
+        # Flush chunk to avoid memory pressure and speed up final step
+        if len(chunk_traversed_eids) > 1000000:
+            flow_arr += np.bincount(chunk_traversed_eids, minlength=n_edges).astype(np.int32)
+            chunk_traversed_eids = []
+
+    # Final flush
+    if chunk_traversed_eids:
+        flow_arr += np.bincount(chunk_traversed_eids, minlength=n_edges).astype(np.int32)
+
+    # Vectorized distance calculation: sum(flow * lengths)
+    edge_lengths_arr = np.array(edge_lengths, dtype=np.float64)
+    total_routed_distance = float(np.dot(flow_arr, edge_lengths_arr))
 
     routing_time = time.time() - t_route
     avg_dist = total_routed_distance / routed if routed else 0
