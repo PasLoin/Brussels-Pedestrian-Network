@@ -41,6 +41,7 @@ from shapely.geometry import Point
 from shapely.strtree import STRtree
 
 from config import OD_SAMPLE_INTERVAL_M, POINTS_PER_SIDE
+from timing import step
 
 # Maximum ratio between runner-up and best edge distance to consider
 # the result ambiguous.
@@ -305,20 +306,22 @@ def snap_to_graph(
         nodes_gdf.loc[node_list, "x"].to_numpy(dtype=np.float64),
         nodes_gdf.loc[node_list, "y"].to_numpy(dtype=np.float64),
     ])
-    node_tree = STRtree([Point(x, y) for x, y in node_xy])
 
-    # ── Build edge spatial index ──────────────────────────────────────────
-    valid_edge_indices: list[int] = []
-    valid_edge_geoms: list = []
-    for eid, geom in enumerate(edge_geoms):
-        if geom is None or geom.is_empty:
-            continue
-        if geom.length < _MIN_EDGE_LENGTH:
-            continue
-        valid_edge_indices.append(eid)
-        valid_edge_geoms.append(geom)
+    with step("STRtree build (nodes + edges)"):
+        node_tree = STRtree([Point(x, y) for x, y in node_xy])
 
-    edge_tree = STRtree(valid_edge_geoms)
+        # ── Build edge spatial index ──────────────────────────────────────
+        valid_edge_indices: list[int] = []
+        valid_edge_geoms: list = []
+        for eid, geom in enumerate(edge_geoms):
+            if geom is None or geom.is_empty:
+                continue
+            if geom.length < _MIN_EDGE_LENGTH:
+                continue
+            valid_edge_indices.append(eid)
+            valid_edge_geoms.append(geom)
+
+        edge_tree = STRtree(valid_edge_geoms)
     print(f"  Valid edges for snapping: {len(valid_edge_indices)} "
           f"/ {len(edge_geoms)} total")
 
@@ -335,42 +338,43 @@ def snap_to_graph(
     n_edge_snapped = 0
     n_fallback = 0
 
-    for x, y in od_points:
-        pt = Point(x, y)
+    with step("snap loop (Python per-point)"):
+        for x, y in od_points:
+            pt = Point(x, y)
 
-        nearest_valid_idx = edge_tree.nearest(pt)
-        nearest_geom = valid_edge_geoms[nearest_valid_idx]
-        best_dist = nearest_geom.distance(pt)
+            nearest_valid_idx = edge_tree.nearest(pt)
+            nearest_geom = valid_edge_geoms[nearest_valid_idx]
+            best_dist = nearest_geom.distance(pt)
 
-        # ── Ambiguity check ───────────────────────────────────────────────
-        use_fallback = False
-        if best_dist > 0:
-            search_dist = best_dist * _AMBIGUITY_RATIO
-            candidate_indices = edge_tree.query(pt.buffer(search_dist))
-            n_tied = sum(
-                1 for ci in candidate_indices
-                if valid_edge_geoms[ci].distance(pt) <= search_dist
-            )
-            if n_tied > 2:
-                use_fallback = True
+            # ── Ambiguity check ───────────────────────────────────────────
+            use_fallback = False
+            if best_dist > 0:
+                search_dist = best_dist * _AMBIGUITY_RATIO
+                candidate_indices = edge_tree.query(pt.buffer(search_dist))
+                n_tied = sum(
+                    1 for ci in candidate_indices
+                    if valid_edge_geoms[ci].distance(pt) <= search_dist
+                )
+                if n_tied > 2:
+                    use_fallback = True
 
-        if use_fallback:
-            snapped.append(int(node_tree.nearest(pt)))
-            n_fallback += 1
-            continue
+            if use_fallback:
+                snapped.append(int(node_tree.nearest(pt)))
+                n_fallback += 1
+                continue
 
-        # ── Pick closest endpoint of the winning edge ─────────────────────
-        sx, sy = src_xy[nearest_valid_idx]
-        tx, ty = tgt_xy[nearest_valid_idx]
-        d_src = (x - sx) ** 2 + (y - sy) ** 2
-        d_tgt = (x - tx) ** 2 + (y - ty) ** 2
+            # ── Pick closest endpoint of the winning edge ─────────────────
+            sx, sy = src_xy[nearest_valid_idx]
+            tx, ty = tgt_xy[nearest_valid_idx]
+            d_src = (x - sx) ** 2 + (y - sy) ** 2
+            d_tgt = (x - tx) ** 2 + (y - ty) ** 2
 
-        real_eid = valid_edge_indices[nearest_valid_idx]
-        if d_src <= d_tgt:
-            snapped.append(edge_tuples[real_eid][0])
-        else:
-            snapped.append(edge_tuples[real_eid][1])
-        n_edge_snapped += 1
+            real_eid = valid_edge_indices[nearest_valid_idx]
+            if d_src <= d_tgt:
+                snapped.append(edge_tuples[real_eid][0])
+            else:
+                snapped.append(edge_tuples[real_eid][1])
+            n_edge_snapped += 1
 
     print(f"  Edge-snapped: {n_edge_snapped} | "
           f"Fallback (nearest node): {n_fallback}")
