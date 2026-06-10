@@ -180,14 +180,14 @@ def sample_od_points(
 
     addr = gpd.read_file(addresses_path).to_crs("EPSG:31370")
 
-    # Convert polygon geometries (building outlines) to centroids so that
-    # all addresses are points.  This is needed because OSM addresses can
-    # be tagged on building ways, not just standalone nodes.
-    n_poly = (~addr.geometry.geom_type.isin(["Point"])).sum()
+    # ── Vectorised centroid conversion ────────────────────────────────────
+    # ``.centroid`` works for both points and polygons in one call
+    # (Point.centroid == Point), so we can drop the per-row apply.
+    # Only run it if at least one polygon is present, to avoid a
+    # needless copy when all addresses are already points.
+    n_poly = int((~addr.geometry.geom_type.isin(["Point"])).sum())
     if n_poly > 0:
-        addr["geometry"] = addr.geometry.apply(
-            lambda g: g.centroid if g.geom_type != "Point" else g
-        )
+        addr["geometry"] = addr.geometry.centroid
         print(f"  Converted {n_poly} polygon addresses to centroids")
 
     addr["_num"] = addr.get("addr:housenumber", "").apply(_extract_house_number)
@@ -299,9 +299,11 @@ def snap_to_graph(
     print("Snapping OD points to graph edges...")
 
     # ── Build node coordinate array (for fallback) ────────────────────────
-    node_xy = np.array([
-        [nodes_gdf.loc[n, "x"], nodes_gdf.loc[n, "y"]]
-        for n in node_list
+    # Use vectorised .loc lookup over the whole node_list — much faster
+    # than a per-node .loc inside a Python comprehension.
+    node_xy = np.column_stack([
+        nodes_gdf.loc[node_list, "x"].to_numpy(dtype=np.float64),
+        nodes_gdf.loc[node_list, "y"].to_numpy(dtype=np.float64),
     ])
     node_tree = STRtree([Point(x, y) for x, y in node_xy])
 
