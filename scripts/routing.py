@@ -34,7 +34,7 @@ from __future__ import annotations
 import random
 import time
 from collections import defaultdict
-from typing import NamedTuple
+from typing import Iterable, NamedTuple
 
 import numpy as np
 
@@ -120,13 +120,16 @@ def generate_od_pairs(
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _accumulate_capped(
-    eids: list[int],
+    eids: Iterable[int],
     cap_m: float,
     edge_lengths: list[float],
     is_ped_mask: np.ndarray,
     is_cyc_nf_mask: np.ndarray,
 ) -> tuple[float, float, float]:
     """Walk along edges up to *cap_m* metres.
+
+    Accepts any iterable of edge ids so callers can pass a ``reversed()``
+    iterator directly without materialising a full list copy.
 
     Returns (ped_metres, cycleway_metres, total_metres).
     """
@@ -208,9 +211,11 @@ def route_pairs(
                 eids, WALK_SCORE_RADIUS_M,
                 edge_lengths, is_ped_mask, is_cyc_nf_mask,
             )
-            # … and last WALK_SCORE_RADIUS_M for target street
+            # … and last WALK_SCORE_RADIUS_M for target street.
+            # ``reversed(eids)`` is a lazy iterator — _accumulate_capped
+            # only walks the sequence once, so we skip the list copy.
             tgt_ped, tgt_cyc, tgt_total = _accumulate_capped(
-                list(reversed(eids)), WALK_SCORE_RADIUS_M,
+                reversed(eids), WALK_SCORE_RADIUS_M,
                 edge_lengths, is_ped_mask, is_cyc_nf_mask,
             )
 
