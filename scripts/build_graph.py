@@ -33,6 +33,7 @@ from config import (
     PED_HIGHWAY_TYPES,
     ROAD_TYPES_SIDEWALK_EXPECTED,
 )
+from timing import step
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
@@ -169,9 +170,12 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
             ox.settings.useful_tags_way = list(existing | _extra_tags)
             print(f"  Added {_extra_tags - existing} to useful_tags_way")
 
-    G = ox.graph_from_xml(osm_path, retain_all=True, simplify=True)
-    G_proj = ox.project_graph(G, to_crs="EPSG:31370")
-    nodes_gdf, edges_gdf = ox.graph_to_gdfs(G_proj)
+    with step("ox.graph_from_xml"):
+        G = ox.graph_from_xml(osm_path, retain_all=True, simplify=True)
+    with step("ox.project_graph (→ EPSG:31370)"):
+        G_proj = ox.project_graph(G, to_crs="EPSG:31370")
+    with step("ox.graph_to_gdfs"):
+        nodes_gdf, edges_gdf = ox.graph_to_gdfs(G_proj)
     print(f"  Nodes: {len(nodes_gdf)}, Edges: {len(edges_gdf)}")
 
     # ── 3a. Convert to igraph ─────────────────────────────────────────────
@@ -194,54 +198,51 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
 
     skipped_foot = skipped_access = skipped_ferry = 0
 
-    for (u, v, _k), row in edges_gdf.iterrows():
-        route_tag = _first_str(row.get("route", "")).lower()
-        hw = _first_str(row.get("highway", "unclassified")) or "unclassified"
-        foot_tag = _first_str(row.get("foot", "")).lower()
-        access_tag = _first_str(row.get("access", "")).lower()
+    # ── Suspected bottleneck: iterrows over ~10⁵ edges with per-row Python work.
+    with step("edges_gdf.iterrows → arrays"):
+        for (u, v, _k), row in edges_gdf.iterrows():
+            route_tag = _first_str(row.get("route", "")).lower()
+            hw = _first_str(row.get("highway", "unclassified")) or "unclassified"
+            foot_tag = _first_str(row.get("foot", "")).lower()
+            access_tag = _first_str(row.get("access", "")).lower()
 
-        # ── Access filtering ──────────────────────────────────────────────
-        if route_tag == "ferry":
-            skipped_ferry += 1
-            continue
-        if foot_tag in FOOT_FORBIDDEN:
-            skipped_foot += 1
-            continue
-        if access_tag in ACCESS_EXCLUDED:
-            skipped_access += 1
-            continue
+            # ── Access filtering ──────────────────────────────────────────
+            if route_tag == "ferry":
+                skipped_ferry += 1
+                continue
+            if foot_tag in FOOT_FORBIDDEN:
+                skipped_foot += 1
+                continue
+            if access_tag in ACCESS_EXCLUDED:
+                skipped_access += 1
+                continue
 
-        # ── Cost calculation ──────────────────────────────────────────────
-        base_cost = EDGE_COST.get(hw, EDGE_COST_DEFAULT)
-        is_cycleway_no_foot = False
-        if hw == "cycleway":
-            if foot_tag in FOOT_ALLOWED:
-                base_cost = CYCLEWAY_FOOT_ALLOWED_COST
-            else:
-                base_cost = CYCLEWAY_NO_FOOT_COST
-                is_cycleway_no_foot = True
+            # ── Cost calculation ──────────────────────────────────────────
+            base_cost = EDGE_COST.get(hw, EDGE_COST_DEFAULT)
+            is_cycleway_no_foot = False
+            if hw == "cycleway":
+                if foot_tag in FOOT_ALLOWED:
+                    base_cost = CYCLEWAY_FOOT_ALLOWED_COST
+                else:
+                    base_cost = CYCLEWAY_NO_FOOT_COST
+                    is_cycleway_no_foot = True
 
-        length = float(row.get("length", 1.0))
+            length = float(row.get("length", 1.0))
 
-        edge_tuples.append((node_map[u], node_map[v]))
-        edge_weights.append(length * base_cost)
-        edge_lengths.append(length)
-        edge_highways.append(hw)
-        edge_geoms.append(row.geometry)
-        edge_cycleway_nf.append(is_cycleway_no_foot)
-        edge_foot_tags.append(foot_tag)
-        edge_names.append(_first_str(row.get("name", "")))
+            edge_tuples.append((node_map[u], node_map[v]))
+            edge_weights.append(length * base_cost)
+            edge_lengths.append(length)
+            edge_highways.append(hw)
+            edge_geoms.append(row.geometry)
+            edge_cycleway_nf.append(is_cycleway_no_foot)
+            edge_foot_tags.append(foot_tag)
+            edge_names.append(_first_str(row.get("name", "")))
 
-        # ── Sidewalk tags: use _unanimous_str to avoid tag bleeding ───────
-        # When OSMnx merges two ways (e.g. one with sidewalk:both=separate
-        # and one without any tag), _first_str would return "separate" for
-        # the whole edge.  _unanimous_str returns "" unless ALL merged
-        # segments carry the same value — preventing false positives in
-        # the sidewalk QA layer.
-        edge_sidewalks.append(_unanimous_str(row.get("sidewalk", "")).lower())
-        edge_sidewalk_left.append(_unanimous_str(row.get("sidewalk:left", "")).lower())
-        edge_sidewalk_right.append(_unanimous_str(row.get("sidewalk:right", "")).lower())
-        edge_sidewalk_both.append(_unanimous_str(row.get("sidewalk:both", "")).lower())
+            # ── Sidewalk tags: use _unanimous_str to avoid tag bleeding ───
+            edge_sidewalks.append(_unanimous_str(row.get("sidewalk", "")).lower())
+            edge_sidewalk_left.append(_unanimous_str(row.get("sidewalk:left", "")).lower())
+            edge_sidewalk_right.append(_unanimous_str(row.get("sidewalk:right", "")).lower())
+            edge_sidewalk_both.append(_unanimous_str(row.get("sidewalk:both", "")).lower())
 
     print(f"  Edges skipped — ferry: {skipped_ferry}, foot=no: {skipped_foot}, "
           f"access=no/private: {skipped_access}")
@@ -251,31 +252,32 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
     n_cyc_nf   = sum(1 for h, c in zip(edge_highways, edge_cycleway_nf) if h == "cycleway" and c)
     print(f"  Cycleways — foot=yes: {n_cyc_foot} | no foot: {n_cyc_nf}")
 
-    g = ig.Graph(directed=True, n=len(node_list))
-    g.vs["osmid"] = node_list
-    g.add_edges(edge_tuples)
-    g.es["weight"] = edge_weights
-    g.es["length"] = edge_lengths
-    g.es["highway"] = edge_highways
-    g.es["geometry"] = edge_geoms
-    g.es["cycleway_nf"] = edge_cycleway_nf
+    with step("ig.Graph assembly"):
+        g = ig.Graph(directed=True, n=len(node_list))
+        g.vs["osmid"] = node_list
+        g.add_edges(edge_tuples)
+        g.es["weight"] = edge_weights
+        g.es["length"] = edge_lengths
+        g.es["highway"] = edge_highways
+        g.es["geometry"] = edge_geoms
+        g.es["cycleway_nf"] = edge_cycleway_nf
     print(f"  igraph: {g.vcount()} vertices, {g.ecount()} edges")
 
     # ── 3b. Sidewalk index ────────────────────────────────────────────────
-    print("Building sidewalk index...")
-    street_tags: dict[str, list[str]] = defaultdict(list)
-    for eid in range(len(edge_names)):
-        name = edge_names[eid]
-        hw = edge_highways[eid]
-        if not name or hw not in ROAD_TYPES_SIDEWALK_EXPECTED:
-            continue
-        sw = edge_sidewalks[eid]
-        if sw:
-            street_tags[name].append(sw)
+    with step("sidewalk index"):
+        street_tags: dict[str, list[str]] = defaultdict(list)
+        for eid in range(len(edge_names)):
+            name = edge_names[eid]
+            hw = edge_highways[eid]
+            if not name or hw not in ROAD_TYPES_SIDEWALK_EXPECTED:
+                continue
+            sw = edge_sidewalks[eid]
+            if sw:
+                street_tags[name].append(sw)
 
-    street_sidewalk_status = {
-        name: _classify_sidewalk(tags) for name, tags in street_tags.items()
-    }
+        street_sidewalk_status = {
+            name: _classify_sidewalk(tags) for name, tags in street_tags.items()
+        }
 
     counts = defaultdict(int)
     for v in street_sidewalk_status.values():
