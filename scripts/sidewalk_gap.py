@@ -33,24 +33,36 @@ for both layers:
   paths, crossings, and shortcut links — all of which share
   ``highway=footway``.
 
-Roads are **excluded** from the analysis if:
+Roads are **excluded** from the analysis only if:
 
 - They are ``highway=service`` (driveways, parking aisles…).
-- They carry explicit ``sidewalk``, ``sidewalk:left``, ``sidewalk:right``,
-  or ``sidewalk:both`` tags, meaning the mapper has already documented
-  the sidewalk situation.  Flagging these as gaps would be a false
-  positive.
+- They carry an explicit ``no`` on ``sidewalk:both``, ``sidewalk:left``
+  or ``sidewalk:right`` — the mapper has documented an absence of
+  sidewalk on (at least) that side, so flagging the road as a gap
+  would be a false positive against confirmed absence.
 
-Footways are filtered down to actual sidewalks:
+Every other sidewalk-tag combination is analysed geometrically.  In
+particular, ``sidewalk:both=separate`` is treated as a CLAIM that
+sidewalks are mapped as separate ways on both sides — not as a
+guarantee.  This catches the common OSM mistake where ``separate``
+is tagged but only one sidewalk was actually drawn.
 
-- ``highway=footway`` AND ``footway=sidewalk`` — explicit sidewalk.
+Footways are filtered to keep:
+
+- ``highway=footway`` AND ``footway`` in ``{sidewalk, link, crossing}``.
+  ``sidewalk`` is the canonical positive; ``link`` and ``crossing``
+  are kept because some run parallel to roads and effectively serve
+  as a sidewalk for that stretch (e.g. a long crossing along a
+  parking strip).  The per-piece parallel check naturally filters
+  out the perpendicular crossings — they fail the angle test and
+  contribute zero coverage.
 - ``highway=pedestrian`` — pedestrian zones, often used as a sidewalk
   at their edges along bordering streets.
 
-This drops park paths, crossings (``footway=crossing``), links
-(``footway=link``), and any ``highway=footway`` without an explicit
-``footway`` sub-tag — all common sources of false positives such as
-the Sablon park paths.
+This drops untagged ``highway=footway`` (most often park paths) and
+``footway=traffic_island`` (physical refuge in the middle of the
+road) — common sources of false positives such as the Sablon park
+paths.
 """
 
 from __future__ import annotations
@@ -68,10 +80,10 @@ from config import ROAD_TYPES_SIDEWALK_EXPECTED
 _GAP_ROAD_TYPES = ROAD_TYPES_SIDEWALK_EXPECTED - {"service"}
 
 # How far from the road centerline to look for footways (metres).
-SIDEWALK_GAP_OFFSET_M = float(os.environ.get("SIDEWALK_GAP_OFFSET_M", 12))
+SIDEWALK_GAP_OFFSET_M = float(os.environ.get("SIDEWALK_GAP_OFFSET_M", 7))
 
 # Buffer radius around the offset line (metres).
-SIDEWALK_GAP_SEARCH_M = float(os.environ.get("SIDEWALK_GAP_SEARCH_M", 8))
+SIDEWALK_GAP_SEARCH_M = float(os.environ.get("SIDEWALK_GAP_SEARCH_M", 7))
 
 # Maximum angle difference (degrees) between road and footway sub-piece.
 MAX_ANGLE_DIFF = float(os.environ.get("SIDEWALK_GAP_MAX_ANGLE", 35))
@@ -87,13 +99,6 @@ _MIN_ROAD_LENGTH = 20.0
 # to be reliable enough to test parallelism.  Below this, the piece
 # is too short to draw a meaningful direction from and is ignored.
 _MIN_CLIPPED_LENGTH = 3.0
-
-# Sidewalk tag values that indicate the mapper has documented the
-# situation.  Roads with any of these on sidewalk/sidewalk:left/right/both
-# are excluded from gap detection.
-_DOCUMENTED_SIDEWALK_VALUES = frozenset({
-    "no", "none", "separate", "yes", "both", "left", "right",
-})
 
 
 def _safe_str(val) -> str:
@@ -201,33 +206,65 @@ def _parallel_coverage(
     return total_length / road_length if road_length > 0 else 0.0
 
 
-def _is_sidewalk_documented(
-    sw: str, sw_left: str, sw_right: str, sw_both: str,
-) -> bool:
-    """Return True if the mapper has explicitly tagged the sidewalk situation."""
-    if sw_left in _DOCUMENTED_SIDEWALK_VALUES:
-        return True
-    if sw_right in _DOCUMENTED_SIDEWALK_VALUES:
-        return True
-    if sw_both in _DOCUMENTED_SIDEWALK_VALUES:
-        return True
-    if sw in _DOCUMENTED_SIDEWALK_VALUES:
-        return True
-    return False
+def _should_skip_road(sw: str, sw_left: str, sw_right: str, sw_both: str) -> bool:
+    """Return True if the road should be skipped from gap detection.
+
+    We skip when the mapper has explicitly documented absence of a
+    sidewalk on at least one side, i.e. any of:
+
+    * ``sidewalk:both=no``  — no sidewalks on either side.
+    * ``sidewalk:left=no``  — no sidewalk on the left.
+    * ``sidewalk:right=no`` — no sidewalk on the right.
+
+    In all three cases the mapper has stated the side is intentionally
+    without a sidewalk, so flagging the road would be a false positive
+    against a confirmed negative.
+
+    Every other tag combination is analysed geometrically:
+
+    * ``sidewalk:both=separate`` is a CLAIM that both sidewalks exist
+      as separate ways.  We verify the claim by looking for the
+      separate footway ways — catches the common case where
+      ``separate`` is tagged but only one sidewalk was drawn.
+    * ``sidewalk=yes`` / ``sidewalk:both=yes`` doesn't guarantee
+      the sidewalks were drawn as separate ways either; same logic.
+    * ``sidewalk:left=*`` or ``sidewalk:right=*`` (other than ``no``)
+      are partial and worth verifying.
+
+    If you also want to skip the broader OSM convention ``sidewalk=no``
+    (which means "no sidewalk on either side", same semantic as
+    ``sidewalk:both=no``), add ``or sw == "no"`` below.
+    """
+    return sw_both == "no" or sw_left == "no" or sw_right == "no"
 
 
 def _load_sidewalk_footways(footways_geojson_path: str) -> tuple[list, dict]:
-    """Load raw footways and filter down to actual sidewalks.
+    """Load raw footways and filter down to those usable as sidewalks.
 
     Keeps:
 
-    * ``highway=footway`` AND ``footway=sidewalk`` — explicit sidewalk.
+    * ``highway=footway`` AND ``footway=sidewalk`` — canonical sidewalk.
+    * ``highway=footway`` AND ``footway=link`` — connecting segment,
+      sometimes parallel to a road.  Per-piece angle check sorts out
+      whether it actually counts.
+    * ``highway=footway`` AND ``footway=crossing`` — usually
+      perpendicular and filtered out by the angle check, but kept
+      because long crossings (along a parking strip, in front of a
+      large entrance, etc.) can run parallel to a road for a
+      meaningful stretch and serve as a sidewalk there.
     * ``highway=pedestrian`` — pedestrian zone (street-edge sidewalk).
 
-    Drops everything else (park paths, crossings, links, untagged
-    footways).  This filter is deliberately strict: false negatives
-    (real sidewalks missing the sub-tag) are preferred over false
-    positives (e.g. park paths counted as sidewalks).
+    Drops:
+
+    * ``highway=footway`` without an explicit ``footway`` sub-tag —
+      most often park paths or generic recreational footways, common
+      source of false positives (Sablon-style).
+    * ``footway=traffic_island`` — physical refuge in the middle of
+      the road, not a sidewalk.
+
+    The geometric clip+angle check downstream is the real protection
+    against false positives.  The tag filter here just trims obvious
+    non-candidates to keep the spatial index small.
 
     Returns
     -------
@@ -257,10 +294,18 @@ def _load_sidewalk_footways(footways_geojson_path: str) -> tuple[list, dict]:
     mask_sidewalk = (
         (fw_gdf["_highway"] == "footway") & (fw_gdf["_footway"] == "sidewalk")
     )
+    mask_link = (
+        (fw_gdf["_highway"] == "footway") & (fw_gdf["_footway"] == "link")
+    )
+    mask_crossing = (
+        (fw_gdf["_highway"] == "footway") & (fw_gdf["_footway"] == "crossing")
+    )
     mask_pedestrian = (fw_gdf["_highway"] == "pedestrian")
-    keep_mask = mask_sidewalk | mask_pedestrian
+    keep_mask = mask_sidewalk | mask_link | mask_crossing | mask_pedestrian
 
     n_sidewalk = int(mask_sidewalk.sum())
+    n_link = int(mask_link.sum())
+    n_crossing = int(mask_crossing.sum())
     n_pedestrian = int(mask_pedestrian.sum())
     n_kept = int(keep_mask.sum())
     n_dropped = n_raw - n_kept
@@ -269,13 +314,16 @@ def _load_sidewalk_footways(footways_geojson_path: str) -> tuple[list, dict]:
     geoms = list(fw_gdf.geometry)
 
     print(f"  Footways kept: {n_kept} "
-          f"(footway=sidewalk: {n_sidewalk} | highway=pedestrian: {n_pedestrian}) "
+          f"(sidewalk: {n_sidewalk} | link: {n_link} | crossing: {n_crossing} "
+          f"| pedestrian: {n_pedestrian}) "
           f"| dropped: {n_dropped} / {n_raw}")
 
     return geoms, {
         "raw": n_raw,
         "kept": n_kept,
         "kept_sidewalk": n_sidewalk,
+        "kept_link": n_link,
+        "kept_crossing": n_crossing,
         "kept_pedestrian": n_pedestrian,
         "dropped": n_dropped,
     }
@@ -331,7 +379,7 @@ def detect_sidewalk_gaps(
     n_both = 0
     n_none = 0
     n_gap = 0
-    n_skipped_documented = 0
+    n_skipped_no_sidewalk = 0
     gap_length_m = 0.0
     both_length_m = 0.0
     none_length_m = 0.0
@@ -339,13 +387,13 @@ def detect_sidewalk_gaps(
     for _, road in roads_gdf.iterrows():
         geom = road.geometry
 
-        # ── Skip roads with explicit sidewalk tags ────────────────────────
+        # ── Skip roads with explicit sidewalk=no on any side ──────────────
         sw = _safe_str(road.get("sidewalk"))
         sw_l = _safe_str(road.get("sidewalk:left"))
         sw_r = _safe_str(road.get("sidewalk:right"))
         sw_b = _safe_str(road.get("sidewalk:both"))
-        if _is_sidewalk_documented(sw, sw_l, sw_r, sw_b):
-            n_skipped_documented += 1
+        if _should_skip_road(sw, sw_l, sw_r, sw_b):
+            n_skipped_no_sidewalk += 1
             continue
 
         road_bearing = _line_bearing(geom)
@@ -412,14 +460,14 @@ def detect_sidewalk_gaps(
     gdf.to_file("sidewalk_gaps.geojson", driver="GeoJSON")
 
     print(f"  Roads analysed: {n_roads} | "
-          f"Skipped (documented): {n_skipped_documented}")
+          f"Skipped (sidewalk=no on a side): {n_skipped_no_sidewalk}")
     print(f"  Both sides: {n_both} | One side (gap): {n_gap} | "
           f"Neither side: {n_none}")
     print(f"  Sidewalk gaps exported: {len(rows)}")
 
     return {
         "roads_analysed": n_roads,
-        "skipped_documented": n_skipped_documented,
+        "skipped_no_sidewalk": n_skipped_no_sidewalk,
         "both_sides": n_both,
         "one_side_gap": n_gap,
         "neither_side": n_none,
