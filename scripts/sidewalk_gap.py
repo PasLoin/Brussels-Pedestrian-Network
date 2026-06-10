@@ -36,8 +36,10 @@ for both layers:
 Roads are **excluded** from the analysis only if:
 
 - They are ``highway=service`` (driveways, parking aisles…).
-- They carry ``sidewalk:both=no`` — the mapper has explicitly
-  documented absence of sidewalks on both sides.
+- They carry an explicit ``no`` on ``sidewalk:both``, ``sidewalk:left``
+  or ``sidewalk:right`` — the mapper has documented an absence of
+  sidewalk on (at least) that side, so flagging the road as a gap
+  would be a false positive against confirmed absence.
 
 Every other sidewalk-tag combination is analysed geometrically.  In
 particular, ``sidewalk:both=separate`` is treated as a CLAIM that
@@ -201,9 +203,16 @@ def _parallel_coverage(
 def _should_skip_road(sw: str, sw_left: str, sw_right: str, sw_both: str) -> bool:
     """Return True if the road should be skipped from gap detection.
 
-    We only skip when ``sidewalk:both=no`` — the mapper has explicitly
-    documented absence of sidewalks on both sides, so flagging the
-    road would be a false positive against a confirmed negative.
+    We skip when the mapper has explicitly documented absence of a
+    sidewalk on at least one side, i.e. any of:
+
+    * ``sidewalk:both=no``  — no sidewalks on either side.
+    * ``sidewalk:left=no``  — no sidewalk on the left.
+    * ``sidewalk:right=no`` — no sidewalk on the right.
+
+    In all three cases the mapper has stated the side is intentionally
+    without a sidewalk, so flagging the road would be a false positive
+    against a confirmed negative.
 
     Every other tag combination is analysed geometrically:
 
@@ -213,14 +222,14 @@ def _should_skip_road(sw: str, sw_left: str, sw_right: str, sw_both: str) -> boo
       ``separate`` is tagged but only one sidewalk was drawn.
     * ``sidewalk=yes`` / ``sidewalk:both=yes`` doesn't guarantee
       the sidewalks were drawn as separate ways either; same logic.
-    * ``sidewalk:left=*`` or ``sidewalk:right=*`` alone are partial
-      and worth verifying.
+    * ``sidewalk:left=*`` or ``sidewalk:right=*`` (other than ``no``)
+      are partial and worth verifying.
 
     If you also want to skip the broader OSM convention ``sidewalk=no``
     (which means "no sidewalk on either side", same semantic as
     ``sidewalk:both=no``), add ``or sw == "no"`` below.
     """
-    return sw_both == "no"
+    return sw_both == "no" or sw_left == "no" or sw_right == "no"
 
 
 def _load_sidewalk_footways(footways_geojson_path: str) -> tuple[list, dict]:
@@ -346,7 +355,7 @@ def detect_sidewalk_gaps(
     for _, road in roads_gdf.iterrows():
         geom = road.geometry
 
-        # ── Skip only roads explicitly tagged sidewalk:both=no ────────────
+        # ── Skip roads with explicit sidewalk=no on any side ──────────────
         sw = _safe_str(road.get("sidewalk"))
         sw_l = _safe_str(road.get("sidewalk:left"))
         sw_r = _safe_str(road.get("sidewalk:right"))
@@ -419,7 +428,7 @@ def detect_sidewalk_gaps(
     gdf.to_file("sidewalk_gaps.geojson", driver="GeoJSON")
 
     print(f"  Roads analysed: {n_roads} | "
-          f"Skipped (sidewalk:both=no): {n_skipped_no_sidewalk}")
+          f"Skipped (sidewalk=no on a side): {n_skipped_no_sidewalk}")
     print(f"  Both sides: {n_both} | One side (gap): {n_gap} | "
           f"Neither side: {n_none}")
     print(f"  Sidewalk gaps exported: {len(rows)}")
