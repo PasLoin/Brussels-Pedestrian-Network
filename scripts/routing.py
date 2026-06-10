@@ -45,6 +45,7 @@ from config import (
     PED_HIGHWAY_TYPES,
     WALK_SCORE_RADIUS_M,
 )
+from timing import record
 
 
 class RoutingResult(NamedTuple):
@@ -187,6 +188,15 @@ def route_pairs(
     routed = 0
     n_sources = len(pairs_by_src)
 
+    # ── Cumulative timers ────────────────────────────────────────────────
+    # Wrapping every loop iteration with a context manager would add
+    # measurable overhead (~µs × 10⁵ iterations).  Use simple time deltas
+    # accumulated into counters; report them once at the end via
+    # timing.record() so they appear in the summary.
+    t_dijkstra = 0.0
+    t_accum = 0.0
+    t_bincount = 0.0
+
     for done, (src, targets_info) in enumerate(pairs_by_src.items()):
         if done % 2000 == 0:
             elapsed = time.time() - t_route
@@ -194,10 +204,13 @@ def route_pairs(
                   f"Pairs routed: {routed} | {elapsed:.0f}s")
 
         targets = [t for t, _, _ in targets_info]
+        _td0 = time.time()
         all_paths = graph.get_shortest_paths(
             src, to=targets, weights="weight", output="epath",
         )
+        t_dijkstra += time.time() - _td0
 
+        _ta0 = time.time()
         for (tgt, st_src, st_tgt), eids in zip(targets_info, all_paths):
             if not eids:
                 continue
@@ -226,21 +239,31 @@ def route_pairs(
             street_ped_m[st_tgt] += tgt_ped
             street_cyc_nf_m[st_tgt] += tgt_cyc
             street_total_m[st_tgt] += tgt_total
-        
+        t_accum += time.time() - _ta0
+
         # Flush chunk to avoid memory pressure and speed up final step
         if len(chunk_traversed_eids) > 1000000:
+            _tb0 = time.time()
             flow_arr += np.bincount(chunk_traversed_eids, minlength=n_edges).astype(np.int32)
+            t_bincount += time.time() - _tb0
             chunk_traversed_eids = []
 
     # Final flush
     if chunk_traversed_eids:
+        _tb0 = time.time()
         flow_arr += np.bincount(chunk_traversed_eids, minlength=n_edges).astype(np.int32)
+        t_bincount += time.time() - _tb0
 
     # Vectorized distance calculation: sum(flow * lengths)
     edge_lengths_arr = np.array(edge_lengths, dtype=np.float64)
     total_routed_distance = float(np.dot(flow_arr, edge_lengths_arr))
 
     routing_time = time.time() - t_route
+
+    # ── Report cumulative sub-timers ─────────────────────────────────────
+    record("dijkstra get_shortest_paths", t_dijkstra)
+    record("walkability + flow accumulation", t_accum)
+    record("np.bincount flushes", t_bincount)
     avg_dist = total_routed_distance / routed if routed else 0
     print(f"  Routed {routed} pairs in {routing_time:.1f}s")
     print(f"  Average trip distance: {avg_dist:.0f}m")
