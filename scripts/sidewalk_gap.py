@@ -74,6 +74,7 @@ import geopandas as gpd
 from shapely.strtree import STRtree
 
 from config import ROAD_TYPES_SIDEWALK_EXPECTED
+from timing import step
 
 # Road types to analyse.  service is excluded — too noisy (driveways,
 # parking aisles) and rarely has separate footways.
@@ -96,8 +97,7 @@ SIDEWALK_GAP_MIN_COVERAGE = float(os.environ.get("SIDEWALK_GAP_MIN_COVERAGE", 0.
 _MIN_ROAD_LENGTH = 20.0
 
 # Minimum length (m) of a clipped footway sub-piece for its bearing
-# to be reliable enough to test parallelism.  Below this, the piece
-# is too short to draw a meaningful direction from and is ignored.
+# to be reliable enough to test parallelism.
 _MIN_CLIPPED_LENGTH = 3.0
 
 
@@ -112,14 +112,7 @@ def _safe_str(val) -> str:
 
 
 def _line_bearing(geom) -> float | None:
-    """Return the bearing (0–180°) of a LineString, or None if degenerate.
-
-    Computed from the first and last coordinate of the geometry.  This
-    is only meaningful for short, roughly straight LineStrings — used
-    here on road ways (typically straight between intersections in the
-    raw osmium export) and on clipped footway sub-pieces, NOT on whole
-    footway ways which can wrap around a block.
-    """
+    """Return the bearing (0–180°) of a LineString, or None if degenerate."""
     coords = list(geom.coords)
     if len(coords) < 2:
         return None
@@ -142,19 +135,7 @@ def _is_parallel(road_bearing: float, footway_bearing: float | None) -> bool:
 
 
 def _iter_linestrings(geom):
-    """Yield each ``LineString`` contained in *geom*.
-
-    A ``shapely.intersection`` result can be:
-
-    * ``LineString`` — the common case;
-    * ``MultiLineString`` — when the footway enters/exits the zone
-      several times (a way that wraps around a block re-enters the
-      same side's buffer in multiple disjoint pieces);
-    * ``GeometryCollection`` — mixed with stray ``Point`` parts at
-      touch boundaries.
-
-    Point and Polygon parts are silently dropped.
-    """
+    """Yield each ``LineString`` contained in *geom*."""
     gt = geom.geom_type
     if gt == "LineString":
         yield geom
@@ -172,19 +153,7 @@ def _parallel_coverage(
     candidates,
     footway_geoms: list,
 ) -> float:
-    """Compute the fraction of road length covered by parallel footways.
-
-    Each candidate footway is **clipped to the search zone first**, then
-    each resulting LineString piece is tested for parallelism on its own.
-    This is the key fix for footway ways that wrap multiple sides of a
-    block: their global first→last bearing is meaningless, but the
-    portion lying inside any given side's zone is locally parallel and
-    is picked up here.
-
-    Pieces shorter than ``_MIN_CLIPPED_LENGTH`` are skipped — too short
-    to draw a reliable direction from (they would be over-sensitive to
-    micro-jitter in the OSM geometry).
-    """
+    """Compute the fraction of road length covered by parallel footways."""
     total_length = 0.0
     for i in candidates:
         fw = footway_geoms[i]
@@ -207,72 +176,12 @@ def _parallel_coverage(
 
 
 def _should_skip_road(sw: str, sw_left: str, sw_right: str, sw_both: str) -> bool:
-    """Return True if the road should be skipped from gap detection.
-
-    We skip when the mapper has explicitly documented absence of a
-    sidewalk on at least one side, i.e. any of:
-
-    * ``sidewalk:both=no``  — no sidewalks on either side.
-    * ``sidewalk:left=no``  — no sidewalk on the left.
-    * ``sidewalk:right=no`` — no sidewalk on the right.
-
-    In all three cases the mapper has stated the side is intentionally
-    without a sidewalk, so flagging the road would be a false positive
-    against a confirmed negative.
-
-    Every other tag combination is analysed geometrically:
-
-    * ``sidewalk:both=separate`` is a CLAIM that both sidewalks exist
-      as separate ways.  We verify the claim by looking for the
-      separate footway ways — catches the common case where
-      ``separate`` is tagged but only one sidewalk was drawn.
-    * ``sidewalk=yes`` / ``sidewalk:both=yes`` doesn't guarantee
-      the sidewalks were drawn as separate ways either; same logic.
-    * ``sidewalk:left=*`` or ``sidewalk:right=*`` (other than ``no``)
-      are partial and worth verifying.
-
-    If you also want to skip the broader OSM convention ``sidewalk=no``
-    (which means "no sidewalk on either side", same semantic as
-    ``sidewalk:both=no``), add ``or sw == "no"`` below.
-    """
+    """Return True if the road should be skipped from gap detection."""
     return sw_both == "no" or sw_left == "no" or sw_right == "no"
 
 
 def _load_sidewalk_footways(footways_geojson_path: str) -> tuple[list, dict]:
-    """Load raw footways and filter down to those usable as sidewalks.
-
-    Keeps:
-
-    * ``highway=footway`` AND ``footway=sidewalk`` — canonical sidewalk.
-    * ``highway=footway`` AND ``footway=link`` — connecting segment,
-      sometimes parallel to a road.  Per-piece angle check sorts out
-      whether it actually counts.
-    * ``highway=footway`` AND ``footway=crossing`` — usually
-      perpendicular and filtered out by the angle check, but kept
-      because long crossings (along a parking strip, in front of a
-      large entrance, etc.) can run parallel to a road for a
-      meaningful stretch and serve as a sidewalk there.
-    * ``highway=pedestrian`` — pedestrian zone (street-edge sidewalk).
-
-    Drops:
-
-    * ``highway=footway`` without an explicit ``footway`` sub-tag —
-      most often park paths or generic recreational footways, common
-      source of false positives (Sablon-style).
-    * ``footway=traffic_island`` — physical refuge in the middle of
-      the road, not a sidewalk.
-
-    The geometric clip+angle check downstream is the real protection
-    against false positives.  The tag filter here just trims obvious
-    non-candidates to keep the spatial index small.
-
-    Returns
-    -------
-    geoms : list
-        Footway geometries in EPSG:31370.
-    stats : dict
-        Filtering counts for diagnostics.
-    """
+    """Load raw footways and filter down to those usable as sidewalks."""
     print(f"  Reading raw footways from: {footways_geojson_path}")
     fw_gdf = gpd.read_file(footways_geojson_path)
     fw_gdf = fw_gdf[fw_gdf.geometry.geom_type == "LineString"].copy()
@@ -280,14 +189,10 @@ def _load_sidewalk_footways(footways_geojson_path: str) -> tuple[list, dict]:
 
     n_raw = len(fw_gdf)
 
-    # Ensure the tag columns exist (osmium output may omit a column
-    # if no feature in the extract carries that tag).
     for col in ("highway", "footway"):
         if col not in fw_gdf.columns:
             fw_gdf[col] = ""
 
-    # Normalise to lowercase strings, into auxiliary columns so the
-    # original GeoJSON properties stay untouched if anyone wants them.
     fw_gdf["_highway"] = fw_gdf["highway"].apply(_safe_str)
     fw_gdf["_footway"] = fw_gdf["footway"].apply(_safe_str)
 
@@ -333,24 +238,7 @@ def detect_sidewalk_gaps(
     roads_geojson_path: str,
     footways_geojson_path: str,
 ) -> dict:
-    """Detect roads with a footway on one side only.
-
-    Parameters
-    ----------
-    roads_geojson_path : str
-        Path to the raw roads GeoJSON (one OSM way = one feature).
-    footways_geojson_path : str
-        Path to the raw footways GeoJSON (one OSM way = one feature).
-        Filtered downstream to ``footway=sidewalk`` and
-        ``highway=pedestrian`` only — see :func:`_load_sidewalk_footways`.
-
-    Returns
-    -------
-    dict
-        Statistics about the gap detection for stats.json.
-
-    Writes ``sidewalk_gaps.geojson`` with one feature per gap segment.
-    """
+    """Detect roads with a footway on one side only."""
     print("Detecting sidewalk gaps (footway on one side only)...")
     print(f"  Offset: {SIDEWALK_GAP_OFFSET_M}m | "
           f"Search radius: {SIDEWALK_GAP_SEARCH_M}m | "
@@ -358,19 +246,21 @@ def detect_sidewalk_gaps(
           f"Min coverage: {SIDEWALK_GAP_MIN_COVERAGE:.0%}")
 
     # ── Load and filter footways ──────────────────────────────────────────
-    footway_geoms, footway_filter_stats = _load_sidewalk_footways(
-        footways_geojson_path,
-    )
-    footway_tree = STRtree(footway_geoms) if footway_geoms else None
+    with step("load + filter footways"):
+        footway_geoms, footway_filter_stats = _load_sidewalk_footways(
+            footways_geojson_path,
+        )
+        footway_tree = STRtree(footway_geoms) if footway_geoms else None
     print(f"  Footway segments indexed: {len(footway_geoms)}")
 
     # ── Load raw road ways ────────────────────────────────────────────────
-    print(f"  Reading raw roads from: {roads_geojson_path}")
-    roads_gdf = gpd.read_file(roads_geojson_path)
-    roads_gdf = roads_gdf[roads_gdf.geometry.geom_type == "LineString"].copy()
-    roads_gdf = roads_gdf.to_crs("EPSG:31370")
-    roads_gdf = roads_gdf[roads_gdf["highway"].isin(_GAP_ROAD_TYPES)]
-    roads_gdf = roads_gdf[roads_gdf.geometry.length >= _MIN_ROAD_LENGTH]
+    with step("load + filter roads"):
+        print(f"  Reading raw roads from: {roads_geojson_path}")
+        roads_gdf = gpd.read_file(roads_geojson_path)
+        roads_gdf = roads_gdf[roads_gdf.geometry.geom_type == "LineString"].copy()
+        roads_gdf = roads_gdf.to_crs("EPSG:31370")
+        roads_gdf = roads_gdf[roads_gdf["highway"].isin(_GAP_ROAD_TYPES)]
+        roads_gdf = roads_gdf[roads_gdf.geometry.length >= _MIN_ROAD_LENGTH]
     print(f"  Road ways after filtering: {len(roads_gdf)}")
 
     # ── Check each road way ───────────────────────────────────────────────
@@ -384,80 +274,85 @@ def detect_sidewalk_gaps(
     both_length_m = 0.0
     none_length_m = 0.0
 
-    for _, road in roads_gdf.iterrows():
-        geom = road.geometry
+    # ── Main analysis loop ────────────────────────────────────────────────
+    # Likely-expensive: per-road offset_curve + buffer + STRtree.query
+    # + per-candidate intersection().  Worth confirming.
+    with step("main road analysis loop"):
+        for _, road in roads_gdf.iterrows():
+            geom = road.geometry
 
-        # ── Skip roads with explicit sidewalk=no on any side ──────────────
-        sw = _safe_str(road.get("sidewalk"))
-        sw_l = _safe_str(road.get("sidewalk:left"))
-        sw_r = _safe_str(road.get("sidewalk:right"))
-        sw_b = _safe_str(road.get("sidewalk:both"))
-        if _should_skip_road(sw, sw_l, sw_r, sw_b):
-            n_skipped_no_sidewalk += 1
-            continue
+            # ── Skip roads with explicit sidewalk=no on any side ──────────
+            sw = _safe_str(road.get("sidewalk"))
+            sw_l = _safe_str(road.get("sidewalk:left"))
+            sw_r = _safe_str(road.get("sidewalk:right"))
+            sw_b = _safe_str(road.get("sidewalk:both"))
+            if _should_skip_road(sw, sw_l, sw_r, sw_b):
+                n_skipped_no_sidewalk += 1
+                continue
 
-        road_bearing = _line_bearing(geom)
-        if road_bearing is None:
-            continue
+            road_bearing = _line_bearing(geom)
+            if road_bearing is None:
+                continue
 
-        road_length = geom.length
-        n_roads += 1
+            road_length = geom.length
+            n_roads += 1
 
-        # Offset left and right to create search zones
-        try:
-            left_line = geom.offset_curve(SIDEWALK_GAP_OFFSET_M)
-            right_line = geom.offset_curve(-SIDEWALK_GAP_OFFSET_M)
-        except Exception:
-            continue
+            # Offset left and right to create search zones
+            try:
+                left_line = geom.offset_curve(SIDEWALK_GAP_OFFSET_M)
+                right_line = geom.offset_curve(-SIDEWALK_GAP_OFFSET_M)
+            except Exception:
+                continue
 
-        if left_line.is_empty or right_line.is_empty:
-            continue
+            if left_line.is_empty or right_line.is_empty:
+                continue
 
-        left_zone = left_line.buffer(SIDEWALK_GAP_SEARCH_M)
-        right_zone = right_line.buffer(SIDEWALK_GAP_SEARCH_M)
+            left_zone = left_line.buffer(SIDEWALK_GAP_SEARCH_M)
+            right_zone = right_line.buffer(SIDEWALK_GAP_SEARCH_M)
 
-        # Query footway index (empty if no sidewalks were found at all)
-        if footway_tree is None:
-            left_candidates: list[int] = []
-            right_candidates: list[int] = []
-        else:
-            left_candidates = footway_tree.query(left_zone)
-            right_candidates = footway_tree.query(right_zone)
+            # Query footway index (empty if no sidewalks were found at all)
+            if footway_tree is None:
+                left_candidates: list[int] = []
+                right_candidates: list[int] = []
+            else:
+                left_candidates = footway_tree.query(left_zone)
+                right_candidates = footway_tree.query(right_zone)
 
-        # Compute coverage on each side
-        left_cov = _parallel_coverage(
-            left_zone, road_bearing, road_length,
-            left_candidates, footway_geoms,
-        )
-        right_cov = _parallel_coverage(
-            right_zone, road_bearing, road_length,
-            right_candidates, footway_geoms,
-        )
+            # Compute coverage on each side
+            left_cov = _parallel_coverage(
+                left_zone, road_bearing, road_length,
+                left_candidates, footway_geoms,
+            )
+            right_cov = _parallel_coverage(
+                right_zone, road_bearing, road_length,
+                right_candidates, footway_geoms,
+            )
 
-        has_left = left_cov >= SIDEWALK_GAP_MIN_COVERAGE
-        has_right = right_cov >= SIDEWALK_GAP_MIN_COVERAGE
+            has_left = left_cov >= SIDEWALK_GAP_MIN_COVERAGE
+            has_right = right_cov >= SIDEWALK_GAP_MIN_COVERAGE
 
-        if has_left and has_right:
-            n_both += 1
-            both_length_m += road_length
-        elif not has_left and not has_right:
-            n_none += 1
-            none_length_m += road_length
-        else:
-            n_gap += 1
-            gap_length_m += road_length
-            rows.append({
-                "geometry": geom,
-                "name": _safe_str(road.get("name")) or "",
-            })
+            if has_left and has_right:
+                n_both += 1
+                both_length_m += road_length
+            elif not has_left and not has_right:
+                n_none += 1
+                none_length_m += road_length
+            else:
+                n_gap += 1
+                gap_length_m += road_length
+                rows.append({
+                    "geometry": geom,
+                    "name": _safe_str(road.get("name")) or "",
+                })
 
     # ── Save output ───────────────────────────────────────────────────────
-    fb = {"geometry": None, "name": ""}
-    if rows:
-        gdf = gpd.GeoDataFrame(rows, crs="EPSG:31370").to_crs("EPSG:4326")
-    else:
-        gdf = gpd.GeoDataFrame([fb], crs="EPSG:4326")
-    gdf.to_file("sidewalk_gaps.geojson", driver="GeoJSON")
+    with step("write sidewalk_gaps.geojson"):
+        fb = {"geometry": None, "name": ""}
+        if rows:
+            gdf = gpd.GeoDataFrame(rows, crs="EPSG:31370").to_crs("EPSG:4326")
+        else:
+            gdf = gpd.GeoDataFrame([fb], crs="EPSG:4326")
+        gdf.to_file("sidewalk_gaps.geojson", driver="GeoJSON")
 
     print(f"  Roads analysed: {n_roads} | "
           f"Skipped (sidewalk=no on a side): {n_skipped_no_sidewalk}")
