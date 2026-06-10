@@ -27,6 +27,7 @@ from collections import Counter, defaultdict
 import geopandas as gpd
 import numpy as np
 from pyproj import Transformer
+from shapely.geometry import Point
 
 from config import (
     FOOT_ALLOWED,
@@ -213,14 +214,38 @@ def export_walkability_scores(
     """Write street_scores.geojson with sidewalk-penalised walkability.
 
     Returns a dict of walkability statistics for stats.json.
+
+    Performance notes
+    -----------------
+    Centroids are pre-computed once per street using a single
+    ``groupby().mean()`` over the x/y coordinates of address centroids.
+    This replaces a per-street boolean filter + ``union_all().centroid``
+    call (which was O(N_rues × N_adresses)).
     """
     print("Computing walkability scores (first/last km + sidewalk penalty)...")
 
     addr_wgs = gpd.read_file(addresses_path).to_crs("EPSG:4326")
-    # Convert polygon geometries (building outlines) to centroids
-    addr_wgs["geometry"] = addr_wgs.geometry.apply(
-        lambda g: g.centroid if g.geom_type != "Point" else g
+
+    # ── Vectorised centroid handling ─────────────────────────────────────
+    # ``.centroid`` works for both points and polygons in one call
+    # (Point.centroid == Point), replacing the per-row apply.
+    # The centroids are computed inline as x/y arrays so we never write
+    # them back into the geometry column.
+    addr_centroids = addr_wgs.geometry.centroid
+    addr_wgs["_x"] = addr_centroids.x
+    addr_wgs["_y"] = addr_centroids.y
+
+    # ── Pre-compute one centroid per street ──────────────────────────────
+    # Mean of x/y over all addresses on the street.  For MultiPoint inputs
+    # this is exactly what union_all().centroid returned, just vectorised
+    # across all streets at once via a single groupby.
+    street_centroid_xy = (
+        addr_wgs.groupby("addr:street")[["_x", "_y"]].mean()
     )
+    # Convert to dicts for O(1) lookup in the loop below.
+    centroids_x = street_centroid_xy["_x"].to_dict()
+    centroids_y = street_centroid_xy["_y"].to_dict()
+
     pen_stats: dict[str, int] = defaultdict(int)
     rows: list[dict] = []
     scores: list[float] = []
@@ -250,10 +275,10 @@ def export_walkability_scores(
         score = round(min(base_score * penalty, 1.0), 3)
         pen_stats[sw_status] += 1
 
-        pts = addr_wgs[addr_wgs["addr:street"] == street].geometry
-        if pts.empty:
+        # Pre-computed centroid lookup (O(1) per street).
+        if street not in centroids_x:
             continue
-        centroid = pts.union_all().centroid
+        centroid = Point(centroids_x[street], centroids_y[street])
 
         # Only count scores for streets that will appear in the GeoJSON
         scores.append(score)
@@ -280,15 +305,19 @@ def export_walkability_scores(
           f"partial: {pen_stats['partial']} | none: {pen_stats['none']} | "
           f"unknown: {pen_stats['unknown']}")
 
-    # Compute score distribution
+    # ── Score distribution via np.histogram (single vectorised pass) ─────
+    # Replaces five sequential boolean masks over scores_arr.
+    # bins are right-open except the last one, which is [0.8, 1.0]
+    # inclusive — matches the original behaviour exactly.
     if scores:
         scores_arr = np.array(scores)
+        hist, _ = np.histogram(scores_arr, bins=[0, 0.2, 0.4, 0.6, 0.8, 1.0])
         score_buckets = {
-            "0_20": int(np.sum((scores_arr >= 0) & (scores_arr < 0.2))),
-            "20_40": int(np.sum((scores_arr >= 0.2) & (scores_arr < 0.4))),
-            "40_60": int(np.sum((scores_arr >= 0.4) & (scores_arr < 0.6))),
-            "60_80": int(np.sum((scores_arr >= 0.6) & (scores_arr < 0.8))),
-            "80_100": int(np.sum((scores_arr >= 0.8) & (scores_arr <= 1.0))),
+            "0_20":   int(hist[0]),
+            "20_40":  int(hist[1]),
+            "40_60":  int(hist[2]),
+            "60_80":  int(hist[3]),
+            "80_100": int(hist[4]),
         }
     else:
         scores_arr = np.array([])
@@ -445,17 +474,30 @@ def export_routing_graph(
 
     ``infraType``: 0 = pedestrian, 1 = road, 2 = cycleway_no_foot,
     3 = cycleway_foot_yes.
+
+    Performance notes
+    -----------------
+    All coordinates (nodes + edge vertices) are reprojected in two
+    batched ``transformer.transform`` calls — one for the nodes and
+    one for the concatenated edge vertices.  Previously each point
+    triggered a separate pyproj call, which is the dominant cost on
+    a large graph (~10⁵ nodes, ~10⁶ edge vertices).
     """
     print("Exporting routing graph for client-side navigation...")
     transformer = Transformer.from_crs("EPSG:31370", "EPSG:4326", always_xy=True)
 
-    # Node coordinates in WGS84
-    node_coords: list[list[float]] = []
-    for nid in node_list:
-        x = float(nodes_gdf.loc[nid, "x"])
-        y = float(nodes_gdf.loc[nid, "y"])
-        lng, lat = transformer.transform(x, y)
-        node_coords.append([round(lat, 6), round(lng, 6)])
+    # ── Batch-transform all node coordinates in a single call ────────────
+    # nodes_gdf.loc[node_list, "x"] is a vectorised label-based lookup
+    # over the whole node_list — much faster than a per-node .loc inside
+    # a Python loop.
+    node_xs = nodes_gdf.loc[node_list, "x"].to_numpy(dtype=np.float64)
+    node_ys = nodes_gdf.loc[node_list, "y"].to_numpy(dtype=np.float64)
+    node_lngs, node_lats = transformer.transform(node_xs, node_ys)
+    node_lats = np.round(node_lats, 6)
+    node_lngs = np.round(node_lngs, 6)
+    node_coords: list[list[float]] = [
+        [float(lat), float(lng)] for lat, lng in zip(node_lats, node_lngs)
+    ]
 
     # Highway type lookup table
     hw_strs = [
@@ -465,6 +507,34 @@ def export_routing_graph(
     hw_to_idx = {h: i for i, h in enumerate(hw_types)}
 
     cyc_nf = np.array(edge_cycleway_nf, dtype=bool)
+
+    # ── Batch-transform all edge geometry vertices in a single call ──────
+    # Collect every (x, y) into two flat lists, remembering the [start, end)
+    # slice of each edge.  Then a single transformer.transform call covers
+    # the entire dataset.  Splitting back into per-edge coords becomes a
+    # cheap array slice in the loop below.
+    all_xs: list[float] = []
+    all_ys: list[float] = []
+    edge_slices: list[tuple[int, int] | None] = []
+    for geom in edge_geoms:
+        if geom is not None and not geom.is_empty:
+            start = len(all_xs)
+            for gx, gy in geom.coords:
+                all_xs.append(gx)
+                all_ys.append(gy)
+            edge_slices.append((start, len(all_xs)))
+        else:
+            edge_slices.append(None)
+
+    if all_xs:
+        all_xs_arr = np.asarray(all_xs, dtype=np.float64)
+        all_ys_arr = np.asarray(all_ys, dtype=np.float64)
+        all_lngs, all_lats = transformer.transform(all_xs_arr, all_ys_arr)
+        all_lats = np.round(all_lats, 6)
+        all_lngs = np.round(all_lngs, 6)
+    else:
+        all_lats = np.array([])
+        all_lngs = np.array([])
 
     edges: list = []
     for eid in range(len(edge_tuples)):
@@ -484,12 +554,13 @@ def export_routing_graph(
         else:
             sc = 1
 
-        geom = edge_geoms[eid]
-        if geom is not None and not geom.is_empty:
+        # Pull this edge's pre-transformed vertices out of the batch result.
+        slc = edge_slices[eid]
+        if slc is not None:
+            start, end = slc
             coords = [
-                [round(glat, 6), round(glng, 6)]
-                for gx, gy in geom.coords
-                for glng, glat in [transformer.transform(gx, gy)]
+                [float(all_lats[i]), float(all_lngs[i])]
+                for i in range(start, end)
             ]
         else:
             coords = [node_coords[src_i], node_coords[tgt_i]]
