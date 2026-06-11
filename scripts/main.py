@@ -56,6 +56,7 @@ from export import (
 )
 from sidewalk_gap import detect_sidewalk_gaps
 from export_sidewalk_roads import export_sidewalk_roads
+from detect_missing_crossings import detect_missing_crossings
 from timing import step, print_summary
 
 
@@ -168,6 +169,17 @@ def main() -> None:
     with step("export_sidewalk_roads"):
         sidewalk_road_stats = export_sidewalk_roads("sidewalk_roads_raw.geojson")
 
+    # ── Step 8e: Missing crossing way detection ───────────────────────────
+    # Detects highway=crossing nodes that lack a footway=crossing way,
+    # confirmed by the presence of parallel sidewalks on both road sides.
+    # Reuses the offset-curve geometry logic from sidewalk_gap.
+    with step("detect_missing_crossings"):
+        missing_crossing_stats = detect_missing_crossings(
+            "highways.geojson",
+            "sidewalk_footways_raw.geojson",
+            "sidewalk_roads_raw.geojson",
+        )
+
     # ── Save stats (fast, no timer) ───────────────────────────────────────
     save_stats(
         routed=result.routed,
@@ -182,6 +194,7 @@ def main() -> None:
         walkability_stats=walkability_stats,
         sidewalk_gap_stats=sidewalk_gap_stats,
         sidewalk_road_stats=sidewalk_road_stats,
+        missing_crossing_stats=missing_crossing_stats,
         network_stats=network_stats,
         od_sampling_stats=od_sampling_stats,
     )
