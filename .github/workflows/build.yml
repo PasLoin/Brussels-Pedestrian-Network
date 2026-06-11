@@ -159,6 +159,14 @@ jobs:
       # Keeps only the properties actually consumed by the frontend popup
       # and layer filters.  Drops surface, lit, tram, steps:count, etc.
       # This meaningfully reduces the PMTiles size for the highways layer.
+      #
+      # NOTE: the expression uses only `.features |= map(...)` without the
+      # trailing `| {type: "FeatureCollection", features: .}` that was
+      # previously appended.  That suffix was a bug: after `.features |= …`
+      # the current `.` is already the whole updated FeatureCollection, so
+      # wrapping it again with `features: .` nested the FeatureCollection
+      # inside its own `features` key, producing invalid output that
+      # pyogrio/OGR refuses to read.
       - name: Slim highways GeoJSON properties
         run: |
           jq '
@@ -173,7 +181,7 @@ jobs:
                 segregated: .segregated
               }
               | with_entries(select(.value != null and .value != ""))
-            ) | {type: "FeatureCollection", features: .}
+            )
           ' highways.geojson > highways_slim.geojson
           mv highways_slim.geojson highways.geojson
 
