@@ -104,9 +104,12 @@ env:
   SIDEWALK_GAP_MIN_COVERAGE: 0.4  # min fraction of road length covered by footway
 
   # ── Missing crossing detection ─────────────────────────────────────────
-  CROSSING_NODE_ROAD_SEARCH_M: 20   # max distance (m) from crossing node to eligible road
-  CROSSING_NODE_WINDOW_M: 30        # half-length (m) of road subsegment to analyse
-  CROSSING_WAY_SEARCH_RADIUS_M: 20  # radius (m) to check for an existing crossing way
+  CROSSING_NODE_ROAD_SEARCH_M:  20  # max distance (m) from crossing node to eligible road
+  CROSSING_WAY_SEARCH_RADIUS_M: 20  # radius (m) to check for an existing crossing way (tier 1)
+  CROSSING_NODE_CONNECTED_M:     3  # radius (m) for shared-node connectivity check (tier 2)
+  CROSSING_SIDEWALK_OFFSET_M:    7  # perpendicular offset from road centreline (m)
+  CROSSING_SIDEWALK_SEARCH_M:   15  # radius of sidewalk search zone (m)
+  CROSSING_SIDEWALK_MAX_ANGLE:  40  # max angle (°) between road and candidate sidewalk
 
 jobs:
   build-and-deploy:
