@@ -44,14 +44,8 @@ function escapeHTML(str) {
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  FLOW THRESHOLD FILTER
-//  Hides flow_edges features whose flow_pct is below the slider value.
 // ══════════════════════════════════════════════════════════════════════════════
 
-// Called by the range input in index.html whenever the user moves the slider.
-// Only affects flow-road — flux piéton and flux cycleway are unaffected.
-// IMPORTANT: always AND with the base infra_type=road filter — replacing it
-// with only the threshold would cause pedestrian features to bleed into this
-// layer and appear red over the green sidewalk geometries.
 function updateFlowFilter(rawValue) {
   const minPct = parseInt(rawValue, 10);
   document.getElementById("flow-threshold-val").textContent = minPct + " %";
@@ -63,13 +57,11 @@ function updateFlowFilter(rawValue) {
     ? ["all", baseFilter, [">=", ["to-number", ["get", "flow_pct"], 0], minPct]]
     : baseFilter;
 
-  try { mapRef.setFilter("flow-road", filter); } catch (_) { /* layer not yet added */ }
+  try { mapRef.setFilter("flow-road", filter); } catch (_) { }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  SIDEWALK STATUS FILTER
-//  Multi-select sub-filter under the "Tags sidewalk" legend item.
-//  All statuses are active by default; clicking a status toggles it.
 // ══════════════════════════════════════════════════════════════════════════════
 
 const SIDEWALK_STATUSES = [
@@ -85,20 +77,19 @@ function updateSidewalkFilter() {
   if (!mapRef) return;
   let filter;
   if (activeSidewalkStatuses.size === 0) {
-    filter = ["==", ["get", "sw"], "__none__"];          // hide all
+    filter = ["==", ["get", "sw"], "__none__"];
   } else if (activeSidewalkStatuses.size === SIDEWALK_STATUSES.length) {
-    filter = null;                                       // show all
+    filter = null;
   } else {
     filter = ["in", ["get", "sw"], ["literal", [...activeSidewalkStatuses]]];
   }
-  try { mapRef.setFilter("sidewalk-roads", filter); } catch (_) { /* not added yet */ }
+  try { mapRef.setFilter("sidewalk-roads", filter); } catch (_) { }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  CLIENT-SIDE DIJKSTRA ROUTING
 // ══════════════════════════════════════════════════════════════════════════════
 
-// ── Min-heap (binary heap) ───────────────────────────────────────────────────
 class MinHeap {
   constructor() { this.d = []; }
   get size() { return this.d.length; }
@@ -128,12 +119,10 @@ class MinHeap {
   }
 }
 
-// ── Graph state ──────────────────────────────────────────────────────────────
-let graphData = null;   // { hw, n, e }
-let adjList = null;     // adjList[nodeIdx] = [[neighborIdx, edgeIdx], ...]
+let graphData = null;
+let adjList = null;
 let graphReady = false;
 
-// ── Load graph.json ──────────────────────────────────────────────────────────
 fetch("./graph.json")
   .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
   .then(data => {
@@ -141,9 +130,7 @@ fetch("./graph.json")
     const nNodes = data.n.length;
     adjList = new Array(nNodes);
     for (let i = 0; i < nNodes; i++) adjList[i] = [];
-    data.e.forEach((e, idx) => {
-      adjList[e[0]].push([e[1], idx]);
-    });
+    data.e.forEach((e, idx) => { adjList[e[0]].push([e[1], idx]); });
     graphReady = true;
     const btn = document.getElementById("nav-btn");
     btn.classList.remove("loading");
@@ -158,7 +145,6 @@ fetch("./graph.json")
     document.getElementById("nav-btn").setAttribute("aria-busy", "false");
   });
 
-// ── Nearest node (brute force – fine for <100k nodes) ────────────────────────
 function nearestNode(lat, lng) {
   const nodes = graphData.n;
   let minD = Infinity, minI = 0;
@@ -170,17 +156,14 @@ function nearestNode(lat, lng) {
   return minI;
 }
 
-// ── Dijkstra shortest path ───────────────────────────────────────────────────
 function dijkstra(src, tgt) {
   const n = graphData.n.length;
   const dist = new Float64Array(n).fill(Infinity);
   const prev = new Int32Array(n).fill(-1);
   const prevEdge = new Int32Array(n).fill(-1);
   dist[src] = 0;
-
   const heap = new MinHeap();
   heap.push([0, src]);
-
   while (heap.size > 0) {
     const [d, u] = heap.pop();
     if (d > dist[u]) continue;
@@ -190,31 +173,22 @@ function dijkstra(src, tgt) {
       const [v, eidx] = neighbors[i];
       const nd = d + graphData.e[eidx][2];
       if (nd < dist[v]) {
-        dist[v] = nd;
-        prev[v] = u;
-        prevEdge[v] = eidx;
+        dist[v] = nd; prev[v] = u; prevEdge[v] = eidx;
         heap.push([nd, v]);
       }
     }
   }
-
   if (dist[tgt] === Infinity) return null;
-
   const path = [];
   let cur = tgt;
-  while (cur !== src) {
-    path.push(prevEdge[cur]);
-    cur = prev[cur];
-  }
+  while (cur !== src) { path.push(prevEdge[cur]); cur = prev[cur]; }
   path.reverse();
   return path;
 }
 
-// ── Build route GeoJSON + compute stats ──────────────────────────────────────
 function buildRoute(edgePath) {
   let totalM = 0, pedM = 0, roadM = 0, cycM = 0;
   const features = [];
-
   for (const eidx of edgePath) {
     const e = graphData.e[eidx];
     const len = e[3], sc = e[5], coords = e[6];
@@ -224,24 +198,18 @@ function buildRoute(edgePath) {
     else if (sc === 1) roadM += len;
     else if (sc === 2) cycM += len;
     else pedM += len;
-
     const color = sc === 0 ? "#22c55e" : sc === 3 ? "#2563eb" : sc === 2 ? "#7c3aed" : "#ef4444";
     features.push({
       type: "Feature",
       properties: { infra_type: sc, highway: hw, length: len, color },
-      geometry: {
-        type: "LineString",
-        coordinates: coords.map(c => [c[1], c[0]])
-      }
+      geometry: { type: "LineString", coordinates: coords.map(c => [c[1], c[0]]) }
     });
   }
-
   const geojson = { type: "FeatureCollection", features };
   const pedPct = totalM > 0 ? pedM / totalM * 100 : 0;
   const roadPct = totalM > 0 ? roadM / totalM * 100 : 0;
   const cycPct = totalM > 0 ? cycM / totalM * 100 : 0;
   const walkMin = Math.round(totalM / 80);
-
   return {
     geojson, totalM: Math.round(totalM),
     pedM: Math.round(pedM), roadM: Math.round(roadM), cycM: Math.round(cycM),
@@ -249,18 +217,12 @@ function buildRoute(edgePath) {
   };
 }
 
-// ── Navigation UI state ──────────────────────────────────────────────────────
-let navMode = false;
-let navStep = 0;
+let navMode = false, navStep = 0;
 let startMarker = null, endMarker = null;
 let startNode = -1, endNode = -1;
 let mapRef = null;
 
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && navMode) {
-    toggleNavMode();
-  }
-});
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && navMode) toggleNavMode(); });
 
 function toggleNavMode() {
   if (!graphReady) return;
@@ -268,7 +230,6 @@ function toggleNavMode() {
   const btn = document.getElementById("nav-btn");
   btn.setAttribute("aria-pressed", navMode);
   const hint = document.getElementById("nav-hint");
-
   if (navMode) {
     btn.classList.add("active");
     document.getElementById("nav-btn-label").textContent = "Navigation (actif)";
@@ -289,97 +250,70 @@ function clearRoute() {
   if (startMarker) { startMarker.remove(); startMarker = null; }
   if (endMarker) { endMarker.remove(); endMarker = null; }
   document.getElementById("route-panel").classList.remove("visible");
-
   if (mapRef) {
     const src = mapRef.getSource("nav-route");
     if (src) src.setData({ type: "FeatureCollection", features: [] });
   }
-
-  if (navMode) {
-    document.getElementById("nav-hint").textContent = "Cliquez sur la carte pour le départ";
-  }
+  if (navMode) document.getElementById("nav-hint").textContent = "Cliquez sur la carte pour le départ";
 }
 
 function handleNavClick(e) {
   if (!navMode || !graphReady) return;
   const { lat, lng } = e.lngLat;
-
   if (navStep === 0) {
     startNode = nearestNode(lat, lng);
     const sn = graphData.n[startNode];
     if (startMarker) startMarker.remove();
-    startMarker = new maplibregl.Marker({ color: "#22c55e" })
-      .setLngLat([sn[1], sn[0]])
-      .addTo(mapRef);
+    startMarker = new maplibregl.Marker({ color: "#22c55e" }).setLngLat([sn[1], sn[0]]).addTo(mapRef);
     navStep = 1;
     document.getElementById("nav-hint").textContent = "Cliquez pour la destination";
-
   } else if (navStep === 1) {
     endNode = nearestNode(lat, lng);
     const en = graphData.n[endNode];
     if (endMarker) endMarker.remove();
-    endMarker = new maplibregl.Marker({ color: "#ef4444" })
-      .setLngLat([en[1], en[0]])
-      .addTo(mapRef);
-
+    endMarker = new maplibregl.Marker({ color: "#ef4444" }).setLngLat([en[1], en[0]]).addTo(mapRef);
     document.getElementById("nav-hint").textContent = "Calcul…";
-
     requestAnimationFrame(() => {
       const t0 = performance.now();
       const path = dijkstra(startNode, endNode);
       const dt = (performance.now() - t0).toFixed(0);
-
       if (!path || path.length === 0) {
         document.getElementById("nav-hint").textContent = "Aucun itinéraire trouvé";
-        navStep = 2;
-        return;
+        navStep = 2; return;
       }
-
       const route = buildRoute(path);
-      console.log(`Route: ${route.totalM}m, ${path.length} edges, ${dt}ms`);
-
       const src = mapRef.getSource("nav-route");
       if (src) src.setData(route.geojson);
-
       document.getElementById("route-dist").textContent = route.totalM >= 1000
-        ? `${(route.totalM / 1000).toFixed(2)} km`
-        : `${route.totalM} m`;
+        ? `${(route.totalM / 1000).toFixed(2)} km` : `${route.totalM} m`;
       document.getElementById("route-time").textContent = `≈ ${route.walkMin} min à pied`;
-
       document.getElementById("bar-ped").style.width = route.pedPct + "%";
       document.getElementById("bar-road").style.width = route.roadPct + "%";
       document.getElementById("bar-cyc").style.width = route.cycPct + "%";
-
       document.getElementById("stat-ped-m").textContent = `${route.pedM} m`;
       document.getElementById("stat-road-m").textContent = `${route.roadM} m`;
       document.getElementById("stat-cyc-m").textContent = `${route.cycM} m`;
-
       document.getElementById("stat-ped-pct").textContent = `${route.pedPct.toFixed(0)}%`;
       document.getElementById("stat-road-pct").textContent = `${route.roadPct.toFixed(0)}%`;
       document.getElementById("stat-cyc-pct").textContent = `${route.cycPct.toFixed(0)}%`;
-
       document.getElementById("route-panel").classList.add("visible");
       document.getElementById("nav-hint").textContent = `Calculé en ${dt} ms`;
       navStep = 2;
     });
-
   } else {
     clearRoute();
     handleNavClick(e);
   }
 }
 
-
 // ══════════════════════════════════════════════════════════════════════════════
 //  MAP INITIALISATION
 // ══════════════════════════════════════════════════════════════════════════════
 
-// ── State.txt timestamp ──────────────────────────────────────────────────────
 fetch("./state.txt")
   .then(r => r.text())
   .then(txt => {
     const fmtOpts = { dateStyle: "short", timeStyle: "short" };
-
     const jsonMatch = txt.match(/\{[\s\S]*?\}/);
     if (jsonMatch) {
       try {
@@ -390,18 +324,14 @@ fetch("./state.txt")
         }
       } catch (e) { console.warn("state.txt JSON parse error:", e); }
     }
-
     const buildMatch = txt.match(/build_timestamp=(.+)/);
     if (buildMatch) {
       const buildDate = new Date(buildMatch[1].trim());
       document.getElementById("build-date").textContent = `MAJ : ${buildDate.toLocaleString("fr-BE", fmtOpts)}`;
     }
   })
-  .catch(() => {
-    document.getElementById("osm-date").textContent = "OSM : inconnue";
-  });
+  .catch(() => { document.getElementById("osm-date").textContent = "OSM : inconnue"; });
 
-// ── Stats.json ───────────────────────────────────────────────────────────────
 fetch("./stats.json")
   .then(r => r.json())
   .then(s => {
@@ -413,7 +343,6 @@ fetch("./stats.json")
   })
   .catch(() => { });
 
-// ── Map setup ────────────────────────────────────────────────────────────────
 const protocol = new pmtiles.Protocol();
 maplibregl.addProtocol("pmtiles", protocol.tile.bind(protocol));
 const PMTILES_URL = new URL("./pedestrian.pmtiles.gz", window.location.href).href;
@@ -440,7 +369,6 @@ const BASE_STYLE_OVERRIDES = {
   "road_minor_casing":                { "line-color": ROAD_BORDER },
   "road_link":                        { "line-color": ROAD_GRAY },
   "road_link_casing":                 { "line-color": ROAD_BORDER },
-
   "tunnel_path_pedestrian":           { "line-color": ROAD_GRAY },
   "tunnel_motorway":                  { "line-color": ROAD_GRAY },
   "tunnel_motorway_casing":           { "line-color": ROAD_BORDER },
@@ -456,7 +384,6 @@ const BASE_STYLE_OVERRIDES = {
   "tunnel_street_casing":             { "line-color": ROAD_BORDER },
   "tunnel_link":                      { "line-color": ROAD_GRAY },
   "tunnel_link_casing":               { "line-color": ROAD_BORDER },
-
   "bridge_path_pedestrian":           { "line-color": ROAD_GRAY },
   "bridge_path_pedestrian_casing":    { "line-color": ROAD_BORDER },
   "bridge_motorway":                  { "line-color": ROAD_GRAY },
@@ -475,7 +402,6 @@ const BASE_STYLE_OVERRIDES = {
   "bridge_link_casing":               { "line-color": ROAD_BORDER },
 };
 
-// ── Réseau de base (masqué au démarrage) ─────────────────────────────────────
 const HIGHWAY_LAYERS = [
   { id: "living_street", label: "Rue partagée",     color: "#16a34a", width: 3,   dash: false, hidden: true },
   { id: "pedestrian",    label: "Zone piétonne",     color: "#15803d", width: 3,   dash: false, hidden: true },
@@ -485,20 +411,7 @@ const HIGHWAY_LAYERS = [
   { id: "steps",         label: "Escaliers",         color: "#166534", width: 2,   dash: true,  hidden: true },
 ];
 
-// Helper: null-safe flow_pct getter
 const FLOW_PCT = ["to-number", ["get", "flow_pct"], 0];
-
-// ── Highway-type width multiplier for road flow layer ─────────────────────────
-// Returns a base width coefficient per road class.  Combined with the
-// flow_pct interpolation this gives primary roads a heavier stroke than
-// residential roads at the same flow level, making the hierarchy visible.
-const ROAD_HW_WIDTH = ["match", ["get", "highway"],
-  ["primary",   "primary_link"],   2.4,
-  ["secondary", "secondary_link"], 1.9,
-  ["tertiary",  "tertiary_link"],  1.5,
-  ["residential", "unclassified"], 1.1,
-  /* service / default */          0.8,
-];
 
 const PEDESTRIAN_LAYERS = [
   ...HIGHWAY_LAYERS.map(({ id, color, width, dash, hidden }) => ({
@@ -522,10 +435,6 @@ const PEDESTRIAN_LAYERS = [
       "circle-stroke-color": "#15803d", "circle-stroke-width": 1
     }
   },
-  // ── Flow layers ────────────────────────────────────────────────────────────
-  // forced_segments and forced_cycleway are no longer separate layers.
-  // Road-type flow is now in flow-road with highway= driving line-width,
-  // so high-flow road segments naturally stand out via their thicker stroke.
   {
     id: "flow-ped", type: "line", source: "pedestrian", "source-layer": "flow_edges",
     filter: ["==", ["get", "infra_type"], "pedestrian"],
@@ -556,39 +465,27 @@ const PEDESTRIAN_LAYERS = [
     }
   },
   {
-    // Road-type flow: width scales both with flow_pct AND highway class,
-    // replacing the old forced_segments visual emphasis.
     id: "flow-road", type: "line", source: "pedestrian", "source-layer": "flow_edges",
     filter: ["==", ["get", "infra_type"], "road"],
     layout: { "line-cap": "round", "line-join": "round", visibility: "visible" },
     paint: {
       "line-color": ["interpolate", ["linear"], FLOW_PCT,
-        0,  "#fdba74",
-        20, "#f97316",
-        40, "#ef4444",
-        60, "#dc2626",
-        80, "#991b1b",
-        100,"#450a0a"
+        0, "#fdba74", 20, "#f97316", 40, "#ef4444", 60, "#dc2626", 80, "#991b1b", 100, "#450a0a"
       ],
-      // Width = base flow width × per-highway-class multiplier.
-      // MapLibre doesn't support runtime multiplication of two expressions,
-      // so we encode the combined result as nested match × interpolate using
-      // a step-based approach: pick the interpolated flow width for each
-      // road class explicitly.
       "line-width": ["interpolate", ["linear"], ["zoom"],
         10, ["match", ["get", "highway"],
           ["primary",   "primary_link"],   ["interpolate", ["linear"], FLOW_PCT, 0, 1.4, 100, 7.0],
           ["secondary", "secondary_link"], ["interpolate", ["linear"], FLOW_PCT, 0, 1.1, 100, 5.5],
           ["tertiary",  "tertiary_link"],  ["interpolate", ["linear"], FLOW_PCT, 0, 0.9, 100, 4.5],
           ["residential","unclassified"],  ["interpolate", ["linear"], FLOW_PCT, 0, 0.7, 100, 3.5],
-          /* service / default */          ["interpolate", ["linear"], FLOW_PCT, 0, 0.5, 100, 2.5]
+          ["interpolate", ["linear"], FLOW_PCT, 0, 0.5, 100, 2.5]
         ],
         16, ["match", ["get", "highway"],
           ["primary",   "primary_link"],   ["interpolate", ["linear"], FLOW_PCT, 0, 3.0, 100, 15.0],
           ["secondary", "secondary_link"], ["interpolate", ["linear"], FLOW_PCT, 0, 2.4, 100, 12.0],
           ["tertiary",  "tertiary_link"],  ["interpolate", ["linear"], FLOW_PCT, 0, 1.9, 100,  9.5],
           ["residential","unclassified"],  ["interpolate", ["linear"], FLOW_PCT, 0, 1.4, 100,  7.5],
-          /* service / default */          ["interpolate", ["linear"], FLOW_PCT, 0, 1.0, 100,  5.5]
+          ["interpolate", ["linear"], FLOW_PCT, 0, 1.0, 100,  5.5]
         ]
       ],
       "line-opacity": 0.8
@@ -626,20 +523,22 @@ const PEDESTRIAN_LAYERS = [
         "#9ca3af"
       ],
       "line-width": ["interpolate", ["linear"], ["zoom"], 13, 2, 16, 5, 18, 8],
-      "line-opacity": ["match", ["get", "sw"],
-        "unknown", 0.45,
-        0.85
-      ]
+      "line-opacity": ["match", ["get", "sw"], "unknown", 0.45, 0.85]
     }
   },
   {
-    // Missing crossing ways: highway=crossing nodes that lack a footway=crossing
-    // way confirmed by parallel sidewalks on both sides of the road.
+    // Two sub-types distinguished by color:
+    //   missing_way  (#f97316 orange)  — no footway connected at all
+    //   missing_tag  (#eab308 yellow)  — footway exists but lacks footway=crossing tag
     id: "missing-crossings", type: "circle", source: "pedestrian",
     "source-layer": "missing_crossings",
     minzoom: 14, layout: { visibility: "none" },
     paint: {
-      "circle-color": "#f97316",
+      "circle-color": ["match", ["get", "type"],
+        "missing_way", "#f97316",
+        "missing_tag", "#eab308",
+        "#f97316"
+      ],
       "circle-radius": ["interpolate", ["linear"], ["zoom"], 14, 5, 18, 10],
       "circle-stroke-color": "#fff",
       "circle-stroke-width": 2,
@@ -676,16 +575,19 @@ const HOVER_LAYERS = [
   },
   {
     ids: ["missing-crossings"],
-    format: p => `
-      <div class="popup-title">🚶 Traversée manquante</div>
-      <div class="popup-row"><span class="label">Rue</span><span class="value">${escapeHTML(p.name || "—")}</span></div>
-      <div class="popup-row"><span class="label">Trottoir gauche</span><span class="value">${Math.round((p.left_cov || 0) * 100)} %</span></div>
-      <div class="popup-row"><span class="label">Trottoir droit</span><span class="value">${Math.round((p.right_cov || 0) * 100)} %</span></div>
-    `
+    format: p => {
+      const isMissingWay = p.type === "missing_way";
+      return `
+        <div class="popup-title">${isMissingWay ? "🟠 Traversée non mappée" : "🟡 Tag footway=crossing absent"}</div>
+        <div class="popup-row"><span class="label">Rue</span><span class="value">${escapeHTML(p.name || "—")}</span></div>
+        <div class="popup-row"><span class="label">Problème</span><span class="value">${isMissingWay
+          ? "Aucune footway connectée au nœud"
+          : "Footway connectée mais sans tag footway=crossing"
+        }</span></div>
+      `;
+    }
   },
   {
-    // Unified flow popup — works for all three flow layers.
-    // Shows highway type (useful now that forced layers are merged in).
     ids: ["flow-ped", "flow-cycleway", "flow-road"],
     format: p => `
       <div class="popup-title">📊 Flux simulé</div>
@@ -769,32 +671,17 @@ function initMap(style) {
     map.addSource("pedestrian", { type: "vector", url: `pmtiles://${PMTILES_URL}` });
     PEDESTRIAN_LAYERS.forEach(layer => map.addLayer(layer));
 
-    // ── Navigation route source + layers ─────────────────────────────────
-    map.addSource("nav-route", {
-      type: "geojson",
-      data: { type: "FeatureCollection", features: [] }
-    });
-
+    map.addSource("nav-route", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
     map.addLayer({
       id: "nav-route-casing", type: "line", source: "nav-route",
       layout: { "line-cap": "round", "line-join": "round" },
-      paint: {
-        "line-color": "#000",
-        "line-width": ["interpolate", ["linear"], ["zoom"], 10, 6, 16, 14],
-        "line-opacity": 0.4
-      }
+      paint: { "line-color": "#000", "line-width": ["interpolate", ["linear"], ["zoom"], 10, 6, 16, 14], "line-opacity": 0.4 }
     });
-
     map.addLayer({
       id: "nav-route-line", type: "line", source: "nav-route",
       layout: { "line-cap": "round", "line-join": "round" },
-      paint: {
-        "line-color": ["get", "color"],
-        "line-width": ["interpolate", ["linear"], ["zoom"], 10, 4, 16, 10],
-        "line-opacity": 0.92
-      }
+      paint: { "line-color": ["get", "color"], "line-width": ["interpolate", ["linear"], ["zoom"], 10, 4, 16, 10], "line-opacity": 0.92 }
     });
-
     map.on("click", handleNavClick);
 
     // ── Légende ──────────────────────────────────────────────────────────
@@ -812,11 +699,14 @@ function initMap(style) {
       item.setAttribute("role", "button");
       item.setAttribute("tabindex", "0");
 
-      const swatch = document.createElement("div"); swatch.className = `legend-${swatchType}`;
+      const swatch = document.createElement("div");
+      swatch.className = `legend-${swatchType}`;
       if (color2) { swatch.classList.add(swatchType === "dot" ? "gradient-dot" : "gradient"); swatch.style.setProperty("--c1", color); swatch.style.setProperty("--c2", color2); }
       else if (dashed) { swatch.classList.add("dashed"); swatch.style.setProperty("--c", color); }
       else { swatch.style.background = color; }
-      const lbl = document.createElement("span"); lbl.className = "legend-label"; lbl.textContent = label;
+      const lbl = document.createElement("span");
+      lbl.className = "legend-label";
+      lbl.textContent = label;
       item.append(swatch, lbl);
 
       const updateState = () => {
@@ -834,7 +724,6 @@ function initMap(style) {
       };
       item.onclick = toggle;
       item.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } };
-
       return item;
     };
 
@@ -845,13 +734,33 @@ function initMap(style) {
     legendEl.appendChild(makeItem({ layerId: "street-scores",  label: "Score marchabilité",  color: "#ef4444", color2: "#22c55e", swatchType: "dot" }));
 
     addSection("Analyse spatiale et qualité");
-    legendEl.appendChild(makeItem({ layerId: "sidewalk-gaps",      label: "Trottoir un seul côté",  color: "#f59e0b", dashed: true }));
-    legendEl.appendChild(makeItem({ layerId: "missing-crossings",  label: "Traversée manquante",    color: "#f97316", swatchType: "dot" }));
+    legendEl.appendChild(makeItem({ layerId: "sidewalk-gaps", label: "Trottoir un seul côté", color: "#f59e0b", dashed: true }));
 
-    // ── Tags sidewalk + sub-filter ───────────────────────────────────────
+    // ── Traversée manquante — toggle + color key ──────────────────────────
+    legendEl.appendChild(makeItem({
+      layerId: "missing-crossings",
+      label: "Traversée manquante",
+      color: "#f97316",
+      swatchType: "dot",
+    }));
+    // Non-interactive sub-key showing the two colors
+    const mcKey = document.createElement("div");
+    mcKey.style.cssText = "margin:2px 4px 8px 4px;display:flex;flex-direction:column;gap:3px;";
+    mcKey.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;padding:1px 4px">
+        <div style="width:10px;height:10px;border-radius:50%;background:#f97316;flex-shrink:0;border:1.5px solid #fff;box-shadow:0 0 0 1px #f9731680"></div>
+        <span style="font-size:11px;color:#555">Way non mappé</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;padding:1px 4px">
+        <div style="width:10px;height:10px;border-radius:50%;background:#eab308;flex-shrink:0;border:1.5px solid #fff;box-shadow:0 0 0 1px #eab30880"></div>
+        <span style="font-size:11px;color:#555">Tag footway=crossing absent</span>
+      </div>
+    `;
+    legendEl.appendChild(mcKey);
+
+    // ── Tags sidewalk + sub-filter ────────────────────────────────────────
     const swSub = document.createElement("div");
     swSub.className = "legend-sub";
-
     const updateResetLabel = () => {
       swReset.textContent = activeSidewalkStatuses.size === SIDEWALK_STATUSES.length ? "Tout désélectionner" : "Tout sélectionner";
     };
@@ -864,10 +773,10 @@ function initMap(style) {
       onToggle: (isVisible) => {
         swSub.classList.toggle("parent-hidden", !isVisible);
         if (isVisible) {
-           SIDEWALK_STATUSES.forEach(s => activeSidewalkStatuses.add(s.value));
-           swSub.querySelectorAll(".legend-sub-item").forEach(el => el.classList.remove("hidden"));
-           updateResetLabel();
-           updateSidewalkFilter();
+          SIDEWALK_STATUSES.forEach(s => activeSidewalkStatuses.add(s.value));
+          swSub.querySelectorAll(".legend-sub-item").forEach(el => el.classList.remove("hidden"));
+          updateResetLabel();
+          updateSidewalkFilter();
         }
       }
     }));
@@ -899,35 +808,24 @@ function initMap(style) {
       item.setAttribute("role", "button");
       item.setAttribute("tabindex", "0");
       item.setAttribute("aria-pressed", "true");
-
       const dot = document.createElement("div");
       dot.className = "legend-sub-dot";
       dot.style.background = status.color;
-
       const lbl = document.createElement("span");
       lbl.className = "legend-sub-label";
       lbl.textContent = status.label;
-
       item.append(dot, lbl);
-
       const toggle = (e) => {
         e.stopPropagation();
         const isActive = activeSidewalkStatuses.has(status.value);
-        if (isActive) {
-          activeSidewalkStatuses.delete(status.value);
-          item.classList.add("hidden");
-        } else {
-          activeSidewalkStatuses.add(status.value);
-          item.classList.remove("hidden");
-        }
+        if (isActive) { activeSidewalkStatuses.delete(status.value); item.classList.add("hidden"); }
+        else { activeSidewalkStatuses.add(status.value); item.classList.remove("hidden"); }
         item.setAttribute("aria-pressed", !isActive);
         updateResetLabel();
         updateSidewalkFilter();
       };
-
       item.onclick = toggle;
       item.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(e); } };
-
       swSub.appendChild(item);
     });
 
@@ -937,27 +835,23 @@ function initMap(style) {
     addSection("Réseau de base");
     HIGHWAY_LAYERS.forEach(l => legendEl.appendChild(makeItem({ layerId: `highway-${l.id}`, label: l.label, color: l.color, dashed: l.dash })));
 
-    // ── Hover popups ─────────────────────────────────────────────────────
+    // ── Hover popups ──────────────────────────────────────────────────────
     const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, maxWidth: "280px" });
     const allHoverIds = HOVER_LAYERS.flatMap(h => h.ids);
 
     map.on("mousemove", (e) => {
       if (navMode && navStep < 2) { popup.remove(); return; }
-
       const visibleIds = allHoverIds.filter(id => {
         try { return map.getLayoutProperty(id, "visibility") !== "none"; }
         catch { return false; }
       });
       if (!visibleIds.length) { popup.remove(); return; }
-
       const features = map.queryRenderedFeatures(e.point, { layers: visibleIds });
       if (!features.length) { popup.remove(); if (!navMode) map.getCanvas().style.cursor = ""; return; }
-
       if (!navMode) map.getCanvas().style.cursor = "pointer";
       const f = features[0];
       const hoverConf = HOVER_LAYERS.find(h => h.ids.includes(f.layer.id));
       if (!hoverConf) return;
-
       popup.setLngLat(e.lngLat).setHTML(hoverConf.format(f.properties)).addTo(map);
     });
 
