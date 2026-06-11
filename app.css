@@ -76,9 +76,9 @@ body { font-family: "Inter", system-ui, sans-serif; background: #1a1a1a; }
   appearance: none;
   background: linear-gradient(to right, #ef4444 0%, #fdba74 100%);
   border-radius: 2px;
-  outline: none;
   cursor: pointer;
 }
+#flow-threshold-slider:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
 #flow-threshold-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
@@ -159,6 +159,7 @@ body { font-family: "Inter", system-ui, sans-serif; background: #1a1a1a; }
   font-weight: 600; cursor: pointer; transition: all 0.15s;
 }
 #route-clear:hover { background: #f3f4f6; border-color: #bbb; color: #333; }
+#route-clear:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
 
 /* ── Legend panel ─────────────────────────────────────────────────────────── */
 #legend {
@@ -228,6 +229,7 @@ body { font-family: "Inter", system-ui, sans-serif; background: #1a1a1a; }
   text-transform: none; letter-spacing: 0; font-weight: 400;
 }
 .legend-sub-reset:hover { color: #3f3f46; text-decoration: underline; }
+.legend-sub-reset:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
 .legend-sub-item {
   display: flex; align-items: center; gap: 0;
   padding: 2px 4px; cursor: pointer; user-select: none;
