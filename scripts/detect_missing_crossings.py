@@ -48,9 +48,11 @@ missing crossing way, with properties ``name``, ``left_cov``,
 
 from __future__ import annotations
 
+import json
 import os
 
 import geopandas as gpd
+from shapely.geometry import shape
 from shapely.ops import substring
 from shapely.strtree import STRtree
 
@@ -76,7 +78,6 @@ _MIN_ROAD_LENGTH = 15.0
 # ── Module-level config (readable from env, consistent with sidewalk_gap) ────
 
 # How far from a crossing node to search for an eligible road (metres).
-# A crossing node should sit directly on a road way, so 20 m is generous.
 CROSSING_NODE_ROAD_SEARCH_M = float(os.environ.get("CROSSING_NODE_ROAD_SEARCH_M", 20.0))
 
 # Half-length of the road subsegment extracted around the crossing node.
@@ -93,14 +94,48 @@ CROSSING_WAY_SEARCH_RADIUS_M = float(os.environ.get("CROSSING_WAY_SEARCH_RADIUS_
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _load_crossing_nodes(highways_path: str) -> gpd.GeoDataFrame:
-    """Read highway=crossing *point* features from the pedestrian layer."""
-    gdf = gpd.read_file(highways_path)
-    # highways.geojson contains mixed geometry types (LineString + Point).
-    mask = (
-        (gdf.geometry.geom_type == "Point") &
-        (gdf["highway"].apply(_safe_str) == "crossing")
-    )
-    return gdf[mask].copy().to_crs("EPSG:31370")
+    """Read highway=crossing *point* features from the pedestrian layer.
+
+    Uses stdlib ``json`` instead of ``gpd.read_file`` for two reasons:
+
+    1. ``highways.geojson`` mixes Point and LineString geometries in the
+       same FeatureCollection.  Some pyogrio/OGR versions refuse to open
+       such a file ("Layer schema generation failed").
+
+    2. The jq slim step in ``build.yml`` can produce a nested structure
+       where ``"features"`` is itself a FeatureCollection object rather
+       than a plain array — the pattern ``.features |= map(...) |
+       {type: ..., features: .}`` evaluates ``.`` as the whole (already-
+       updated) FeatureCollection after the ``|=``.  stdlib json lets us
+       detect and unwrap that gracefully.
+    """
+    with open(highways_path, encoding="utf-8") as fh:
+        raw = json.load(fh)
+
+    # Unwrap potential nested FeatureCollection produced by the jq pipeline.
+    features = raw.get("features", [])
+    if isinstance(features, dict):
+        features = features.get("features", [])
+
+    rows = []
+    for feat in features:
+        if not isinstance(feat, dict):
+            continue
+        geom = feat.get("geometry") or {}
+        props = feat.get("properties") or {}
+        if geom.get("type") != "Point":
+            continue
+        if _safe_str(props.get("highway")) != "crossing":
+            continue
+        try:
+            rows.append({"geometry": shape(geom)})
+        except Exception:
+            continue
+
+    if not rows:
+        return gpd.GeoDataFrame(geometry=[], crs="EPSG:4326").to_crs("EPSG:31370")
+
+    return gpd.GeoDataFrame(rows, crs="EPSG:4326").to_crs("EPSG:31370")
 
 
 def _load_crossing_ways(footways_path: str) -> tuple[list, STRtree | None]:
