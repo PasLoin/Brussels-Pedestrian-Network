@@ -225,16 +225,20 @@ def export_walkability_scores(
     """
     print("Computing walkability scores (first/last km + sidewalk penalty)...")
 
-    addr_wgs = gpd.read_file(addresses_path).to_crs("EPSG:4326")
-
-    # ── Vectorised centroid handling ─────────────────────────────────────
-    # ``.centroid`` works for both points and polygons in one call
-    # (Point.centroid == Point), replacing the per-row apply.
-    # The centroids are computed inline as x/y arrays so we never write
-    # them back into the geometry column.
-    addr_centroids = addr_wgs.geometry.centroid
-    addr_wgs["_x"] = addr_centroids.x
-    addr_wgs["_y"] = addr_centroids.y
+    # ── Read addresses in metric CRS for accurate centroid computation ───
+    # Centroids must be computed in a projected (metric) CRS to be
+    # geometrically correct.  We read in EPSG:31370, compute centroids
+    # there, then project to WGS84 for storage.  For point geometries
+    # this is a no-op (Point.centroid == Point); for polygon address
+    # features (building outlines) it gives the correct centroid in
+    # metres rather than the slightly-skewed lon/lat one that Shapely's
+    # planar centroid produces directly in WGS84 (which also raised a
+    # UserWarning).
+    addr_proj = gpd.read_file(addresses_path).to_crs("EPSG:31370")
+    addr_proj["geometry"] = addr_proj.geometry.centroid
+    addr_wgs = addr_proj.to_crs("EPSG:4326")
+    addr_wgs["_x"] = addr_wgs.geometry.x
+    addr_wgs["_y"] = addr_wgs.geometry.y
 
     # ── Pre-compute one centroid per street ──────────────────────────────
     # Mean of x/y over all addresses on the street.  For MultiPoint inputs
