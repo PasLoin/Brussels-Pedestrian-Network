@@ -95,23 +95,22 @@ def _principal_axis(coords: np.ndarray) -> np.ndarray:
 
 
 def _sample_side_geographic(
-    side_grp: gpd.GeoDataFrame,
-    axis: np.ndarray,
-    origin: np.ndarray,
+    side_proj: np.ndarray,
     interval_m: float,
     proj_min: float,
     proj_max: float,
 ) -> list[int]:
-    """Pick one address per spatial bin for a single side of the street.
+    """Pick one index per spatial bin for a single side of the street.
+
+    Pure-NumPy implementation: the caller pre-computes the projection
+    of every address on the street's principal axis, and passes the
+    slice for one side here.  This avoids both per-side DataFrame
+    slicing and redundant projection work.
 
     Parameters
     ----------
-    side_grp : GeoDataFrame
-        Addresses on one side (even or odd), with geometry in EPSG:31370.
-    axis : ndarray
-        Unit vector along the street's principal axis.
-    origin : ndarray
-        Reference point (centroid of all addresses on the street).
+    side_proj : ndarray
+        1-D array of axis projections (one per address on this side).
     interval_m : float
         Bin width in metres along the axis.
     proj_min, proj_max : float
@@ -120,15 +119,12 @@ def _sample_side_geographic(
 
     Returns
     -------
-    list of positional indices into *side_grp*.
+    list of positional indices into *side_proj*.
     """
-    if side_grp.empty or interval_m <= 0:
+    n = len(side_proj)
+    if n == 0 or interval_m <= 0:
         return []
 
-    coords = np.array([(g.x, g.y) for g in side_grp.geometry])
-    projections = (coords - origin) @ axis
-
-    # Build bins covering the full street extent
     n_bins = max(1, int(np.ceil((proj_max - proj_min) / interval_m)))
     bin_edges = np.linspace(proj_min, proj_max, n_bins + 1)
 
@@ -139,17 +135,17 @@ def _sample_side_geographic(
 
         # Find addresses in this bin
         if i < n_bins - 1:
-            mask = (projections >= lo) & (projections < hi)
+            mask = (side_proj >= lo) & (side_proj < hi)
         else:
             # Last bin includes right edge
-            mask = (projections >= lo) & (projections <= hi)
+            mask = (side_proj >= lo) & (side_proj <= hi)
 
         if not mask.any():
             continue
 
         # Pick the address closest to bin center
         candidates = np.where(mask)[0]
-        dists = np.abs(projections[candidates] - bin_center)
+        dists = np.abs(side_proj[candidates] - bin_center)
         best = candidates[np.argmin(dists)]
         selected.append(int(best))
 
@@ -185,10 +181,6 @@ def sample_od_points(
 
     with step("data prep (centroids + housenumber + filter)"):
         # ── Vectorised centroid conversion ────────────────────────────────
-        # ``.centroid`` works for both points and polygons in one call
-        # (Point.centroid == Point), so we can drop the per-row apply.
-        # Only run it if at least one polygon is present, to avoid a
-        # needless copy when all addresses are already points.
         n_poly = int((~addr.geometry.geom_type.isin(["Point"])).sum())
         if n_poly > 0:
             addr["geometry"] = addr.geometry.centroid
@@ -203,71 +195,83 @@ def sample_od_points(
         addr = addr[addr["addr:street"].notna()]
         addr = addr[addr["addr:street"].astype(str).str.strip() != ""]
 
+        # ── Pre-extract coordinates as scalar columns ─────────────────────
+        # Lets the per-street loop pull NumPy arrays directly without
+        # going through Shapely (.x/.y per geometry) or per-side
+        # DataFrame slicing.  This is the key to making the loop fast.
+        addr["_x"] = addr.geometry.x
+        addr["_y"] = addr.geometry.y
+
     od_points: list[tuple[float, float]] = []
     od_streets: list[str] = []
     od_sides: list[str] = []
     streets_both = streets_one = 0
 
     # ── Cumulative timers for the loop body ──────────────────────────────
-    # Wrapping every street iteration in a `step()` context manager would
-    # add measurable overhead over ~10⁴ iterations.  We accumulate raw
-    # time deltas into counters here and report them once via record()
-    # at the end of the loop — same depth as the loop's children, so
-    # they appear nested under "groupby sampling loop" in the summary.
-    t_coord_extract = 0.0
+    t_to_numpy = 0.0
     t_axis_project = 0.0
     t_sample_side = 0.0
     t_collect_rows = 0.0
-    t_side_split = 0.0  # cost of `grp[grp["_num"] % 2 == X]` per street
 
     with step("groupby sampling loop"):
-        for street, grp in addr.groupby("addr:street"):
+        for street, grp in addr.groupby("addr:street", sort=False):
             if use_geographic:
-                # ── Geographic sampling ───────────────────────────────────
+                # ── Pull NumPy arrays once, work on masks afterwards ──────
+                # No more DataFrame slicing per side — that was the 94s
+                # bottleneck.  Everything below is NumPy.
                 _t = time.time()
-                all_coords = np.array([(g.x, g.y) for g in grp.geometry])
-                t_coord_extract += time.time() - _t
+                xs = grp["_x"].to_numpy()
+                ys = grp["_y"].to_numpy()
+                nums = grp["_num"].to_numpy()
+                t_to_numpy += time.time() - _t
 
                 _t = time.time()
-                origin = all_coords.mean(axis=0)
-                axis = _principal_axis(all_coords)
-
-                # Project all addresses to get global min/max
-                all_proj = (all_coords - origin) @ axis
+                coords = np.column_stack([xs, ys])
+                origin = coords.mean(axis=0)
+                axis = _principal_axis(coords)
+                # Project ALL addresses once; slice per side with masks.
+                all_proj = (coords - origin) @ axis
                 proj_min = float(all_proj.min())
                 proj_max = float(all_proj.max())
                 t_axis_project += time.time() - _t
 
-                _t = time.time()
-                side_groups = [
-                    ("even", grp[grp["_num"] % 2 == 0]),
-                    ("odd", grp[grp["_num"] % 2 == 1]),
-                ]
-                t_side_split += time.time() - _t
+                even_mask = (nums % 2 == 0)
+                street_str = str(street)
 
                 sides_sampled = 0
-                for side_name, side_grp in side_groups:
-                    if side_grp.empty:
+                for side_name, mask in (("even", even_mask), ("odd", ~even_mask)):
+                    if not mask.any():
                         continue
+
+                    side_xs = xs[mask]
+                    side_ys = ys[mask]
+                    side_proj = all_proj[mask]
+
                     _t = time.time()
                     selected = _sample_side_geographic(
-                        side_grp, axis, origin,
-                        OD_SAMPLE_INTERVAL_M, proj_min, proj_max,
+                        side_proj, OD_SAMPLE_INTERVAL_M, proj_min, proj_max,
                     )
                     t_sample_side += time.time() - _t
                     if not selected:
                         continue
+
                     _t = time.time()
-                    for i in selected:
-                        row = side_grp.iloc[i]
-                        od_points.append((row.geometry.x, row.geometry.y))
-                        od_streets.append(str(street))
+                    # NumPy fancy indexing once instead of .iloc[i] per row
+                    sel = np.asarray(selected, dtype=np.intp)
+                    picked_xs = side_xs[sel]
+                    picked_ys = side_ys[sel]
+                    for px, py in zip(picked_xs, picked_ys):
+                        od_points.append((float(px), float(py)))
+                        od_streets.append(street_str)
                         od_sides.append(side_name)
                     t_collect_rows += time.time() - _t
                     sides_sampled += 1
 
             else:
                 # ── Legacy sampling (POINTS_PER_SIDE) ─────────────────────
+                # Rarely used (only when OD_SAMPLE_INTERVAL_M=0).  Kept
+                # unchanged — uses DataFrame slicing but only runs in
+                # the legacy mode.
                 sides_sampled = 0
                 for side_name, side_grp in [
                     ("even", grp[grp["_num"] % 2 == 0]),
@@ -289,14 +293,13 @@ def sample_od_points(
             elif sides_sampled == 1:
                 streets_one += 1
 
-        # ── Report cumulative breakdown (still inside the with so the ─────
-        # records appear nested under "groupby sampling loop").
+        # ── Report cumulative breakdown (inside the with so the records ──
+        # appear nested under "groupby sampling loop").
         if use_geographic:
-            record("coord extract (g.x/g.y per address)", t_coord_extract)
+            record("grp[..].to_numpy() per street", t_to_numpy)
             record("principal axis + projection", t_axis_project)
-            record("even/odd split (boolean mask per street)", t_side_split)
-            record("_sample_side_geographic", t_sample_side)
-            record("collect rows (.iloc + append)", t_collect_rows)
+            record("_sample_side_geographic (numpy)", t_sample_side)
+            record("collect rows (numpy index + append)", t_collect_rows)
 
     print(f"  OD points: {len(od_points)}")
     print(f"  Streets both sides: {streets_both} | one side: {streets_one}")
