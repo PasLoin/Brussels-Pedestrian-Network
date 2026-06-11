@@ -7,10 +7,6 @@ but does not guarantee that the corresponding crossing **way**
 way, walkers have no routable path across the road at that point — the router
 silently falls back to the road surface and no flow break appears.
 
-The gap is hard to spot with the sidewalk-gap detector because Dijkstra can
-route through a nearby *existing* crossing node without ever flagging a
-"road break" in the pedestrian path.
-
 Detection heuristic
 -------------------
 For each ``highway=crossing`` node located on an eligible road:
@@ -18,103 +14,112 @@ For each ``highway=crossing`` node located on an eligible road:
 1. **Crossing-way check** — if a ``footway=crossing`` way already exists
    within ``CROSSING_WAY_SEARCH_RADIUS_M``, the crossing is mapped → skip.
 
-2. **Short subsegment** — extract a ``±CROSSING_NODE_WINDOW_M`` substring
-   of the road centred on the node.  This focuses the geometry checks to
-   the immediate neighbourhood rather than the full road.
+2. **Sidewalk presence check** — at the node's exact position on the road,
+   compute the perpendicular direction and build two small circular search
+   zones — one on each side of the road.  Check whether any
+   ``footway=sidewalk`` way intersects each zone.
 
-3. **Parallel-sidewalk check** — apply the same offset-curve + bearing
-   analysis used by :mod:`sidewalk_gap` to both sides of the subsegment.
-   If parallel sidewalks exist on both sides (coverage ≥
-   ``SIDEWALK_GAP_MIN_COVERAGE``), the crossing way is missing → flag.
+   Only ``footway=sidewalk`` is accepted as evidence — NOT
+   ``footway=link``, ``footway=crossing``, or ``highway=pedestrian``.
+   Using the broader set (as ``sidewalk_gap._load_sidewalk_footways``
+   does) produces systematic false positives: ``footway=crossing`` ways
+   at nearby intersections often run parallel to the road being tested
+   and falsely satisfy the sidewalk check even when no sidewalk is drawn.
 
-The parallel-sidewalk requirement keeps the false-positive rate low: only
-locations where mappers have *already drawn sidewalks on both sides* are
-flagged.  If the sidewalks themselves are missing the node is skipped —
-that is a different gap to report.
+3. Flag if **both** sides have a sidewalk AND no crossing way exists.
+
+Why not the parallel-coverage approach from sidewalk_gap?
+---------------------------------------------------------
+sidewalk_gap checks coverage along a full road segment.  Here we care
+only about the *point* where the crossing node sits.  A simple presence
+query in a perpendicular zone at that point is more precise and avoids
+the false-positive path described above.
 
 Inputs
 ------
-* ``highways.geojson`` — slimmed pedestrian layer (contains crossing
-  nodes as Point features with ``highway=crossing``).
+* ``highways.geojson`` — slimmed pedestrian layer (crossing nodes as
+  Point features with ``highway=crossing``).
 * ``sidewalk_footways_raw.geojson`` — raw osmium footway export.
 * ``sidewalk_roads_raw.geojson`` — raw osmium road export.
 
 Output
 ------
 ``missing_crossings.geojson`` — point layer, one feature per detected
-missing crossing way, with properties ``name``, ``left_cov``,
-``right_cov``.
+missing crossing way, with properties ``name``, ``left``, ``right``
+(boolean sidewalk presence on each side).
 """
 
 from __future__ import annotations
 
 import json
+import math
 import os
 
 import geopandas as gpd
-from shapely.geometry import shape
-from shapely.ops import substring
+from shapely.geometry import Point, shape
 from shapely.strtree import STRtree
 
 from config import ROAD_TYPES_SIDEWALK_EXPECTED
-from sidewalk_gap import (
-    SIDEWALK_GAP_MIN_COVERAGE,
-    SIDEWALK_GAP_OFFSET_M,
-    SIDEWALK_GAP_SEARCH_M,
-    _line_bearing,
-    _load_sidewalk_footways,
-    _parallel_coverage,
-    _safe_str,
-)
 from timing import step
 
-# Road types eligible for crossing analysis (service roads excluded —
-# driveways and parking aisles rarely have formal crossing infrastructure).
+# Road types eligible for crossing analysis.
 _CROSSING_ROAD_TYPES = ROAD_TYPES_SIDEWALK_EXPECTED - {"service"}
 
-# Minimum road segment length (metres) — very short stubs are unreliable.
+# Minimum road segment length to process (metres).
 _MIN_ROAD_LENGTH = 15.0
 
-# ── Module-level config (readable from env, consistent with sidewalk_gap) ────
 
-# How far from a crossing node to search for an eligible road (metres).
+# ── Module-level config ───────────────────────────────────────────────────────
+
+# Max distance from crossing node to nearest eligible road centre (metres).
 CROSSING_NODE_ROAD_SEARCH_M = float(os.environ.get("CROSSING_NODE_ROAD_SEARCH_M", 20.0))
 
-# Half-length of the road subsegment extracted around the crossing node.
-# 30 m → we analyse a 60 m stretch of road centred on the node.
-CROSSING_NODE_WINDOW_M = float(os.environ.get("CROSSING_NODE_WINDOW_M", 30.0))
+# Distance from road centreline to the centre of each sidewalk search zone.
+# Matches SIDEWALK_GAP_OFFSET_M so both layers use consistent geometry.
+CROSSING_SIDEWALK_OFFSET_M = float(os.environ.get("CROSSING_SIDEWALK_OFFSET_M", 7.0))
 
-# If a footway=crossing way exists within this radius, the crossing is
-# already mapped → skip.
+# Radius of the circular search zone on each side of the road.
+# Generous enough to catch sidewalks offset 1–15 m from the road edge.
+CROSSING_SIDEWALK_SEARCH_M = float(os.environ.get("CROSSING_SIDEWALK_SEARCH_M", 15.0))
+
+# If a footway=crossing way exists within this radius of the node, skip it.
 CROSSING_WAY_SEARCH_RADIUS_M = float(os.environ.get("CROSSING_WAY_SEARCH_RADIUS_M", 20.0))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Internal helpers
+# String normalisation (self-contained, no sidewalk_gap import needed)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _safe_str(val) -> str:
+    """Normalise a GeoJSON property value to a lowercase string."""
+    if val is None:
+        return ""
+    if isinstance(val, float) and math.isnan(val):
+        return ""
+    return str(val).strip().lower()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Data loaders
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _load_crossing_nodes(highways_path: str) -> gpd.GeoDataFrame:
     """Read highway=crossing *point* features from the pedestrian layer.
 
-    Uses stdlib ``json`` instead of ``gpd.read_file`` for two reasons:
+    Uses stdlib ``json`` instead of ``gpd.read_file`` because:
 
-    1. ``highways.geojson`` mixes Point and LineString geometries in the
-       same FeatureCollection.  Some pyogrio/OGR versions refuse to open
-       such a file ("Layer schema generation failed").
-
-    2. The jq slim step in ``build.yml`` can produce a nested structure
-       where ``"features"`` is itself a FeatureCollection object rather
-       than a plain array — the pattern ``.features |= map(...) |
-       {type: ..., features: .}`` evaluates ``.`` as the whole (already-
-       updated) FeatureCollection after the ``|=``.  stdlib json lets us
-       detect and unwrap that gracefully.
+    * ``highways.geojson`` mixes Point and LineString geometries — some
+      pyogrio/OGR versions refuse mixed-geometry FeatureCollections.
+    * The jq slim step in ``build.yml`` can produce a nested structure
+      where ``"features"`` is a FeatureCollection object instead of an
+      array (``|= map(...) | {... features: .}`` evaluates ``.`` as the
+      whole updated FC).  The json path handles both cases.
     """
     with open(highways_path, encoding="utf-8") as fh:
         raw = json.load(fh)
 
-    # Unwrap potential nested FeatureCollection produced by the jq pipeline.
     features = raw.get("features", [])
-    if isinstance(features, dict):
+    if isinstance(features, dict):          # unwrap nested FC
         features = features.get("features", [])
 
     rows = []
@@ -134,7 +139,6 @@ def _load_crossing_nodes(highways_path: str) -> gpd.GeoDataFrame:
 
     if not rows:
         return gpd.GeoDataFrame(geometry=[], crs="EPSG:4326").to_crs("EPSG:31370")
-
     return gpd.GeoDataFrame(rows, crs="EPSG:4326").to_crs("EPSG:31370")
 
 
@@ -142,11 +146,9 @@ def _load_crossing_ways(footways_path: str) -> tuple[list, STRtree | None]:
     """Return (geoms, STRtree) for already-mapped footway=crossing ways."""
     gdf = gpd.read_file(footways_path)
     gdf = gdf[gdf.geometry.geom_type == "LineString"].copy().to_crs("EPSG:31370")
-
     for col in ("highway", "footway"):
         if col not in gdf.columns:
             gdf[col] = ""
-
     mask = (
         (gdf["highway"].apply(_safe_str) == "footway") &
         (gdf["footway"].apply(_safe_str) == "crossing")
@@ -155,25 +157,84 @@ def _load_crossing_ways(footways_path: str) -> tuple[list, STRtree | None]:
     return geoms, (STRtree(geoms) if geoms else None)
 
 
-def _load_roads(
-    roads_path: str,
-) -> tuple[gpd.GeoDataFrame, list, STRtree]:
+def _load_sidewalk_ways(footways_path: str) -> tuple[list, STRtree | None]:
+    """Return (geoms, STRtree) for footway=sidewalk ways ONLY.
+
+    Intentionally strict: link, crossing, and highway=pedestrian are
+    excluded.  footway=crossing ways at nearby intersections can be
+    roughly parallel to the road being tested, falsely satisfying a
+    parallel-coverage check even when no sidewalk is drawn.  Limiting
+    to footway=sidewalk eliminates this false-positive path entirely.
+    """
+    gdf = gpd.read_file(footways_path)
+    gdf = gdf[gdf.geometry.geom_type == "LineString"].copy().to_crs("EPSG:31370")
+    for col in ("highway", "footway"):
+        if col not in gdf.columns:
+            gdf[col] = ""
+    mask = (
+        (gdf["highway"].apply(_safe_str) == "footway") &
+        (gdf["footway"].apply(_safe_str) == "sidewalk")
+    )
+    geoms = list(gdf[mask].geometry)
+    print(f"  footway=sidewalk ways indexed: {len(geoms)}")
+    return geoms, (STRtree(geoms) if geoms else None)
+
+
+def _load_roads(roads_path: str) -> tuple[gpd.GeoDataFrame, list, STRtree]:
     """Load eligible road ways; return (gdf, geom_list, STRtree)."""
     gdf = gpd.read_file(roads_path)
     gdf = gdf[gdf.geometry.geom_type == "LineString"].copy().to_crs("EPSG:31370")
     gdf = gdf[gdf["highway"].isin(_CROSSING_ROAD_TYPES)]
     gdf = gdf[gdf.geometry.length >= _MIN_ROAD_LENGTH]
-    gdf = gdf.reset_index(drop=True)     # positional index must match list index
+    gdf = gdf.reset_index(drop=True)
     geoms = list(gdf.geometry)
     return gdf, geoms, STRtree(geoms)
 
 
-def _write_empty_output() -> None:
-    """Write a valid but empty missing_crossings.geojson."""
-    gpd.GeoDataFrame(
-        [{"geometry": None, "name": "", "left_cov": 0.0, "right_cov": 0.0}],
-        crs="EPSG:4326",
-    ).to_file("missing_crossings.geojson", driver="GeoJSON")
+# ─────────────────────────────────────────────────────────────────────────────
+# Geometry helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _road_left_perp(road_geom, node_pt, step: float = 3.0) -> tuple[float, float] | None:
+    """Return the unit left-perpendicular of the road at *node_pt*.
+
+    Interpolates two points ±*step* metres along the road from the
+    node's projection, then computes the direction vector and rotates
+    it 90° left.  Returns ``None`` if the road is degenerate at that
+    location.
+    """
+    d = road_geom.project(node_pt)
+    p1 = road_geom.interpolate(max(0.0, d - step))
+    p2 = road_geom.interpolate(min(road_geom.length, d + step))
+    dx, dy = p2.x - p1.x, p2.y - p1.y
+    norm = math.hypot(dx, dy)
+    if norm < 0.01:
+        return None
+    return (-dy / norm, dx / norm)   # left perpendicular
+
+
+def _sidewalk_zones(
+    node_pt: Point,
+    perp: tuple[float, float],
+) -> tuple[Point, Point]:
+    """Build left and right circular search zones at *node_pt*."""
+    px, py = perp
+    left_center  = Point(node_pt.x + px * CROSSING_SIDEWALK_OFFSET_M,
+                         node_pt.y + py * CROSSING_SIDEWALK_OFFSET_M)
+    right_center = Point(node_pt.x - px * CROSSING_SIDEWALK_OFFSET_M,
+                         node_pt.y - py * CROSSING_SIDEWALK_OFFSET_M)
+    return (
+        left_center.buffer(CROSSING_SIDEWALK_SEARCH_M),
+        right_center.buffer(CROSSING_SIDEWALK_SEARCH_M),
+    )
+
+
+def _has_sidewalk(zone, tree: STRtree, geoms: list) -> bool:
+    """Return True if any sidewalk geometry intersects *zone*."""
+    for i in tree.query(zone):
+        if geoms[i].intersects(zone):
+            return True
+    return False
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -185,18 +246,20 @@ def detect_missing_crossings(
     footways_geojson_path: str = "sidewalk_footways_raw.geojson",
     roads_geojson_path: str = "sidewalk_roads_raw.geojson",
 ) -> dict:
-    """Detect highway=crossing nodes that lack a footway=crossing way.
+    """Detect highway=crossing nodes that lack a footway=crossing way
+    where sidewalks exist on both sides of the road.
 
     Returns a dict of statistics for stats.json.
     """
     print("Detecting missing crossing ways...")
     print(
         f"  Node→road search: {CROSSING_NODE_ROAD_SEARCH_M} m | "
-        f"Subsegment window: ±{CROSSING_NODE_WINDOW_M} m | "
+        f"Sidewalk offset: {CROSSING_SIDEWALK_OFFSET_M} m | "
+        f"Sidewalk search radius: {CROSSING_SIDEWALK_SEARCH_M} m | "
         f"Crossing-way radius: {CROSSING_WAY_SEARCH_RADIUS_M} m"
     )
 
-    # ── Load inputs ───────────────────────────────────────────────────────
+    # ── Load data ─────────────────────────────────────────────────────────
     with step("load crossing nodes (highways.geojson)"):
         crossing_nodes = _load_crossing_nodes(highways_geojson_path)
     print(f"  highway=crossing nodes: {len(crossing_nodes)}")
@@ -206,115 +269,70 @@ def detect_missing_crossings(
         _write_empty_output()
         return {"crossing_nodes_found": 0, "missing_crossings_detected": 0}
 
-    with step("load crossing ways (footways)"):
+    with step("load crossing ways"):
         cw_geoms, cw_tree = _load_crossing_ways(footways_geojson_path)
     print(f"  footway=crossing ways indexed: {len(cw_geoms)}")
 
-    # Sidewalk footways — used for the parallel coverage check.
-    # Note: _load_sidewalk_footways also keeps footway=crossing ways, but
-    # they run perpendicular to roads and will fail the bearing test, so
-    # they do not contribute false coverage.
-    with step("load sidewalk footways"):
-        sw_geoms, _fw_stats = _load_sidewalk_footways(footways_geojson_path)
-        sw_tree = STRtree(sw_geoms) if sw_geoms else None
+    with step("load sidewalk ways (footway=sidewalk only)"):
+        sw_geoms, sw_tree = _load_sidewalk_ways(footways_geojson_path)
 
     with step("load eligible roads"):
         roads_gdf, road_geoms, road_tree = _load_roads(roads_geojson_path)
     print(f"  Road segments: {len(roads_gdf)}")
 
+    if sw_tree is None:
+        print("  No footway=sidewalk ways found — skipping.")
+        _write_empty_output()
+        return {
+            "crossing_nodes_found": len(crossing_nodes),
+            "missing_crossings_detected": 0,
+        }
+
     # ── Analyse each crossing node ────────────────────────────────────────
     rows: list[dict] = []
     n_no_road = 0        # no eligible road found within search radius
     n_has_way = 0        # crossing way already mapped nearby
-    n_no_sidewalks = 0   # insufficient parallel sidewalk coverage
-    n_missing = 0        # missing crossing way detected
+    n_no_sidewalks = 0   # sidewalks missing on one or both sides
+    n_missing = 0        # confirmed missing crossing way
 
     with step("crossing node analysis loop"):
         for _, node_row in crossing_nodes.iterrows():
             node_pt = node_row.geometry
 
-            # 1. Associate node with the nearest eligible road ─────────────
-            road_candidates = road_tree.query(
-                node_pt.buffer(CROSSING_NODE_ROAD_SEARCH_M)
-            )
-            if not len(road_candidates):
+            # 1. Find nearest eligible road ────────────────────────────────
+            road_cands = road_tree.query(node_pt.buffer(CROSSING_NODE_ROAD_SEARCH_M))
+            if not len(road_cands):
                 n_no_road += 1
                 continue
 
-            best_idx = min(
-                road_candidates,
-                key=lambda i: road_geoms[i].distance(node_pt),
-            )
+            best_idx = min(road_cands,
+                           key=lambda i: road_geoms[i].distance(node_pt))
             road_geom = road_geoms[best_idx]
 
-            # 2. Skip if a crossing way is already mapped at this location ──
+            # 2. Skip if a crossing way is already mapped nearby ────────────
             if cw_tree is not None:
                 cw_zone = node_pt.buffer(CROSSING_WAY_SEARCH_RADIUS_M)
-                nearby_cw = cw_tree.query(cw_zone)
-                if any(cw_geoms[i].intersects(cw_zone) for i in nearby_cw):
+                nearby = cw_tree.query(cw_zone)
+                if any(cw_geoms[i].intersects(cw_zone) for i in nearby):
                     n_has_way += 1
                     continue
 
-            # 3. Extract a short road subsegment centred on the node ────────
-            dist_along = road_geom.project(node_pt)
-            start_d = max(0.0, dist_along - CROSSING_NODE_WINDOW_M)
-            end_d   = min(road_geom.length, dist_along + CROSSING_NODE_WINDOW_M)
-
-            if end_d - start_d < 5.0:
+            # 3. Compute perpendicular direction at the crossing node ───────
+            perp = _road_left_perp(road_geom, node_pt)
+            if perp is None:
                 n_no_road += 1
                 continue
 
-            try:
-                subseg = substring(road_geom, start_d, end_d)
-            except Exception:
-                n_no_road += 1
-                continue
+            # 4. Check for footway=sidewalk on both sides ───────────────────
+            left_zone, right_zone = _sidewalk_zones(node_pt, perp)
+            has_left  = _has_sidewalk(left_zone,  sw_tree, sw_geoms)
+            has_right = _has_sidewalk(right_zone, sw_tree, sw_geoms)
 
-            if subseg.is_empty or subseg.length < 5.0:
-                n_no_road += 1
-                continue
-
-            bearing = _line_bearing(subseg)
-            if bearing is None:
-                n_no_road += 1
-                continue
-
-            # 4. Check for parallel sidewalks on both sides ─────────────────
-            # Reuses the same offset-curve + bearing logic as sidewalk_gap.py.
-            try:
-                left_line  = subseg.offset_curve(SIDEWALK_GAP_OFFSET_M)
-                right_line = subseg.offset_curve(-SIDEWALK_GAP_OFFSET_M)
-            except Exception:
-                n_no_road += 1
-                continue
-
-            if left_line.is_empty or right_line.is_empty:
-                n_no_road += 1
-                continue
-
-            left_zone  = left_line.buffer(SIDEWALK_GAP_SEARCH_M)
-            right_zone = right_line.buffer(SIDEWALK_GAP_SEARCH_M)
-
-            if sw_tree is None:
+            if not (has_left and has_right):
                 n_no_sidewalks += 1
                 continue
 
-            seg_len = subseg.length
-            left_cov  = _parallel_coverage(
-                left_zone, bearing, seg_len,
-                sw_tree.query(left_zone), sw_geoms,
-            )
-            right_cov = _parallel_coverage(
-                right_zone, bearing, seg_len,
-                sw_tree.query(right_zone), sw_geoms,
-            )
-
-            if (left_cov  < SIDEWALK_GAP_MIN_COVERAGE or
-                    right_cov < SIDEWALK_GAP_MIN_COVERAGE):
-                n_no_sidewalks += 1
-                continue
-
-            # 5. Flag: crossing node + both-side sidewalks + no crossing way ─
+            # 5. Flag ──────────────────────────────────────────────────────
             road_name = ""
             if "name" in roads_gdf.columns:
                 road_name = _safe_str(roads_gdf.iloc[best_idx]["name"])
@@ -323,8 +341,8 @@ def detect_missing_crossings(
             rows.append({
                 "geometry": node_pt,
                 "name": road_name,
-                "left_cov":  round(left_cov,  2),
-                "right_cov": round(right_cov, 2),
+                "left":  has_left,
+                "right": has_right,
             })
 
     # ── Save output ───────────────────────────────────────────────────────
@@ -333,7 +351,7 @@ def detect_missing_crossings(
             out_gdf = gpd.GeoDataFrame(rows, crs="EPSG:31370").to_crs("EPSG:4326")
         else:
             out_gdf = gpd.GeoDataFrame(
-                [{"geometry": None, "name": "", "left_cov": 0.0, "right_cov": 0.0}],
+                [{"geometry": None, "name": "", "left": False, "right": False}],
                 crs="EPSG:4326",
             )
         out_gdf.to_file("missing_crossings.geojson", driver="GeoJSON")
@@ -342,13 +360,20 @@ def detect_missing_crossings(
     print(f"  Nodes analysed: {n_total}")
     print(f"  Skipped — no eligible road: {n_no_road}")
     print(f"  Skipped — crossing way exists: {n_has_way}")
-    print(f"  Skipped — sidewalks insufficient: {n_no_sidewalks}")
+    print(f"  Skipped — sidewalks missing on a side: {n_no_sidewalks}")
     print(f"  Missing crossing ways detected: {n_missing}")
 
     return {
-        "crossing_nodes_found":    n_total,
-        "no_eligible_road":        n_no_road,
-        "crossing_way_exists":     n_has_way,
-        "sidewalks_insufficient":  n_no_sidewalks,
-        "missing_crossings_detected": n_missing,
+        "crossing_nodes_found":         n_total,
+        "no_eligible_road":             n_no_road,
+        "crossing_way_exists":          n_has_way,
+        "sidewalks_missing_on_a_side":  n_no_sidewalks,
+        "missing_crossings_detected":   n_missing,
     }
+
+
+def _write_empty_output() -> None:
+    gpd.GeoDataFrame(
+        [{"geometry": None, "name": "", "left": False, "right": False}],
+        crs="EPSG:4326",
+    ).to_file("missing_crossings.geojson", driver="GeoJSON")
