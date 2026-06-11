@@ -253,6 +253,18 @@ jobs:
           PYTHONPATH: scripts
         run: python3 scripts/main.py
 
+      # ── Preserve all missing_crossings points in PMTiles ────────────────
+      # tippecanoe's --drop-densest-as-needed can silently remove QA points
+      # at low zoom levels.  Adding tippecanoe.dropped=false at the feature
+      # level instructs tippecanoe to keep every point regardless of tile
+      # density, and minzoom=9 mirrors the global MIN_ZOOM so points are
+      # included from the lowest zoom in the archive.
+      - name: Mark missing_crossings as non-droppable
+        run: |
+          jq '.features |= map(. + {"tippecanoe": {"dropped": false, "minzoom": 9}})' \
+            missing_crossings.geojson > mc_nd.geojson
+          mv mc_nd.geojson missing_crossings.geojson
+
       # ── Debug & artifacts ───────────────────────────────────────────────
       - name: List generated files (debug)
         if: always()
