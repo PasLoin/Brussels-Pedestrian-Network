@@ -105,7 +105,7 @@ def main() -> None:
 
     # ── Step 4: Sample OD points ──────────────────────────────────────────
     with step("sample_od_points"):
-        od_points, od_streets, od_sides = sample_od_points("addresses.geojson")
+        od_points, od_streets, od_sides, addr_gdf = sample_od_points("addresses.geojson")
 
     # ── Step 5: Snap OD points to graph ───────────────────────────────────
     with step("snap_to_graph"):
@@ -148,10 +148,13 @@ def main() -> None:
         )
 
     # ── Step 8b: Walkability scores ───────────────────────────────────────
+    # addr_gdf is reused here to avoid a 2nd read of addresses.geojson
+    # (~40 s saved on the Brussels dataset).
     with step("export_walkability_scores"):
         walkability_stats = export_walkability_scores(
             result.street_ped_m, result.street_cyc_nf_m, result.street_total_m,
             gb.street_sidewalk_status,
+            addr_gdf,
         )
 
     # ── Step 8c: Sidewalk gap detection ───────────────────────────────────
