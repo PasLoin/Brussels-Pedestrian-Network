@@ -31,6 +31,17 @@ function toggleLegend() {
   }
 })();
 
+// ── Security: HTML Sanitization ─────────────────────────────────────────────
+function escapeHTML(str) {
+  if (!str) return str;
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 //  FLOW THRESHOLD FILTER
 //  Hides flow_edges features whose flow_pct is below the slider value.
@@ -397,8 +408,8 @@ fetch("./stats.json")
     const avgKm = (s.avg_distance_m / 1000).toFixed(2);
     const trips = s.routed_trips.toLocaleString("fr-BE");
     document.getElementById("routing-stats").innerHTML =
-      `Trajets simulés : <span>${trips}</span><br>` +
-      `Distance moy. : <span>${avgKm} km</span>`;
+      `Trajets simulés : <span>${escapeHTML(trips)}</span><br>` +
+      `Distance moy. : <span>${escapeHTML(avgKm)} km</span>`;
   })
   .catch(() => { });
 
@@ -629,7 +640,7 @@ const HOVER_LAYERS = [
     ids: ["sidewalk-gaps"],
     format: p => `
       <div class="popup-title">🚧 Trottoir un seul côté</div>
-      <div class="popup-row"><span class="label">Rue</span><span class="value">${p.name || "—"}</span></div>
+      <div class="popup-row"><span class="label">Rue</span><span class="value">${escapeHTML(p.name || "—")}</span></div>
     `
   },
   {
@@ -644,8 +655,8 @@ const HOVER_LAYERS = [
       };
       return `
         <div class="popup-title">🏷 Tags trottoir</div>
-        <div class="popup-row"><span class="label">Rue</span><span class="value">${p.name || "—"}</span></div>
-        <div class="popup-row"><span class="label">Statut</span><span class="value">${swLabels[p.sw] || p.sw || "?"}</span></div>
+        <div class="popup-row"><span class="label">Rue</span><span class="value">${escapeHTML(p.name || "—")}</span></div>
+        <div class="popup-row"><span class="label">Statut</span><span class="value">${escapeHTML(swLabels[p.sw] || p.sw || "?")}</span></div>
       `;
     }
   },
@@ -655,8 +666,8 @@ const HOVER_LAYERS = [
     ids: ["flow-ped", "flow-cycleway", "flow-road"],
     format: p => `
       <div class="popup-title">📊 Flux simulé</div>
-      <div class="popup-row"><span class="label">Infra</span><span class="value">${(p.infra_type || "—").replace(/_/g, " ")}</span></div>
-      <div class="popup-row"><span class="label">Highway</span><span class="value">${p.highway || "—"}</span></div>
+      <div class="popup-row"><span class="label">Infra</span><span class="value">${escapeHTML((p.infra_type || "—").replace(/_/g, " "))}</span></div>
+      <div class="popup-row"><span class="label">Highway</span><span class="value">${escapeHTML(p.highway || "—")}</span></div>
       <div class="popup-row"><span class="label">Flux relatif</span><span class="value">${p.flow_pct || 0} %</span></div>
     `
   },
@@ -665,10 +676,10 @@ const HOVER_LAYERS = [
     format: p => {
       const swLabels = { both: "✅ Deux côtés", partial: "⚠️ Un seul côté", none: "❌ Aucun", unknown: "❓ Non renseigné" };
       return `
-        <div class="popup-title">🏙 ${p.street || "Rue inconnue"}</div>
+        <div class="popup-title">🏙 ${escapeHTML(p.street || "Rue inconnue")}</div>
         <div class="popup-row"><span class="label">Marchabilité</span><span class="value">${((p.walkability || 0) * 100).toFixed(0)}%</span></div>
         <div class="popup-row"><span class="label">Score brut</span><span class="value">${((p.walkability_raw || 0) * 100).toFixed(0)}%</span></div>
-        <div class="popup-row"><span class="label">Trottoir</span><span class="value">${swLabels[p.sidewalk] || p.sidewalk || "?"}</span></div>
+        <div class="popup-row"><span class="label">Trottoir</span><span class="value">${escapeHTML(swLabels[p.sidewalk] || p.sidewalk || "?")}</span></div>
         <div class="popup-row"><span class="label">Infra piétonne</span><span class="value">${Math.round(p.ped_meters || 0)} m</span></div>
         <div class="popup-row"><span class="label">Cycleway (no foot)</span><span class="value">${Math.round(p.cycleway_meters || 0)} m</span></div>
         <div class="popup-row"><span class="label">Total routé</span><span class="value">${Math.round(p.total_meters || 0)} m</span></div>
@@ -681,7 +692,7 @@ const HOVER_LAYERS = [
       const entries = Object.entries(p).filter(([k]) => !k.startsWith("@") && k !== "tippecanoe");
       return `
         <div class="popup-title">🛤 Infrastructure</div>
-        ${entries.map(([k, v]) => `<div class="popup-row"><span class="label">${k}</span><span class="value">${v}</span></div>`).join("")}
+        ${entries.map(([k, v]) => `<div class="popup-row"><span class="label">${escapeHTML(k)}</span><span class="value">${escapeHTML(v)}</span></div>`).join("")}
       `;
     }
   },
