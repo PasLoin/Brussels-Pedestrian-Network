@@ -210,9 +210,18 @@ def export_walkability_scores(
     street_cyc_nf_m: dict[str, float],
     street_total_m: dict[str, float],
     street_sidewalk_status: dict[str, str],
-    addresses_path: str = "addresses.geojson",
+    addr_gdf: gpd.GeoDataFrame,
 ) -> dict:
     """Write street_scores.geojson with sidewalk-penalised walkability.
+
+    Parameters
+    ----------
+    addr_gdf : GeoDataFrame
+        Pre-loaded address data in EPSG:31370 (typically the 4th
+        return value of :func:`sample_od.sample_od_points`).  Must
+        contain ``addr:street`` and point geometries.  Passed in to
+        avoid re-reading ``addresses.geojson`` from disk — saves the
+        full read+to_crs cost on the second access of the file.
 
     Returns a dict of walkability statistics for stats.json.
 
@@ -225,18 +234,11 @@ def export_walkability_scores(
     """
     print("Computing walkability scores (first/last km + sidewalk penalty)...")
 
-    # ── Read addresses in metric CRS for accurate centroid computation ───
-    # Centroids must be computed in a projected (metric) CRS to be
-    # geometrically correct.  We read in EPSG:31370, compute centroids
-    # there, then project to WGS84 for storage.  For point geometries
-    # this is a no-op (Point.centroid == Point); for polygon address
-    # features (building outlines) it gives the correct centroid in
-    # metres rather than the slightly-skewed lon/lat one that Shapely's
-    # planar centroid produces directly in WGS84 (which also raised a
-    # UserWarning).
-    addr_proj = gpd.read_file(addresses_path).to_crs("EPSG:31370")
-    addr_proj["geometry"] = addr_proj.geometry.centroid
-    addr_wgs = addr_proj.to_crs("EPSG:4326")
+    # ── Re-project the shared GeoDataFrame to WGS84 ──────────────────────
+    # addr_gdf comes in at EPSG:31370 from sample_od_points.  We only
+    # need WGS84 here because the output GeoJSON is in WGS84 and we
+    # don't do any metric computation in this function.
+    addr_wgs = addr_gdf.to_crs("EPSG:4326")
     addr_wgs["_x"] = addr_wgs.geometry.x
     addr_wgs["_y"] = addr_wgs.geometry.y
 
