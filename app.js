@@ -631,7 +631,21 @@ const PEDESTRIAN_LAYERS = [
         0.85
       ]
     }
-  }
+  },
+  {
+    // Missing crossing ways: highway=crossing nodes that lack a footway=crossing
+    // way confirmed by parallel sidewalks on both sides of the road.
+    id: "missing-crossings", type: "circle", source: "pedestrian",
+    "source-layer": "missing_crossings",
+    minzoom: 14, layout: { visibility: "none" },
+    paint: {
+      "circle-color": "#f97316",
+      "circle-radius": ["interpolate", ["linear"], ["zoom"], 14, 5, 18, 10],
+      "circle-stroke-color": "#fff",
+      "circle-stroke-width": 2,
+      "circle-opacity": 0.9,
+    }
+  },
 ];
 
 // ── Hover popup config ───────────────────────────────────────────────────────
@@ -659,6 +673,15 @@ const HOVER_LAYERS = [
         <div class="popup-row"><span class="label">Statut</span><span class="value">${escapeHTML(swLabels[p.sw] || p.sw || "?")}</span></div>
       `;
     }
+  },
+  {
+    ids: ["missing-crossings"],
+    format: p => `
+      <div class="popup-title">🚶 Traversée manquante</div>
+      <div class="popup-row"><span class="label">Rue</span><span class="value">${escapeHTML(p.name || "—")}</span></div>
+      <div class="popup-row"><span class="label">Trottoir gauche</span><span class="value">${Math.round((p.left_cov || 0) * 100)} %</span></div>
+      <div class="popup-row"><span class="label">Trottoir droit</span><span class="value">${Math.round((p.right_cov || 0) * 100)} %</span></div>
+    `
   },
   {
     // Unified flow popup — works for all three flow layers.
@@ -822,7 +845,8 @@ function initMap(style) {
     legendEl.appendChild(makeItem({ layerId: "street-scores",  label: "Score marchabilité",  color: "#ef4444", color2: "#22c55e", swatchType: "dot" }));
 
     addSection("Analyse spatiale et qualité");
-    legendEl.appendChild(makeItem({ layerId: "sidewalk-gaps",  label: "Trottoir un seul côté", color: "#f59e0b", dashed: true }));
+    legendEl.appendChild(makeItem({ layerId: "sidewalk-gaps",      label: "Trottoir un seul côté",  color: "#f59e0b", dashed: true }));
+    legendEl.appendChild(makeItem({ layerId: "missing-crossings",  label: "Traversée manquante",    color: "#f97316", swatchType: "dot" }));
 
     // ── Tags sidewalk + sub-filter ───────────────────────────────────────
     const swSub = document.createElement("div");
