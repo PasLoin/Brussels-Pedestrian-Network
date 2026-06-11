@@ -16,9 +16,6 @@ on:
   workflow_dispatch:
 
 # ─── Highway type filters ────────────────────────────────────────────────────
-# HIGHWAY_TYPES_PED:     types included in the *visual* pedestrian layer.
-# HIGHWAY_TYPES_ROUTING: superset used for building the routing graph
-#                        (includes roads that pedestrians may have to walk on).
 env:
   HIGHWAY_TYPES_PED: >-
     w/highway=footway
@@ -55,10 +52,6 @@ env:
     n/highway=crossing
     n/amenity=elevator
 
-  # Road types exported separately for sidewalk QA layers.
-  # These are exported raw (no graph simplification) so that each OSM
-  # way keeps its own tags and geometry — avoids tag bleeding when
-  # OSMnx merges adjacent ways with different sidewalk tags.
   HIGHWAY_TYPES_ROADS: >-
     w/highway=residential
     w/highway=unclassified
@@ -69,39 +62,41 @@ env:
     w/highway=primary
     w/highway=primary_link
 
-  #OSM_PBF_URL: https://download.openstreetmap.fr/extracts/europe/belgium/brussels_capital_region-latest.osm.pbf
-  #OSM_STATE_URL: https://download.openstreetmap.fr/extracts/europe/belgium/brussels_capital_region.state.txt
-
   OSM_PBF_URL: https://raw.githubusercontent.com/PasLoin/Osm-python-analyse_Belgium/main/pbf_analyse/history/Brussels-daily.pbf
   OSM_STATE_URL: https://raw.githubusercontent.com/PasLoin/Osm-python-analyse_Belgium/main/pbf_analyse/history/state.txt
-  #keptasplaceholdertempsliceosmusoutage
-  #OSM_PBF_URL: https://geo2day.com/europe/belgium/brussels_capital_region.pbf
-
 
   # ── Tippecanoe zoom levels ──────────────────────────────────────────────
   MIN_ZOOM: 9
   MAX_ZOOM: 19
 
   # ── Origin-Destination sampling ─────────────────────────────────────────
-  MIN_OD_DISTANCE_M: 600       # min straight-line distance between OD pair # was 300
-  MAX_OD_DISTANCE_KM: 2        # max straight-line distance (km) #was 6 -2 
-  MAX_OD_PAIRS: 900000         # cap on total OD pairs generated
-  TOP_RANK_PCT: 15             # top N% of flow edges flagged as "forced"
-  MIN_FLOW_THRESHOLD: 5        # drop flow edges with fewer trips from PMTiles
-  POINTS_PER_SIDE: 5           # legacy fallback (used when OD_SAMPLE_INTERVAL_M=0)
-  OD_SAMPLE_INTERVAL_M: 100    # one OD point per N metres per side of street
+  MIN_OD_DISTANCE_M: 600
+  MAX_OD_DISTANCE_KM: 2
+  MAX_OD_PAIRS: 900000
+  TOP_RANK_PCT: 15
+  MIN_FLOW_THRESHOLD: 5
+  POINTS_PER_SIDE: 5
+  OD_SAMPLE_INTERVAL_M: 100
 
   # ── Walkability score tuning ────────────────────────────────────────────
-  WALK_SCORE_RADIUS_M: 1000    # only first/last N metres of each trip count
-  SIDEWALK_PENALTY_NONE: 0.3   # multiplier when street has sidewalk=no
-  SIDEWALK_PENALTY_PARTIAL: 0.6 # multiplier when sidewalk on one side only
-  SIDEWALK_PENALTY_UNKNOWN: 0.5 # multiplier when no sidewalk tag on road edges
+  WALK_SCORE_RADIUS_M: 1000
+  SIDEWALK_PENALTY_NONE: 0.3
+  SIDEWALK_PENALTY_PARTIAL: 0.6
+  SIDEWALK_PENALTY_UNKNOWN: 0.5
 
   # ── Sidewalk gap detection ─────────────────────────────────────────────
-  SIDEWALK_GAP_OFFSET_M: 7    # distance from road centerline to search
-  SIDEWALK_GAP_SEARCH_M: 7     # buffer radius around offset line
-  SIDEWALK_GAP_MAX_ANGLE: 65   # max angle diff (°) for parallel check
-  SIDEWALK_GAP_MIN_COVERAGE: 0.4  # min fraction of road length covered by footway
+  SIDEWALK_GAP_OFFSET_M: 7
+  SIDEWALK_GAP_SEARCH_M: 7
+  SIDEWALK_GAP_MAX_ANGLE: 65
+  SIDEWALK_GAP_MIN_COVERAGE: 0.4
+
+  # ── Missing crossing detection ─────────────────────────────────────────
+  CROSSING_NODE_ROAD_SEARCH_M:  20
+  CROSSING_WAY_SEARCH_RADIUS_M: 20
+  CROSSING_NODE_CONNECTED_M:     3
+  CROSSING_SIDEWALK_OFFSET_M:    7
+  CROSSING_SIDEWALK_SEARCH_M:   15
+  CROSSING_SIDEWALK_MAX_ANGLE:  40
 
 jobs:
   build-and-deploy:
@@ -110,7 +105,6 @@ jobs:
       contents: write
 
     steps:
-      # ── Setup ───────────────────────────────────────────────────────────
       - name: Checkout
         uses: actions/checkout@v5
 
@@ -122,13 +116,11 @@ jobs:
       - name: Install Python dependencies
         run: pip install "shapely>=2" osmnx geopandas igraph numpy pyproj --break-system-packages
 
-      # ── Download OSM data ───────────────────────────────────────────────
       - name: Download OSM PBF
         run: |
           wget -O brussels.osm.pbf "$OSM_PBF_URL"
           wget -O state.txt "$OSM_STATE_URL"
 
-      # ── Extract pedestrian features (visual layer) ──────────────────────
       - name: Filter pedestrian features
         run: |
           osmium tags-filter brussels.osm.pbf \
@@ -150,10 +142,7 @@ jobs:
             highways.geojson > highways_fixed.geojson
           mv highways_fixed.geojson highways.geojson
 
-      # ── Slim highways layer — strip unused OSM tags ─────────────────────
-      # Keeps only the properties actually consumed by the frontend popup
-      # and layer filters.  Drops surface, lit, tram, steps:count, etc.
-      # This meaningfully reduces the PMTiles size for the highways layer.
+      # ── Slim highways layer ─────────────────────────────────────────────
       - name: Slim highways GeoJSON properties
         run: |
           jq '
@@ -168,11 +157,10 @@ jobs:
                 segregated: .segregated
               }
               | with_entries(select(.value != null and .value != ""))
-            ) | {type: "FeatureCollection", features: .}
+            )
           ' highways.geojson > highways_slim.geojson
           mv highways_slim.geojson highways.geojson
 
-      # ── Extract address features (OD sampling) ─────────────────────────
       - name: Filter address features
         run: |
           osmium tags-filter brussels.osm.pbf \
@@ -185,12 +173,6 @@ jobs:
             --geometry-types=point,polygon \
             -o addresses.geojson --overwrite
 
-      # ── Extract raw road ways for sidewalk QA layers ────────────────────
-      # Exported separately from the routing graph so that each OSM way
-      # keeps its own geometry and tags.  OSMnx graph simplification
-      # merges adjacent ways at degree-2 nodes, which causes tags from
-      # one way to bleed onto the other (e.g. sidewalk:both=separate
-      # on a tagged segment propagates to an adjacent untagged segment).
       - name: Export road ways for sidewalk analysis
         run: |
           osmium tags-filter brussels.osm.pbf \
@@ -200,17 +182,6 @@ jobs:
             --geometry-types=linestring \
             -o sidewalk_roads_raw.geojson --overwrite
 
-      # ── Extract raw footways for sidewalk gap detection ─────────────────
-      # Exported separately so the `footway` sub-tag (sidewalk / crossing /
-      # link / …) is preserved.  The simplified routing graph from OSMnx
-      # drops this tag, causing park paths and crossings to be mistaken
-      # for sidewalks when checking if a road has a parallel footway.
-      # Filtering downstream to footway=sidewalk eliminates false
-      # positives like the Sablon (park path mistaken for a sidewalk).
-      #
-      # highway=pedestrian is also included because in pedestrian zones,
-      # sidewalks running through (or along the edge of) the zone are
-      # commonly tagged as highway=pedestrian rather than footway=sidewalk.
       - name: Export footways for sidewalk gap detection
         run: |
           osmium tags-filter brussels.osm.pbf \
@@ -220,7 +191,6 @@ jobs:
             --geometry-types=linestring \
             -o sidewalk_footways_raw.geojson --overwrite
 
-      # ── Extract routing features ────────────────────────────────────────
       - name: Filter routing features
         run: |
           osmium tags-filter brussels.osm.pbf \
@@ -231,13 +201,11 @@ jobs:
         run: |
           osmium cat routing_raw.osm.pbf -o routing_raw.osm --overwrite
 
-      # ── Run the pedestrian routing pipeline ─────────────────────────────
       - name: Compute pedestrian routing flows
         env:
           PYTHONPATH: scripts
         run: python3 scripts/main.py
 
-      # ── Debug & artifacts ───────────────────────────────────────────────
       - name: List generated files (debug)
         if: always()
         run: |
@@ -258,6 +226,7 @@ jobs:
             sidewalk_roads.geojson
             sidewalk_roads_raw.geojson
             sidewalk_footways_raw.geojson
+            missing_crossings.geojson
             highways.geojson
             addresses.geojson
             stats.json
@@ -265,15 +234,24 @@ jobs:
           retention-days: 30
           if-no-files-found: warn
 
-      # ── Build tile archive ──────────────────────────────────────────────
-      # Note: forced_segments and forced_cycleway are no longer separate
-      # PMTiles layers.  Their information is now carried by flow_edges
-      # via the highway= property, enabling per-type styling in the
-      # frontend without bloating the tile archive.
-      - name: Build PMTiles with tippecanoe
+      # ── Build PMTiles in two passes ─────────────────────────────────────
+      # The main archive uses --drop-densest-as-needed which silently
+      # removes features at low zoom when a tile gets too dense.  For the
+      # missing_crossings QA layer we want EVERY point at EVERY zoom
+      # ≥ MIN_ZOOM with no exceptions.  Tile-density flags at the feature
+      # level don't override --drop-densest-as-needed reliably when other
+      # layers are also competing for space in the same tile.
+      #
+      # The solution is to build missing_crossings as a separate archive
+      # WITHOUT --drop-densest-as-needed, then merge it into the main one
+      # with tile-join.  tile-join concatenates layers tile by tile, so
+      # the points are guaranteed to survive whatever density pressure
+      # the other layers face.
+
+      - name: Build main PMTiles (without missing_crossings)
         run: |
           tippecanoe \
-            -o pedestrian.pmtiles \
+            -o main.pmtiles \
             --force \
             --name "Brussels Pedestrian Network" \
             --attribution "© OpenStreetMap contributors" \
@@ -286,7 +264,35 @@ jobs:
             --named-layer=sidewalk_gaps:sidewalk_gaps.geojson \
             --named-layer=sidewalk_roads:sidewalk_roads.geojson
 
-      # ── Deploy ──────────────────────────────────────────────────────────
+      # missing_crossings on its own:
+      # - no --drop-densest-as-needed → nothing is dropped
+      # - --no-tile-size-limit       → no 500KB tile cap
+      # - --no-feature-limit         → no 200k feature/tile cap
+      # - -r1                        → drop rate fixed at 1 (= keep all)
+      # - -B${MIN_ZOOM}              → all features present from MIN_ZOOM
+      - name: Build missing_crossings PMTiles (preserve every point)
+        run: |
+          tippecanoe \
+            -o missing_crossings.pmtiles \
+            --force \
+            -Z${{ env.MIN_ZOOM }} -z${{ env.MAX_ZOOM }} \
+            -B${{ env.MIN_ZOOM }} \
+            -r1 \
+            --no-tile-size-limit \
+            --no-feature-limit \
+            --named-layer=missing_crossings:missing_crossings.geojson
+
+      - name: Merge into single PMTiles archive
+        run: |
+          tile-join \
+            -o pedestrian.pmtiles \
+            --force \
+            --name "Brussels Pedestrian Network" \
+            --attribution "© OpenStreetMap contributors" \
+            main.pmtiles \
+            missing_crossings.pmtiles
+          ls -lh main.pmtiles missing_crossings.pmtiles pedestrian.pmtiles
+
       - name: Add build timestamp to state.txt
         run: echo "build_timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> state.txt
 
