@@ -34,6 +34,7 @@ tolerance), the function falls back to global nearest-node snapping.
 from __future__ import annotations
 
 import re
+import time
 
 import geopandas as gpd
 import numpy as np
@@ -41,7 +42,7 @@ from shapely.geometry import Point
 from shapely.strtree import STRtree
 
 from config import OD_SAMPLE_INTERVAL_M, POINTS_PER_SIDE
-from timing import step
+from timing import record, step
 
 # Maximum ratio between runner-up and best edge distance to consider
 # the result ambiguous.
@@ -179,86 +180,123 @@ def sample_od_points(
     else:
         print(f"Sampling OD points (legacy, {POINTS_PER_SIDE} per side)...")
 
-    addr = gpd.read_file(addresses_path).to_crs("EPSG:31370")
+    with step("read_file + to_crs(31370)"):
+        addr = gpd.read_file(addresses_path).to_crs("EPSG:31370")
 
-    # ── Vectorised centroid conversion ────────────────────────────────────
-    # ``.centroid`` works for both points and polygons in one call
-    # (Point.centroid == Point), so we can drop the per-row apply.
-    # Only run it if at least one polygon is present, to avoid a
-    # needless copy when all addresses are already points.
-    n_poly = int((~addr.geometry.geom_type.isin(["Point"])).sum())
-    if n_poly > 0:
-        addr["geometry"] = addr.geometry.centroid
-        print(f"  Converted {n_poly} polygon addresses to centroids")
+    with step("data prep (centroids + housenumber + filter)"):
+        # ── Vectorised centroid conversion ────────────────────────────────
+        # ``.centroid`` works for both points and polygons in one call
+        # (Point.centroid == Point), so we can drop the per-row apply.
+        # Only run it if at least one polygon is present, to avoid a
+        # needless copy when all addresses are already points.
+        n_poly = int((~addr.geometry.geom_type.isin(["Point"])).sum())
+        if n_poly > 0:
+            addr["geometry"] = addr.geometry.centroid
+            print(f"  Converted {n_poly} polygon addresses to centroids")
 
-    addr["_num"] = addr.get("addr:housenumber", "").apply(_extract_house_number)
-    addr = addr.dropna(subset=["_num"])
-    addr["_num"] = addr["_num"].astype(int)
+        addr["_num"] = addr.get("addr:housenumber", "").apply(_extract_house_number)
+        addr = addr.dropna(subset=["_num"])
+        addr["_num"] = addr["_num"].astype(int)
 
-    if "addr:street" not in addr.columns:
-        addr["addr:street"] = ""
-    addr = addr[addr["addr:street"].notna()]
-    addr = addr[addr["addr:street"].astype(str).str.strip() != ""]
+        if "addr:street" not in addr.columns:
+            addr["addr:street"] = ""
+        addr = addr[addr["addr:street"].notna()]
+        addr = addr[addr["addr:street"].astype(str).str.strip() != ""]
 
     od_points: list[tuple[float, float]] = []
     od_streets: list[str] = []
     od_sides: list[str] = []
     streets_both = streets_one = 0
 
-    for street, grp in addr.groupby("addr:street"):
+    # ── Cumulative timers for the loop body ──────────────────────────────
+    # Wrapping every street iteration in a `step()` context manager would
+    # add measurable overhead over ~10⁴ iterations.  We accumulate raw
+    # time deltas into counters here and report them once via record()
+    # at the end of the loop — same depth as the loop's children, so
+    # they appear nested under "groupby sampling loop" in the summary.
+    t_coord_extract = 0.0
+    t_axis_project = 0.0
+    t_sample_side = 0.0
+    t_collect_rows = 0.0
+    t_side_split = 0.0  # cost of `grp[grp["_num"] % 2 == X]` per street
+
+    with step("groupby sampling loop"):
+        for street, grp in addr.groupby("addr:street"):
+            if use_geographic:
+                # ── Geographic sampling ───────────────────────────────────
+                _t = time.time()
+                all_coords = np.array([(g.x, g.y) for g in grp.geometry])
+                t_coord_extract += time.time() - _t
+
+                _t = time.time()
+                origin = all_coords.mean(axis=0)
+                axis = _principal_axis(all_coords)
+
+                # Project all addresses to get global min/max
+                all_proj = (all_coords - origin) @ axis
+                proj_min = float(all_proj.min())
+                proj_max = float(all_proj.max())
+                t_axis_project += time.time() - _t
+
+                _t = time.time()
+                side_groups = [
+                    ("even", grp[grp["_num"] % 2 == 0]),
+                    ("odd", grp[grp["_num"] % 2 == 1]),
+                ]
+                t_side_split += time.time() - _t
+
+                sides_sampled = 0
+                for side_name, side_grp in side_groups:
+                    if side_grp.empty:
+                        continue
+                    _t = time.time()
+                    selected = _sample_side_geographic(
+                        side_grp, axis, origin,
+                        OD_SAMPLE_INTERVAL_M, proj_min, proj_max,
+                    )
+                    t_sample_side += time.time() - _t
+                    if not selected:
+                        continue
+                    _t = time.time()
+                    for i in selected:
+                        row = side_grp.iloc[i]
+                        od_points.append((row.geometry.x, row.geometry.y))
+                        od_streets.append(str(street))
+                        od_sides.append(side_name)
+                    t_collect_rows += time.time() - _t
+                    sides_sampled += 1
+
+            else:
+                # ── Legacy sampling (POINTS_PER_SIDE) ─────────────────────
+                sides_sampled = 0
+                for side_name, side_grp in [
+                    ("even", grp[grp["_num"] % 2 == 0]),
+                    ("odd", grp[grp["_num"] % 2 == 1]),
+                ]:
+                    sorted_side = side_grp.sort_values("_num")
+                    idxs = _pick_indices(len(sorted_side), POINTS_PER_SIDE)
+                    if not idxs:
+                        continue
+                    for i in idxs:
+                        row = sorted_side.iloc[i]
+                        od_points.append((row.geometry.x, row.geometry.y))
+                        od_streets.append(str(street))
+                        od_sides.append(side_name)
+                    sides_sampled += 1
+
+            if sides_sampled == 2:
+                streets_both += 1
+            elif sides_sampled == 1:
+                streets_one += 1
+
+        # ── Report cumulative breakdown (still inside the with so the ─────
+        # records appear nested under "groupby sampling loop").
         if use_geographic:
-            # ── Geographic sampling ───────────────────────────────────────
-            all_coords = np.array([(g.x, g.y) for g in grp.geometry])
-            origin = all_coords.mean(axis=0)
-            axis = _principal_axis(all_coords)
-
-            # Project all addresses to get global min/max
-            all_proj = (all_coords - origin) @ axis
-            proj_min = float(all_proj.min())
-            proj_max = float(all_proj.max())
-
-            sides_sampled = 0
-            for side_name, side_grp in [
-                ("even", grp[grp["_num"] % 2 == 0]),
-                ("odd", grp[grp["_num"] % 2 == 1]),
-            ]:
-                if side_grp.empty:
-                    continue
-                selected = _sample_side_geographic(
-                    side_grp, axis, origin,
-                    OD_SAMPLE_INTERVAL_M, proj_min, proj_max,
-                )
-                if not selected:
-                    continue
-                for i in selected:
-                    row = side_grp.iloc[i]
-                    od_points.append((row.geometry.x, row.geometry.y))
-                    od_streets.append(str(street))
-                    od_sides.append(side_name)
-                sides_sampled += 1
-
-        else:
-            # ── Legacy sampling (POINTS_PER_SIDE) ─────────────────────────
-            sides_sampled = 0
-            for side_name, side_grp in [
-                ("even", grp[grp["_num"] % 2 == 0]),
-                ("odd", grp[grp["_num"] % 2 == 1]),
-            ]:
-                sorted_side = side_grp.sort_values("_num")
-                idxs = _pick_indices(len(sorted_side), POINTS_PER_SIDE)
-                if not idxs:
-                    continue
-                for i in idxs:
-                    row = sorted_side.iloc[i]
-                    od_points.append((row.geometry.x, row.geometry.y))
-                    od_streets.append(str(street))
-                    od_sides.append(side_name)
-                sides_sampled += 1
-
-        if sides_sampled == 2:
-            streets_both += 1
-        elif sides_sampled == 1:
-            streets_one += 1
+            record("coord extract (g.x/g.y per address)", t_coord_extract)
+            record("principal axis + projection", t_axis_project)
+            record("even/odd split (boolean mask per street)", t_side_split)
+            record("_sample_side_geographic", t_sample_side)
+            record("collect rows (.iloc + append)", t_collect_rows)
 
     print(f"  OD points: {len(od_points)}")
     print(f"  Streets both sides: {streets_both} | one side: {streets_one}")
