@@ -19,6 +19,9 @@ Orchestrates the full pipeline:
 All tunable parameters are read from environment variables — see
 ``config.py`` for the full list and their defaults.
 
+Each major step is wrapped in :func:`timing.step` so the bottleneck is
+visible in a single line at the end of the run.
+
 Usage (from the repository root)::
 
     python3 scripts/main.py
@@ -53,6 +56,7 @@ from export import (
 )
 from sidewalk_gap import detect_sidewalk_gaps
 from export_sidewalk_roads import export_sidewalk_roads
+from timing import step, print_summary
 
 
 def main() -> None:
@@ -71,12 +75,14 @@ def main() -> None:
           f"unknown={SIDEWALK_PENALTY_UNKNOWN}")
 
     # ── Step 1: Clean OSM XML ─────────────────────────────────────────────
-    clean_osm("routing_raw.osm", "routing_clean.osm")
+    with step("clean_osm"):
+        clean_osm("routing_raw.osm", "routing_clean.osm")
 
     # ── Step 2–3: Build graph ─────────────────────────────────────────────
-    gb = build_graph("routing_clean.osm")
+    with step("build_graph"):
+        gb = build_graph("routing_clean.osm")
 
-    # Collect graph-level stats
+    # Collect graph-level stats (fast, no timer)
     graph_stats = {
         "nodes": gb.graph.vcount(),
         "edges": gb.graph.ecount(),
@@ -91,18 +97,22 @@ def main() -> None:
         "streets_with_sidewalk_tags": len(gb.street_sidewalk_status),
     }
 
-    # Compute base network stats
+    # Compute base network stats (fast, no timer)
     network_stats = compute_network_stats(
         gb.edge_highways, gb.edge_lengths,
         gb.edge_cycleway_nf, gb.edge_foot_tags,
     )
 
-    # ── Step 4–5: Sample & snap OD points ─────────────────────────────────
-    od_points, od_streets, od_sides = sample_od_points("addresses.geojson")
-    snapped = snap_to_graph(
-        od_points, gb.node_list, gb.nodes_gdf,
-        gb.edge_tuples, gb.edge_geoms,
-    )
+    # ── Step 4: Sample OD points ──────────────────────────────────────────
+    with step("sample_od_points"):
+        od_points, od_streets, od_sides, addr_gdf = sample_od_points("addresses.geojson")
+
+    # ── Step 5: Snap OD points to graph ───────────────────────────────────
+    with step("snap_to_graph"):
+        snapped = snap_to_graph(
+            od_points, gb.node_list, gb.nodes_gdf,
+            gb.edge_tuples, gb.edge_geoms,
+        )
 
     # Collect OD sampling stats
     n_streets_both = len(set(
@@ -114,42 +124,51 @@ def main() -> None:
         "points_odd": sum(1 for s in od_sides if s == "odd"),
     }
 
-    # ── Step 6–7: Generate OD pairs & route ───────────────────────────────
-    od_pairs, rejected_near, rejected_far = generate_od_pairs(
-        od_points, snapped, od_streets,
-    )
-    result = route_pairs(
-        gb.graph, od_pairs,
-        gb.edge_lengths, gb.edge_highways, gb.edge_cycleway_nf,
-    )
+    # ── Step 6: Generate OD pairs ─────────────────────────────────────────
+    with step("generate_od_pairs"):
+        od_pairs, rejected_near, rejected_far = generate_od_pairs(
+            od_points, snapped, od_streets,
+        )
 
-    # ── Step 8: Export GeoJSON layers ─────────────────────────────────────
-    flow_stats = export_flow_layers(
-        result.flow_arr,
-        gb.edge_highways, gb.edge_geoms,
-        gb.edge_lengths, gb.edge_cycleway_nf,
-        gb.edge_foot_tags,
-        gb.graph.ecount(),
-    )
+    # ── Step 7: Route ─────────────────────────────────────────────────────
+    with step("route_pairs"):
+        result = route_pairs(
+            gb.graph, od_pairs,
+            gb.edge_lengths, gb.edge_highways, gb.edge_cycleway_nf,
+        )
 
-    walkability_stats = export_walkability_scores(
-        result.street_ped_m, result.street_cyc_nf_m, result.street_total_m,
-        gb.street_sidewalk_status,
-    )
+    # ── Step 8a: Export flow layers ───────────────────────────────────────
+    with step("export_flow_layers"):
+        flow_stats = export_flow_layers(
+            result.flow_arr,
+            gb.edge_highways, gb.edge_geoms,
+            gb.edge_lengths, gb.edge_cycleway_nf,
+            gb.edge_foot_tags,
+            gb.graph.ecount(),
+        )
 
-    # ── Step 8b: Detect sidewalk gaps ─────────────────────────────────────
-    # Both inputs are raw GeoJSONs exported directly by osmium — keeps
-    # per-way tags intact (no OSMnx tag bleeding) and preserves the
-    # `footway` sub-tag needed to filter true sidewalks vs park paths.
-    sidewalk_gap_stats = detect_sidewalk_gaps(
-        "sidewalk_roads_raw.geojson",
-        "sidewalk_footways_raw.geojson",
-    )
+    # ── Step 8b: Walkability scores ───────────────────────────────────────
+    # addr_gdf is reused here to avoid a 2nd read of addresses.geojson
+    # (~40 s saved on the Brussels dataset).
+    with step("export_walkability_scores"):
+        walkability_stats = export_walkability_scores(
+            result.street_ped_m, result.street_cyc_nf_m, result.street_total_m,
+            gb.street_sidewalk_status,
+            addr_gdf,
+        )
 
-    # ── Step 8c: Export sidewalk tag status on roads ──────────────────────
-    sidewalk_road_stats = export_sidewalk_roads("sidewalk_roads_raw.geojson")
+    # ── Step 8c: Sidewalk gap detection ───────────────────────────────────
+    with step("detect_sidewalk_gaps"):
+        sidewalk_gap_stats = detect_sidewalk_gaps(
+            "sidewalk_roads_raw.geojson",
+            "sidewalk_footways_raw.geojson",
+        )
 
-    # ── Step 7b: Save stats (after all layers so we can include everything)
+    # ── Step 8d: Sidewalk tag status on roads ─────────────────────────────
+    with step("export_sidewalk_roads"):
+        sidewalk_road_stats = export_sidewalk_roads("sidewalk_roads_raw.geojson")
+
+    # ── Save stats (fast, no timer) ───────────────────────────────────────
     save_stats(
         routed=result.routed,
         total_routed_distance=result.total_routed_distance,
@@ -167,15 +186,19 @@ def main() -> None:
         od_sampling_stats=od_sampling_stats,
     )
 
-    # ── Step 9: Export client-side routing graph ──────────────────────────
-    export_routing_graph(
-        gb.node_list, gb.nodes_gdf,
-        gb.edge_tuples, gb.edge_weights, gb.edge_lengths,
-        gb.edge_highways, gb.edge_geoms, gb.edge_cycleway_nf,
-        gb.edge_foot_tags,
-    )
+    # ── Step 9: Client-side routing graph ─────────────────────────────────
+    with step("export_routing_graph"):
+        export_routing_graph(
+            gb.node_list, gb.nodes_gdf,
+            gb.edge_tuples, gb.edge_weights, gb.edge_lengths,
+            gb.edge_highways, gb.edge_geoms, gb.edge_cycleway_nf,
+            gb.edge_foot_tags,
+        )
 
-    print(f"Total time: {time.time() - t0:.1f}s")
+    print(f"\nTotal time: {time.time() - t0:.1f}s")
+
+    # ── Final breakdown ───────────────────────────────────────────────────
+    print_summary()
 
 
 if __name__ == "__main__":

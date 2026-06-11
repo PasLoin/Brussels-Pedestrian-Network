@@ -34,6 +34,7 @@ tolerance), the function falls back to global nearest-node snapping.
 from __future__ import annotations
 
 import re
+import time
 
 import geopandas as gpd
 import numpy as np
@@ -41,6 +42,7 @@ from shapely.geometry import Point
 from shapely.strtree import STRtree
 
 from config import OD_SAMPLE_INTERVAL_M, POINTS_PER_SIDE
+from timing import record, step
 
 # Maximum ratio between runner-up and best edge distance to consider
 # the result ambiguous.
@@ -93,23 +95,22 @@ def _principal_axis(coords: np.ndarray) -> np.ndarray:
 
 
 def _sample_side_geographic(
-    side_grp: gpd.GeoDataFrame,
-    axis: np.ndarray,
-    origin: np.ndarray,
+    side_proj: np.ndarray,
     interval_m: float,
     proj_min: float,
     proj_max: float,
 ) -> list[int]:
-    """Pick one address per spatial bin for a single side of the street.
+    """Pick one index per spatial bin for a single side of the street.
+
+    Pure-NumPy implementation: the caller pre-computes the projection
+    of every address on the street's principal axis, and passes the
+    slice for one side here.  This avoids both per-side DataFrame
+    slicing and redundant projection work.
 
     Parameters
     ----------
-    side_grp : GeoDataFrame
-        Addresses on one side (even or odd), with geometry in EPSG:31370.
-    axis : ndarray
-        Unit vector along the street's principal axis.
-    origin : ndarray
-        Reference point (centroid of all addresses on the street).
+    side_proj : ndarray
+        1-D array of axis projections (one per address on this side).
     interval_m : float
         Bin width in metres along the axis.
     proj_min, proj_max : float
@@ -118,15 +119,12 @@ def _sample_side_geographic(
 
     Returns
     -------
-    list of positional indices into *side_grp*.
+    list of positional indices into *side_proj*.
     """
-    if side_grp.empty or interval_m <= 0:
+    n = len(side_proj)
+    if n == 0 or interval_m <= 0:
         return []
 
-    coords = np.array([(g.x, g.y) for g in side_grp.geometry])
-    projections = (coords - origin) @ axis
-
-    # Build bins covering the full street extent
     n_bins = max(1, int(np.ceil((proj_max - proj_min) / interval_m)))
     bin_edges = np.linspace(proj_min, proj_max, n_bins + 1)
 
@@ -137,17 +135,17 @@ def _sample_side_geographic(
 
         # Find addresses in this bin
         if i < n_bins - 1:
-            mask = (projections >= lo) & (projections < hi)
+            mask = (side_proj >= lo) & (side_proj < hi)
         else:
             # Last bin includes right edge
-            mask = (projections >= lo) & (projections <= hi)
+            mask = (side_proj >= lo) & (side_proj <= hi)
 
         if not mask.any():
             continue
 
         # Pick the address closest to bin center
         candidates = np.where(mask)[0]
-        dists = np.abs(projections[candidates] - bin_center)
+        dists = np.abs(side_proj[candidates] - bin_center)
         best = candidates[np.argmin(dists)]
         selected.append(int(best))
 
@@ -160,7 +158,7 @@ def _sample_side_geographic(
 
 def sample_od_points(
     addresses_path: str = "addresses.geojson",
-) -> tuple[list[tuple[float, float]], list[str], list[str]]:
+) -> tuple[list[tuple[float, float]], list[str], list[str], gpd.GeoDataFrame]:
     """Sample OD points from address data.
 
     Returns
@@ -171,6 +169,12 @@ def sample_od_points(
         Street name for each point.
     od_sides : list of str
         ``"even"`` or ``"odd"`` for each point.
+    addr : GeoDataFrame
+        Prepared address data in EPSG:31370 (point geometries,
+        ``addr:street`` column).  Returned so downstream consumers
+        (e.g. walkability score export) can compute per-street
+        centroids without re-reading the GeoJSON file from disk —
+        saves ~40 s on the Brussels dataset.
     """
     use_geographic = OD_SAMPLE_INTERVAL_M > 0
     if use_geographic:
@@ -178,90 +182,134 @@ def sample_od_points(
     else:
         print(f"Sampling OD points (legacy, {POINTS_PER_SIDE} per side)...")
 
-    addr = gpd.read_file(addresses_path).to_crs("EPSG:31370")
+    with step("read_file + to_crs(31370)"):
+        addr = gpd.read_file(addresses_path).to_crs("EPSG:31370")
 
-    # Convert polygon geometries (building outlines) to centroids so that
-    # all addresses are points.  This is needed because OSM addresses can
-    # be tagged on building ways, not just standalone nodes.
-    n_poly = (~addr.geometry.geom_type.isin(["Point"])).sum()
-    if n_poly > 0:
-        addr["geometry"] = addr.geometry.apply(
-            lambda g: g.centroid if g.geom_type != "Point" else g
-        )
-        print(f"  Converted {n_poly} polygon addresses to centroids")
+    with step("data prep (centroids + housenumber + filter)"):
+        # ── Vectorised centroid conversion ────────────────────────────────
+        n_poly = int((~addr.geometry.geom_type.isin(["Point"])).sum())
+        if n_poly > 0:
+            addr["geometry"] = addr.geometry.centroid
+            print(f"  Converted {n_poly} polygon addresses to centroids")
 
-    addr["_num"] = addr.get("addr:housenumber", "").apply(_extract_house_number)
-    addr = addr.dropna(subset=["_num"])
-    addr["_num"] = addr["_num"].astype(int)
+        addr["_num"] = addr.get("addr:housenumber", "").apply(_extract_house_number)
+        addr = addr.dropna(subset=["_num"])
+        addr["_num"] = addr["_num"].astype(int)
 
-    if "addr:street" not in addr.columns:
-        addr["addr:street"] = ""
-    addr = addr[addr["addr:street"].notna()]
-    addr = addr[addr["addr:street"].astype(str).str.strip() != ""]
+        if "addr:street" not in addr.columns:
+            addr["addr:street"] = ""
+        addr = addr[addr["addr:street"].notna()]
+        addr = addr[addr["addr:street"].astype(str).str.strip() != ""]
+
+        # ── Pre-extract coordinates as scalar columns ─────────────────────
+        # Lets the per-street loop pull NumPy arrays directly without
+        # going through Shapely (.x/.y per geometry) or per-side
+        # DataFrame slicing.  This is the key to making the loop fast.
+        addr["_x"] = addr.geometry.x
+        addr["_y"] = addr.geometry.y
 
     od_points: list[tuple[float, float]] = []
     od_streets: list[str] = []
     od_sides: list[str] = []
     streets_both = streets_one = 0
 
-    for street, grp in addr.groupby("addr:street"):
+    # ── Cumulative timers for the loop body ──────────────────────────────
+    t_to_numpy = 0.0
+    t_axis_project = 0.0
+    t_sample_side = 0.0
+    t_collect_rows = 0.0
+
+    with step("groupby sampling loop"):
+        for street, grp in addr.groupby("addr:street", sort=False):
+            if use_geographic:
+                # ── Pull NumPy arrays once, work on masks afterwards ──────
+                # No more DataFrame slicing per side — that was the 94s
+                # bottleneck.  Everything below is NumPy.
+                _t = time.time()
+                xs = grp["_x"].to_numpy()
+                ys = grp["_y"].to_numpy()
+                nums = grp["_num"].to_numpy()
+                t_to_numpy += time.time() - _t
+
+                _t = time.time()
+                coords = np.column_stack([xs, ys])
+                origin = coords.mean(axis=0)
+                axis = _principal_axis(coords)
+                # Project ALL addresses once; slice per side with masks.
+                all_proj = (coords - origin) @ axis
+                proj_min = float(all_proj.min())
+                proj_max = float(all_proj.max())
+                t_axis_project += time.time() - _t
+
+                even_mask = (nums % 2 == 0)
+                street_str = str(street)
+
+                sides_sampled = 0
+                for side_name, mask in (("even", even_mask), ("odd", ~even_mask)):
+                    if not mask.any():
+                        continue
+
+                    side_xs = xs[mask]
+                    side_ys = ys[mask]
+                    side_proj = all_proj[mask]
+
+                    _t = time.time()
+                    selected = _sample_side_geographic(
+                        side_proj, OD_SAMPLE_INTERVAL_M, proj_min, proj_max,
+                    )
+                    t_sample_side += time.time() - _t
+                    if not selected:
+                        continue
+
+                    _t = time.time()
+                    # NumPy fancy indexing once instead of .iloc[i] per row
+                    sel = np.asarray(selected, dtype=np.intp)
+                    picked_xs = side_xs[sel]
+                    picked_ys = side_ys[sel]
+                    for px, py in zip(picked_xs, picked_ys):
+                        od_points.append((float(px), float(py)))
+                        od_streets.append(street_str)
+                        od_sides.append(side_name)
+                    t_collect_rows += time.time() - _t
+                    sides_sampled += 1
+
+            else:
+                # ── Legacy sampling (POINTS_PER_SIDE) ─────────────────────
+                # Rarely used (only when OD_SAMPLE_INTERVAL_M=0).  Kept
+                # unchanged — uses DataFrame slicing but only runs in
+                # the legacy mode.
+                sides_sampled = 0
+                for side_name, side_grp in [
+                    ("even", grp[grp["_num"] % 2 == 0]),
+                    ("odd", grp[grp["_num"] % 2 == 1]),
+                ]:
+                    sorted_side = side_grp.sort_values("_num")
+                    idxs = _pick_indices(len(sorted_side), POINTS_PER_SIDE)
+                    if not idxs:
+                        continue
+                    for i in idxs:
+                        row = sorted_side.iloc[i]
+                        od_points.append((row.geometry.x, row.geometry.y))
+                        od_streets.append(str(street))
+                        od_sides.append(side_name)
+                    sides_sampled += 1
+
+            if sides_sampled == 2:
+                streets_both += 1
+            elif sides_sampled == 1:
+                streets_one += 1
+
+        # ── Report cumulative breakdown (inside the with so the records ──
+        # appear nested under "groupby sampling loop").
         if use_geographic:
-            # ── Geographic sampling ───────────────────────────────────────
-            all_coords = np.array([(g.x, g.y) for g in grp.geometry])
-            origin = all_coords.mean(axis=0)
-            axis = _principal_axis(all_coords)
-
-            # Project all addresses to get global min/max
-            all_proj = (all_coords - origin) @ axis
-            proj_min = float(all_proj.min())
-            proj_max = float(all_proj.max())
-
-            sides_sampled = 0
-            for side_name, side_grp in [
-                ("even", grp[grp["_num"] % 2 == 0]),
-                ("odd", grp[grp["_num"] % 2 == 1]),
-            ]:
-                if side_grp.empty:
-                    continue
-                selected = _sample_side_geographic(
-                    side_grp, axis, origin,
-                    OD_SAMPLE_INTERVAL_M, proj_min, proj_max,
-                )
-                if not selected:
-                    continue
-                for i in selected:
-                    row = side_grp.iloc[i]
-                    od_points.append((row.geometry.x, row.geometry.y))
-                    od_streets.append(str(street))
-                    od_sides.append(side_name)
-                sides_sampled += 1
-
-        else:
-            # ── Legacy sampling (POINTS_PER_SIDE) ─────────────────────────
-            sides_sampled = 0
-            for side_name, side_grp in [
-                ("even", grp[grp["_num"] % 2 == 0]),
-                ("odd", grp[grp["_num"] % 2 == 1]),
-            ]:
-                sorted_side = side_grp.sort_values("_num")
-                idxs = _pick_indices(len(sorted_side), POINTS_PER_SIDE)
-                if not idxs:
-                    continue
-                for i in idxs:
-                    row = sorted_side.iloc[i]
-                    od_points.append((row.geometry.x, row.geometry.y))
-                    od_streets.append(str(street))
-                    od_sides.append(side_name)
-                sides_sampled += 1
-
-        if sides_sampled == 2:
-            streets_both += 1
-        elif sides_sampled == 1:
-            streets_one += 1
+            record("grp[..].to_numpy() per street", t_to_numpy)
+            record("principal axis + projection", t_axis_project)
+            record("_sample_side_geographic (numpy)", t_sample_side)
+            record("collect rows (numpy index + append)", t_collect_rows)
 
     print(f"  OD points: {len(od_points)}")
     print(f"  Streets both sides: {streets_both} | one side: {streets_one}")
-    return od_points, od_streets, od_sides
+    return od_points, od_streets, od_sides, addr
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -299,24 +347,28 @@ def snap_to_graph(
     print("Snapping OD points to graph edges...")
 
     # ── Build node coordinate array (for fallback) ────────────────────────
-    node_xy = np.array([
-        [nodes_gdf.loc[n, "x"], nodes_gdf.loc[n, "y"]]
-        for n in node_list
+    # Use vectorised .loc lookup over the whole node_list — much faster
+    # than a per-node .loc inside a Python comprehension.
+    node_xy = np.column_stack([
+        nodes_gdf.loc[node_list, "x"].to_numpy(dtype=np.float64),
+        nodes_gdf.loc[node_list, "y"].to_numpy(dtype=np.float64),
     ])
-    node_tree = STRtree([Point(x, y) for x, y in node_xy])
 
-    # ── Build edge spatial index ──────────────────────────────────────────
-    valid_edge_indices: list[int] = []
-    valid_edge_geoms: list = []
-    for eid, geom in enumerate(edge_geoms):
-        if geom is None or geom.is_empty:
-            continue
-        if geom.length < _MIN_EDGE_LENGTH:
-            continue
-        valid_edge_indices.append(eid)
-        valid_edge_geoms.append(geom)
+    with step("STRtree build (nodes + edges)"):
+        node_tree = STRtree([Point(x, y) for x, y in node_xy])
 
-    edge_tree = STRtree(valid_edge_geoms)
+        # ── Build edge spatial index ──────────────────────────────────────
+        valid_edge_indices: list[int] = []
+        valid_edge_geoms: list = []
+        for eid, geom in enumerate(edge_geoms):
+            if geom is None or geom.is_empty:
+                continue
+            if geom.length < _MIN_EDGE_LENGTH:
+                continue
+            valid_edge_indices.append(eid)
+            valid_edge_geoms.append(geom)
+
+        edge_tree = STRtree(valid_edge_geoms)
     print(f"  Valid edges for snapping: {len(valid_edge_indices)} "
           f"/ {len(edge_geoms)} total")
 
@@ -333,42 +385,43 @@ def snap_to_graph(
     n_edge_snapped = 0
     n_fallback = 0
 
-    for x, y in od_points:
-        pt = Point(x, y)
+    with step("snap loop (Python per-point)"):
+        for x, y in od_points:
+            pt = Point(x, y)
 
-        nearest_valid_idx = edge_tree.nearest(pt)
-        nearest_geom = valid_edge_geoms[nearest_valid_idx]
-        best_dist = nearest_geom.distance(pt)
+            nearest_valid_idx = edge_tree.nearest(pt)
+            nearest_geom = valid_edge_geoms[nearest_valid_idx]
+            best_dist = nearest_geom.distance(pt)
 
-        # ── Ambiguity check ───────────────────────────────────────────────
-        use_fallback = False
-        if best_dist > 0:
-            search_dist = best_dist * _AMBIGUITY_RATIO
-            candidate_indices = edge_tree.query(pt.buffer(search_dist))
-            n_tied = sum(
-                1 for ci in candidate_indices
-                if valid_edge_geoms[ci].distance(pt) <= search_dist
-            )
-            if n_tied > 2:
-                use_fallback = True
+            # ── Ambiguity check ───────────────────────────────────────────
+            use_fallback = False
+            if best_dist > 0:
+                search_dist = best_dist * _AMBIGUITY_RATIO
+                candidate_indices = edge_tree.query(pt.buffer(search_dist))
+                n_tied = sum(
+                    1 for ci in candidate_indices
+                    if valid_edge_geoms[ci].distance(pt) <= search_dist
+                )
+                if n_tied > 2:
+                    use_fallback = True
 
-        if use_fallback:
-            snapped.append(int(node_tree.nearest(pt)))
-            n_fallback += 1
-            continue
+            if use_fallback:
+                snapped.append(int(node_tree.nearest(pt)))
+                n_fallback += 1
+                continue
 
-        # ── Pick closest endpoint of the winning edge ─────────────────────
-        sx, sy = src_xy[nearest_valid_idx]
-        tx, ty = tgt_xy[nearest_valid_idx]
-        d_src = (x - sx) ** 2 + (y - sy) ** 2
-        d_tgt = (x - tx) ** 2 + (y - ty) ** 2
+            # ── Pick closest endpoint of the winning edge ─────────────────
+            sx, sy = src_xy[nearest_valid_idx]
+            tx, ty = tgt_xy[nearest_valid_idx]
+            d_src = (x - sx) ** 2 + (y - sy) ** 2
+            d_tgt = (x - tx) ** 2 + (y - ty) ** 2
 
-        real_eid = valid_edge_indices[nearest_valid_idx]
-        if d_src <= d_tgt:
-            snapped.append(edge_tuples[real_eid][0])
-        else:
-            snapped.append(edge_tuples[real_eid][1])
-        n_edge_snapped += 1
+            real_eid = valid_edge_indices[nearest_valid_idx]
+            if d_src <= d_tgt:
+                snapped.append(edge_tuples[real_eid][0])
+            else:
+                snapped.append(edge_tuples[real_eid][1])
+            n_edge_snapped += 1
 
     print(f"  Edge-snapped: {n_edge_snapped} | "
           f"Fallback (nearest node): {n_fallback}")
