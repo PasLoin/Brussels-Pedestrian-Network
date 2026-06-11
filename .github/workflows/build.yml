@@ -103,6 +103,11 @@ env:
   SIDEWALK_GAP_MAX_ANGLE: 65   # max angle diff (°) for parallel check
   SIDEWALK_GAP_MIN_COVERAGE: 0.4  # min fraction of road length covered by footway
 
+  # ── Missing crossing detection ─────────────────────────────────────────
+  CROSSING_NODE_ROAD_SEARCH_M: 20   # max distance (m) from crossing node to eligible road
+  CROSSING_NODE_WINDOW_M: 30        # half-length (m) of road subsegment to analyse
+  CROSSING_WAY_SEARCH_RADIUS_M: 20  # radius (m) to check for an existing crossing way
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -258,6 +263,7 @@ jobs:
             sidewalk_roads.geojson
             sidewalk_roads_raw.geojson
             sidewalk_footways_raw.geojson
+            missing_crossings.geojson
             highways.geojson
             addresses.geojson
             stats.json
@@ -284,7 +290,8 @@ jobs:
             --named-layer=flow_edges:flow_edges.geojson \
             --named-layer=street_scores:street_scores.geojson \
             --named-layer=sidewalk_gaps:sidewalk_gaps.geojson \
-            --named-layer=sidewalk_roads:sidewalk_roads.geojson
+            --named-layer=sidewalk_roads:sidewalk_roads.geojson \
+            --named-layer=missing_crossings:missing_crossings.geojson
 
       # ── Deploy ──────────────────────────────────────────────────────────
       - name: Add build timestamp to state.txt
