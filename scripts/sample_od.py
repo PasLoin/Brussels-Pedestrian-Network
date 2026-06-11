@@ -158,7 +158,7 @@ def _sample_side_geographic(
 
 def sample_od_points(
     addresses_path: str = "addresses.geojson",
-) -> tuple[list[tuple[float, float]], list[str], list[str]]:
+) -> tuple[list[tuple[float, float]], list[str], list[str], gpd.GeoDataFrame]:
     """Sample OD points from address data.
 
     Returns
@@ -169,6 +169,12 @@ def sample_od_points(
         Street name for each point.
     od_sides : list of str
         ``"even"`` or ``"odd"`` for each point.
+    addr : GeoDataFrame
+        Prepared address data in EPSG:31370 (point geometries,
+        ``addr:street`` column).  Returned so downstream consumers
+        (e.g. walkability score export) can compute per-street
+        centroids without re-reading the GeoJSON file from disk —
+        saves ~40 s on the Brussels dataset.
     """
     use_geographic = OD_SAMPLE_INTERVAL_M > 0
     if use_geographic:
@@ -303,7 +309,7 @@ def sample_od_points(
 
     print(f"  OD points: {len(od_points)}")
     print(f"  Streets both sides: {streets_both} | one side: {streets_one}")
-    return od_points, od_streets, od_sides
+    return od_points, od_streets, od_sides, addr
 
 
 # ─────────────────────────────────────────────────────────────────────────────
