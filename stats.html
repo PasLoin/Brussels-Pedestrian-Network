@@ -219,6 +219,17 @@ fetch('./stats.json')
   .then(render)
   .catch(e => { document.getElementById('loading').textContent = 'Erreur : ' + e; });
 
+
+function escapeHTML(str) {
+  if (!str) return str;
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 function render(s) {
   const el = document.getElementById('main');
   el.innerHTML = '';
@@ -239,28 +250,28 @@ function render(s) {
       <div class="kpi-grid">
         <div class="kpi">
           <div class="kpi-label">Longueur totale</div>
-          <div class="kpi-val">${fkm(net.total_km)} <span class="kpi-unit">km</span></div>
+          <div class="kpi-val">${escapeHTML(fkm(net.total_km))} <span class="kpi-unit">km</span></div>
         </div>
         <div class="kpi">
           <div class="kpi-label">Noeuds</div>
-          <div class="kpi-val">${fmt(graph.nodes)}</div>
+          <div class="kpi-val">${escapeHTML(fmt(graph.nodes))}</div>
         </div>
         <div class="kpi">
           <div class="kpi-label">Arêtes</div>
-          <div class="kpi-val">${fmt(graph.edges)}</div>
+          <div class="kpi-val">${escapeHTML(fmt(graph.edges))}</div>
         </div>
         <div class="kpi">
           <div class="kpi-label">Piéton dédié</div>
-          <div class="kpi-val">${fkm(catD.pedestrian)} <span class="kpi-unit">km</span></div>
+          <div class="kpi-val">${escapeHTML(fkm(catD.pedestrian))} <span class="kpi-unit">km</span></div>
         </div>
         <div class="kpi">
           <div class="kpi-label">Routes</div>
-          <div class="kpi-val">${fkm(catD.road)} <span class="kpi-unit">km</span></div>
+          <div class="kpi-val">${escapeHTML(fkm(catD.road))} <span class="kpi-unit">km</span></div>
         </div>
         <div class="kpi">
           <div class="kpi-label">Cycleways</div>
-          <div class="kpi-val">${fkm((catD.cycleway_foot_yes || 0) + (catD.cycleway_no_foot || 0))} <span class="kpi-unit">km</span></div>
-          <div class="kpi-sub">foot=yes : ${fkm(catD.cycleway_foot_yes)} · no foot : ${fkm(catD.cycleway_no_foot)}</div>
+          <div class="kpi-val">${escapeHTML(fkm((catD.cycleway_foot_yes || 0) + (catD.cycleway_no_foot || 0)))} <span class="kpi-unit">km</span></div>
+          <div class="kpi-sub">foot=yes : ${escapeHTML(fkm(catD.cycleway_foot_yes))} · no foot : ${escapeHTML(fkm(catD.cycleway_no_foot))}</div>
         </div>
       </div>
       <div class="charts">
@@ -286,20 +297,20 @@ function render(s) {
       <div class="kpi-grid">
         <div class="kpi">
           <div class="kpi-label">Segments routiers</div>
-          <div class="kpi-val">${fmt(swRoad.total_road_ways)}</div>
+          <div class="kpi-val">${escapeHTML(fmt(swRoad.total_road_ways))}</div>
         </div>
         <div class="kpi">
           <div class="kpi-label">Documentés</div>
-          <div class="kpi-val">${fpct(docPct)}</div>
+          <div class="kpi-val">${escapeHTML(fpct(docPct))}</div>
           <div class="kpi-sub">separate + yes + documenté</div>
         </div>
         <div class="kpi">
           <div class="kpi-label">Partiels</div>
-          <div class="kpi-val">${fpct(pctS.partial)}</div>
+          <div class="kpi-val">${escapeHTML(fpct(pctS.partial))}</div>
         </div>
         <div class="kpi">
           <div class="kpi-label">Sans tag</div>
-          <div class="kpi-val">${fpct(pctS.unknown)}</div>
+          <div class="kpi-val">${escapeHTML(fpct(pctS.unknown))}</div>
         </div>
       </div>
       <div class="charts">
@@ -321,23 +332,23 @@ function render(s) {
       <div class="kpi-grid">
         <div class="kpi">
           <div class="kpi-label">Routes analysées</div>
-          <div class="kpi-val">${fmt(gaps.roads_analysed)}</div>
-          <div class="kpi-sub">${fmt(gaps.skipped_documented)} exclues (documentées)</div>
+          <div class="kpi-val">${escapeHTML(fmt(gaps.roads_analysed))}</div>
+          <div class="kpi-sub">${escapeHTML(fmt(gaps.skipped_documented))} exclues (documentées)</div>
         </div>
         <div class="kpi">
           <div class="kpi-label">Deux côtés</div>
-          <div class="kpi-val">${fmt(gaps.both_sides)}</div>
-          <div class="kpi-sub">${fkm(gaps.both_length_km)} km</div>
+          <div class="kpi-val">${escapeHTML(fmt(gaps.both_sides))}</div>
+          <div class="kpi-sub">${escapeHTML(fkm(gaps.both_length_km))} km</div>
         </div>
         <div class="kpi">
           <div class="kpi-label">Un seul côté</div>
-          <div class="kpi-val">${fmt(gaps.one_side_gap)}</div>
-          <div class="kpi-sub">${fkm(gaps.gap_length_km)} km</div>
+          <div class="kpi-val">${escapeHTML(fmt(gaps.one_side_gap))}</div>
+          <div class="kpi-sub">${escapeHTML(fkm(gaps.gap_length_km))} km</div>
         </div>
         <div class="kpi">
           <div class="kpi-label">Aucun côté</div>
-          <div class="kpi-val">${fmt(gaps.neither_side)}</div>
-          <div class="kpi-sub">${fkm(gaps.neither_length_km)} km</div>
+          <div class="kpi-val">${escapeHTML(fmt(gaps.neither_side))}</div>
+          <div class="kpi-sub">${escapeHTML(fkm(gaps.neither_length_km))} km</div>
         </div>
       </div>
       <div class="charts">
@@ -359,19 +370,19 @@ function render(s) {
       <div class="kpi-grid">
         <div class="kpi">
           <div class="kpi-label">Rues évaluées</div>
-          <div class="kpi-val">${fmt(walk.streets_scored)}</div>
+          <div class="kpi-val">${escapeHTML(fmt(walk.streets_scored))}</div>
         </div>
         <div class="kpi">
           <div class="kpi-label">Score moyen</div>
-          <div class="kpi-val">${walk.walkability_mean != null ? (walk.walkability_mean * 100).toFixed(0) : '—'} <span class="kpi-unit">%</span></div>
+          <div class="kpi-val">${escapeHTML(walk.walkability_mean != null ? (walk.walkability_mean * 100).toFixed(0) : '—')} <span class="kpi-unit">%</span></div>
         </div>
         <div class="kpi">
           <div class="kpi-label">Médian</div>
-          <div class="kpi-val">${walk.walkability_median != null ? (walk.walkability_median * 100).toFixed(0) : '—'} <span class="kpi-unit">%</span></div>
+          <div class="kpi-val">${escapeHTML(walk.walkability_median != null ? (walk.walkability_median * 100).toFixed(0) : '—')} <span class="kpi-unit">%</span></div>
         </div>
         <div class="kpi">
           <div class="kpi-label">Plage</div>
-          <div class="kpi-val">${walk.walkability_min != null ? (walk.walkability_min * 100).toFixed(0) : '—'}–${walk.walkability_max != null ? (walk.walkability_max * 100).toFixed(0) : '—'} <span class="kpi-unit">%</span></div>
+          <div class="kpi-val">${escapeHTML(walk.walkability_min != null ? (walk.walkability_min * 100).toFixed(0) : '—')}–${escapeHTML(walk.walkability_max != null ? (walk.walkability_max * 100).toFixed(0) : '—')} <span class="kpi-unit">%</span></div>
         </div>
       </div>
     </div>`;
@@ -383,19 +394,19 @@ function render(s) {
       <div class="kpi-grid">
         <div class="kpi">
           <div class="kpi-label">Trajets routés</div>
-          <div class="kpi-val">${fmt(routing.routed_trips)}</div>
+          <div class="kpi-val">${escapeHTML(fmt(routing.routed_trips))}</div>
         </div>
         <div class="kpi">
           <div class="kpi-label">Distance moyenne</div>
-          <div class="kpi-val">${routing.avg_distance_m != null ? (routing.avg_distance_m / 1000).toFixed(2) : '—'} <span class="kpi-unit">km</span></div>
+          <div class="kpi-val">${escapeHTML(routing.avg_distance_m != null ? (routing.avg_distance_m / 1000).toFixed(2) : '—')} <span class="kpi-unit">km</span></div>
         </div>
         <div class="kpi">
           <div class="kpi-label">Points OD</div>
-          <div class="kpi-val">${fmt(od.od_points)}</div>
+          <div class="kpi-val">${escapeHTML(fmt(od.od_points))}</div>
         </div>
         <div class="kpi">
           <div class="kpi-label">Temps de calcul</div>
-          <div class="kpi-val">${routing.routing_time_s != null ? routing.routing_time_s.toFixed(1) : '—'} <span class="kpi-unit">s</span></div>
+          <div class="kpi-val">${escapeHTML(routing.routing_time_s != null ? routing.routing_time_s.toFixed(1) : '—')} <span class="kpi-unit">s</span></div>
         </div>
       </div>
     </div>`;
@@ -429,7 +440,7 @@ function renderCharts(s) {
     new Chart(document.getElementById('c-cat'), {
       type: 'doughnut',
       data: {
-        labels: ck.map(k => INFRA_L[k] || k),
+        labels: ck.map(k => escapeHTML(INFRA_L[k] || k)),
         datasets: [{ data: ck.map(k => catD[k]), backgroundColor: ck.map(k => INFRA_C[k] || C.gray), borderWidth: 0 }],
       },
       options: { ...dOpts, plugins: { ...dOpts.plugins, tooltip: { callbacks: { label: c => c.label + ' : ' + fkm(c.raw) + ' km' } } } },
@@ -444,7 +455,7 @@ function renderCharts(s) {
     new Chart(document.getElementById('c-hw'), {
       type: 'bar',
       data: {
-        labels: hk,
+        labels: hk.map(k => escapeHTML(k)),
         datasets: [{ data: hk.map(k => hwD[k]), backgroundColor: hk.map(hwC), borderRadius: 3, borderSkipped: false }],
       },
       options: { ...bOpts('km'), indexAxis: 'y' },
@@ -457,7 +468,7 @@ function renderCharts(s) {
   new Chart(document.getElementById('c-sw-n'), {
     type: 'bar',
     data: {
-      labels: swK.map(k => SW_L[k]),
+      labels: swK.map(k => escapeHTML(SW_L[k])),
       datasets: [{ data: swK.map(k => byS[k] || 0), backgroundColor: swK.map(k => SW_C[k]), borderRadius: 3, borderSkipped: false }],
     },
     options: bOpts('segments'),
@@ -467,7 +478,7 @@ function renderCharts(s) {
   new Chart(document.getElementById('c-sw-km'), {
     type: 'bar',
     data: {
-      labels: swK.map(k => SW_L[k]),
+      labels: swK.map(k => escapeHTML(SW_L[k])),
       datasets: [{ data: swK.map(k => kmS[k] || 0), backgroundColor: swK.map(k => SW_C[k]), borderRadius: 3, borderSkipped: false }],
     },
     options: bOpts('km'),
