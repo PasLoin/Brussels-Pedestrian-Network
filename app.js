@@ -49,14 +49,11 @@ function escapeHTML(str) {
 function updateFlowFilter(rawValue) {
   const minPct = parseInt(rawValue, 10);
   document.getElementById("flow-threshold-val").textContent = minPct + " %";
-
   if (!mapRef) return;
-
   const baseFilter = ["==", ["get", "infra_type"], "road"];
   const filter = minPct > 0
     ? ["all", baseFilter, [">=", ["to-number", ["get", "flow_pct"], 0], minPct]]
     : baseFilter;
-
   try { mapRef.setFilter("flow-road", filter); } catch (_) { }
 }
 
@@ -84,6 +81,29 @@ function updateSidewalkFilter() {
     filter = ["in", ["get", "sw"], ["literal", [...activeSidewalkStatuses]]];
   }
   try { mapRef.setFilter("sidewalk-roads", filter); } catch (_) { }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  MISSING CROSSINGS TYPE FILTER
+// ══════════════════════════════════════════════════════════════════════════════
+
+const MISSING_CROSSING_TYPES = [
+  { value: "missing_way", label: "Way non mappé",               color: "#f97316" },
+  { value: "missing_tag", label: "Tag footway=crossing absent",  color: "#eab308" },
+];
+const activeMissingTypes = new Set(MISSING_CROSSING_TYPES.map(t => t.value));
+
+function updateMissingCrossingsFilter() {
+  if (!mapRef) return;
+  let filter;
+  if (activeMissingTypes.size === 0) {
+    filter = ["==", ["get", "type"], "__none__"];
+  } else if (activeMissingTypes.size === MISSING_CROSSING_TYPES.length) {
+    filter = null;
+  } else {
+    filter = ["in", ["get", "type"], ["literal", [...activeMissingTypes]]];
+  }
+  try { mapRef.setFilter("missing-crossings", filter); } catch (_) { }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -120,7 +140,7 @@ class MinHeap {
 }
 
 let graphData = null;
-let adjList = null;
+let adjList   = null;
 let graphReady = false;
 
 fetch("./graph.json")
@@ -206,9 +226,9 @@ function buildRoute(edgePath) {
     });
   }
   const geojson = { type: "FeatureCollection", features };
-  const pedPct = totalM > 0 ? pedM / totalM * 100 : 0;
+  const pedPct  = totalM > 0 ? pedM  / totalM * 100 : 0;
   const roadPct = totalM > 0 ? roadM / totalM * 100 : 0;
-  const cycPct = totalM > 0 ? cycM / totalM * 100 : 0;
+  const cycPct  = totalM > 0 ? cycM  / totalM * 100 : 0;
   const walkMin = Math.round(totalM / 80);
   return {
     geojson, totalM: Math.round(totalM),
@@ -227,9 +247,9 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape" && navMode)
 function toggleNavMode() {
   if (!graphReady) return;
   navMode = !navMode;
-  const btn = document.getElementById("nav-btn");
-  btn.setAttribute("aria-pressed", navMode);
+  const btn  = document.getElementById("nav-btn");
   const hint = document.getElementById("nav-hint");
+  btn.setAttribute("aria-pressed", navMode);
   if (navMode) {
     btn.classList.add("active");
     document.getElementById("nav-btn-label").textContent = "Navigation (actif)";
@@ -248,7 +268,7 @@ function toggleNavMode() {
 function clearRoute() {
   navStep = 0;
   if (startMarker) { startMarker.remove(); startMarker = null; }
-  if (endMarker) { endMarker.remove(); endMarker = null; }
+  if (endMarker)   { endMarker.remove();   endMarker   = null; }
   document.getElementById("route-panel").classList.remove("visible");
   if (mapRef) {
     const src = mapRef.getSource("nav-route");
@@ -287,15 +307,15 @@ function handleNavClick(e) {
       document.getElementById("route-dist").textContent = route.totalM >= 1000
         ? `${(route.totalM / 1000).toFixed(2)} km` : `${route.totalM} m`;
       document.getElementById("route-time").textContent = `≈ ${route.walkMin} min à pied`;
-      document.getElementById("bar-ped").style.width = route.pedPct + "%";
+      document.getElementById("bar-ped").style.width  = route.pedPct  + "%";
       document.getElementById("bar-road").style.width = route.roadPct + "%";
-      document.getElementById("bar-cyc").style.width = route.cycPct + "%";
-      document.getElementById("stat-ped-m").textContent = `${route.pedM} m`;
-      document.getElementById("stat-road-m").textContent = `${route.roadM} m`;
-      document.getElementById("stat-cyc-m").textContent = `${route.cycM} m`;
-      document.getElementById("stat-ped-pct").textContent = `${route.pedPct.toFixed(0)}%`;
+      document.getElementById("bar-cyc").style.width  = route.cycPct  + "%";
+      document.getElementById("stat-ped-m").textContent   = `${route.pedM} m`;
+      document.getElementById("stat-road-m").textContent  = `${route.roadM} m`;
+      document.getElementById("stat-cyc-m").textContent   = `${route.cycM} m`;
+      document.getElementById("stat-ped-pct").textContent  = `${route.pedPct.toFixed(0)}%`;
       document.getElementById("stat-road-pct").textContent = `${route.roadPct.toFixed(0)}%`;
-      document.getElementById("stat-cyc-pct").textContent = `${route.cycPct.toFixed(0)}%`;
+      document.getElementById("stat-cyc-pct").textContent  = `${route.cycPct.toFixed(0)}%`;
       document.getElementById("route-panel").classList.add("visible");
       document.getElementById("nav-hint").textContent = `Calculé en ${dt} ms`;
       navStep = 2;
@@ -319,15 +339,15 @@ fetch("./state.txt")
       try {
         const state = JSON.parse(jsonMatch[0]);
         if (state.timestamp) {
-          const osmDate = new Date(state.timestamp);
-          document.getElementById("osm-date").textContent = `OSM : ${osmDate.toLocaleString("fr-BE", fmtOpts)}`;
+          document.getElementById("osm-date").textContent =
+            `OSM : ${new Date(state.timestamp).toLocaleString("fr-BE", fmtOpts)}`;
         }
       } catch (e) { console.warn("state.txt JSON parse error:", e); }
     }
     const buildMatch = txt.match(/build_timestamp=(.+)/);
     if (buildMatch) {
-      const buildDate = new Date(buildMatch[1].trim());
-      document.getElementById("build-date").textContent = `MAJ : ${buildDate.toLocaleString("fr-BE", fmtOpts)}`;
+      document.getElementById("build-date").textContent =
+        `MAJ : ${new Date(buildMatch[1].trim()).toLocaleString("fr-BE", fmtOpts)}`;
     }
   })
   .catch(() => { document.getElementById("osm-date").textContent = "OSM : inconnue"; });
@@ -348,7 +368,7 @@ maplibregl.addProtocol("pmtiles", protocol.tile.bind(protocol));
 const PMTILES_URL = new URL("./pedestrian.pmtiles.gz", window.location.href).href;
 const EDIT_MIN_ZOOM = 16;
 
-const ROAD_GRAY = "#d5d5d5";
+const ROAD_GRAY   = "#d5d5d5";
 const ROAD_BORDER = "#aaaaaa";
 
 const BASE_STYLE_OVERRIDES = {
@@ -527,21 +547,23 @@ const PEDESTRIAN_LAYERS = [
     }
   },
   {
+    // Visible from zoom 12.
     // Two sub-types distinguished by color:
-    //   missing_way  (#f97316 orange)  — no footway connected at all
-    //   missing_tag  (#eab308 yellow)  — footway exists but lacks footway=crossing tag
+    //   missing_way (#f97316 orange) — no footway connected at all
+    //   missing_tag (#eab308 yellow) — footway present but lacks footway=crossing tag
     id: "missing-crossings", type: "circle", source: "pedestrian",
     "source-layer": "missing_crossings",
-    minzoom: 14, layout: { visibility: "none" },
+    minzoom: 12,
+    layout: { visibility: "none" },
     paint: {
       "circle-color": ["match", ["get", "type"],
         "missing_way", "#f97316",
         "missing_tag", "#eab308",
         "#f97316"
       ],
-      "circle-radius": ["interpolate", ["linear"], ["zoom"], 14, 5, 18, 10],
+      "circle-radius": ["interpolate", ["linear"], ["zoom"], 12, 3, 16, 8, 18, 12],
       "circle-stroke-color": "#fff",
-      "circle-stroke-width": 2,
+      "circle-stroke-width": 1.5,
       "circle-opacity": 0.9,
     }
   },
@@ -636,7 +658,7 @@ fetch("https://tiles.openfreemap.org/styles/liberty")
         );
         libertyStyle.layers = (libertyStyle.layers || []).map(layer => {
           const localPaint = localPaintById.get(layer.id) || {};
-          const overrides = BASE_STYLE_OVERRIDES[layer.id] || {};
+          const overrides  = BASE_STYLE_OVERRIDES[layer.id] || {};
           return { ...layer, paint: { ...(layer.paint || {}), ...localPaint, ...overrides } };
         });
         initMap(libertyStyle);
@@ -701,9 +723,16 @@ function initMap(style) {
 
       const swatch = document.createElement("div");
       swatch.className = `legend-${swatchType}`;
-      if (color2) { swatch.classList.add(swatchType === "dot" ? "gradient-dot" : "gradient"); swatch.style.setProperty("--c1", color); swatch.style.setProperty("--c2", color2); }
-      else if (dashed) { swatch.classList.add("dashed"); swatch.style.setProperty("--c", color); }
-      else { swatch.style.background = color; }
+      if (color2) {
+        swatch.classList.add(swatchType === "dot" ? "gradient-dot" : "gradient");
+        swatch.style.setProperty("--c1", color);
+        swatch.style.setProperty("--c2", color2);
+      } else if (dashed) {
+        swatch.classList.add("dashed");
+        swatch.style.setProperty("--c", color);
+      } else {
+        swatch.style.background = color;
+      }
       const lbl = document.createElement("span");
       lbl.className = "legend-label";
       lbl.textContent = label;
@@ -727,6 +756,73 @@ function initMap(style) {
       return item;
     };
 
+    // ── Helper to build a sub-filter block ────────────────────────────────
+    // Used for both the sidewalk-status and the missing-crossings sub-filters.
+    const makeSubFilter = ({ items, activeSet, dataKey, updateFn, parentSub }) => {
+      const header = document.createElement("div");
+      header.className = "legend-sub-header";
+      header.innerHTML = `<span>Filtrer par type</span>`;
+
+      const resetBtn = document.createElement("button");
+      resetBtn.className = "legend-sub-reset";
+      resetBtn.type = "button";
+
+      const updateResetLabel = () => {
+        resetBtn.textContent = activeSet.size === items.length
+          ? "Tout désélectionner" : "Tout sélectionner";
+      };
+
+      resetBtn.onclick = (e) => {
+        e.stopPropagation();
+        const allOn = activeSet.size === items.length;
+        activeSet.clear();
+        if (!allOn) items.forEach(it => activeSet.add(it.value));
+        parentSub.querySelectorAll(".legend-sub-item").forEach(el => {
+          el.classList.toggle("hidden", !activeSet.has(el.dataset[dataKey]));
+        });
+        updateResetLabel();
+        updateFn();
+      };
+      header.appendChild(resetBtn);
+      parentSub.appendChild(header);
+
+      items.forEach(it => {
+        const item = document.createElement("div");
+        item.className = "legend-sub-item";
+        item.dataset[dataKey] = it.value;
+        item.setAttribute("role", "button");
+        item.setAttribute("tabindex", "0");
+        item.setAttribute("aria-pressed", "true");
+
+        const dot = document.createElement("div");
+        dot.className = "legend-sub-dot";
+        dot.style.background = it.color;
+
+        const lbl = document.createElement("span");
+        lbl.className = "legend-sub-label";
+        lbl.textContent = it.label;
+
+        item.append(dot, lbl);
+
+        const toggle = (e) => {
+          e.stopPropagation();
+          const isActive = activeSet.has(it.value);
+          if (isActive) { activeSet.delete(it.value); item.classList.add("hidden"); }
+          else          { activeSet.add(it.value);    item.classList.remove("hidden"); }
+          item.setAttribute("aria-pressed", !isActive);
+          updateResetLabel();
+          updateFn();
+        };
+        item.onclick = toggle;
+        item.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(e); } };
+        parentSub.appendChild(item);
+      });
+
+      updateResetLabel();
+      return resetBtn;  // returned so caller can call updateResetLabel externally if needed
+    };
+
+    // ── Sections ──────────────────────────────────────────────────────────
     addSection("Routage simulé");
     legendEl.appendChild(makeItem({ layerId: "flow-ped",      label: "Flux piéton",        color: "#bbf7d0", color2: "#14532d" }));
     legendEl.appendChild(makeItem({ layerId: "flow-cycleway",  label: "Flux cycleway",       color: "#bfdbfe", color2: "#3b0764" }));
@@ -736,34 +832,37 @@ function initMap(style) {
     addSection("Analyse spatiale et qualité");
     legendEl.appendChild(makeItem({ layerId: "sidewalk-gaps", label: "Trottoir un seul côté", color: "#f59e0b", dashed: true }));
 
-    // ── Traversée manquante — toggle + color key ──────────────────────────
+    // ── Traversée manquante + sub-filter ─────────────────────────────────
+    const mcSub = document.createElement("div");
+    mcSub.className = "legend-sub";
+
     legendEl.appendChild(makeItem({
       layerId: "missing-crossings",
       label: "Traversée manquante",
       color: "#f97316",
       swatchType: "dot",
+      onToggle: (isVisible) => {
+        mcSub.classList.toggle("parent-hidden", !isVisible);
+        if (isVisible) {
+          MISSING_CROSSING_TYPES.forEach(t => activeMissingTypes.add(t.value));
+          mcSub.querySelectorAll(".legend-sub-item").forEach(el => el.classList.remove("hidden"));
+          updateMissingCrossingsFilter();
+        }
+      }
     }));
-    // Non-interactive sub-key showing the two colors
-    const mcKey = document.createElement("div");
-    mcKey.style.cssText = "margin:2px 4px 8px 4px;display:flex;flex-direction:column;gap:3px;";
-    mcKey.innerHTML = `
-      <div style="display:flex;align-items:center;gap:8px;padding:1px 4px">
-        <div style="width:10px;height:10px;border-radius:50%;background:#f97316;flex-shrink:0;border:1.5px solid #fff;box-shadow:0 0 0 1px #f9731680"></div>
-        <span style="font-size:11px;color:#555">Way non mappé</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;padding:1px 4px">
-        <div style="width:10px;height:10px;border-radius:50%;background:#eab308;flex-shrink:0;border:1.5px solid #fff;box-shadow:0 0 0 1px #eab30880"></div>
-        <span style="font-size:11px;color:#555">Tag footway=crossing absent</span>
-      </div>
-    `;
-    legendEl.appendChild(mcKey);
+
+    makeSubFilter({
+      items:     MISSING_CROSSING_TYPES,
+      activeSet: activeMissingTypes,
+      dataKey:   "type",
+      updateFn:  updateMissingCrossingsFilter,
+      parentSub: mcSub,
+    });
+    legendEl.appendChild(mcSub);
 
     // ── Tags sidewalk + sub-filter ────────────────────────────────────────
     const swSub = document.createElement("div");
     swSub.className = "legend-sub";
-    const updateResetLabel = () => {
-      swReset.textContent = activeSidewalkStatuses.size === SIDEWALK_STATUSES.length ? "Tout désélectionner" : "Tout sélectionner";
-    };
 
     legendEl.appendChild(makeItem({
       layerId: "sidewalk-roads",
@@ -775,61 +874,18 @@ function initMap(style) {
         if (isVisible) {
           SIDEWALK_STATUSES.forEach(s => activeSidewalkStatuses.add(s.value));
           swSub.querySelectorAll(".legend-sub-item").forEach(el => el.classList.remove("hidden"));
-          updateResetLabel();
           updateSidewalkFilter();
         }
       }
     }));
 
-    const swHeader = document.createElement("div");
-    swHeader.className = "legend-sub-header";
-    swHeader.innerHTML = `<span>Filtrer par statut</span>`;
-    const swReset = document.createElement("button");
-    swReset.className = "legend-sub-reset";
-    swReset.type = "button";
-    swReset.onclick = (e) => {
-      e.stopPropagation();
-      const allOn = activeSidewalkStatuses.size === SIDEWALK_STATUSES.length;
-      activeSidewalkStatuses.clear();
-      if (!allOn) SIDEWALK_STATUSES.forEach(s => activeSidewalkStatuses.add(s.value));
-      swSub.querySelectorAll(".legend-sub-item").forEach(el => {
-        el.classList.toggle("hidden", !activeSidewalkStatuses.has(el.dataset.status));
-      });
-      updateResetLabel();
-      updateSidewalkFilter();
-    };
-    swHeader.appendChild(swReset);
-    swSub.appendChild(swHeader);
-
-    SIDEWALK_STATUSES.forEach(status => {
-      const item = document.createElement("div");
-      item.className = "legend-sub-item";
-      item.dataset.status = status.value;
-      item.setAttribute("role", "button");
-      item.setAttribute("tabindex", "0");
-      item.setAttribute("aria-pressed", "true");
-      const dot = document.createElement("div");
-      dot.className = "legend-sub-dot";
-      dot.style.background = status.color;
-      const lbl = document.createElement("span");
-      lbl.className = "legend-sub-label";
-      lbl.textContent = status.label;
-      item.append(dot, lbl);
-      const toggle = (e) => {
-        e.stopPropagation();
-        const isActive = activeSidewalkStatuses.has(status.value);
-        if (isActive) { activeSidewalkStatuses.delete(status.value); item.classList.add("hidden"); }
-        else { activeSidewalkStatuses.add(status.value); item.classList.remove("hidden"); }
-        item.setAttribute("aria-pressed", !isActive);
-        updateResetLabel();
-        updateSidewalkFilter();
-      };
-      item.onclick = toggle;
-      item.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(e); } };
-      swSub.appendChild(item);
+    makeSubFilter({
+      items:     SIDEWALK_STATUSES,
+      activeSet: activeSidewalkStatuses,
+      dataKey:   "status",
+      updateFn:  updateSidewalkFilter,
+      parentSub: swSub,
     });
-
-    updateResetLabel();
     legendEl.appendChild(swSub);
 
     addSection("Réseau de base");
@@ -859,7 +915,8 @@ function initMap(style) {
   });
 
   map.on("moveend", () => {
-    const z = map.getZoom(); const c = map.getCenter();
+    const z = map.getZoom();
+    const c = map.getCenter();
     document.getElementById("zoom-val").textContent = z.toFixed(1);
     const btn = document.getElementById("edit-btn");
     if (z >= EDIT_MIN_ZOOM) {
