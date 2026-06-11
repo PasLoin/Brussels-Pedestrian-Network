@@ -1,0 +1,88 @@
+name: Bench — Dijkstra parallelisation
+
+# Manual-only.  This workflow never runs on push or schedule; the user
+# triggers it from the Actions tab to get a one-shot measurement of
+# whether igraph.Graph.get_shortest_paths parallelises on the runner.
+#
+# Runtime: ~5 minutes (1 min setup + 1.5 min OSM extraction + 1.5 min
+# graph build + 1-2 min benchmark itself, depending on n_sources).
+on:
+  workflow_dispatch:
+    inputs:
+      n_sources:
+        description: Number of source nodes to benchmark
+        required: false
+        default: "1000"
+      n_targets:
+        description: Targets per source
+        required: false
+        default: "50"
+
+# Duplicates HIGHWAY_TYPES_ROUTING and OSM_PBF_URL from build.yml.
+# Acceptable cost — this workflow is self-contained and can be triggered
+# even if build.yml is mid-edit.
+env:
+  HIGHWAY_TYPES_ROUTING: >-
+    w/highway=footway
+    w/highway=pedestrian
+    w/highway=path
+    w/highway=living_street
+    w/highway=steps
+    w/highway=elevator
+    w/highway=cycleway
+    w/highway=residential
+    w/highway=service
+    w/highway=unclassified
+    w/highway=tertiary
+    w/highway=tertiary_link
+    w/highway=secondary
+    w/highway=secondary_link
+    w/highway=primary
+    w/highway=primary_link
+    w/foot=yes
+    w/foot=designated
+    n/highway=elevator
+    n/highway=crossing
+    n/amenity=elevator
+
+  OSM_PBF_URL: https://raw.githubusercontent.com/PasLoin/Osm-python-analyse_Belgium/main/pbf_analyse/history/Brussels-daily.pbf
+
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install system dependencies
+        # Only osmium needed for the bench — no tippecanoe or jq.
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends osmium-tool
+
+      - name: Install Python dependencies
+        run: pip install "shapely>=2" osmnx geopandas igraph numpy pyproj --break-system-packages
+
+      - name: Download OSM PBF
+        run: wget -O brussels.osm.pbf "$OSM_PBF_URL"
+
+      - name: Extract routing features
+        run: |
+          osmium tags-filter brussels.osm.pbf \
+            ${{ env.HIGHWAY_TYPES_ROUTING }} \
+            -o routing_raw.osm.pbf --overwrite
+          osmium cat routing_raw.osm.pbf -o routing_raw.osm --overwrite
+
+      - name: Show runner CPU info
+        # Useful context for interpreting the speedup numbers.
+        run: |
+          echo "=== Runner CPU ==="
+          nproc
+          lscpu | grep -E "Model name|CPU\(s\)|Thread|Core"
+
+      - name: Run Dijkstra parallelisation benchmark
+        env:
+          PYTHONPATH: scripts
+          BENCH_N_SOURCES: ${{ inputs.n_sources }}
+          BENCH_N_TARGETS: ${{ inputs.n_targets }}
+        run: python3 scripts/bench_dijkstra.py
