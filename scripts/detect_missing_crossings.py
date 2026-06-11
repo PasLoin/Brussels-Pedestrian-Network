@@ -280,31 +280,53 @@ def _load_roads(roads_path: str) -> tuple[gpd.GeoDataFrame, list, STRtree]:
     return gdf, geoms, STRtree(geoms)
 
 
-def _load_service_roads(service_roads_path: str) -> tuple[list, STRtree | None]:
-    """Load highway=service roads for the *exclusion* check.
+def _load_excluded_roads(
+    paths_and_types: list[tuple[str, str]],
+) -> tuple[list, STRtree | None]:
+    """Load roads/ways that disqualify a crossing node from analysis.
 
-    Crossing nodes physically located on a service road (driveway, parking
-    aisle, alley…) are conventionally not mapped with a crossing way —
-    no demarcation exists on the ground.  Including them produces noise
-    the mapper isn't expected to act on.
+    Crossing nodes physically located on these ways are rejected, since
+    they fall under conventions where a crossing way is not normally
+    mapped:
 
-    Service roads are NOT in ``sidewalk_roads_raw.geojson`` (the osmium
-    extract for sidewalk QA layers intentionally excludes them); a
-    separate ``service_roads_raw.geojson`` is exported by ``build.yml``
-    for this exclusion check.
+    * ``highway=service`` — driveways, parking aisles, alleys: no ground
+      demarcation.
+    * ``highway=cycleway`` — dedicated cycle infrastructure with no
+      pedestrian crossing way expected.
+    * ``highway=track`` — agricultural/forest tracks: out-of-scope for
+      urban pedestrian mapping.
+
+    Parameters
+    ----------
+    paths_and_types
+        Pairs of (geojson_path, expected highway tag).  Each file is
+        filtered to the LineString rows whose ``highway`` matches.
+        Missing files are silently skipped — keeps the pipeline robust
+        if a particular extract is empty.
+
+    Returns
+    -------
+    (geometries_list, STRtree or None)
+        STRtree is None when the union is empty.
     """
-    try:
-        gdf = gpd.read_file(service_roads_path)
-    except Exception as e:
-        print(f"  service_roads_raw.geojson not available: {e}")
+    all_geoms: list = []
+    for path, hw_tag in paths_and_types:
+        try:
+            gdf = gpd.read_file(path)
+        except Exception as e:
+            print(f"  {path} not available: {e}")
+            continue
+        gdf = gdf[gdf.geometry.geom_type == "LineString"].copy().to_crs("EPSG:31370")
+        if "highway" not in gdf.columns:
+            continue
+        gdf = gdf[gdf["highway"].apply(_safe_str) == hw_tag]
+        gdf = gdf[gdf.geometry.length >= 3.0]
+        n = len(gdf)
+        all_geoms.extend(list(gdf.geometry))
+        print(f"    {hw_tag}: {n}")
+    if not all_geoms:
         return [], None
-    gdf = gdf[gdf.geometry.geom_type == "LineString"].copy().to_crs("EPSG:31370")
-    if "highway" not in gdf.columns:
-        return [], None
-    gdf = gdf[gdf["highway"].apply(_safe_str) == "service"]
-    gdf = gdf[gdf.geometry.length >= 3.0]
-    geoms = list(gdf.geometry)
-    return geoms, (STRtree(geoms) if geoms else None)
+    return all_geoms, STRtree(all_geoms)
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -314,6 +336,8 @@ def detect_missing_crossings(
     footways_geojson_path:      str = "sidewalk_footways_raw.geojson",
     roads_geojson_path:         str = "sidewalk_roads_raw.geojson",
     service_roads_geojson_path: str = "service_roads_raw.geojson",
+    cycleways_geojson_path:     str = "cycleways_raw.geojson",
+    tracks_geojson_path:        str = "tracks_raw.geojson",
 ) -> dict:
     """Detect crossing nodes with missing way or missing footway=crossing tag.
 
@@ -352,9 +376,13 @@ def detect_missing_crossings(
         roads_gdf, road_geoms, road_tree = _load_roads(roads_geojson_path)
     print(f"  Eligible road segments: {len(roads_gdf)}")
 
-    with step("load service roads (exclusion)"):
-        svc_geoms, svc_tree = _load_service_roads(service_roads_geojson_path)
-    print(f"  service road segments: {len(svc_geoms)}")
+    with step("load excluded ways (service / cycleway / track)"):
+        excl_geoms, excl_tree = _load_excluded_roads([
+            (service_roads_geojson_path, "service"),
+            (cycleways_geojson_path,     "cycleway"),
+            (tracks_geojson_path,        "track"),
+        ])
+    print(f"  Excluded way segments total: {len(excl_geoms)}")
 
     if sw_tree is None:
         print("  No footway=sidewalk ways — skipping.")
@@ -364,7 +392,7 @@ def detect_missing_crossings(
 
     rows: list[dict] = []
     n_no_road     = 0
-    n_on_service  = 0
+    n_excluded    = 0   # node on service / cycleway / track
     n_fully_ok    = 0
     n_no_sw       = 0
     n_missing_way = 0
@@ -385,22 +413,24 @@ def detect_missing_crossings(
             road_geom = road_geoms[best_idx]
             best_dist = road_geom.distance(node_pt)
 
-            # 1b. Skip if the node sits on a service road ──────────────────
-            # Crossings on driveways / parking aisles are conventionally
-            # not mapped with a crossing way (no ground demarcation).
-            # We reject the node when a service road passes at least as
+            # 1b. Skip if the node sits on an excluded way type ────────────
+            # Crossings are by convention not mapped on:
+            #   - highway=service  (driveways, parking aisles, alleys)
+            #   - highway=cycleway (dedicated cycle infrastructure)
+            #   - highway=track    (agricultural / forest tracks)
+            # We reject the node when an excluded way passes at least as
             # close as the chosen eligible road — meaning the node is
-            # geometrically on or alongside a service way.
-            if svc_tree is not None:
-                svc_zone = node_pt.buffer(CROSSING_NODE_ROAD_SEARCH_M)
-                svc_cands = svc_tree.query(svc_zone)
-                on_service = False
-                for si in svc_cands:
-                    if svc_geoms[si].distance(node_pt) <= best_dist:
-                        on_service = True
+            # geometrically on or alongside that way rather than on the
+            # eligible road.
+            if excl_tree is not None:
+                excl_zone = node_pt.buffer(CROSSING_NODE_ROAD_SEARCH_M)
+                on_excluded = False
+                for ei in excl_tree.query(excl_zone):
+                    if excl_geoms[ei].distance(node_pt) <= best_dist:
+                        on_excluded = True
                         break
-                if on_service:
-                    n_on_service += 1
+                if on_excluded:
+                    n_excluded += 1
                     continue
 
             # 2. Tier-1: footway=crossing → fully mapped, skip ─────────────
@@ -468,18 +498,18 @@ def detect_missing_crossings(
         out_gdf.to_file("missing_crossings.geojson", driver="GeoJSON")
 
     n_total = len(crossing_nodes)
-    print(f"  Nodes analysed:                        {n_total}")
-    print(f"  Skipped — no eligible road:            {n_no_road}")
-    print(f"  Skipped — on service road:             {n_on_service}")
-    print(f"  Skipped — crossing fully mapped (t1):  {n_fully_ok}")
-    print(f"  Skipped — no parallel sidewalk (both): {n_no_sw}")
-    print(f"  Missing crossing WAY detected:         {n_missing_way}")
-    print(f"  Missing footway=crossing TAG detected: {n_missing_tag}")
+    print(f"  Nodes analysed:                          {n_total}")
+    print(f"  Skipped — no eligible road:              {n_no_road}")
+    print(f"  Skipped — on service / cycleway / track: {n_excluded}")
+    print(f"  Skipped — crossing fully mapped (t1):    {n_fully_ok}")
+    print(f"  Skipped — no parallel sidewalk (both):   {n_no_sw}")
+    print(f"  Missing crossing WAY detected:           {n_missing_way}")
+    print(f"  Missing footway=crossing TAG detected:   {n_missing_tag}")
 
     return {
         "crossing_nodes_found":        n_total,
         "no_eligible_road":            n_no_road,
-        "on_service_road":             n_on_service,
+        "on_excluded_way":             n_excluded,
         "crossing_fully_mapped":       n_fully_ok,
         "sidewalk_missing_or_skewed":  n_no_sw,
         "missing_crossing_way":        n_missing_way,
