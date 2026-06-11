@@ -14,12 +14,23 @@ output GeoJSON:
     A footway passes through the node (shared-node connectivity confirmed)
     but no ``footway=crossing`` sub-tag exists within
     ``CROSSING_WAY_SEARCH_RADIUS_M``.  The crossing exists geometrically
-    but the tag is absent, preventing routers and renderers from
-    recognising it.  Shown in yellow.
+    but the tag is absent.  Shown in yellow.
 
 Both categories require ``footway=sidewalk`` ways to be drawn on **both**
-sides of the road near the node — only locations where the pedestrian
-infrastructure already exists are flagged.
+sides of the road near the node AND roughly **parallel** to the road.
+
+Why the parallel filter matters
+--------------------------------
+Without an angle check, the search zones (7 m offset + 15 m radius) can
+reach the sidewalk of a *crossing* street.  At a diagonal intersection the
+angle between the two roads can be small enough that the cross-street
+sidewalk passes a naive "is there anything in this zone?" test on both
+sides, producing false positives.
+
+Restricting accepted sidewalks to those whose bearing is within
+``CROSSING_SIDEWALK_MAX_ANGLE`` degrees of the road bearing eliminates
+these cases: a perpendicular or sharply-angled cross-street sidewalk fails
+the bearing test and is ignored.
 
 Inputs
 ------
@@ -32,8 +43,8 @@ Output
 ``missing_crossings.geojson`` — point layer with properties:
   ``name``   road name
   ``type``   ``"missing_way"`` or ``"missing_tag"``
-  ``left``   True if footway=sidewalk found on left side
-  ``right``  True if footway=sidewalk found on right side
+  ``left``   True if a parallel footway=sidewalk was found on the left side
+  ``right``  True if a parallel footway=sidewalk was found on the right side
 """
 
 from __future__ import annotations
@@ -52,7 +63,7 @@ from timing import step
 _CROSSING_ROAD_TYPES = ROAD_TYPES_SIDEWALK_EXPECTED - {"service"}
 _MIN_ROAD_LENGTH = 15.0
 
-# ── Config ────────────────────────────────────────────────────────────────────
+# ── Module-level config ───────────────────────────────────────────────────────
 
 CROSSING_NODE_ROAD_SEARCH_M  = float(os.environ.get("CROSSING_NODE_ROAD_SEARCH_M",  20.0))
 CROSSING_WAY_SEARCH_RADIUS_M = float(os.environ.get("CROSSING_WAY_SEARCH_RADIUS_M", 20.0))
@@ -60,8 +71,17 @@ CROSSING_NODE_CONNECTED_M    = float(os.environ.get("CROSSING_NODE_CONNECTED_M",
 CROSSING_SIDEWALK_OFFSET_M   = float(os.environ.get("CROSSING_SIDEWALK_OFFSET_M",    7.0))
 CROSSING_SIDEWALK_SEARCH_M   = float(os.environ.get("CROSSING_SIDEWALK_SEARCH_M",   15.0))
 
+# Maximum angle (degrees) between the road and a candidate sidewalk.
+# Sidewalks from crossing streets fail this test and are ignored.
+# 40° is tight enough to reject diagonal cross-street sidewalks yet loose
+# enough to accept sidewalks on roads that curve slightly near the node.
+CROSSING_SIDEWALK_MAX_ANGLE  = float(os.environ.get("CROSSING_SIDEWALK_MAX_ANGLE",  40.0))
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# Minimum clipped length (metres) before trusting a piece's bearing.
+_MIN_CLIP_LEN = 3.0
+
+
+# ── String helper ─────────────────────────────────────────────────────────────
 
 def _safe_str(val) -> str:
     if val is None:
@@ -71,22 +91,33 @@ def _safe_str(val) -> str:
     return str(val).strip().lower()
 
 
-def _intersects_any(zone, tree: STRtree, geoms: list) -> bool:
-    return any(geoms[i].intersects(zone) for i in tree.query(zone))
+# ── Geometry helpers ──────────────────────────────────────────────────────────
 
+def _road_geometry_at(
+    road_geom, node_pt, step: float = 3.0
+) -> tuple[tuple[float, float] | None, float | None]:
+    """Return (left_perp_unit_vector, road_bearing_0_180) at *node_pt*.
 
-def _road_left_perp(road_geom, node_pt, step: float = 3.0) -> tuple[float, float] | None:
+    Both are derived from the same two interpolated points so we only
+    traverse the road once.  Returns (None, None) if the road is
+    degenerate at that location.
+    """
     d  = road_geom.project(node_pt)
     p1 = road_geom.interpolate(max(0.0, d - step))
     p2 = road_geom.interpolate(min(road_geom.length, d + step))
     dx, dy = p2.x - p1.x, p2.y - p1.y
     norm = math.hypot(dx, dy)
     if norm < 0.01:
-        return None
-    return (-dy / norm, dx / norm)
+        return None, None
+    perp    = (-dy / norm, dx / norm)
+    bearing = math.degrees(math.atan2(dy, dx)) % 180
+    return perp, bearing
 
 
-def _sidewalk_zones(node_pt: Point, perp: tuple[float, float]):
+def _sidewalk_zones(
+    node_pt: Point, perp: tuple[float, float]
+) -> tuple:
+    """Circular search zones on each side of the road at *node_pt*."""
     px, py = perp
     left  = Point(node_pt.x + px * CROSSING_SIDEWALK_OFFSET_M,
                   node_pt.y + py * CROSSING_SIDEWALK_OFFSET_M)
@@ -95,13 +126,83 @@ def _sidewalk_zones(node_pt: Point, perp: tuple[float, float]):
     return left.buffer(CROSSING_SIDEWALK_SEARCH_M), right.buffer(CROSSING_SIDEWALK_SEARCH_M)
 
 
-# ── Loaders ───────────────────────────────────────────────────────────────────
+def _iter_linestrings(geom):
+    """Yield each LineString contained in *geom*."""
+    gt = geom.geom_type
+    if gt == "LineString":
+        yield geom
+    elif gt in ("MultiLineString", "GeometryCollection"):
+        for sub in geom.geoms:
+            yield from _iter_linestrings(sub)
+
+
+def _piece_bearing(piece) -> float | None:
+    """Bearing (0–180°) of a LineString from first to last coord."""
+    try:
+        coords = list(piece.coords)
+    except Exception:
+        return None
+    if len(coords) < 2:
+        return None
+    dx = coords[-1][0] - coords[0][0]
+    dy = coords[-1][1] - coords[0][1]
+    norm = math.hypot(dx, dy)
+    if norm < 0.01:
+        return None
+    return math.degrees(math.atan2(dy, dx)) % 180
+
+
+def _angle_diff(a: float, b: float) -> float:
+    """Unsigned bearing difference in [0, 90]."""
+    d = abs(a - b)
+    return 180 - d if d > 90 else d
+
+
+def _has_parallel_sidewalk(
+    zone, road_bearing: float, tree: STRtree, geoms: list
+) -> bool:
+    """Return True if any footway=sidewalk in *zone* is roughly parallel
+    to the road (bearing diff ≤ CROSSING_SIDEWALK_MAX_ANGLE).
+
+    Uses the clipped portion of each footway inside the zone for bearing
+    calculation — more accurate at zone boundaries and avoids confusing
+    a long diagonal footway's overall orientation with its local direction.
+    Short clipped pieces (< _MIN_CLIP_LEN) are skipped as their bearing
+    is unreliable.
+    """
+    for i in tree.query(zone):
+        fw = geoms[i]
+        if not fw.intersects(zone):
+            continue
+        try:
+            clipped = fw.intersection(zone)
+        except Exception:
+            clipped = fw
+        if clipped.is_empty:
+            continue
+        for piece in _iter_linestrings(clipped):
+            if piece.length < _MIN_CLIP_LEN:
+                continue
+            bearing = _piece_bearing(piece)
+            if bearing is None:
+                continue
+            if _angle_diff(road_bearing, bearing) <= CROSSING_SIDEWALK_MAX_ANGLE:
+                return True
+    return False
+
+
+def _intersects_any(zone, tree: STRtree, geoms: list) -> bool:
+    return any(geoms[i].intersects(zone) for i in tree.query(zone))
+
+
+# ── Data loaders ──────────────────────────────────────────────────────────────
 
 def _load_crossing_nodes(highways_path: str) -> gpd.GeoDataFrame:
     """Read highway=crossing point features via stdlib json.
 
-    Avoids gpd.read_file issues with mixed-geometry FeatureCollections
-    and the nested-FC structure produced by the jq slim step.
+    Avoids gpd.read_file issues with:
+    - Mixed Point/LineString FeatureCollections (pyogrio schema failure).
+    - Nested FC structure produced by the jq |= + | pipeline in build.yml.
     """
     with open(highways_path, encoding="utf-8") as fh:
         raw = json.load(fh)
@@ -154,7 +255,7 @@ def _load_all_footways(footways_path: str) -> tuple[list, STRtree | None]:
 
 
 def _load_sidewalk_ways(footways_path: str) -> tuple[list, STRtree | None]:
-    """footway=sidewalk only — strict filter to avoid false positives."""
+    """footway=sidewalk only — used for the parallel sidewalk presence check."""
     gdf = gpd.read_file(footways_path)
     gdf = gdf[gdf.geometry.geom_type == "LineString"].copy().to_crs("EPSG:31370")
     for col in ("highway", "footway"):
@@ -195,7 +296,8 @@ def detect_missing_crossings(
         f"  Tier-1 (footway=crossing): {CROSSING_WAY_SEARCH_RADIUS_M} m | "
         f"Tier-2 (any footway / shared node): {CROSSING_NODE_CONNECTED_M} m | "
         f"Sidewalk offset {CROSSING_SIDEWALK_OFFSET_M} m "
-        f"+ radius {CROSSING_SIDEWALK_SEARCH_M} m"
+        f"+ radius {CROSSING_SIDEWALK_SEARCH_M} m "
+        f"+ max angle {CROSSING_SIDEWALK_MAX_ANGLE}°"
     )
 
     with step("load crossing nodes"):
@@ -229,9 +331,9 @@ def detect_missing_crossings(
                 "missing_crossings_detected": 0}
 
     rows: list[dict] = []
-    n_no_road = 0
-    n_fully_ok = 0   # tier 1 matched → completely fine, skip
-    n_no_sw   = 0
+    n_no_road     = 0
+    n_fully_ok    = 0
+    n_no_sw       = 0
     n_missing_way = 0
     n_missing_tag = 0
 
@@ -249,47 +351,42 @@ def detect_missing_crossings(
                            key=lambda i: road_geoms[i].distance(node_pt))
             road_geom = road_geoms[best_idx]
 
-            # 2. Tier-1 check: footway=crossing way nearby ─────────────────
-            #    If found → crossing is properly tagged → skip entirely.
-            tier1 = False
-            if cw_tree is not None:
-                if _intersects_any(node_pt.buffer(CROSSING_WAY_SEARCH_RADIUS_M),
-                                   cw_tree, cw_geoms):
-                    tier1 = True
-
+            # 2. Tier-1: footway=crossing → fully mapped, skip ─────────────
+            tier1 = (
+                cw_tree is not None and
+                _intersects_any(node_pt.buffer(CROSSING_WAY_SEARCH_RADIUS_M),
+                                cw_tree, cw_geoms)
+            )
             if tier1:
                 n_fully_ok += 1
                 continue
 
-            # 3. Tier-2 check: any footway passing through this node ────────
-            #    Shared node → distance ≈ 0.  Crossing exists geometrically
-            #    but may lack the footway=crossing tag.
-            tier2 = False
-            if all_fw_tree is not None:
-                if _intersects_any(node_pt.buffer(CROSSING_NODE_CONNECTED_M),
-                                   all_fw_tree, all_fw_geoms):
-                    tier2 = True
-
-            # Determine issue type
-            # tier1=False, tier2=True  → crossing way present but tag missing
-            # tier1=False, tier2=False → crossing way absent altogether
+            # 3. Tier-2: any footway at the node → connected but tag may be absent
+            tier2 = (
+                all_fw_tree is not None and
+                _intersects_any(node_pt.buffer(CROSSING_NODE_CONNECTED_M),
+                                all_fw_tree, all_fw_geoms)
+            )
             crossing_type = "missing_tag" if tier2 else "missing_way"
 
-            # 4. Require footway=sidewalk on both sides ─────────────────────
-            perp = _road_left_perp(road_geom, node_pt)
+            # 4. Road geometry at node: perp + bearing ─────────────────────
+            perp, road_bearing = _road_geometry_at(road_geom, node_pt)
             if perp is None:
                 n_no_road += 1
                 continue
 
+            # 5. Require parallel footway=sidewalk on BOTH sides ───────────
+            # The parallel filter rejects cross-street sidewalks whose
+            # bearing differs from the road by more than CROSSING_SIDEWALK_MAX_ANGLE.
             left_zone, right_zone = _sidewalk_zones(node_pt, perp)
-            has_left  = _intersects_any(left_zone,  sw_tree, sw_geoms)
-            has_right = _intersects_any(right_zone, sw_tree, sw_geoms)
+            has_left  = _has_parallel_sidewalk(left_zone,  road_bearing, sw_tree, sw_geoms)
+            has_right = _has_parallel_sidewalk(right_zone, road_bearing, sw_tree, sw_geoms)
 
             if not (has_left and has_right):
                 n_no_sw += 1
                 continue
 
-            # 5. Flag ──────────────────────────────────────────────────────
+            # 6. Flag ──────────────────────────────────────────────────────
             road_name = ""
             if "name" in roads_gdf.columns:
                 road_name = _safe_str(roads_gdf.iloc[best_idx]["name"])
@@ -322,7 +419,7 @@ def detect_missing_crossings(
     print(f"  Nodes analysed:                        {n_total}")
     print(f"  Skipped — no eligible road:            {n_no_road}")
     print(f"  Skipped — crossing fully mapped (t1):  {n_fully_ok}")
-    print(f"  Skipped — sidewalk missing on a side:  {n_no_sw}")
+    print(f"  Skipped — no parallel sidewalk (both): {n_no_sw}")
     print(f"  Missing crossing WAY detected:         {n_missing_way}")
     print(f"  Missing footway=crossing TAG detected: {n_missing_tag}")
 
@@ -330,7 +427,7 @@ def detect_missing_crossings(
         "crossing_nodes_found":        n_total,
         "no_eligible_road":            n_no_road,
         "crossing_fully_mapped":       n_fully_ok,
-        "sidewalk_missing_on_a_side":  n_no_sw,
+        "sidewalk_missing_or_skewed":  n_no_sw,
         "missing_crossing_way":        n_missing_way,
         "missing_crossing_tag":        n_missing_tag,
         "missing_crossings_detected":  n_missing_way + n_missing_tag,
