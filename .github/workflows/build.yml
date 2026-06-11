@@ -191,6 +191,20 @@ jobs:
             --geometry-types=linestring \
             -o sidewalk_footways_raw.geojson --overwrite
 
+      # ── Extract service roads for crossing-node exclusion ───────────────
+      # detect_missing_crossings excludes nodes located on service roads
+      # (driveways, parking aisles…) since crossings there are by
+      # convention not mapped.  service is intentionally absent from
+      # sidewalk_roads_raw.geojson so we export it separately here.
+      - name: Export service roads for crossing exclusion
+        run: |
+          osmium tags-filter brussels.osm.pbf \
+            w/highway=service \
+            -o service_roads.osm.pbf --overwrite
+          osmium export service_roads.osm.pbf \
+            --geometry-types=linestring \
+            -o service_roads_raw.geojson --overwrite
+
       - name: Filter routing features
         run: |
           osmium tags-filter brussels.osm.pbf \
@@ -226,6 +240,7 @@ jobs:
             sidewalk_roads.geojson
             sidewalk_roads_raw.geojson
             sidewalk_footways_raw.geojson
+            service_roads_raw.geojson
             missing_crossings.geojson
             highways.geojson
             addresses.geojson
