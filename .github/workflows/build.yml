@@ -154,7 +154,7 @@ jobs:
           jq '(.features[] | select(
             .properties.highway == "elevator" or
             .properties.amenity == "elevator"
-          )) |= . + {"tippecanoe": {"minzoom": 9}}' \
+          )) |= . + {"tippecanoe": {"minzoom": 9, "dropped": false}, "properties": (.properties + {"tippecanoe": {"minzoom": 9, "dropped": false}})}' \
             highways.geojson > highways_fixed.geojson
           mv highways_fixed.geojson highways.geojson
 
@@ -261,7 +261,7 @@ jobs:
       # included from the lowest zoom in the archive.
       - name: Mark missing_crossings as non-droppable
         run: |
-          jq '.features |= map(. + {"tippecanoe": {"dropped": false, "minzoom": 9}})' \
+          jq '.features |= map(. + {"tippecanoe": {"dropped": false, "minzoom": 9}, "properties": (.properties + {"tippecanoe": {"dropped": false, "minzoom": 9}})})' \
             missing_crossings.geojson > mc_nd.geojson
           mv mc_nd.geojson missing_crossings.geojson
 
@@ -309,6 +309,8 @@ jobs:
             -Z${{ env.MIN_ZOOM }} -z${{ env.MAX_ZOOM }} \
             --extend-zooms-if-still-dropping \
             --drop-densest-as-needed \
+            --no-feature-limit \
+            --no-tile-size-limit \
             --named-layer=highways:highways.geojson \
             --named-layer=flow_edges:flow_edges.geojson \
             --named-layer=street_scores:street_scores.geojson \
