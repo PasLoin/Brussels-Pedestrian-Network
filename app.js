@@ -561,7 +561,7 @@ const PEDESTRIAN_LAYERS = [
         "missing_tag", "#eab308",
         "#f97316"
       ],
-      "circle-radius": ["interpolate", ["linear"], ["zoom"], 12, 3, 16, 8, 18, 12],
+      "circle-radius": 12,
       "circle-stroke-color": "#fff",
       "circle-stroke-width": 1.5,
       "circle-opacity": 0.9,
