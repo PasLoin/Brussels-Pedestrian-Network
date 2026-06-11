@@ -136,6 +136,7 @@ fetch("./graph.json")
     graphReady = true;
     const btn = document.getElementById("nav-btn");
     btn.classList.remove("loading");
+    btn.setAttribute("aria-busy", "false");
     document.getElementById("nav-btn-label").textContent = "Navigation";
     console.log(`Graph loaded: ${data.n.length} nodes, ${data.e.length} edges`);
   })
@@ -143,6 +144,7 @@ fetch("./graph.json")
     console.warn("graph.json not available:", err);
     document.getElementById("nav-btn-label").textContent = "Navigation (indisponible)";
     document.getElementById("nav-btn").classList.add("disabled");
+    document.getElementById("nav-btn").setAttribute("aria-busy", "false");
   });
 
 // ── Nearest node (brute force – fine for <100k nodes) ────────────────────────
@@ -243,10 +245,17 @@ let startMarker = null, endMarker = null;
 let startNode = -1, endNode = -1;
 let mapRef = null;
 
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && navMode) {
+    toggleNavMode();
+  }
+});
+
 function toggleNavMode() {
   if (!graphReady) return;
   navMode = !navMode;
   const btn = document.getElementById("nav-btn");
+  btn.setAttribute("aria-pressed", navMode);
   const hint = document.getElementById("nav-hint");
 
   if (navMode) {
@@ -809,7 +818,7 @@ function initMap(style) {
     swSub.className = "legend-sub";
 
     const updateResetLabel = () => {
-      swReset.textContent = activeSidewalkStatuses.size === SIDEWALK_STATUSES.length ? "aucun" : "tout";
+      swReset.textContent = activeSidewalkStatuses.size === SIDEWALK_STATUSES.length ? "Tout désélectionner" : "Tout sélectionner";
     };
 
     legendEl.appendChild(makeItem({
@@ -927,8 +936,12 @@ function initMap(style) {
     if (z >= EDIT_MIN_ZOOM) {
       btn.href = `https://www.openstreetmap.org/edit#map=${Math.round(z)}/${c.lat.toFixed(5)}/${c.lng.toFixed(5)}`;
       btn.classList.remove("disabled");
+      btn.setAttribute("aria-disabled", "false");
+      btn.setAttribute("tabindex", "0");
     } else {
       btn.classList.add("disabled");
+      btn.setAttribute("aria-disabled", "true");
+      btn.setAttribute("tabindex", "-1");
     }
   });
 }
