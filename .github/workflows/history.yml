@@ -1,0 +1,163 @@
+name: Compute History — Monthly Snapshots
+
+# Manual-only.  Triggered when the user wants to backfill the full
+# historical series, or to add the latest month.  Cheap to run: each
+# snapshot is ~30 s with the osmium-streaming approach in
+# scripts/compute_history.py.
+#
+# The output (history.json) is committed back to the gh-pages branch
+# so that evolution.html can read it without further computation.
+#
+# Two modes:
+#   - mode=full      → rebuild from scratch, scanning every snapshot in
+#                      the upstream history folder.
+#   - mode=update    → fetch the existing history.json from gh-pages
+#                      and only compute the months it doesn't yet
+#                      contain (typical monthly cron use case).
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "full = recompute everything, update = add only missing months"
+        required: true
+        default: "update"
+        type: choice
+        options:
+          - update
+          - full
+  schedule:
+    # 1st of each month at 04:00 UTC — picks up the new monthly snapshot.
+    - cron: "0 4 1 * *"
+
+env:
+  HISTORY_BASE: https://raw.githubusercontent.com/PasLoin/Osm-python-analyse_Belgium/main/pbf_analyse/history
+  # Earliest snapshot considered.  Adjust if older PBFs are added.
+  HISTORY_START: "2024-02"
+  # Latest month to fetch — left blank means "until today".  Useful to
+  # cap the loop if a half-baked snapshot is published mid-month.
+
+jobs:
+  history:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends jq
+
+      - name: Install Python dependencies
+        run: pip install pyosmium pyproj --break-system-packages
+
+      # ── Fetch existing history.json from gh-pages (update mode only) ──
+      - name: Fetch existing history.json
+        id: existing
+        if: ${{ inputs.mode != 'full' }}
+        continue-on-error: true
+        run: |
+          curl -fsSL https://paslogin.github.io/Brussels-Pedestrian-Network/history.json \
+            -o history.json || echo "[]" > history.json
+          # Validate it parses; if not, start from scratch.
+          if ! jq empty history.json 2>/dev/null; then
+            echo "Existing history.json invalid — restarting from empty."
+            echo "[]" > history.json
+          fi
+
+      - name: Initialise empty history (full mode)
+        if: ${{ inputs.mode == 'full' }}
+        run: echo "[]" > history.json
+
+      # ── Enumerate every 1st-of-month from HISTORY_START to today ──────
+      # The upstream filename pattern is DD_MM_YYYY_brussels_capital_region.pbf
+      # and snapshots are taken on the 1st of each month.  We build the
+      # list of expected dates and probe each — missing files (e.g. ahead
+      # of the upstream publish date) are silently skipped.
+      - name: Compute snapshot list and update missing months
+        run: |
+          set -euo pipefail
+          existing_dates=$(jq -r '.[].date' history.json 2>/dev/null || true)
+
+          start="${HISTORY_START}-01"
+          today=$(date -u +%Y-%m-01)
+
+          d="$start"
+          while [[ "$d" < "$today" || "$d" == "$today" ]]; do
+            iso="$d"
+            # Skip dates we already have (only relevant in update mode).
+            if echo "$existing_dates" | grep -qx "$iso"; then
+              echo "✓ already have $iso, skipping"
+            else
+              # Build the upstream filename from DD_MM_YYYY components.
+              yyyy=${iso:0:4}
+              mm=${iso:5:2}
+              dd=${iso:8:2}
+              fname="${dd}_${mm}_${yyyy}_brussels_capital_region.pbf"
+              url="${HISTORY_BASE}/${fname}"
+
+              echo "→ downloading $url"
+              if curl -fsSL "$url" -o snapshot.pbf; then
+                echo "  computing stats for $iso"
+                python3 scripts/compute_history.py snapshot.pbf "$iso" \
+                  > snapshot_stats.json
+                # Append (or replace) entry, keep sorted by date.
+                jq --argjson new "$(cat snapshot_stats.json)" '
+                  . + [$new]
+                  | unique_by(.date)
+                  | sort_by(.date)
+                ' history.json > history_new.json
+                mv history_new.json history.json
+                rm -f snapshot.pbf snapshot_stats.json
+              else
+                echo "  ⚠ $url not available, skipping"
+              fi
+            fi
+            # Increment by one month.
+            d=$(date -u -d "$d +1 month" +%Y-%m-01)
+          done
+
+          echo "── Final history.json summary ──"
+          jq 'length' history.json
+          jq '.[].date' history.json
+
+      - name: Upload history.json artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: history-json
+          path: history.json
+          retention-days: 90
+
+      # ── Publish to gh-pages alongside the rest of the site ───────────
+      # We don't republish the whole site here — that's the build.yml
+      # job.  We just patch history.json in place on the gh-pages branch.
+      - name: Publish history.json to gh-pages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Worktree-mount the gh-pages branch.  Tolerate first-run
+          # absence by creating an orphan branch then.
+          mkdir -p gh-pages-tree
+          if git ls-remote --exit-code --heads origin gh-pages >/dev/null; then
+            git fetch origin gh-pages
+            git worktree add gh-pages-tree gh-pages
+          else
+            git worktree add --orphan -b gh-pages gh-pages-tree
+            (cd gh-pages-tree && git rm -rf . 2>/dev/null || true)
+          fi
+
+          cp history.json gh-pages-tree/history.json
+          cd gh-pages-tree
+          git add history.json
+          if git diff --staged --quiet; then
+            echo "history.json unchanged, nothing to commit."
+          else
+            git commit -m "history: update monthly snapshot data"
+            git push origin gh-pages
+          fi
