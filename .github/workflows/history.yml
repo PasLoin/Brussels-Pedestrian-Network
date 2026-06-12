@@ -49,6 +49,10 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends jq osmium-tool
+
+      - name: Install Python dependencies
+        run: pip install pyproj --break-system-packages
           sudo apt-get install -y --no-install-recommends jq
 
       - name: Install Python dependencies

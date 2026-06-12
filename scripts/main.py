@@ -49,6 +49,7 @@ from sample_od import sample_od_points, snap_to_graph
 from routing import generate_od_pairs, route_pairs
 from export import (
     compute_network_stats,
+    compute_top_streets,
     export_flow_layers,
     export_routing_graph,
     export_walkability_scores,
@@ -83,7 +84,6 @@ def main() -> None:
     with step("build_graph"):
         gb = build_graph("routing_clean.osm")
 
-    # Collect graph-level stats (fast, no timer)
     graph_stats = {
         "nodes": gb.graph.vcount(),
         "edges": gb.graph.ecount(),
@@ -98,7 +98,6 @@ def main() -> None:
         "streets_with_sidewalk_tags": len(gb.street_sidewalk_status),
     }
 
-    # Compute base network stats (fast, no timer)
     network_stats = compute_network_stats(
         gb.edge_highways, gb.edge_lengths,
         gb.edge_cycleway_nf, gb.edge_foot_tags,
@@ -115,7 +114,6 @@ def main() -> None:
             gb.edge_tuples, gb.edge_geoms,
         )
 
-    # Collect OD sampling stats
     n_streets_both = len(set(
         s for s, side in zip(od_streets, od_sides)
     ))
@@ -149,8 +147,6 @@ def main() -> None:
         )
 
     # ── Step 8b: Walkability scores ───────────────────────────────────────
-    # addr_gdf is reused here to avoid a 2nd read of addresses.geojson
-    # (~40 s saved on the Brussels dataset).
     with step("export_walkability_scores"):
         walkability_stats = export_walkability_scores(
             result.street_ped_m, result.street_cyc_nf_m, result.street_total_m,
@@ -170,9 +166,6 @@ def main() -> None:
         sidewalk_road_stats = export_sidewalk_roads("sidewalk_roads_raw.geojson")
 
     # ── Step 8e: Missing crossing way detection ───────────────────────────
-    # Detects highway=crossing nodes that lack a footway=crossing way,
-    # confirmed by the presence of parallel sidewalks on both road sides.
-    # Reuses the offset-curve geometry logic from sidewalk_gap.
     with step("detect_missing_crossings"):
         missing_crossing_stats = detect_missing_crossings(
             "highways.geojson",
@@ -180,7 +173,14 @@ def main() -> None:
             "sidewalk_roads_raw.geojson",
         )
 
-    # ── Save stats (fast, no timer) ───────────────────────────────────────
+    # ── Step 8f: Top streets to fix (mapper-actionable lists) ─────────────
+    # Reads the GeoJSON outputs produced by steps 8c–8e and ranks streets
+    # by impact.  Fast (<1 s) and tolerant: returns empty lists for any
+    # file that's missing or malformed.
+    with step("compute_top_streets"):
+        top_streets = compute_top_streets()
+
+    # ── Save stats ────────────────────────────────────────────────────────
     save_stats(
         routed=result.routed,
         total_routed_distance=result.total_routed_distance,
@@ -195,6 +195,7 @@ def main() -> None:
         sidewalk_gap_stats=sidewalk_gap_stats,
         sidewalk_road_stats=sidewalk_road_stats,
         missing_crossing_stats=missing_crossing_stats,
+        top_streets=top_streets,
         network_stats=network_stats,
         od_sampling_stats=od_sampling_stats,
     )
@@ -210,7 +211,6 @@ def main() -> None:
 
     print(f"\nTotal time: {time.time() - t0:.1f}s")
 
-    # ── Final breakdown ───────────────────────────────────────────────────
     print_summary()
 
 
