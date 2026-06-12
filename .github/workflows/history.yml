@@ -53,6 +53,10 @@ jobs:
 
       - name: Install Python dependencies
         run: pip install pyproj --break-system-packages
+          sudo apt-get install -y --no-install-recommends jq
+
+      - name: Install Python dependencies
+        run: pip install pyosmium pyproj --break-system-packages
 
       # ── Fetch existing history.json from gh-pages (update mode only) ──
       - name: Fetch existing history.json
