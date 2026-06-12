@@ -220,7 +220,13 @@ def _load_crossing_nodes(highways_path: str) -> gpd.GeoDataFrame:
         if _safe_str(props.get("highway")) != "crossing":
             continue
         try:
-            rows.append({"geometry": shape(geom)})
+            rows.append({
+                "geometry": shape(geom),
+                # crossing:continuous=yes means the road surface itself
+                # is continuous across the crossing (raised crossing /
+                # plateau).  No separate crossing way should be drawn.
+                "continuous": _safe_str(props.get("crossing:continuous")) == "yes",
+            })
         except Exception:
             continue
     if not rows:
@@ -393,6 +399,7 @@ def detect_missing_crossings(
     rows: list[dict] = []
     n_no_road     = 0
     n_excluded    = 0   # node on service / cycleway / track
+    n_continuous  = 0   # crossing:continuous=yes — no crossing way expected
     n_fully_ok    = 0
     n_no_sw       = 0
     n_missing_way = 0
@@ -451,6 +458,20 @@ def detect_missing_crossings(
             )
             crossing_type = "missing_tag" if tier2 else "missing_way"
 
+            # 3b. Skip continuous (raised) crossings flagged as missing_tag.
+            # When the node carries ``crossing:continuous=yes`` the road
+            # surface is continuous across the crossing (raised plateau
+            # crossing) and no separate crossing way should be drawn —
+            # the absence of the footway=crossing tag on the connected
+            # footway is therefore intentional, not a mapping error.
+            #
+            # We don't apply this skip to missing_way: a continuous
+            # crossing without ANY connected footway is still a routing
+            # gap worth flagging (the pedestrian network can't reach it).
+            if crossing_type == "missing_tag" and bool(node_row.get("continuous")):
+                n_continuous += 1
+                continue
+
             # 4. Road geometry at node: perp + bearing ─────────────────────
             perp, road_bearing = _road_geometry_at(road_geom, node_pt)
             if perp is None:
@@ -501,6 +522,7 @@ def detect_missing_crossings(
     print(f"  Nodes analysed:                          {n_total}")
     print(f"  Skipped — no eligible road:              {n_no_road}")
     print(f"  Skipped — on service / cycleway / track: {n_excluded}")
+    print(f"  Skipped — crossing:continuous=yes:       {n_continuous}")
     print(f"  Skipped — crossing fully mapped (t1):    {n_fully_ok}")
     print(f"  Skipped — no parallel sidewalk (both):   {n_no_sw}")
     print(f"  Missing crossing WAY detected:           {n_missing_way}")
@@ -510,6 +532,7 @@ def detect_missing_crossings(
         "crossing_nodes_found":        n_total,
         "no_eligible_road":            n_no_road,
         "on_excluded_way":             n_excluded,
+        "crossing_continuous":         n_continuous,
         "crossing_fully_mapped":       n_fully_ok,
         "sidewalk_missing_or_skewed":  n_no_sw,
         "missing_crossing_way":        n_missing_way,
