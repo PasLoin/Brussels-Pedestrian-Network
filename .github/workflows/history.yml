@@ -33,8 +33,6 @@ env:
   HISTORY_BASE: https://raw.githubusercontent.com/PasLoin/Osm-python-analyse_Belgium/main/pbf_analyse/history
   # Earliest snapshot considered.  Adjust if older PBFs are added.
   HISTORY_START: "2024-02"
-  # Latest month to fetch — left blank means "until today".  Useful to
-  # cap the loop if a half-baked snapshot is published mid-month.
 
 jobs:
   history:
@@ -52,10 +50,6 @@ jobs:
           sudo apt-get install -y --no-install-recommends jq osmium-tool
 
       - name: Install Python dependencies
-        run: pip install pyproj --break-system-packages
-          sudo apt-get install -y --no-install-recommends jq
-
-      - name: Install Python dependencies
         run: pip install pyosmium pyproj --break-system-packages
 
       # ── Fetch existing history.json from gh-pages (update mode only) ──
@@ -64,8 +58,12 @@ jobs:
         if: ${{ inputs.mode != 'full' }}
         continue-on-error: true
         run: |
-          curl -fsSL https://paslogin.github.io/Brussels-Pedestrian-Network/history.json \
-            -o history.json || echo "[]" > history.json
+          if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
+            git fetch origin gh-pages
+            git show origin/gh-pages:history.json > history.json 2>/dev/null || echo "[]" > history.json
+          else
+            echo "[]" > history.json
+          fi
           # Validate it parses; if not, start from scratch.
           if ! jq empty history.json 2>/dev/null; then
             echo "Existing history.json invalid — restarting from empty."
