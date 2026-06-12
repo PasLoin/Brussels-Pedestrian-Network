@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Brussels Pedestrian Network — Évolution</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -175,13 +175,6 @@
   <div class="loading" id="loading">Chargement de l'historique…</div>
 </main>
 
-<footer class="footer">
-  Données mensuelles archivées depuis le 1er février 2024 ·
-  <a href="https://github.com/PasLoin/Osm-python-analyse_Belgium/tree/main/pbf_analyse/history" target="_blank" rel="noopener">PBF mensuels</a> ·
-  <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>
-</footer>
-
-<script>
 // ── Chart defaults ─────────────────────────────────────────────────────────
 Chart.defaults.color = '#888';
 Chart.defaults.borderColor = '#ddd';
@@ -566,5 +559,11 @@ function renderCharts(data, labels) {
   });
 }
 </script>
+<footer class="footer" style="text-align:center; padding: 40px 0; color: #888; font-size: 11px; border-top: 1px solid #ddd; margin-top: 40px;">
+  Données : <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener" style="color: #666; text-decoration: none;">OpenStreetMap</a>
+  · <a href="https://github.com/PasLoin/Brussels-Pedestrian-Network" target="_blank" rel="noopener" style="color: #666; text-decoration: none;">Source</a>
+  · <a href="./stats.html" style="color: #666; text-decoration: none;">Statistiques actuelles</a>
+  · <a href="./" style="color: #666; text-decoration: none;">Retour à la carte</a>
+</footer>
 </body>
 </html>
