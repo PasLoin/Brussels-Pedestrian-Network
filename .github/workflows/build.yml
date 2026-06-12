@@ -143,6 +143,9 @@ jobs:
           mv highways_fixed.geojson highways.geojson
 
       # ── Slim highways layer ─────────────────────────────────────────────
+      # NOTE: ``crossing:continuous`` is kept (in addition to popup/filter
+      # fields) because detect_missing_crossings reads it from this file
+      # to skip raised/continuous crossings that don't need a crossing way.
       - name: Slim highways GeoJSON properties
         run: |
           jq '
@@ -154,7 +157,8 @@ jobs:
                 foot:       .foot,
                 bicycle:    .bicycle,
                 access:     .access,
-                segregated: .segregated
+                segregated: .segregated,
+                "crossing:continuous": .["crossing:continuous"]
               }
               | with_entries(select(.value != null and .value != ""))
             )
@@ -191,6 +195,31 @@ jobs:
             --geometry-types=linestring \
             -o sidewalk_footways_raw.geojson --overwrite
 
+      # ── Extract excluded way types for crossing-node exclusion ──────────
+      # detect_missing_crossings rejects crossing nodes located on:
+      #   - highway=service  (driveways, parking aisles, alleys)
+      #   - highway=cycleway (dedicated cycle infrastructure)
+      #   - highway=track    (agricultural / forest tracks)
+      # These are intentionally absent from sidewalk_roads_raw.geojson
+      # (which only contains residential → primary), so we export each
+      # in its own GeoJSON for the exclusion check.
+      - name: Export excluded ways for crossing exclusion
+        run: |
+          osmium tags-filter brussels.osm.pbf w/highway=service \
+            -o service_roads.osm.pbf --overwrite
+          osmium export service_roads.osm.pbf --geometry-types=linestring \
+            -o service_roads_raw.geojson --overwrite
+
+          osmium tags-filter brussels.osm.pbf w/highway=cycleway \
+            -o cycleways.osm.pbf --overwrite
+          osmium export cycleways.osm.pbf --geometry-types=linestring \
+            -o cycleways_raw.geojson --overwrite
+
+          osmium tags-filter brussels.osm.pbf w/highway=track \
+            -o tracks.osm.pbf --overwrite
+          osmium export tracks.osm.pbf --geometry-types=linestring \
+            -o tracks_raw.geojson --overwrite
+
       - name: Filter routing features
         run: |
           osmium tags-filter brussels.osm.pbf \
@@ -226,6 +255,9 @@ jobs:
             sidewalk_roads.geojson
             sidewalk_roads_raw.geojson
             sidewalk_footways_raw.geojson
+            service_roads_raw.geojson
+            cycleways_raw.geojson
+            tracks_raw.geojson
             missing_crossings.geojson
             highways.geojson
             addresses.geojson

@@ -171,7 +171,7 @@ def export_flow_layers(
             "geometry": edge_geoms[eid],
             "flow_pct": flow_pct,
             "infra_type": infra_type,
-            "highway": hw,          # ← NEW: enables per-type styling
+            "highway": hw,          # ← enables per-type styling
         })
 
     n_fr = _save_gdf(rows_forced_road, fb_forced, "EPSG:31370", "forced_segments.geojson")
@@ -361,6 +361,7 @@ def save_stats(
     walkability_stats: dict | None = None,
     sidewalk_gap_stats: dict | None = None,
     sidewalk_road_stats: dict | None = None,
+    missing_crossing_stats: dict | None = None,
     network_stats: dict | None = None,
     od_sampling_stats: dict | None = None,
 ) -> None:
@@ -402,6 +403,8 @@ def save_stats(
         stats["sidewalk_gaps"] = sidewalk_gap_stats
     if sidewalk_road_stats:
         stats["sidewalk_roads"] = sidewalk_road_stats
+    if missing_crossing_stats:
+        stats["missing_crossings"] = missing_crossing_stats
 
     with open("stats.json", "w") as f:
         json.dump(stats, f, indent=2)
