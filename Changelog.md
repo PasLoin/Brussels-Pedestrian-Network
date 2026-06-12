@@ -1,5 +1,27 @@
 # Changelog
 
+## 2026-06-12
+
+### Nouvelle couche : Traversées manquantes ([#36](https://github.com/PasLoin/Brussels-Pedestrian-Network/issues/36))
+
+- **Détection des `highway=crossing` orphelins** : nouveau module `scripts/detect_missing_crossings.py` qui identifie les nœuds de traversée piétonne dépourvus de way `footway=crossing` correctement connecté. Le routeur n'utilise pas ces traversées, donc le flux piéton les ignore silencieusement — cette couche les rend visibles aux mappeurs.
+- **Deux catégories distinguées par couleur** :
+  - 🟠 **`missing_way`** (orange) — aucun way `highway=footway` ni `highway=pedestrian` ne passe à moins de 3 m du nœud → traversée pas mappée du tout.
+  - 🟡 **`missing_tag`** (jaune) — un way piéton est connecté géométriquement (nœud partagé, distance ≈ 0) mais aucun way `footway=crossing` n'existe dans un rayon de 20 m → le tag `footway=crossing` manque sur le way connecté.
+- **Filtres d'exclusion géométriques** pour limiter le bruit :
+  - Trottoirs `footway=sidewalk` requis des **deux côtés** de la route au point du nœud (présence vérifiée dans une zone perpendiculaire de 15 m centrée à 7 m du centre de la route).
+  - Filtre angulaire : seuls les trottoirs dont l'orientation diffère de la route de moins de 40° comptent. Évite les faux positifs aux intersections où le trottoir d'une rue qui croise déborde dans la zone de recherche.
+  - Nœuds sur `highway=service`, `highway=cycleway` ou `highway=track` rejetés : ces voies n'ont par convention pas de way de traversée mappé. Le rejet utilise la distance comparative (si la way exclue est plus proche que la route éligible la plus proche, on saute).
+  - Nœuds taggés `crossing:continuous=yes` exclus de `missing_tag` (plateaux/traversées surélevées : pas de way séparé attendu). `missing_way` reste signalé car la connectivité piétonne manque toujours.
+- **Préservation tippecanoe** : build en deux passes pour garantir qu'aucun point ne soit perdu au zoom bas. Une archive PMTiles dédiée pour `missing_crossings` est produite avec `-r1 --no-tile-size-limit --no-feature-limit` (pas de drop par densité), puis fusionnée dans l'archive principale via `tile-join`. `--drop-densest-as-needed` opère par tuile et éjectait les points QA lorsque d'autres couches saturaient la tuile à z9–z11.
+- **Interface** :
+  - Layer visible dès z12, taille fixe 12 px du zoom 12 au zoom 18 pour être repérable de loin.
+  - Toggle dans la légende ("Analyse spatiale et qualité") avec un sous-filtre multi-sélection : afficher uniquement `missing_way`, uniquement `missing_tag`, ou les deux.
+  - Popup affichant le type de problème (way absent vs tag absent) et le nom de la rue.
+- **Robustesse de lecture** : `_load_crossing_nodes` utilise `stdlib json` au lieu de `gpd.read_file` pour gérer le cas où `highways.geojson` mélange Points et LineStrings (que certaines versions de pyogrio refusent), et déballe automatiquement les structures de FeatureCollection imbriquées éventuellement produites par jq.
+- **Correctif jq dans `build.yml`** : le step "Slim highways" produisait un `features: <FeatureCollection>` au lieu d'un tableau (suffixe `| {type, features: .}` redondant après `.features |= map(...)`). Tippecanoe tolérait, pyogrio plantait.
+- **Tags préservés dans le slim** : `crossing:continuous` ajouté à la liste des propriétés conservées pour permettre la détection des traversées surélevées.
+
 ## 2026-06-01
  
 ### Fusion des couches "forced" dans flow_edges (issue #24)
