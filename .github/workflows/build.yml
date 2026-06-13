@@ -300,30 +300,23 @@ jobs:
       - name: Add build timestamp to state.txt
         run: echo "build_timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> state.txt
 
-      # ── Recover existing history.json from gh-pages ─────────────────────
-      # build.yml uses force_orphan, which wipes gh-pages on every run.
-      # history.yml commits history.json directly to gh-pages, so we must
-      # carry that file forward across this rebuild or we lose it.
-      # We read it straight from the git ref (not the public Pages URL),
-      # since the Pages CDN can serve a stale/empty cached copy right
-      # after history.yml pushes a new commit.
-      - name: Recover existing history.json from gh-pages
+      # ── Ensure history.json exists for the site ─────────────────────────
+      # history.json is committed to `main` by the "Compute History" workflow
+      # (see compute-history.yml) and is therefore already present in this
+      # checkout if it exists.  We only need a fallback for the very first
+      # run, before "Compute History" has ever produced the file.
+      - name: Ensure history.json is present
         run: |
-          if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
-            git fetch origin gh-pages
-            git show origin/gh-pages:history.json > history.json 2>/dev/null || echo '[]' > history.json
+          if [[ -f history.json ]] && jq empty history.json 2>/dev/null; then
+            echo "Using history.json from main ($(jq 'length' history.json) entries)"
           else
+            echo "No valid history.json on main yet — using empty placeholder."
             echo '[]' > history.json
           fi
-          if ! jq empty history.json 2>/dev/null; then
-            echo "Recovered history.json invalid, using empty placeholder."
-            echo '[]' > history.json
-          fi
-          echo "history.json: $(jq 'length' history.json) entries"
 
       # ── Prepare the site directory ──────────────────────────────────────
       # Copies all static front-end files plus the freshly-built PMTiles
-      # and the recovered history.json.
+      # and history.json (sourced from main, see step above).
       - name: Prepare site
         run: |
           mv pedestrian.pmtiles pedestrian.pmtiles.gz
