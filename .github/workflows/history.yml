@@ -32,7 +32,7 @@ on:
 env:
   HISTORY_BASE: https://raw.githubusercontent.com/PasLoin/Osm-python-analyse_Belgium/main/pbf_analyse/history
   # Earliest snapshot considered.  Adjust if older PBFs are added.
-  HISTORY_START: "2014-01"
+  HISTORY_START: "2010-01"
 
 jobs:
   history:
