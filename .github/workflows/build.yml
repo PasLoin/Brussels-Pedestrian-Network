@@ -300,23 +300,24 @@ jobs:
       - name: Add build timestamp to state.txt
         run: echo "build_timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> state.txt
 
-      # ── Ensure history.json exists for the site ─────────────────────────
-      # history.json is committed to `main` by the "Compute History" workflow
-      # (see compute-history.yml) and is therefore already present in this
-      # checkout if it exists.  We only need a fallback for the very first
-      # run, before "Compute History" has ever produced the file.
+      # ── Ensure history.json is present ──────────────────────────────────
+      # history.json is the canonical historical dataset, normally committed
+      # to `main` by "Compute History" but may also be present/updated on
+      # other branches (e.g. when testing from a feature branch).  We use
+      # whatever is in this checkout, falling back to an empty placeholder
+      # only if the file is missing or invalid.
       - name: Ensure history.json is present
         run: |
           if [[ -f history.json ]] && jq empty history.json 2>/dev/null; then
-            echo "Using history.json from main ($(jq 'length' history.json) entries)"
+            echo "Using history.json from current checkout ($(jq 'length' history.json) entries)"
           else
-            echo "No valid history.json on main yet — using empty placeholder."
+            echo "No valid history.json in this checkout — using empty placeholder."
             echo '[]' > history.json
           fi
 
       # ── Prepare the site directory ──────────────────────────────────────
       # Copies all static front-end files plus the freshly-built PMTiles
-      # and history.json (sourced from main, see step above).
+      # and history.json (sourced from the current checkout, see step above).
       - name: Prepare site
         run: |
           mv pedestrian.pmtiles pedestrian.pmtiles.gz
