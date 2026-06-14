@@ -52,24 +52,23 @@ jobs:
           sudo apt-get install -y --no-install-recommends jq osmium-tool
 
       - name: Install Python dependencies
-        run: pip install pyosmium pyproj --break-system-packages
+        run: pip install pyproj --break-system-packages
 
       # ── Load existing history.json (update mode) or start fresh (full mode) ──
       - name: Load or initialise history.json
         run: |
           if [[ "${{ inputs.mode }}" == "full" ]]; then
-            echo "Full rebuild requested — starting from empty history.json"
-            echo "[]" > history.json
+            echo "Full rebuild requested — starting from empty ${HISTORY_JSON_PATH}"
+            echo "[]" > "${HISTORY_JSON_PATH}"
           elif [[ -f "${HISTORY_JSON_PATH}" ]]; then
             echo "Found existing ${HISTORY_JSON_PATH} in repo, using it as base."
-            cp "${HISTORY_JSON_PATH}" history.json
-            if ! jq empty history.json 2>/dev/null; then
-              echo "Existing history.json invalid — restarting from empty."
-              echo "[]" > history.json
+            if ! jq empty "${HISTORY_JSON_PATH}" 2>/dev/null; then
+              echo "Existing ${HISTORY_JSON_PATH} invalid — restarting from empty."
+              echo "[]" > "${HISTORY_JSON_PATH}"
             fi
           else
             echo "No existing ${HISTORY_JSON_PATH} found — starting from empty."
-            echo "[]" > history.json
+            echo "[]" > "${HISTORY_JSON_PATH}"
           fi
 
       # ── Fetch the upstream snapshot/daily index ────────────────────────
@@ -84,7 +83,7 @@ jobs:
       - name: Compute stats for new/changed entries
         run: |
           set -euo pipefail
-          existing_dates=$(jq -r '.[].date' history.json 2>/dev/null || true)
+          existing_dates=$(jq -r '.[].date' "${HISTORY_JSON_PATH}" 2>/dev/null || true)
 
           jq -c '.[]' history-list.json | while IFS= read -r entry; do
             iso=$(jq -r '.date' <<< "$entry")
@@ -119,8 +118,8 @@ jobs:
               jq --argjson new "$(cat snapshot_stats_enriched.json)" '
                 (map(select(.date != $new.date))) + [$new]
                 | sort_by(.date)
-              ' history.json > history_new.json
-              mv history_new.json history.json
+              ' "${HISTORY_JSON_PATH}" > history_new.json
+              mv history_new.json "${HISTORY_JSON_PATH}"
 
               rm -f snapshot.pbf snapshot_stats.json snapshot_stats_enriched.json
             else
@@ -128,21 +127,20 @@ jobs:
             fi
           done
 
-          echo "── Final history.json summary ──"
-          jq 'length' history.json
-          jq -c '.[] | {date, type}' history.json
+          echo "── Final ${HISTORY_JSON_PATH} summary ──"
+          jq 'length' "${HISTORY_JSON_PATH}"
+          jq -c '.[] | {date, type}' "${HISTORY_JSON_PATH}"
 
       - name: Upload history.json artifact
         uses: actions/upload-artifact@v4
         with:
           name: history-json
-          path: history.json
+          path: ${{ env.HISTORY_JSON_PATH }}
           retention-days: 90
 
       # ── Commit history.json back to main ──────────────────────────────
       - name: Commit history.json
         run: |
-          cp history.json "${HISTORY_JSON_PATH}"
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add "${HISTORY_JSON_PATH}"
