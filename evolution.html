@@ -197,11 +197,14 @@ const C = {
 const fmt  = v => v != null ? v.toLocaleString('fr-BE') : '—';
 const fkm  = v => v != null ? v.toLocaleString('fr-BE', { maximumFractionDigits: 1 }) : '—';
 const fpct = v => v != null ? v.toFixed(1) + ' %' : '—';
-const fmonth = iso => {
-  // 2024-04-01 → "avr 24" (compact for x-axis labels)
+
+// "2024-04-01" → "avr 24". Daily snapshots get a "*" suffix so they're
+// visually distinguishable from full monthly snapshots on the x-axis.
+const fmonth = (iso, isDaily = false) => {
   const [y, m] = iso.split('-');
   const months = ['jan','fév','mar','avr','mai','jun','jul','aoû','sep','oct','nov','déc'];
-  return months[parseInt(m,10)-1] + ' ' + y.slice(2);
+  const base = months[parseInt(m,10)-1] + ' ' + y.slice(2);
+  return isDaily ? base + ' *' : base;
 };
 
 function escapeHTML(str) {
@@ -237,7 +240,14 @@ function render(data) {
 
   const first = data[0];
   const last  = data[data.length - 1];
-  const labels = data.map(d => fmonth(d.date));
+  const labels = data.map(d => fmonth(d.date, d.type === 'daily'));
+
+  // Daily entry (if present) is appended last by generate_history_list.py
+  // and carries today's date, so it naturally sorts to the end.
+  const dailyEntry   = last && last.type === 'daily' ? last : null;
+  const snapshots    = data.filter(d => d.type !== 'daily');
+  const lastSnapshot = snapshots[snapshots.length - 1];
+  const showComparison = !!(dailyEntry && lastSnapshot && dailyEntry.date !== lastSnapshot.date);
 
   // ── Intro card with timespan + headline numbers ──────────────────────
   const months = data.length;
@@ -252,8 +262,27 @@ function render(data) {
         Du ${escapeHTML(first.date)} au ${escapeHTML(last.date)}
         · ${escapeHTML(fkm(last.ped_km))} km piéton actuellement
         (vs ${escapeHTML(fkm(first.ped_km))} km au départ)
+        ${dailyEntry ? `· * = dernière extraction quotidienne (${escapeHTML(dailyEntry.date)})` : ''}
       </div>
     </div>`;
+
+  // ── Section: comparison vs latest daily extract ─────────────────────
+  if (showComparison) {
+    el.innerHTML += `
+      <div class="section" id="compare-section">
+        <div class="section-title">Depuis le dernier snapshot mensuel</div>
+        <div class="chart-card">
+          <h3>Km par type de voirie — snapshot vs aujourd'hui</h3>
+          <div class="subtitle">
+            Comparaison entre le dernier snapshot mensuel (${escapeHTML(lastSnapshot.date)})
+            et l'extract quotidien le plus récent (${escapeHTML(dailyEntry.date)}).
+            Les 10 types les plus représentés en km sont affichés.
+          </div>
+          <div class="chart-wrap"><canvas id="c-compare-hw"></canvas></div>
+        </div>
+        <div class="delta-grid" id="compare-deltas"></div>
+      </div>`;
+  }
 
   // ── Section 1: deltas over the full timespan ────────────────────────
   el.innerHTML += `
@@ -335,9 +364,83 @@ function render(data) {
     </div>`;
 
   requestAnimationFrame(() => {
+    if (showComparison) renderComparison(lastSnapshot, dailyEntry);
     renderDeltas(first, last);
     renderCharts(data, labels);
   });
+}
+
+// ── Comparison: last monthly snapshot vs latest daily extract ──────────────
+function renderComparison(lastSnapshot, dailyEntry) {
+  const kmA = lastSnapshot.km_by_highway || {};
+  const kmB = dailyEntry.km_by_highway || {};
+
+  const allTypes = Array.from(new Set([...Object.keys(kmA), ...Object.keys(kmB)]));
+  allTypes.sort((a, b) => ((kmB[b] || 0) + (kmA[b] || 0)) - ((kmB[a] || 0) + (kmA[a] || 0)));
+  const topTypes = allTypes.slice(0, 10);
+
+  new Chart(document.getElementById('c-compare-hw'), {
+    type: 'bar',
+    data: {
+      labels: topTypes,
+      datasets: [
+        {
+          label: `Snapshot du ${lastSnapshot.date}`,
+          data: topTypes.map(t => kmA[t] || 0),
+          backgroundColor: C.gray,
+          borderRadius: 3,
+        },
+        {
+          label: `Aujourd'hui (${dailyEntry.date})`,
+          data: topTypes.map(t => kmB[t] || 0),
+          backgroundColor: C.green,
+          borderRadius: 3,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom' },
+        tooltip: {
+          callbacks: {
+            label: c => `${c.dataset.label} : ${fkm(c.parsed.y)} km`,
+          },
+        },
+      },
+      scales: {
+        x: { grid: { display: false } },
+        y: {
+          beginAtZero: true,
+          grid: { color: '#eee' },
+          title: { display: true, text: 'km', font: { size: 10 } },
+        },
+      },
+    },
+  });
+
+  const grid = document.getElementById('compare-deltas');
+  grid.innerHTML = '';
+  for (const t of topTypes) {
+    const before = kmA[t] || 0;
+    const after  = kmB[t] || 0;
+    const delta = after - before;
+
+    let cls = 'neutral';
+    if (delta > 0.05) cls = 'pos';
+    else if (delta < -0.05) cls = 'neg';
+
+    const showDelta = (delta >= 0 ? '+' : '') + fkm(delta) + ' km';
+
+    grid.insertAdjacentHTML('beforeend', `
+      <div class="delta ${cls}">
+        <div class="delta-label">${escapeHTML(t)}</div>
+        <div class="delta-val">${escapeHTML(fkm(after))} km</div>
+        <div class="delta-sub">${escapeHTML(showDelta)} depuis le ${escapeHTML(lastSnapshot.date)}</div>
+      </div>
+    `);
+  }
 }
 
 function renderDeltas(first, last) {
@@ -375,6 +478,17 @@ function renderDeltas(first, last) {
       </div>
     `);
   }
+}
+
+// Per-point styling: highlight the daily entry (if present) with a larger,
+// orange marker so it's clearly distinguishable from monthly snapshots.
+function pointStyles(data, color) {
+  return {
+    pointBackgroundColor: data.map(d => d.type === 'daily' ? C.orange : color),
+    pointBorderColor:     data.map(d => d.type === 'daily' ? C.orange : color),
+    pointRadius:          data.map(d => d.type === 'daily' ? 5 : 2.5),
+    pointHoverRadius:     data.map(d => d.type === 'daily' ? 7 : 5),
+  };
 }
 
 // Common base options factories.
@@ -436,6 +550,7 @@ function renderCharts(data, labels) {
         borderColor: C.green,
         backgroundColor: C.green + '22',
         fill: true,
+        ...pointStyles(data, C.green),
       }],
     },
     options: lineOpts({ yTitle: 'km' }),
@@ -447,9 +562,9 @@ function renderCharts(data, labels) {
     data: {
       labels,
       datasets: [
-        { label: 'Piéton',    data: series('ped_km'),      borderColor: C.green,  backgroundColor: C.green + '22', fill: false },
-        { label: 'Routes',     data: series('road_km'),     borderColor: C.red,    backgroundColor: C.red + '22',   fill: false },
-        { label: 'Cycleway',   data: series('cycleway_km'), borderColor: C.blue,   backgroundColor: C.blue + '22',  fill: false },
+        { label: 'Piéton',    data: series('ped_km'),      borderColor: C.green,  backgroundColor: C.green + '22', fill: false, ...pointStyles(data, C.green) },
+        { label: 'Routes',     data: series('road_km'),     borderColor: C.red,    backgroundColor: C.red + '22',   fill: false, ...pointStyles(data, C.red) },
+        { label: 'Cycleway',   data: series('cycleway_km'), borderColor: C.blue,   backgroundColor: C.blue + '22',  fill: false, ...pointStyles(data, C.blue) },
       ],
     },
     options: lineOpts({ yTitle: 'km' }),
@@ -468,6 +583,7 @@ function renderCharts(data, labels) {
         borderColor: HW_COLORS[i],
         backgroundColor: HW_COLORS[i] + '22',
         fill: false,
+        ...pointStyles(data, HW_COLORS[i]),
       })),
     },
     options: lineOpts({ yTitle: 'km' }),
@@ -479,8 +595,8 @@ function renderCharts(data, labels) {
     data: {
       labels,
       datasets: [
-        { label: 'Documenté (any tag)', data: series('sidewalk_documented_pct'), borderColor: C.cyan,  backgroundColor: C.cyan  + '22', fill: false },
-        { label: 'Sidewalk:both=separate', data: series('sidewalk_separate_pct'), borderColor: C.green, backgroundColor: C.green + '22', fill: false },
+        { label: 'Documenté (any tag)', data: series('sidewalk_documented_pct'), borderColor: C.cyan,  backgroundColor: C.cyan  + '22', fill: false, ...pointStyles(data, C.cyan) },
+        { label: 'Sidewalk:both=separate', data: series('sidewalk_separate_pct'), borderColor: C.green, backgroundColor: C.green + '22', fill: false, ...pointStyles(data, C.green) },
       ],
     },
     options: lineOpts({ percent: true }),
@@ -492,9 +608,9 @@ function renderCharts(data, labels) {
     data: {
       labels,
       datasets: [
-        { label: 'Nœuds highway=crossing', data: series('crossing_nodes'),    borderColor: C.cyan,   backgroundColor: C.cyan   + '22', fill: false },
-        { label: 'Ways footway=crossing',   data: series('footway_crossing'),  borderColor: C.green,  backgroundColor: C.green  + '22', fill: false },
-        { label: 'Crossings continus',       data: series('crossing_continuous'), borderColor: C.purple, backgroundColor: C.purple + '22', fill: false },
+        { label: 'Nœuds highway=crossing', data: series('crossing_nodes'),    borderColor: C.cyan,   backgroundColor: C.cyan   + '22', fill: false, ...pointStyles(data, C.cyan) },
+        { label: 'Ways footway=crossing',   data: series('footway_crossing'),  borderColor: C.green,  backgroundColor: C.green  + '22', fill: false, ...pointStyles(data, C.green) },
+        { label: 'Crossings continus',       data: series('crossing_continuous'), borderColor: C.purple, backgroundColor: C.purple + '22', fill: false, ...pointStyles(data, C.purple) },
       ],
     },
     options: lineOpts({}),
@@ -506,9 +622,9 @@ function renderCharts(data, labels) {
     data: {
       labels,
       datasets: [
-        { label: 'Footway surface=*',      data: series('footway_surface_pct'),    borderColor: C.cyan,   backgroundColor: C.cyan + '22',   fill: false },
-        { label: 'Footway smoothness=*',   data: series('footway_smoothness_pct'), borderColor: C.blue,   backgroundColor: C.blue + '22',   fill: false },
-        { label: 'Crossing tactile_paving', data: series('tactile_paving_pct'),     borderColor: C.green,  backgroundColor: C.green + '22',  fill: false },
+        { label: 'Footway surface=*',      data: series('footway_surface_pct'),    borderColor: C.cyan,   backgroundColor: C.cyan + '22',   fill: false, ...pointStyles(data, C.cyan) },
+        { label: 'Footway smoothness=*',   data: series('footway_smoothness_pct'), borderColor: C.blue,   backgroundColor: C.blue + '22',   fill: false, ...pointStyles(data, C.blue) },
+        { label: 'Crossing tactile_paving', data: series('tactile_paving_pct'),     borderColor: C.green,  backgroundColor: C.green + '22',  fill: false, ...pointStyles(data, C.green) },
       ],
     },
     options: lineOpts({ percent: true }),

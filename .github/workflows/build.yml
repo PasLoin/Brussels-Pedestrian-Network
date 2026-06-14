@@ -94,11 +94,6 @@ env:
   CROSSING_SIDEWALK_SEARCH_M:   15
   CROSSING_SIDEWALK_MAX_ANGLE:  40
 
-  # URL used to fetch the currently-deployed history.json so that this
-  # build doesn't overwrite the time series maintained by history.yml.
-  # Adjust the host/path to match the actual GitHub Pages URL once known.
-  HISTORY_JSON_URL: https://paslogin.github.io/Brussels-Pedestrian-Network/history.json
-
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -305,29 +300,32 @@ jobs:
       - name: Add build timestamp to state.txt
         run: echo "build_timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> state.txt
 
+      # ── Ensure history.json is present ──────────────────────────────────
+      # history.json is the canonical historical dataset, normally committed
+      # to `main` by "Compute History" but may also be present/updated on
+      # other branches (e.g. when testing from a feature branch).  We use
+      # whatever is in this checkout, falling back to an empty placeholder
+      # only if the file is missing or invalid.
+      - name: Ensure history.json is present
+        run: |
+          if [[ -f history.json ]] && jq empty history.json 2>/dev/null; then
+            echo "Using history.json from current checkout ($(jq 'length' history.json) entries)"
+          else
+            echo "No valid history.json in this checkout — using empty placeholder."
+            echo '[]' > history.json
+          fi
+
       # ── Prepare the site directory ──────────────────────────────────────
-      # Copies all static front-end files plus the freshly-built PMTiles.
-      # Special handling for history.json: the time series is maintained
-      # by the separate history.yml workflow (which commits directly to
-      # the gh-pages branch).  We pull the current version from the live
-      # site so that this monthly build doesn't overwrite it with stale
-      # or missing data.  curl returns empty `[]` gracefully on the very
-      # first deploy when no history.json exists yet.
+      # Copies all static front-end files plus the freshly-built PMTiles
+      # and history.json (sourced from the current checkout, see step above).
       - name: Prepare site
         run: |
           mv pedestrian.pmtiles pedestrian.pmtiles.gz
           mkdir -p _site
           cp index.html stats.html evolution.html app.js app.css \
              style.json state.txt stats.json graph.json \
-             pedestrian.pmtiles.gz \
+             pedestrian.pmtiles.gz history.json \
              _site/
-
-          if curl -fsSL "$HISTORY_JSON_URL" -o _site/history.json; then
-            echo "Fetched existing history.json: $(wc -c < _site/history.json) bytes"
-          else
-            echo '[]' > _site/history.json
-            echo "No existing history.json found; using empty placeholder."
-          fi
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
