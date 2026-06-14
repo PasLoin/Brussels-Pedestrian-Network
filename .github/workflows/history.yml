@@ -15,6 +15,21 @@ name: Compute History — Monthly Snapshots
 #                      recomputed regardless of mode, since its content
 #                      changes twice a day even though its date stays
 #                      "today".
+#
+# ── Fixed analysis boundary ─────────────────────────────────────────────
+# The upstream PBF extracts (daily + monthly) have not always covered
+# exactly the same area over time, which made the evolution charts show
+# spurious ups/downs that were really just changes in extract coverage
+# rather than real mapping changes.
+#
+# To make every entry in history.json comparable, every snapshot is
+# clipped with `osmium extract` to the same fixed polygon — OSM relation
+# 54094, "Région de Bruxelles-Capitale / Brussels Hoofdstedelijk Gewest" —
+# before scripts/compute_history.py ever sees it. The `complete_ways`
+# strategy (osmium's default) keeps any way that has at least one node
+# inside the polygon in full, so absolute km values may be very slightly
+# higher than a "hard" geometric clip near the boundary — but that small
+# bias is constant across every snapshot, so deltas/trends stay valid.
 
 on:
   workflow_dispatch:
@@ -35,6 +50,10 @@ env:
   HISTORY_LIST_URL: https://raw.githubusercontent.com/PasLoin/Osm-python-analyse_Belgium/main/pbf_analyse/history-list.json
   # Path of the output file, relative to this repo's root.
   HISTORY_JSON_PATH: history.json
+  # Fixed analysis boundary used to clip every snapshot before computing
+  # stats (see comment block above).
+  BOUNDARY_POLY_URL: https://raw.githubusercontent.com/PasLoin/Osm-python-analyse_Belgium/main/pbf_analyse/54094.poly
+  BOUNDARY_POLY_PATH: 54094.poly
 
 jobs:
   history:
@@ -53,6 +72,13 @@ jobs:
 
       - name: Install Python dependencies
         run: pip install pyproj --break-system-packages
+
+      # ── Fetch the fixed analysis boundary polygon ──────────────────────
+      - name: Download analysis boundary polygon
+        run: |
+          echo "→ Fetching ${BOUNDARY_POLY_URL}"
+          curl -fsSL "${BOUNDARY_POLY_URL}" -o "${BOUNDARY_POLY_PATH}"
+          head -2 "${BOUNDARY_POLY_PATH}"
 
       # ── Load existing history.json (update mode) or start fresh (full mode) ──
       - name: Load or initialise history.json
@@ -105,8 +131,12 @@ jobs:
 
             echo "→ downloading $url"
             if curl -fsSL "$url" -o snapshot.pbf; then
+              echo "  clipping to analysis boundary (${BOUNDARY_POLY_PATH})"
+              osmium extract -p "${BOUNDARY_POLY_PATH}" -s complete_ways -O \
+                -o snapshot_clipped.pbf snapshot.pbf
+
               echo "  computing stats for $iso ($etype: $fname)"
-              python3 scripts/compute_history.py snapshot.pbf "$iso" \
+              python3 scripts/compute_history.py snapshot_clipped.pbf "$iso" \
                 > snapshot_stats.json
 
               # Attach metadata about the source entry (filename + type)
@@ -121,7 +151,7 @@ jobs:
               ' "${HISTORY_JSON_PATH}" > history_new.json
               mv history_new.json "${HISTORY_JSON_PATH}"
 
-              rm -f snapshot.pbf snapshot_stats.json snapshot_stats_enriched.json
+              rm -f snapshot.pbf snapshot_clipped.pbf snapshot_stats.json snapshot_stats_enriched.json
             else
               echo "  ⚠ $url not available, skipping"
             fi
