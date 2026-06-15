@@ -14,6 +14,7 @@ on:
       - "about.html"
       - "robots.txt"
       - "sitemap.xml"
+      - "favicon.svg"
       - "app.js"
       - "app.css"
       - "style.json"
@@ -318,6 +319,18 @@ jobs:
             echo '[]' > history.json
           fi
 
+      # ── Keep sitemap.xml lastmod dates fresh ─────────────────────────────
+      # All pages are effectively regenerated on every run (new PMTiles,
+      # stats.json, history.json), so a single build-date lastmod accurately
+      # reflects "data available at this URL was last updated on this date".
+      # Only the deployed gh-pages copy is touched — sitemap.xml on `main`
+      # keeps its original dates.
+      - name: Update sitemap lastmod dates
+        run: |
+          TODAY=$(date -u +%Y-%m-%d)
+          sed -i "s#<lastmod>[0-9-]*</lastmod>#<lastmod>${TODAY}</lastmod>#g" sitemap.xml
+          echo "sitemap.xml lastmod set to ${TODAY}"
+
       # ── Prepare the site directory ──────────────────────────────────────
       # Copies all static front-end files plus the freshly-built PMTiles
       # and history.json (sourced from the current checkout, see step above).
@@ -325,7 +338,7 @@ jobs:
         run: |
           mv pedestrian.pmtiles pedestrian.pmtiles.gz
           mkdir -p _site
-          cp index.html stats.html evolution.html about.html robots.txt app.js app.css \
+          cp index.html stats.html evolution.html about.html robots.txt favicon.svg app.js app.css \
              style.json state.txt sitemap.xml stats.json graph.json \
              pedestrian.pmtiles.gz history.json \
              _site/
