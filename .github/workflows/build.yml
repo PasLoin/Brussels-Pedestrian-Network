@@ -324,7 +324,7 @@ jobs:
         run: |
           mv pedestrian.pmtiles pedestrian.pmtiles.gz
           mkdir -p _site
-          cp index.html stats.html evolution.html app.js app.css \
+          cp index.html stats.html evolution.html about.html robots.txt app.js app.css \
              style.json state.txt stats.json graph.json \
              pedestrian.pmtiles.gz history.json \
              _site/
