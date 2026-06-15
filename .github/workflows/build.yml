@@ -11,6 +11,8 @@ on:
       - "index.html"
       - "stats.html"
       - "evolution.html"
+      - "about.html"
+      - "robots.txt"
       - "app.js"
       - "app.css"
       - "style.json"
