@@ -1,0 +1,311 @@
+{
+  "routing": {
+    "routed_trips": 886904,
+    "avg_distance_m": 1926.1,
+    "total_distance_km": 1708236.4,
+    "routing_time_s": 356.3
+  },
+  "od_sampling": {
+    "od_points": 27810,
+    "od_pairs_generated": 900000,
+    "rejected_near": 108419,
+    "rejected_far": 10223939,
+    "min_dist_m": 600.0,
+    "max_dist_m": 2000.0,
+    "walk_score_radius_m": 1000.0,
+    "streets_sampled": 4942,
+    "points_even": 13885,
+    "points_odd": 13925
+  },
+  "routed_trips": 886904,
+  "avg_distance_m": 1926.1,
+  "graph": {
+    "nodes": 101069,
+    "edges": 258999,
+    "cycleways_foot_yes": 1589,
+    "cycleways_no_foot": 7444,
+    "streets_with_sidewalk_tags": 1619
+  },
+  "network": {
+    "total_km": 8946.14,
+    "km_by_highway": {
+      "footway": 3832.82,
+      "residential": 1741.45,
+      "service": 740.33,
+      "path": 524.87,
+      "cycleway": 405.84,
+      "tertiary": 398.86,
+      "pedestrian": 371.15,
+      "secondary": 213.83,
+      "primary": 179.84,
+      "steps": 150.74,
+      "living_street": 148.0,
+      "track": 131.69,
+      "unclassified": 98.51,
+      "primary_link": 3.29,
+      "bridleway": 2.93,
+      "secondary_link": 0.87,
+      "tertiary_link": 0.74,
+      "construction": 0.19,
+      "elevator": 0.19
+    },
+    "edges_by_highway": {
+      "footway": 138487,
+      "residential": 36975,
+      "service": 21069,
+      "pedestrian": 12508,
+      "tertiary": 10541,
+      "path": 9072,
+      "cycleway": 9033,
+      "steps": 6165,
+      "secondary": 5024,
+      "primary": 3684,
+      "living_street": 3642,
+      "unclassified": 1895,
+      "track": 672,
+      "primary_link": 103,
+      "elevator": 42,
+      "tertiary_link": 40,
+      "secondary_link": 32,
+      "bridleway": 13,
+      "construction": 2
+    },
+    "km_by_category": {
+      "pedestrian": 5027.76,
+      "road": 3512.55,
+      "cycleway_no_foot": 268.15,
+      "cycleway_foot_yes": 137.68
+    }
+  },
+  "flow": {
+    "forced_road_segments": 627,
+    "forced_cycleway_segments": 69,
+    "flow_edges_exported": 137353,
+    "flow_edges_dropped_low": 5412,
+    "flow_threshold_trips": 808.0,
+    "max_flow_trips": 6497,
+    "forced_road_length_m": 38338.0,
+    "forced_cycleway_length_m": 2539.0,
+    "flow_by_infra": {
+      "pedestrian": 50329695,
+      "road": 3441449,
+      "cycleway_foot_yes": 728652,
+      "cycleway_no_foot": 255542
+    },
+    "edges_with_flow_by_infra": {
+      "pedestrian": 118565,
+      "road": 21741,
+      "cycleway_foot_yes": 1354,
+      "cycleway_no_foot": 1105
+    },
+    "length_with_flow_by_infra_m": {
+      "pedestrian": 3616648.0,
+      "road": 1256033.0,
+      "cycleway_foot_yes": 104916.0,
+      "cycleway_no_foot": 55335.0
+    }
+  },
+  "walkability": {
+    "streets_scored": 4923,
+    "walkability_mean": 0.785,
+    "walkability_median": 0.844,
+    "walkability_min": 0.0,
+    "walkability_max": 1.0,
+    "score_distribution": {
+      "0_20": 64,
+      "20_40": 210,
+      "40_60": 782,
+      "60_80": 1022,
+      "80_100": 2845
+    },
+    "sidewalk_penalties": {
+      "both": 981,
+      "partial": 100,
+      "unknown": 3801,
+      "none": 41
+    }
+  },
+  "sidewalk_gaps": {
+    "roads_analysed": 13008,
+    "skipped_no_sidewalk": 539,
+    "both_sides": 4056,
+    "one_side_gap": 2693,
+    "neither_side": 6234,
+    "gap_length_km": 274.96,
+    "both_length_km": 478.15,
+    "neither_length_km": 943.18,
+    "footway_segments_indexed": 40337,
+    "footway_filter": {
+      "raw": 59229,
+      "kept": 40337,
+      "kept_sidewalk": 23360,
+      "kept_link": 43,
+      "kept_crossing": 14542,
+      "kept_pedestrian": 2392,
+      "dropped": 18892
+    }
+  },
+  "sidewalk_roads": {
+    "total_road_ways": 14868,
+    "by_status": {
+      "separate": 3473,
+      "yes": 1659,
+      "documented": 874,
+      "partial": 941,
+      "unknown": 7921
+    },
+    "pct_by_status": {
+      "separate": 23.4,
+      "yes": 11.2,
+      "documented": 5.9,
+      "partial": 6.3,
+      "unknown": 53.3
+    },
+    "km_by_status": {
+      "separate": 367.51,
+      "yes": 242.7,
+      "documented": 85.11,
+      "partial": 97.83,
+      "unknown": 988.46
+    }
+  },
+  "missing_crossings": {
+    "crossing_nodes_found": 22903,
+    "no_eligible_road": 716,
+    "on_excluded_way": 3956,
+    "crossing_continuous": 8,
+    "crossing_fully_mapped": 14308,
+    "sidewalk_missing_or_skewed": 3775,
+    "missing_crossing_way": 20,
+    "missing_crossing_tag": 120,
+    "missing_crossings_detected": 140
+  },
+  "top_streets": {
+    "missing_crossings": [
+      {
+        "name": "square g\u00e9rard van caulaert - g\u00e9rard van caulaertsquare",
+        "value": 6
+      },
+      {
+        "name": "avenue du bourgmestre jean neybergh - burgemeester jean neyberghlaan",
+        "value": 5
+      },
+      {
+        "name": "avenue marius renard - marius renardlaan",
+        "value": 3
+      },
+      {
+        "name": "boulevard jules graindor - jules graindorlaan",
+        "value": 3
+      },
+      {
+        "name": "place du tr\u00f4ne - troonplein",
+        "value": 3
+      },
+      {
+        "name": "bergdal",
+        "value": 3
+      },
+      {
+        "name": "romeinsesteenweg",
+        "value": 2
+      },
+      {
+        "name": "chauss\u00e9e de stockel - stokkelsesteenweg",
+        "value": 2
+      },
+      {
+        "name": "avenue rogier - rogierlaan",
+        "value": 2
+      },
+      {
+        "name": "rue de stalle - stallestraat",
+        "value": 2
+      }
+    ],
+    "unknown_sidewalk": [
+      {
+        "name": "avenue de tervueren - tervurenlaan",
+        "value": 9.64
+      },
+      {
+        "name": "avenue de vilvorde - vilvoordselaan",
+        "value": 6.98
+      },
+      {
+        "name": "boulevard lambermont - lambermontlaan",
+        "value": 6.2
+      },
+      {
+        "name": "route de lennik - lennikse baan",
+        "value": 5.26
+      },
+      {
+        "name": "boulevard louis mettewie - louis mettewielaan",
+        "value": 4.44
+      },
+      {
+        "name": "avenue houba-de strooper - houba-de strooperlaan",
+        "value": 4.3
+      },
+      {
+        "name": "chauss\u00e9e de mons - bergense steenweg",
+        "value": 4.17
+      },
+      {
+        "name": "chauss\u00e9e de waterloo - waterloosesteenweg",
+        "value": 4.14
+      },
+      {
+        "name": "chauss\u00e9e de haecht - haachtsesteenweg",
+        "value": 3.86
+      },
+      {
+        "name": "boulevard du souverain - vorstlaan",
+        "value": 3.83
+      }
+    ],
+    "sidewalk_gaps": [
+      {
+        "name": "boulevard du souverain - vorstlaan",
+        "value": 4.45
+      },
+      {
+        "name": "avenue houba-de strooper - houba-de strooperlaan",
+        "value": 4.23
+      },
+      {
+        "name": "avenue brugmann - brugmannlaan",
+        "value": 4.06
+      },
+      {
+        "name": "avenue de tervueren - tervurenlaan",
+        "value": 3.89
+      },
+      {
+        "name": "boulevard de smet de naeyer - de smet de naeyerlaan",
+        "value": 2.9
+      },
+      {
+        "name": "boulevard lambermont - lambermontlaan",
+        "value": 2.71
+      },
+      {
+        "name": "avenue de broqueville - de broquevillelaan",
+        "value": 2.62
+      },
+      {
+        "name": "avenue louise - louizalaan",
+        "value": 2.45
+      },
+      {
+        "name": "boulevard \u00e9mile bockstael - emile bockstaellaan",
+        "value": 2.36
+      },
+      {
+        "name": "avenue charles woeste - charles woestelaan",
+        "value": 2.17
+      }
+    ]
+  }
+}

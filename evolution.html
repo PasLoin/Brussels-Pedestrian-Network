@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Brussels Pedestrian Network — Évolution</title>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f5f3f0;
+      --surface: #fff;
+      --border: #ddd;
+      --text: #222;
+      --text-dim: #555;
+      --text-muted: #888;
+      --green: #2d8a4e;
+      --red: #c0392b;
+      --orange: #c27d2a;
+      --blue: #2563eb;
+      --purple: #6c3bbd;
+      --cyan: #0e7490;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+      font-size: 13px;
+    }
+
+    .page-header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 0;
+    }
+    .page-header-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 20px;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .page-header h1 { font-size: 14px; font-weight: 600; }
+    .page-header-right {
+      display: flex; align-items: baseline; gap: 16px;
+      font-size: 11px; color: var(--text-muted);
+    }
+    .page-header-right a { color: var(--text-dim); text-decoration: none; }
+    .page-header-right a:hover { text-decoration: underline; }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 20px 20px 48px; }
+
+    .intro {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 14px 16px;
+      margin-bottom: 24px;
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+    .intro strong { color: var(--text); }
+    .intro .meta {
+      margin-top: 8px;
+      font-size: 11px;
+      color: var(--text-muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .section { margin-bottom: 28px; }
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-dim);
+      margin-bottom: 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .chart-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .chart-card h3 {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-bottom: 4px;
+    }
+    .chart-card .subtitle {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+    .chart-wrap { position: relative; height: 280px; }
+    .chart-wrap canvas { max-height: 280px; }
+
+    .delta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .delta {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 10px 12px;
+    }
+    .delta-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+      margin-bottom: 2px;
+    }
+    .delta-val {
+      font-size: 18px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+    .delta-sub {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 1px;
+      font-variant-numeric: tabular-nums;
+    }
+    .delta.pos .delta-val { color: var(--green); }
+    .delta.neg .delta-val { color: var(--red); }
+    .delta.neutral .delta-val { color: var(--text); }
+
+    /* ── Period / zoom controls ─────────────────────────────────────── */
+    .period-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 10px 14px;
+    }
+    .period-controls label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+    .period-controls input[type="date"] {
+      font-family: inherit;
+      font-size: 12px;
+      padding: 4px 6px;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .period-controls button {
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 5px 10px;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      background: var(--bg);
+      color: var(--text-dim);
+      cursor: pointer;
+    }
+    .period-controls button:hover { background: #eee; color: var(--text); }
+    .period-controls .period-info {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-left: auto;
+    }
+    .period-controls .period-hint {
+      font-size: 11px;
+      color: var(--text-muted);
+      flex-basis: 100%;
+    }
+
+    .loading { text-align: center; padding: 48px 20px; color: var(--text-muted); }
+
+    .footer {
+      text-align: center;
+      padding: 16px 20px;
+      font-size: 10px;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border);
+    }
+    .footer a { color: var(--text-dim); text-decoration: none; }
+
+    @media (max-width: 600px) {
+      .delta-grid { grid-template-columns: repeat(2, 1fr); }
+      .delta-val { font-size: 16px; }
+      .chart-wrap { height: 220px; }
+      .period-controls .period-info { margin-left: 0; }
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<header class="page-header">
+  <div class="page-header-inner">
+    <h1>Brussels Pedestrian Network — Évolution</h1>
+    <div class="page-header-right">
+      <a href="./stats.html">Stats actuelles</a>
+      <a href="./">Carte</a>
+    </div>
+  </div>
+</header>
+
+<main class="container" id="main">
+  <div class="loading" id="loading">Chargement de l'historique…</div>
+</main>
+
+<script>
+// ── Chart defaults ─────────────────────────────────────────────────────────
+Chart.defaults.color = '#888';
+Chart.defaults.borderColor = '#ddd';
+Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.plugins.legend.labels.usePointStyle = true;
+Chart.defaults.plugins.legend.labels.pointStyleWidth = 8;
+Chart.defaults.plugins.legend.labels.padding = 12;
+Chart.defaults.elements.line.tension = 0.25;
+Chart.defaults.elements.point.radius = 2.5;
+Chart.defaults.elements.point.hoverRadius = 5;
+
+const C = {
+  green: '#2d8a4e', red: '#c0392b', orange: '#c27d2a',
+  blue: '#2563eb', purple: '#6c3bbd', cyan: '#0e7490', gray: '#999',
+  grayLine: '#9ca3af',
+};
+
+const fmt  = v => v != null ? v.toLocaleString('fr-BE') : '—';
+const fkm  = v => v != null ? v.toLocaleString('fr-BE', { maximumFractionDigits: 1 }) : '—';
+const fpct = v => v != null ? v.toFixed(1) + ' %' : '—';
+
+// "2024-04-01" → "avr 24". Daily snapshots get a "*" suffix so they're
+// visually distinguishable from full monthly snapshots on the x-axis.
+const fmonth = (iso, isDaily = false) => {
+  const [y, m] = iso.split('-');
+  const months = ['jan','fév','mar','avr','mai','jun','jul','aoû','sep','oct','nov','déc'];
+  const base = months[parseInt(m,10)-1] + ' ' + y.slice(2);
+  return isDaily ? base + ' *' : base;
+};
+
+function escapeHTML(str) {
+  if (!str) return str;
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+// Holds the live Chart.js instances for the charts that respond to the
+// period (zoom) controls, keyed by canvas id, so they can be destroyed
+// and recreated whenever the selected period changes.
+const chartInstances = {};
+
+fetch('./history.json')
+  .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+  .then(data => {
+    if (!Array.isArray(data) || data.length === 0) {
+      throw new Error('Historique vide. Lancez le workflow "Compute History".');
+    }
+    // Ensure date-sorted ascending.
+    data.sort((a, b) => a.date.localeCompare(b.date));
+    render(data);
+  })
+  .catch(e => {
+    document.getElementById('loading').innerHTML =
+      'Erreur : ' + escapeHTML(String(e.message || e));
+  });
+
+// ── Rendering ──────────────────────────────────────────────────────────────
+
+function render(data) {
+  const el = document.getElementById('main');
+  el.innerHTML = '';
+
+  const first = data[0];
+  const last  = data[data.length - 1];
+
+  // Daily entry (if present) is appended last by generate_history_list.py
+  // and carries today's date, so it naturally sorts to the end.
+  const dailyEntry   = last && last.type === 'daily' ? last : null;
+  const snapshots    = data.filter(d => d.type !== 'daily');
+  const lastSnapshot = snapshots[snapshots.length - 1];
+  const showComparison = !!(dailyEntry && lastSnapshot && dailyEntry.date !== lastSnapshot.date);
+
+  // ── Intro card with timespan + headline numbers ──────────────────────
+  const months = data.length;
+  const yearsCovered = ((new Date(last.date) - new Date(first.date)) / (1000 * 60 * 60 * 24 * 365.25)).toFixed(1);
+
+  el.innerHTML += `
+    <div class="intro">
+      <strong>${months} snapshots mensuels</strong> couvrant
+      <strong>${yearsCovered} année${yearsCovered > 1 ? 's' : ''}</strong>
+      d'évolution du réseau piéton bruxellois sur OpenStreetMap.
+      <div class="meta">
+        Du ${escapeHTML(first.date)} au ${escapeHTML(last.date)}
+        · ${escapeHTML(fkm(last.ped_km))} km piéton actuellement
+        (vs ${escapeHTML(fkm(first.ped_km))} km au départ)
+        ${dailyEntry ? `· * = dernière extraction quotidienne (${escapeHTML(dailyEntry.date)})` : ''}
+        · Zone d'analyse fixe : Région de Bruxelles-Capitale (limite OSM #54094)
+      </div>
+    </div>`;
+
+  // ── Section: comparison vs latest daily extract ─────────────────────
+  if (showComparison) {
+    el.innerHTML += `
+      <div class="section" id="compare-section">
+        <div class="section-title">Depuis le dernier snapshot mensuel</div>
+        <div class="chart-card">
+          <h3>Km par type de voirie — snapshot vs aujourd'hui</h3>
+          <div class="subtitle">
+            Comparaison entre le dernier snapshot mensuel (${escapeHTML(lastSnapshot.date)})
+            et l'extract quotidien le plus récent (${escapeHTML(dailyEntry.date)}).
+            Les 10 types les plus représentés en km sont affichés.
+          </div>
+          <div class="chart-wrap"><canvas id="c-compare-hw"></canvas></div>
+        </div>
+        <div class="delta-grid" id="compare-deltas"></div>
+      </div>`;
+  }
+
+  // ── Section: period / zoom controls ──────────────────────────────────
+  el.innerHTML += `
+    <div class="section">
+      <div class="section-title">Période d'analyse</div>
+      <div class="period-controls">
+        <label>Du <input type="date" id="period-start" min="${first.date}" max="${last.date}" value="${first.date}"></label>
+        <label>au <input type="date" id="period-end" min="${first.date}" max="${last.date}" value="${last.date}"></label>
+        <button type="button" id="period-reset">Période complète</button>
+        <span class="period-info" id="period-info"></span>
+        <div class="period-hint">
+          Resserrez la période pour zoomer sur les graphiques ci-dessous : l'échelle verticale
+          s'ajuste automatiquement pour faire ressortir les petites variations.
+        </div>
+      </div>
+    </div>`;
+
+  // ── Section: deltas over the selected period ─────────────────────────
+  el.innerHTML += `
+    <div class="section">
+      <div class="section-title" id="deltas-title">Évolution</div>
+      <div class="delta-grid" id="deltas"></div>
+    </div>`;
+
+  // ── Section 2: network length evolution ─────────────────────────────
+  el.innerHTML += `
+    <div class="section">
+      <div class="section-title">Longueur du réseau (km)</div>
+
+      <div class="chart-card">
+        <h3>Infrastructure piétonne dédiée</h3>
+        <div class="subtitle">footway + pedestrian + path + living_street + steps + elevator</div>
+        <div class="chart-wrap"><canvas id="c-ped-km"></canvas></div>
+      </div>
+
+      <div class="chart-card">
+        <h3>Réseau global par catégorie</h3>
+        <div class="subtitle">Piéton vs route vs cycleway. Les routes incluent les voies où les piétons marchent (résidentielles à primaires).</div>
+        <div class="chart-wrap"><canvas id="c-all-km"></canvas></div>
+      </div>
+
+      <div class="chart-card">
+        <h3>Détail par type highway</h3>
+        <div class="subtitle">Six types les plus présents en km.</div>
+        <div class="chart-wrap"><canvas id="c-hw-km"></canvas></div>
+      </div>
+    </div>`;
+
+  // ── Section 3: pedestrian network quality ────────────────────────────
+  el.innerHTML += `
+    <div class="section">
+      <div class="section-title">Qualité de mapping piéton</div>
+
+      <div class="chart-card">
+        <h3>Trottoirs : ratio des routes documentées</h3>
+        <div class="subtitle">% de routes (résidentielles → primaires) avec un tag sidewalk explicite (separate, yes, both, no), et part restant non documentée.</div>
+        <div class="chart-wrap"><canvas id="c-sw-pct"></canvas></div>
+      </div>
+
+      <div class="chart-card">
+        <h3>Traversées : nœuds et ways</h3>
+        <div class="subtitle">Un crossing est correctement mappé quand il a à la fois un nœud highway=crossing et un way footway=crossing. L'écart entre les deux courbes mesure le travail restant.</div>
+        <div class="chart-wrap"><canvas id="c-xing"></canvas></div>
+      </div>
+
+      <div class="chart-card">
+        <h3>Accessibilité : tags annexes</h3>
+        <div class="subtitle">% de footways avec surface, % de footways avec smoothness, % de crossings avec tactile_paving.</div>
+        <div class="chart-wrap"><canvas id="c-acc"></canvas></div>
+      </div>
+    </div>`;
+
+  // ── Section 4: footway breakdown ────────────────────────────────────
+  el.innerHTML += `
+    <div class="section">
+      <div class="section-title">Footways — Composition</div>
+
+      <div class="chart-card">
+        <h3>Stacké : sidewalk / crossing / link / autre</h3>
+        <div class="subtitle">Décomposition des ways highway=footway par sous-tag footway=*.</div>
+        <div class="chart-wrap"><canvas id="c-fw-mix"></canvas></div>
+      </div>
+    </div>`;
+
+  // ── Section 5: tags sidewalk on roads (composition) ─────────────────
+  el.innerHTML += `
+    <div class="section">
+      <div class="section-title">Tags sidewalk sur routes — Composition</div>
+
+      <div class="chart-card">
+        <h3>Stacké : separate / yes / partial / no / sans tag</h3>
+        <div class="subtitle">Le passage progressif de "yes" vers "separate" indique une montée en qualité du mapping.</div>
+        <div class="chart-wrap"><canvas id="c-sw-mix"></canvas></div>
+      </div>
+    </div>`;
+
+  requestAnimationFrame(() => {
+    if (showComparison) renderComparison(lastSnapshot, dailyEntry);
+    setupPeriodControls(data);
+  });
+}
+
+// ── Comparison: last monthly snapshot vs latest daily extract ──────────────
+function renderComparison(lastSnapshot, dailyEntry) {
+  const kmA = lastSnapshot.km_by_highway || {};
+  const kmB = dailyEntry.km_by_highway || {};
+
+  const allTypes = Array.from(new Set([...Object.keys(kmA), ...Object.keys(kmB)]));
+  allTypes.sort((a, b) => ((kmB[b] || 0) + (kmA[b] || 0)) - ((kmB[a] || 0) + (kmA[a] || 0)));
+  const topTypes = allTypes.slice(0, 10);
+
+  new Chart(document.getElementById('c-compare-hw'), {
+    type: 'bar',
+    data: {
+      labels: topTypes,
+      datasets: [
+        {
+          label: `Snapshot du ${lastSnapshot.date}`,
+          data: topTypes.map(t => kmA[t] || 0),
+          backgroundColor: C.gray,
+          borderRadius: 3,
+        },
+        {
+          label: `Aujourd'hui (${dailyEntry.date})`,
+          data: topTypes.map(t => kmB[t] || 0),
+          backgroundColor: C.green,
+          borderRadius: 3,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom' },
+        tooltip: {
+          callbacks: {
+            label: c => `${c.dataset.label} : ${fkm(c.parsed.y)} km`,
+          },
+        },
+      },
+      scales: {
+        x: { grid: { display: false } },
+        y: {
+          beginAtZero: true,
+          grid: { color: '#eee' },
+          title: { display: true, text: 'km', font: { size: 10 } },
+        },
+      },
+    },
+  });
+
+  const grid = document.getElementById('compare-deltas');
+  grid.innerHTML = '';
+  for (const t of topTypes) {
+    const before = kmA[t] || 0;
+    const after  = kmB[t] || 0;
+    const delta = after - before;
+
+    let cls = 'neutral';
+    if (delta > 0.05) cls = 'pos';
+    else if (delta < -0.05) cls = 'neg';
+
+    const showDelta = (delta >= 0 ? '+' : '') + fkm(delta) + ' km';
+
+    grid.insertAdjacentHTML('beforeend', `
+      <div class="delta ${cls}">
+        <div class="delta-label">${escapeHTML(t)}</div>
+        <div class="delta-val">${escapeHTML(fkm(after))} km</div>
+        <div class="delta-sub">${escapeHTML(showDelta)} depuis le ${escapeHTML(lastSnapshot.date)}</div>
+      </div>
+    `);
+  }
+}
+
+// ── Period / zoom controls ──────────────────────────────────────────────────
+//
+// The "Évolution" delta grid and all charts in sections 2-5 are driven by
+// the currently selected [start, end] date range. Narrowing the range lets
+// mappers zoom in on a recent stretch of time: the line charts drop
+// `beginAtZero` and auto-scale their y-axis to that window, which makes
+// small fluctuations visible that would be invisible on the full-history
+// scale.
+function setupPeriodControls(data) {
+  const startInput = document.getElementById('period-start');
+  const endInput   = document.getElementById('period-end');
+  const resetBtn   = document.getElementById('period-reset');
+
+  const minDate = data[0].date;
+  const maxDate = data[data.length - 1].date;
+
+  const apply = () => applyPeriod(data, minDate, maxDate);
+
+  startInput.addEventListener('change', apply);
+  endInput.addEventListener('change', apply);
+  resetBtn.addEventListener('click', () => {
+    startInput.value = minDate;
+    endInput.value = maxDate;
+    apply();
+  });
+
+  apply();
+}
+
+function applyPeriod(data, minDate, maxDate) {
+  const startInput = document.getElementById('period-start');
+  const endInput   = document.getElementById('period-end');
+
+  let start = startInput.value || minDate;
+  let end   = endInput.value   || maxDate;
+
+  // Keep the inputs sane if the user picks an end date before the start date.
+  if (start > end) {
+    [start, end] = [end, start];
+    startInput.value = start;
+    endInput.value = end;
+  }
+
+  let filtered = data.filter(d => d.date >= start && d.date <= end);
+  if (filtered.length === 0) {
+    // Selected range falls entirely between two data points — fall back to
+    // the single closest point so the page never goes blank.
+    filtered = [data[data.length - 1]];
+  }
+
+  const labels = filtered.map(d => fmonth(d.date, d.type === 'daily'));
+  const isFullRange = (start === minDate && end === maxDate);
+
+  const info = document.getElementById('period-info');
+  if (info) {
+    info.textContent = isFullRange
+      ? `Période complète · ${filtered.length} point${filtered.length > 1 ? 's' : ''}`
+      : `${filtered.length} point${filtered.length > 1 ? 's' : ''} affiché${filtered.length > 1 ? 's' : ''} (zoom actif)`;
+  }
+
+  renderDeltas(filtered[0], filtered[filtered.length - 1]);
+  renderCharts(filtered, labels, !isFullRange);
+}
+
+// Creates (or recreates) a Chart.js chart on the canvas with the given id,
+// destroying any previous instance so the chart can be redrawn whenever the
+// selected period changes.
+function makeChart(id, config) {
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  if (chartInstances[id]) {
+    chartInstances[id].destroy();
+  }
+  chartInstances[id] = new Chart(ctx, config);
+}
+
+function renderDeltas(first, last) {
+  const titleEl = document.getElementById('deltas-title');
+  if (titleEl) {
+    titleEl.textContent = first.date === last.date
+      ? `Évolution — ${first.date}`
+      : `Évolution du ${first.date} au ${last.date}`;
+  }
+
+  const target = document.getElementById('deltas');
+  target.innerHTML = '';
+
+  const items = [
+    ['Réseau piéton',         'ped_km',           'km'],
+    ['footway=sidewalk',       'footway_sidewalk',  ''],
+    ['Nœuds crossing',          'crossing_nodes',    ''],
+    ['Ways footway=crossing',  'footway_crossing',  ''],
+    ['Trottoirs documentés',  'sidewalk_documented_pct', '%'],
+    ['Trottoirs séparés',      'sidewalk_separate_pct',   '%'],
+    ['Ratio crossing tagged',  'crossing_tagged_pct',     '%'],
+    ['Tactile paving',          'tactile_paving_pct',      '%'],
+  ];
+
+  for (const [label, key, unit] of items) {
+    const before = first[key];
+    const after  = last[key];
+    if (before == null || after == null) continue;
+    const delta = after - before;
+    let cls = 'neutral';
+    if (delta > 0) cls = 'pos';
+    else if (delta < 0) cls = 'neg';
+
+    const showAfter = unit === '%'
+      ? after.toFixed(1) + ' %'
+      : fkm(after) + (unit ? ' ' + unit : '');
+    const showDelta = (delta > 0 ? '+' : '') + (unit === '%' ? delta.toFixed(1) + ' pts' : fkm(delta) + (unit ? ' ' + unit : ''));
+
+    target.insertAdjacentHTML('beforeend', `
+      <div class="delta ${cls}">
+        <div class="delta-label">${escapeHTML(label)}</div>
+        <div class="delta-val">${escapeHTML(showAfter)}</div>
+        <div class="delta-sub">${escapeHTML(showDelta)} depuis le ${escapeHTML(first.date)}</div>
+      </div>
+    `);
+  }
+}
+
+// Per-point styling: highlight the daily entry (if present) with a larger,
+// orange marker so it's clearly distinguishable from monthly snapshots.
+function pointStyles(data, color) {
+  return {
+    pointBackgroundColor: data.map(d => d.type === 'daily' ? C.orange : color),
+    pointBorderColor:     data.map(d => d.type === 'daily' ? C.orange : color),
+    pointRadius:          data.map(d => d.type === 'daily' ? 5 : 2.5),
+    pointHoverRadius:     data.map(d => d.type === 'daily' ? 7 : 5),
+  };
+}
+
+// Common base options factories.
+//
+// `zoomed` is true whenever the user has narrowed the period selector to
+// less than the full history range. For non-percent charts this drops
+// `beginAtZero` so Chart.js auto-scales the y-axis to the visible data —
+// effectively a "vertical zoom" that surfaces small fluctuations that would
+// be flattened against a 0-based axis spanning the whole history.
+function lineOpts({ yTitle, percent, zoomed }) {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { position: 'bottom' },
+      tooltip: {
+        callbacks: {
+          label: c => `${c.dataset.label} : ${percent ? c.parsed.y.toFixed(1) + ' %' : fkm(c.parsed.y) + (yTitle ? ' ' + yTitle : '')}`,
+        },
+      },
+    },
+    scales: {
+      x: { grid: { display: false } },
+      y: {
+        beginAtZero: percent ? false : !zoomed,
+        max: percent ? 100 : undefined,
+        grid: { color: '#eee' },
+        title: yTitle ? { display: true, text: yTitle, font: { size: 10 } } : undefined,
+      },
+    },
+  };
+}
+
+function stackedOpts(yTitle) {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: { legend: { position: 'bottom' } },
+    scales: {
+      x: { stacked: true, grid: { display: false } },
+      y: {
+        stacked: true,
+        beginAtZero: true,
+        grid: { color: '#eee' },
+        title: yTitle ? { display: true, text: yTitle, font: { size: 10 } } : undefined,
+      },
+    },
+  };
+}
+
+function renderCharts(data, labels, zoomed = false) {
+  const series = (key) => data.map(d => d[key] ?? 0);
+  const seriesFromKm = (k) => data.map(d => (d.km_by_highway || {})[k] ?? 0);
+
+  // ── 1. Pedestrian km ─────────────────────────────────────────────────
+  makeChart('c-ped-km', {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Réseau piéton',
+        data: series('ped_km'),
+        borderColor: C.green,
+        backgroundColor: C.green + '22',
+        fill: true,
+        ...pointStyles(data, C.green),
+      }],
+    },
+    options: lineOpts({ yTitle: 'km', zoomed }),
+  });
+
+  // ── 2. All categories ────────────────────────────────────────────────
+  makeChart('c-all-km', {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Piéton',    data: series('ped_km'),      borderColor: C.green,  backgroundColor: C.green + '22', fill: false, ...pointStyles(data, C.green) },
+        { label: 'Routes',     data: series('road_km'),     borderColor: C.red,    backgroundColor: C.red + '22',   fill: false, ...pointStyles(data, C.red) },
+        { label: 'Cycleway',   data: series('cycleway_km'), borderColor: C.blue,   backgroundColor: C.blue + '22',  fill: false, ...pointStyles(data, C.blue) },
+      ],
+    },
+    options: lineOpts({ yTitle: 'km', zoomed }),
+  });
+
+  // ── 3. Per highway type ──────────────────────────────────────────────
+  const HW_TYPES = ['footway', 'cycleway', 'residential', 'secondary', 'tertiary', 'primary'];
+  const HW_COLORS = [C.green, C.blue, C.red, C.orange, C.cyan, C.purple];
+  makeChart('c-hw-km', {
+    type: 'line',
+    data: {
+      labels,
+      datasets: HW_TYPES.map((hw, i) => ({
+        label: hw,
+        data: seriesFromKm(hw),
+        borderColor: HW_COLORS[i],
+        backgroundColor: HW_COLORS[i] + '22',
+        fill: false,
+        ...pointStyles(data, HW_COLORS[i]),
+      })),
+    },
+    options: lineOpts({ yTitle: 'km', zoomed }),
+  });
+
+  // ── 4. Sidewalk documented % ─────────────────────────────────────────
+  // sidewalk_documented_pct already covers separate + yes/both + no
+  // (explicit). The remainder — roads with no sidewalk tag at all — is
+  // shown as its own "Non documenté" series so the chart always reads as
+  // a full breakdown rather than two independent ratios.
+  const notDocumented = data.map(d => d.sidewalk_documented_pct != null
+    ? Math.max(0, 100 - d.sidewalk_documented_pct)
+    : null);
+
+  makeChart('c-sw-pct', {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Documenté (any tag)', data: series('sidewalk_documented_pct'), borderColor: C.cyan,  backgroundColor: C.cyan  + '22', fill: false, ...pointStyles(data, C.cyan) },
+        { label: 'Sidewalk:both=separate', data: series('sidewalk_separate_pct'), borderColor: C.green, backgroundColor: C.green + '22', fill: false, ...pointStyles(data, C.green) },
+        { label: 'Non documenté', data: notDocumented, borderColor: C.grayLine, backgroundColor: C.grayLine + '22', borderDash: [4, 3], fill: false, ...pointStyles(data, C.grayLine) },
+      ],
+    },
+    options: lineOpts({ percent: true, zoomed }),
+  });
+
+  // ── 5. Crossing nodes vs ways ────────────────────────────────────────
+  makeChart('c-xing', {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Nœuds highway=crossing', data: series('crossing_nodes'),    borderColor: C.cyan,   backgroundColor: C.cyan   + '22', fill: false, ...pointStyles(data, C.cyan) },
+        { label: 'Ways footway=crossing',   data: series('footway_crossing'),  borderColor: C.green,  backgroundColor: C.green  + '22', fill: false, ...pointStyles(data, C.green) },
+        { label: 'Crossings continus',       data: series('crossing_continuous'), borderColor: C.purple, backgroundColor: C.purple + '22', fill: false, ...pointStyles(data, C.purple) },
+      ],
+    },
+    options: lineOpts({ zoomed }),
+  });
+
+  // ── 6. Accessibility tags ────────────────────────────────────────────
+  makeChart('c-acc', {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Footway surface=*',      data: series('footway_surface_pct'),    borderColor: C.cyan,   backgroundColor: C.cyan + '22',   fill: false, ...pointStyles(data, C.cyan) },
+        { label: 'Footway smoothness=*',   data: series('footway_smoothness_pct'), borderColor: C.blue,   backgroundColor: C.blue + '22',   fill: false, ...pointStyles(data, C.blue) },
+        { label: 'Crossing tactile_paving', data: series('tactile_paving_pct'),     borderColor: C.green,  backgroundColor: C.green + '22',  fill: false, ...pointStyles(data, C.green) },
+      ],
+    },
+    options: lineOpts({ percent: true, zoomed }),
+  });
+
+  // ── 7. Footway composition stacked ───────────────────────────────────
+  // "Other" = footways without a recognized footway=* sub-tag.
+  const others = data.map(d => Math.max(0, (d.footway_ways || 0)
+    - (d.footway_sidewalk || 0)
+    - (d.footway_crossing || 0)
+    - (d.footway_link     || 0)));
+  makeChart('c-fw-mix', {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'footway=sidewalk',   data: series('footway_sidewalk'), backgroundColor: C.green,  borderColor: C.green,  fill: true },
+        { label: 'footway=crossing',    data: series('footway_crossing'), backgroundColor: C.cyan,   borderColor: C.cyan,   fill: true },
+        { label: 'footway=link',         data: series('footway_link'),     backgroundColor: C.purple, borderColor: C.purple, fill: true },
+        { label: 'autre / sans sous-tag', data: others,                    backgroundColor: '#bbb',   borderColor: '#aaa',  fill: true },
+      ],
+    },
+    options: stackedOpts(),
+  });
+
+  // ── 8. Sidewalk tag mix stacked ──────────────────────────────────────
+  const swSepArr  = series('road_sidewalk_separate');
+  const swYesArr  = series('road_sidewalk_yes_or_both');
+  const swPartArr = series('road_sidewalk_partial');
+  const swNoArr   = series('road_sidewalk_no_explicit');
+  const swNoneArr = data.map(d => Math.max(0, (d.road_ways || 0)
+    - (d.road_sidewalk_separate || 0)
+    - (d.road_sidewalk_yes_or_both || 0)
+    - (d.road_sidewalk_partial || 0)
+    - (d.road_sidewalk_no_explicit || 0)));
+
+  makeChart('c-sw-mix', {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'separate',        data: swSepArr,  backgroundColor: C.green,  borderColor: C.green,  fill: true },
+        { label: 'yes / both',       data: swYesArr,  backgroundColor: C.cyan,   borderColor: C.cyan,   fill: true },
+        { label: 'partial (1 côté)', data: swPartArr, backgroundColor: C.orange, borderColor: C.orange, fill: true },
+        { label: 'no (explicite)',   data: swNoArr,   backgroundColor: C.red,    borderColor: C.red,    fill: true },
+        { label: 'sans tag',          data: swNoneArr, backgroundColor: '#bbb',   borderColor: '#aaa',  fill: true },
+      ],
+    },
+    options: stackedOpts(),
+  });
+}
+</script>
+<footer class="footer" style="text-align:center; padding: 40px 0; color: #888; font-size: 11px; border-top: 1px solid #ddd; margin-top: 40px;">
+  Données : <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener" style="color: #666; text-decoration: none;">OpenStreetMap</a>
+  · <a href="https://github.com/PasLoin/Brussels-Pedestrian-Network" target="_blank" rel="noopener" style="color: #666; text-decoration: none;">Source</a>
+  · <a href="./stats.html" style="color: #666; text-decoration: none;">Statistiques actuelles</a>
+  · <a href="./" style="color: #666; text-decoration: none;">Retour à la carte</a>
+</footer>
+</body>
+</html>
