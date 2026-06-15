@@ -126,7 +126,7 @@
 
   <h3>Traversées manquantes</h3>
   <p>
-    Le pipeline identifie les nœuds <code>highway=crossing</code> pour lesquels aucun way <code>footway=crossing</code> correctement connecté n'a été trouvé. Deux cas sont distingués : l'absence totale de way de traversée (<code>missing_way</code>), et la présence d'un footway connecté sans le tag <code>footway=crossing</code> (<code>missing_tag</code>). Dans les deux cas, le graphe de routage piéton présente une rupture de connectivité à cet endroit.
+    Cette couche ne signale pas toutes les traversées absentes, mais uniquement les nœuds <code>highway=crossing</code> situés sur une route où un trottoir (<code>footway=sidewalk</code>) parallèle est déjà mappé des deux côtés, et dont le passage piéton n'est pas correctement relié à ce réseau via un way <code>footway=crossing</code>. Deux cas sont distingués : l'absence totale de way de traversée connecté (<code>missing_way</code>), et la présence d'un footway connecté au nœud sans le tag <code>footway=crossing</code> (<code>missing_tag</code>). Dans les deux cas, l'infrastructure piétonne environnante est déjà documentée, mais le graphe de routage présente une rupture de connectivité à cet endroit. Un nœud sans trottoir adjacent détecté n'est pas signalé par cette couche.
   </p>
 
   <h2>3. Indicateurs de complétude</h2>
