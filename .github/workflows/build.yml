@@ -231,7 +231,7 @@ jobs:
 
       - name: Upload GeoJSON artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: geojson-outputs
           path: |
@@ -344,7 +344,7 @@ jobs:
              _site/
 
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
+        uses: peaceiris/actions-gh-pages@v5
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./_site
