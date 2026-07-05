@@ -2,12 +2,19 @@
 
 Covers the pure classification helpers and, at the end, a small
 end-to-end run of ``build_graph`` on a synthetic OSM XML file that
-locks in the two behaviours fixed in July 2026:
+locks in behaviours fixed in July 2026:
 
-* ``sidewalk=separate`` (and ``sidewalk:left/right/both``) must count
-  as documented sidewalks instead of falling through to ``unknown``.
+* ``sidewalk=separate`` and the ``sidewalk:left/right/both`` schema
+  must count as documented sidewalks.
 * one-way streets must be traversable in both directions by the
   pedestrian router (``oneway=yes`` applies to vehicles only).
+* the per-street status/penalty is length-weighted: one tagged segment
+  can no longer flip a whole multi-segment street to "both" at 100%,
+  and untagged streets actually take SIDEWALK_PENALTY_UNKNOWN.
+* ``access=private`` roads are excluded from the pedestrian graph
+  unless ``foot`` explicitly allows them.
+* OSMnx simplification must not merge ways whose name/access/sidewalk
+  tags differ (no more tag/name bleeding onto small connector ways).
 """
 
 import math
@@ -15,11 +22,17 @@ import math
 import pytest
 
 from build_graph import (
-    _classify_sidewalk,
+    SidewalkInfo,
+    _aggregate_sidewalk,
     _edge_sidewalk_status,
     _first_str,
     _unanimous_str,
     build_graph,
+)
+from config import (
+    SIDEWALK_PENALTY_NONE,
+    SIDEWALK_PENALTY_PARTIAL,
+    SIDEWALK_PENALTY_UNKNOWN,
 )
 
 
@@ -60,33 +73,57 @@ def test_edge_sidewalk_status(sw, left, right, both, expected):
     assert _edge_sidewalk_status(sw, left, right, both) == expected
 
 
-def test_separate_is_never_penalised_as_unknown():
-    """Regression: sidewalk=separate used to be classified 'unknown'
-    and take the SIDEWALK_PENALTY_UNKNOWN multiplier — punishing the
-    best-mapped streets."""
-    assert _edge_sidewalk_status("separate", "", "", "") == "both"
-    assert _classify_sidewalk(["both"]) == "both"
-
-
 # ─────────────────────────────────────────────────────────────────────────────
-# _classify_sidewalk (street-level aggregation)
+# _aggregate_sidewalk (length-weighted street aggregation)
 # ─────────────────────────────────────────────────────────────────────────────
 
-@pytest.mark.parametrize(
-    "statuses, expected",
-    [
-        (["both"], "both"),
-        (["partial"], "partial"),
-        (["none"], "none"),
-        ([], "unknown"),
-        # priority: both > partial > none
-        (["none", "partial", "both"], "both"),
-        (["none", "partial"], "partial"),
-        (["none", "none"], "none"),
-    ],
-)
-def test_classify_sidewalk(statuses, expected):
-    assert _classify_sidewalk(statuses) == expected
+def test_aggregate_fully_tagged_both():
+    info = _aggregate_sidewalk({"both": 500.0})
+    assert info.status == "both"
+    assert info.penalty == 1.0
+    assert info.doc_share == 1.0
+
+
+def test_aggregate_fully_untagged_street_takes_unknown_penalty():
+    """Regression: untagged streets used to escape any penalty because
+    they never entered the index (dead SIDEWALK_PENALTY_UNKNOWN branch),
+    scoring 84–95% with zero sidewalk information."""
+    info = _aggregate_sidewalk({"unknown": 300.0})
+    assert info.status == "unknown"
+    assert info.penalty == pytest.approx(SIDEWALK_PENALTY_UNKNOWN)
+    assert info.doc_share == 0.0
+
+
+def test_aggregate_one_tagged_segment_does_not_flip_whole_street():
+    """Regression (user report): a street with one segment tagged
+    ``both`` and a longer untagged segment showed '✅ Deux côtés' at
+    ~100%.  Now the untagged length dominates the display status and
+    drags the penalty down."""
+    info = _aggregate_sidewalk({"both": 50.0, "unknown": 200.0})
+    assert info.status == "unknown"          # dominant by length
+    expected = (50 * 1.0 + 200 * SIDEWALK_PENALTY_UNKNOWN) / 250
+    assert info.penalty == pytest.approx(expected, abs=1e-3)
+    assert info.doc_share == pytest.approx(0.2)
+
+
+def test_aggregate_mixed_documented():
+    info = _aggregate_sidewalk({"both": 300.0, "partial": 100.0})
+    assert info.status == "both"
+    expected = (300 * 1.0 + 100 * SIDEWALK_PENALTY_PARTIAL) / 400
+    assert info.penalty == pytest.approx(expected, abs=1e-3)
+    assert info.doc_share == 1.0
+
+
+def test_aggregate_tie_breaks_pessimistically():
+    info = _aggregate_sidewalk({"both": 100.0, "none": 100.0})
+    assert info.status == "none"
+    expected = (100 * 1.0 + 100 * SIDEWALK_PENALTY_NONE) / 200
+    assert info.penalty == pytest.approx(expected, abs=1e-3)
+
+
+def test_aggregate_empty():
+    info = _aggregate_sidewalk({})
+    assert info == SidewalkInfo("unknown", SIDEWALK_PENALTY_UNKNOWN, 0.0)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -117,18 +154,34 @@ def test_unanimous_str():
 
 # ─────────────────────────────────────────────────────────────────────────────
 # End-to-end: build_graph on a tiny synthetic network
+#
+# Layout (all residential unless noted):
+#   1──2   Rue Sens Unique     oneway=yes, sidewalk=separate
+#   3──4   Rue Moderne         sidewalk:left=yes, sidewalk:right=no
+#   5──6──7  Rue Mixte         5-6 sidewalk=both (short), 6-7 untagged (long)
+#   8──9   Chemin Privé        access=private (no foot tag) → excluded
+#   10─11  Allée Privée Foot   access=private + foot=yes → kept
+#   12─13─14  Rue Amont (12-13, sidewalk=both) then Petit Square (13-14,
+#            untagged) through a degree-2 node: simplification must NOT
+#            merge them, so Petit Square keeps status "unknown".
 # ─────────────────────────────────────────────────────────────────────────────
 
-# NOTE: the two test streets are deliberately DISJOINT (no shared node).
-# If they shared an intermediate degree-2 node, OSMnx simplification
-# would merge them into a single edge with mixed list-valued tags,
-# which is not what these tests exercise.
 _TEST_OSM = """<?xml version='1.0' encoding='UTF-8'?>
 <osm version="0.6" generator="test">
-  <node id="1" lat="50.8500" lon="4.3500" version="1"/>
-  <node id="2" lat="50.8510" lon="4.3510" version="1"/>
-  <node id="3" lat="50.8600" lon="4.3600" version="1"/>
-  <node id="4" lat="50.8610" lon="4.3610" version="1"/>
+  <node id="1"  lat="50.8500" lon="4.3500" version="1"/>
+  <node id="2"  lat="50.8510" lon="4.3510" version="1"/>
+  <node id="3"  lat="50.8600" lon="4.3600" version="1"/>
+  <node id="4"  lat="50.8610" lon="4.3610" version="1"/>
+  <node id="5"  lat="50.8700" lon="4.3700" version="1"/>
+  <node id="6"  lat="50.8702" lon="4.3702" version="1"/>
+  <node id="7"  lat="50.8720" lon="4.3720" version="1"/>
+  <node id="8"  lat="50.8800" lon="4.3800" version="1"/>
+  <node id="9"  lat="50.8810" lon="4.3810" version="1"/>
+  <node id="10" lat="50.8900" lon="4.3900" version="1"/>
+  <node id="11" lat="50.8910" lon="4.3910" version="1"/>
+  <node id="12" lat="50.9000" lon="4.4000" version="1"/>
+  <node id="13" lat="50.9010" lon="4.4010" version="1"/>
+  <node id="14" lat="50.9020" lon="4.4020" version="1"/>
   <way id="10" version="1">
     <nd ref="1"/><nd ref="2"/>
     <tag k="highway" v="residential"/>
@@ -142,6 +195,41 @@ _TEST_OSM = """<?xml version='1.0' encoding='UTF-8'?>
     <tag k="name" v="Rue Moderne"/>
     <tag k="sidewalk:left" v="yes"/>
     <tag k="sidewalk:right" v="no"/>
+  </way>
+  <way id="12" version="1">
+    <nd ref="5"/><nd ref="6"/>
+    <tag k="highway" v="residential"/>
+    <tag k="name" v="Rue Mixte"/>
+    <tag k="sidewalk" v="both"/>
+  </way>
+  <way id="13" version="1">
+    <nd ref="6"/><nd ref="7"/>
+    <tag k="highway" v="residential"/>
+    <tag k="name" v="Rue Mixte"/>
+  </way>
+  <way id="14" version="1">
+    <nd ref="8"/><nd ref="9"/>
+    <tag k="highway" v="residential"/>
+    <tag k="name" v="Chemin Privé"/>
+    <tag k="access" v="private"/>
+  </way>
+  <way id="15" version="1">
+    <nd ref="10"/><nd ref="11"/>
+    <tag k="highway" v="residential"/>
+    <tag k="name" v="Allée Privée Foot"/>
+    <tag k="access" v="private"/>
+    <tag k="foot" v="yes"/>
+  </way>
+  <way id="16" version="1">
+    <nd ref="12"/><nd ref="13"/>
+    <tag k="highway" v="residential"/>
+    <tag k="name" v="Rue Amont"/>
+    <tag k="sidewalk" v="both"/>
+  </way>
+  <way id="17" version="1">
+    <nd ref="13"/><nd ref="14"/>
+    <tag k="highway" v="residential"/>
+    <tag k="name" v="Petit Square"/>
   </way>
 </osm>
 """
@@ -164,13 +252,52 @@ def test_oneway_street_is_bidirectional_for_pedestrians(bundle):
 
 
 def test_sidewalk_separate_scores_as_both(bundle):
-    assert bundle.street_sidewalk_status["Rue Sens Unique"] == "both"
+    info = bundle.street_sidewalk_status["Rue Sens Unique"]
+    assert info.status == "both"
+    assert info.penalty == 1.0
 
 
 def test_sidewalk_left_right_schema_is_used(bundle):
     """sidewalk:left=yes + sidewalk:right=no (modern schema, no plain
     ``sidewalk`` tag) must classify as partial — it used to be ignored."""
-    assert bundle.street_sidewalk_status["Rue Moderne"] == "partial"
+    info = bundle.street_sidewalk_status["Rue Moderne"]
+    assert info.status == "partial"
+    assert info.penalty == pytest.approx(SIDEWALK_PENALTY_PARTIAL)
+
+
+def test_multi_segment_street_is_length_weighted(bundle):
+    """Regression (user report): 'Rue Mixte' has one SHORT segment
+    tagged sidewalk=both and one LONGER untagged segment.  The old
+    set-based rule showed '✅ Deux côtés'; the length-weighted rule
+    must report 'unknown' (dominant) with a penalty strictly between
+    SIDEWALK_PENALTY_UNKNOWN and 1.0, and a partial doc_share."""
+    info = bundle.street_sidewalk_status["Rue Mixte"]
+    assert info.status == "unknown"
+    assert SIDEWALK_PENALTY_UNKNOWN < info.penalty < 1.0
+    assert 0.0 < info.doc_share < 1.0
+
+
+def test_access_private_is_excluded(bundle):
+    """access=private without a foot tag bans pedestrians: the way must
+    not enter the routing graph nor the sidewalk index."""
+    assert "Chemin Privé" not in bundle.edge_names
+    assert "Chemin Privé" not in bundle.street_sidewalk_status
+
+
+def test_access_private_with_foot_yes_is_kept(bundle):
+    """Standard OSM access hierarchy: foot=yes overrides access=private."""
+    assert "Allée Privée Foot" in bundle.edge_names
+
+
+def test_simplification_does_not_merge_different_streets(bundle):
+    """Regression (user report, Square de Biarritz): a short untagged
+    connector way sharing a degree-2 node with a tagged neighbour used
+    to be merged with it during simplification, inheriting its name or
+    tags.  With edge_attrs_differ, 'Petit Square' must survive as its
+    own street with status 'unknown', not 'both'."""
+    assert "Petit Square" in bundle.street_sidewalk_status
+    assert bundle.street_sidewalk_status["Petit Square"].status == "unknown"
+    assert bundle.street_sidewalk_status["Rue Amont"].status == "both"
 
 
 def test_graph_weights_positive(bundle):
