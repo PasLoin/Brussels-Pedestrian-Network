@@ -26,15 +26,20 @@ from collections import Counter, defaultdict
 
 import geopandas as gpd
 import numpy as np
+import shapely
 from pyproj import Transformer
+from shapely import STRtree
 from shapely.geometry import Point
 
 from config import (
     FOOT_ALLOWED,
+    LIT_PENALTY_MAX,
     MAX_OD_DISTANCE_M,
     MIN_FLOW_THRESHOLD,
     MIN_OD_DISTANCE_M,
     PED_HIGHWAY_TYPES,
+    PED_INFRA_RADIUS_M,
+    SURFACE_PENALTY_MAX,
     TOP_RANK_PCT,
     WALK_SCORE_RADIUS_M,
 )
@@ -191,15 +196,83 @@ def export_flow_layers(
 # Walkability scores
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _attr_quality_penalty(surface_share: float, lit_share: float) -> float:
+    """Multiplier < 1 when nearby pedestrian infra lacks surface/lit tags.
+
+    Linear in the untagged share of each attribute; with the default
+    config, fully untagged surroundings cost ×(1−0.15)×(1−0.10) ≈ 0.765.
+    Fully documented surroundings cost nothing.
+    """
+    return (
+        (1.0 - SURFACE_PENALTY_MAX * (1.0 - surface_share))
+        * (1.0 - LIT_PENALTY_MAX * (1.0 - lit_share))
+    )
+
+
+class _PedInfraIndex:
+    """Spatial index of the mapped pedestrian infrastructure.
+
+    Deduplicates the bidirectional edge pairs (each physical way appears
+    once) and answers, for a point: how many metres of pedestrian infra
+    lie within PED_INFRA_RADIUS_M, and which share of that length
+    carries a ``surface=*`` / ``lit=*`` tag.
+    """
+
+    def __init__(self, edge_tuples, edge_geoms, edge_highways,
+                 edge_surfaces, edge_lits):
+        geoms, surf, lit = [], [], []
+        seen: set[tuple] = set()
+        for i, hw in enumerate(edge_highways):
+            if hw not in PED_HIGHWAY_TYPES:
+                continue
+            u, v = edge_tuples[i]
+            geom = edge_geoms[i]
+            key = (min(u, v), max(u, v), round(geom.length, 1))
+            if key in seen:
+                continue  # reverse direction of an already-seen edge
+            seen.add(key)
+            geoms.append(geom)
+            surf.append(bool(edge_surfaces[i]))
+            lit.append(bool(edge_lits[i]))
+        self._geoms = np.array(geoms, dtype=object)
+        self._surf = np.array(surf, dtype=bool)
+        self._lit = np.array(lit, dtype=bool)
+        self._tree = STRtree(geoms) if geoms else None
+
+    def local_stats(self, x: float, y: float) -> tuple[float, float, float]:
+        """→ (infra metres, surface-tagged share, lit-tagged share)."""
+        if self._tree is None:
+            return 0.0, 0.0, 0.0
+        disc = Point(x, y).buffer(PED_INFRA_RADIUS_M)
+        idx = self._tree.query(disc)
+        if len(idx) == 0:
+            return 0.0, 0.0, 0.0
+        clipped = shapely.intersection(self._geoms[idx], disc)
+        lengths = shapely.length(clipped)
+        total = float(lengths.sum())
+        if total <= 0:
+            return 0.0, 0.0, 0.0
+        surf_m = float(lengths[self._surf[idx]].sum())
+        lit_m = float(lengths[self._lit[idx]].sum())
+        return total, surf_m / total, lit_m / total
+
+
 def export_walkability_scores(
     street_ped_m: dict[str, float],
     street_cyc_nf_m: dict[str, float],
     street_total_m: dict[str, float],
     street_sidewalk_status: dict,  # street → build_graph.SidewalkInfo
     addr_gdf: gpd.GeoDataFrame,
+    edge_tuples: list,
+    edge_geoms: list,
+    edge_highways: list[str],
+    edge_surfaces: list[str],
+    edge_lits: list[str],
 ) -> dict:
-    """Write street_scores.geojson with length-weighted sidewalk-penalised walkability."""
-    print("Computing walkability scores (first/last km + sidewalk penalty)...")
+    """Write street_scores.geojson: length-weighted sidewalk penalty ×
+    surface/lit tag-completeness penalty on the routed base score."""
+    print("Computing walkability scores (first/last km + sidewalk "
+          "+ surface/lit penalties)...")
 
     addr_wgs = addr_gdf.to_crs("EPSG:4326")
     addr_wgs["_x"] = addr_wgs.geometry.x
@@ -210,6 +283,21 @@ def export_walkability_scores(
     )
     centroids_x = street_centroid_xy["_x"].to_dict()
     centroids_y = street_centroid_xy["_y"].to_dict()
+
+    # Projected centroids (metres) for the local-infra radius queries.
+    addr_prj = addr_gdf.copy()
+    addr_prj["_px"] = addr_prj.geometry.x
+    addr_prj["_py"] = addr_prj.geometry.y
+    street_centroid_prj = (
+        addr_prj.groupby("addr:street")[["_px", "_py"]].mean()
+    )
+    centroids_px = street_centroid_prj["_px"].to_dict()
+    centroids_py = street_centroid_prj["_py"].to_dict()
+
+    with step(f"ped-infra index (radius {PED_INFRA_RADIUS_M:.0f} m)"):
+        infra = _PedInfraIndex(
+            edge_tuples, edge_geoms, edge_highways, edge_surfaces, edge_lits,
+        )
 
     pen_stats: dict[str, int] = defaultdict(int)
     rows: list[dict] = []
@@ -239,12 +327,18 @@ def export_walkability_scores(
             penalty = info.penalty
             doc_pct = int(round(info.doc_share * 100))
 
-        score = round(min(base_score * penalty, 1.0), 3)
-        pen_stats[sw_status] += 1
-
         if street not in centroids_x:
             continue
         centroid = Point(centroids_x[street], centroids_y[street])
+
+        # ── Local mapped pedestrian infra + tag completeness ──────────
+        infra_m, surface_share, lit_share = infra.local_stats(
+            centroids_px[street], centroids_py[street],
+        )
+        attr_penalty = _attr_quality_penalty(surface_share, lit_share)
+
+        score = round(min(base_score * penalty * attr_penalty, 1.0), 3)
+        pen_stats[sw_status] += 1
 
         scores.append(score)
 
@@ -255,6 +349,14 @@ def export_walkability_scores(
             "walkability_raw": round(base_score, 3),
             "sidewalk": sw_status,
             "sidewalk_doc_pct": -1 if doc_pct is None else doc_pct,
+            # Mapped pedestrian infrastructure within PED_INFRA_RADIUS_M
+            # of the street — a human-scale figure, unlike the
+            # trip-accumulated ped_meters below.
+            "ped_infra_m": round(infra_m, 0),
+            "infra_radius": int(PED_INFRA_RADIUS_M),
+            "surface_pct": int(round(surface_share * 100)),
+            "lit_pct": int(round(lit_share * 100)),
+            # Trip-accumulated meters (score internals, kept for debug).
             "ped_meters": round(ped_m, 0),
             "cycleway_meters": round(cyc_m, 0),
             "total_meters": round(total_m, 0),
@@ -263,6 +365,8 @@ def export_walkability_scores(
     fb = {
         "geometry": None, "street": "", "walkability": 0.0,
         "walkability_raw": 0.0, "sidewalk": "", "sidewalk_doc_pct": -1,
+        "ped_infra_m": 0.0, "infra_radius": int(PED_INFRA_RADIUS_M),
+        "surface_pct": 0, "lit_pct": 0,
         "ped_meters": 0.0, "cycleway_meters": 0.0, "total_meters": 0.0,
     }
     n_sc = _save_gdf(rows, fb, "EPSG:4326", "street_scores.geojson")
