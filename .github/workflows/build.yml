@@ -129,8 +129,11 @@ jobs:
 
       - name: Export pedestrian GeoJSON
         run: |
+          # --attributes=type,id adds @type/@id properties so flagged
+          # crossing nodes can be traced back to the exact OSM object.
           osmium export highways_ped.osm.pbf \
             --geometry-types=linestring,point \
+            --attributes=type,id \
             -o highways.geojson --overwrite
 
       - name: Force elevators visible at low zoom
@@ -154,7 +157,9 @@ jobs:
                 bicycle:    .bicycle,
                 access:     .access,
                 segregated: .segregated,
-                "crossing:continuous": .["crossing:continuous"]
+                "crossing:continuous": .["crossing:continuous"],
+                "@type": .["@type"],
+                "@id": .["@id"]
               }
               | with_entries(select(.value != null and .value != ""))
             )
