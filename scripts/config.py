@@ -51,6 +51,22 @@ SIDEWALK_PENALTY_PARTIAL = float(os.environ.get("SIDEWALK_PENALTY_PARTIAL", 0.6)
 # Multiplier when no sidewalk tag exists on the road edges.
 SIDEWALK_PENALTY_UNKNOWN = float(os.environ.get("SIDEWALK_PENALTY_UNKNOWN", 0.5))
 
+# ─── Local pedestrian-infrastructure quality (walkability) ──────────────────
+# Radius (metres) around each street centroid used to measure the
+# pedestrian infrastructure actually mapped nearby.  Both the metres
+# shown in the popup and the surface/lit tag-completeness penalties are
+# computed within this disc — a human-scale figure, unlike the
+# trip-accumulated hundreds of km that used to be displayed.
+PED_INFRA_RADIUS_M = float(os.environ.get("PED_INFRA_RADIUS_M", 500))
+
+# Maximum score reduction when 0% of the nearby pedestrian
+# infrastructure carries a surface=* tag (linear in the untagged
+# share): score ×= 1 − SURFACE_PENALTY_MAX × (1 − tagged_share).
+SURFACE_PENALTY_MAX = float(os.environ.get("SURFACE_PENALTY_MAX", 0.15))
+
+# Same for lit=* (street lighting documented).
+LIT_PENALTY_MAX = float(os.environ.get("LIT_PENALTY_MAX", 0.10))
+
 
 # ─── Highway classification ─────────────────────────────────────────────────
 # Highway types that count as dedicated pedestrian infrastructure.
