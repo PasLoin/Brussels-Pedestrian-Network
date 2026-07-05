@@ -49,7 +49,6 @@ from sample_od import sample_od_points, snap_to_graph
 from routing import generate_od_pairs, route_pairs
 from export import (
     compute_network_stats,
-    compute_top_streets,
     export_flow_layers,
     export_routing_graph,
     export_walkability_scores,
@@ -173,13 +172,6 @@ def main() -> None:
             "sidewalk_roads_raw.geojson",
         )
 
-    # ── Step 8f: Top streets to fix (mapper-actionable lists) ─────────────
-    # Reads the GeoJSON outputs produced by steps 8c–8e and ranks streets
-    # by impact.  Fast (<1 s) and tolerant: returns empty lists for any
-    # file that's missing or malformed.
-    with step("compute_top_streets"):
-        top_streets = compute_top_streets()
-
     # ── Save stats ────────────────────────────────────────────────────────
     save_stats(
         routed=result.routed,
@@ -195,7 +187,6 @@ def main() -> None:
         sidewalk_gap_stats=sidewalk_gap_stats,
         sidewalk_road_stats=sidewalk_road_stats,
         missing_crossing_stats=missing_crossing_stats,
-        top_streets=top_streets,
         network_stats=network_stats,
         od_sampling_stats=od_sampling_stats,
     )
