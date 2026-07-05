@@ -62,22 +62,66 @@ class GraphBundle(NamedTuple):
 # Internal helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _classify_sidewalk(tags: list[str]) -> str:
-    """Determine best sidewalk status for a street from its road edges.
+# Tag values meaning "a sidewalk exists on this side / these sides".
+# ``separate`` means the sidewalk is mapped as its own way — the best
+# practice in OSM — so it MUST count as a sidewalk being present.
+# (Previously it fell through to "unknown" and was penalised, which
+# punished the best-mapped streets.)
+_SIDEWALK_POSITIVE = frozenset({"yes", "both", "separate"})
 
-    Priority of OSM tag values: ``both`` > ``yes`` > ``left``/``right`` >
-    ``no`` > ``unknown``.
+
+def _edge_sidewalk_status(
+    sw: str, sw_left: str, sw_right: str, sw_both: str,
+) -> str:
+    """Classify one road edge's sidewalk situation from its four tags.
+
+    Inputs are the (lowercased) values of ``sidewalk``,
+    ``sidewalk:left``, ``sidewalk:right`` and ``sidewalk:both``.
+
+    Returns one of:
+
+    ``both``
+        Sidewalk present on both sides — ``yes``/``both``/``separate``
+        on ``sidewalk`` or ``sidewalk:both``, or positive values on
+        both ``sidewalk:left`` and ``sidewalk:right``.
+    ``partial``
+        Sidewalk documented on exactly one side — ``sidewalk=left`` /
+        ``right``, or a positive ``sidewalk:left`` xor ``:right``.
+    ``none``
+        Explicit absence on both sides.
+    ``unknown``
+        Nothing conclusive: no tags, or e.g. a lone
+        ``sidewalk:left=no`` which says nothing about the right side.
+    """
+    if sw == "no" or sw_both == "no" or (sw_left == "no" and sw_right == "no"):
+        return "none"
+    if sw in _SIDEWALK_POSITIVE or sw_both in _SIDEWALK_POSITIVE:
+        return "both"
+    left_ok = sw_left in _SIDEWALK_POSITIVE or sw == "left"
+    right_ok = sw_right in _SIDEWALK_POSITIVE or sw == "right"
+    if left_ok and right_ok:
+        return "both"
+    if left_ok or right_ok:
+        return "partial"
+    return "unknown"
+
+
+def _classify_sidewalk(statuses: list[str]) -> str:
+    """Aggregate per-edge statuses into one per-street status.
+
+    *statuses* are per-edge results of :func:`_edge_sidewalk_status`.
+    Priority: ``both`` > ``partial`` > ``none`` > ``unknown``.
 
     The returned status ``"none"`` is an internal label meaning "no
     sidewalk on either side" — it is NOT an OSM tag value (which would
     be ``no``).
     """
-    s = set(tags)
-    if "both" in s or "yes" in s:
+    s = set(statuses)
+    if "both" in s:
         return "both"
-    if "left" in s or "right" in s:
+    if "partial" in s:
         return "partial"
-    if "no" in s:
+    if "none" in s:
         return "none"
     return "unknown"
 
@@ -171,7 +215,15 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
             print(f"  Added {_extra_tags - existing} to useful_tags_way")
 
     with step("ox.graph_from_xml"):
-        G = ox.graph_from_xml(osm_path, retain_all=True, simplify=True)
+        # bidirectional=True: ``oneway=yes`` applies to vehicles, not
+        # pedestrians.  Without it, OSMnx omits the reverse edge on
+        # one-way streets and the router cannot walk "against" traffic,
+        # biasing flows toward two-way streets.  (The rare
+        # ``oneway:foot=yes`` cases — e.g. some hiking paths — are
+        # knowingly ignored.)
+        G = ox.graph_from_xml(
+            osm_path, retain_all=True, simplify=True, bidirectional=True,
+        )
     with step("ox.project_graph (→ EPSG:31370)"):
         G_proj = ox.project_graph(G, to_crs="EPSG:31370")
     with step("ox.graph_to_gdfs"):
@@ -265,18 +317,26 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
 
     # ── 3b. Sidewalk index ────────────────────────────────────────────────
     with step("sidewalk index"):
-        street_tags: dict[str, list[str]] = defaultdict(list)
+        street_statuses: dict[str, list[str]] = defaultdict(list)
         for eid in range(len(edge_names)):
             name = edge_names[eid]
             hw = edge_highways[eid]
             if not name or hw not in ROAD_TYPES_SIDEWALK_EXPECTED:
                 continue
-            sw = edge_sidewalks[eid]
-            if sw:
-                street_tags[name].append(sw)
+            status = _edge_sidewalk_status(
+                edge_sidewalks[eid],
+                edge_sidewalk_left[eid],
+                edge_sidewalk_right[eid],
+                edge_sidewalk_both[eid],
+            )
+            # "unknown" edges (no conclusive tag) are not recorded, so a
+            # street with zero documented edges stays OUT of the index —
+            # same behaviour as before (no penalty applied downstream).
+            if status != "unknown":
+                street_statuses[name].append(status)
 
         street_sidewalk_status = {
-            name: _classify_sidewalk(tags) for name, tags in street_tags.items()
+            name: _classify_sidewalk(st) for name, st in street_statuses.items()
         }
 
     counts = defaultdict(int)
