@@ -632,15 +632,23 @@ const HOVER_LAYERS = [
       // (-1 / absent on pedestrian-only streets and older builds).
       const docPct = (typeof p.sidewalk_doc_pct === "number" && p.sidewalk_doc_pct >= 0)
         ? p.sidewalk_doc_pct : null;
+      // ped_infra_m: mapped pedestrian infra within infra_radius of the
+      // street — human-scale, unlike the old trip-accumulated meters
+      // ("360 000 m" for one street) which confused everyone.
+      const radius = p.infra_radius || 500;
+      const hasInfra = typeof p.ped_infra_m === "number";
       return `
         <div class="popup-title">🏙 ${escapeHTML(p.street || "Rue inconnue")}</div>
         <div class="popup-row"><span class="label">Marchabilité</span><span class="value">${((p.walkability || 0) * 100).toFixed(0)}%</span></div>
         <div class="popup-row"><span class="label">Score brut</span><span class="value">${((p.walkability_raw || 0) * 100).toFixed(0)}%</span></div>
         <div class="popup-row"><span class="label">Trottoir</span><span class="value">${escapeHTML(swLabels[p.sidewalk] || p.sidewalk || "?")}</span></div>
         ${docPct !== null ? `<div class="popup-row"><span class="label">Tags trottoir</span><span class="value">${docPct}% de la longueur</span></div>` : ""}
+        ${hasInfra ? `
+        <div class="popup-row"><span class="label">Infra piétonne (${radius} m)</span><span class="value">${Math.round(p.ped_infra_m)} m</span></div>
+        <div class="popup-row"><span class="label">Tag surface</span><span class="value">${p.surface_pct || 0}% de l'infra</span></div>
+        <div class="popup-row"><span class="label">Tag lit (éclairage)</span><span class="value">${p.lit_pct || 0}% de l'infra</span></div>` : `
         <div class="popup-row"><span class="label">Infra piétonne</span><span class="value">${Math.round(p.ped_meters || 0)} m</span></div>
-        <div class="popup-row"><span class="label">Cycleway (no foot)</span><span class="value">${Math.round(p.cycleway_meters || 0)} m</span></div>
-        <div class="popup-row"><span class="label">Total routé</span><span class="value">${Math.round(p.total_meters || 0)} m</span></div>
+        <div class="popup-row"><span class="label">Total routé</span><span class="value">${Math.round(p.total_meters || 0)} m</span></div>`}
       `;
     }
   },
