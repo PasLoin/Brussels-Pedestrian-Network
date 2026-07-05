@@ -157,6 +157,8 @@ def main() -> None:
             result.street_ped_m, result.street_cyc_nf_m, result.street_total_m,
             gb.street_sidewalk_status,
             addr_gdf,
+            gb.edge_tuples, gb.edge_geoms, gb.edge_highways,
+            gb.edge_surfaces, gb.edge_lits,
         )
 
     # ── Step 8c: Sidewalk gap detection ───────────────────────────────────
