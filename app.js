@@ -599,6 +599,13 @@ const HOVER_LAYERS = [
     ids: ["missing-crossings"],
     format: p => {
       const isMissingWay = p.type === "missing_way";
+      // Diagnostic: distance to the nearest footway=crossing way.
+      // Explains split-at-kerbs chains on wide boulevards where the
+      // tagged piece sits beyond the detection radius of THIS node.
+      const nearM = (typeof p.nearest_tag_m === "number" && p.nearest_tag_m >= 0)
+        ? p.nearest_tag_m : null;
+      const radius = p.detect_radius || 20;
+      const nid = parseInt(p.osm_id, 10) || 0;
       return `
         <div class="popup-title">${isMissingWay ? "🟠 Traversée non mappée" : "🟡 Tag footway=crossing absent"}</div>
         <div class="popup-row"><span class="label">Rue</span><span class="value">${escapeHTML(p.name || "—")}</span></div>
@@ -606,6 +613,12 @@ const HOVER_LAYERS = [
           ? "Aucune footway connectée au nœud"
           : "Footway connectée mais sans tag footway=crossing"
         }</span></div>
+        ${nearM !== null && !isMissingWay ? `<div class="popup-row"><span class="label">footway=crossing le + proche</span><span class="value">${nearM} m (rayon ${radius} m)</span></div>` : ""}
+        ${nid > 0 ? `<div class="popup-row"><span class="label">Nœud</span><span class="value">
+          <a href="https://www.openstreetmap.org/node/${nid}" target="_blank" rel="noopener">n${nid}</a>
+          · <a href="http://127.0.0.1:8111/load_object?objects=n${nid}" target="_blank" rel="noopener">JOSM</a>
+          · <a href="https://www.openstreetmap.org/edit?node=${nid}" target="_blank" rel="noopener">iD</a>
+        </span></div>` : ""}
       `;
     }
   },
