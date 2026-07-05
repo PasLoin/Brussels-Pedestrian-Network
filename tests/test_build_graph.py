@@ -231,6 +231,14 @@ _TEST_OSM = """<?xml version='1.0' encoding='UTF-8'?>
     <tag k="highway" v="residential"/>
     <tag k="name" v="Petit Square"/>
   </way>
+  <node id="15" lat="50.9100" lon="4.4100" version="1"/>
+  <node id="16" lat="50.9110" lon="4.4110" version="1"/>
+  <way id="18" version="1">
+    <nd ref="15"/><nd ref="16"/>
+    <tag k="highway" v="footway"/>
+    <tag k="surface" v="paving_stones"/>
+    <tag k="lit" v="yes"/>
+  </way>
 </osm>
 """
 
@@ -298,6 +306,15 @@ def test_simplification_does_not_merge_different_streets(bundle):
     assert "Petit Square" in bundle.street_sidewalk_status
     assert bundle.street_sidewalk_status["Petit Square"].status == "unknown"
     assert bundle.street_sidewalk_status["Rue Amont"].status == "both"
+
+
+def test_surface_and_lit_tags_are_collected(bundle):
+    """surface=* / lit=* on pedestrian infra feed the tag-completeness
+    penalty — they must survive import and simplification."""
+    fw = [i for i, h in enumerate(bundle.edge_highways) if h == "footway"]
+    assert fw, "footway missing from test graph"
+    assert any(bundle.edge_surfaces[i] == "paving_stones" for i in fw)
+    assert any(bundle.edge_lits[i] == "yes" for i in fw)
 
 
 def test_graph_weights_positive(bundle):
