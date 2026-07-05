@@ -78,6 +78,8 @@ class GraphBundle(NamedTuple):
     edge_sidewalk_left: list[str]    # sidewalk:left tag
     edge_sidewalk_right: list[str]   # sidewalk:right tag
     edge_sidewalk_both: list[str]    # sidewalk:both tag
+    edge_surfaces: list[str]         # surface tag ("" if absent/mixed)
+    edge_lits: list[str]             # lit tag ("" if absent/mixed)
     street_sidewalk_status: dict[str, SidewalkInfo]  # street → length-weighted status/penalty
 
 
@@ -253,7 +255,7 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
     # Ensure foot/sidewalk tags survive import + simplification.
     # OSMnx only keeps tags listed in useful_tags_way; foot may be
     # missing in some versions → add it explicitly.
-    _extra_tags = {"foot", "route", "sidewalk", "sidewalk:left", "sidewalk:right", "sidewalk:both", "segregated"}
+    _extra_tags = {"foot", "route", "sidewalk", "sidewalk:left", "sidewalk:right", "sidewalk:both", "segregated", "surface", "lit"}
     if hasattr(ox, "settings"):
         existing = set(getattr(ox.settings, "useful_tags_way", []))
         if not _extra_tags.issubset(existing):
@@ -316,6 +318,8 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
     edge_sidewalk_left: list[str] = []
     edge_sidewalk_right: list[str] = []
     edge_sidewalk_both: list[str] = []
+    edge_surfaces: list[str] = []
+    edge_lits: list[str] = []
 
     skipped_foot = skipped_access = skipped_ferry = 0
 
@@ -367,6 +371,13 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
             edge_sidewalk_left.append(_unanimous_str(row.get("sidewalk:left", "")).lower())
             edge_sidewalk_right.append(_unanimous_str(row.get("sidewalk:right", "")).lower())
             edge_sidewalk_both.append(_unanimous_str(row.get("sidewalk:both", "")).lower())
+
+            # ── surface / lit: tag-completeness of pedestrian infra ──────
+            # _unanimous_str is deliberately conservative: a merged edge
+            # where only part of the segments carry the tag counts as
+            # untagged, so completeness is never overstated.
+            edge_surfaces.append(_unanimous_str(row.get("surface", "")).lower())
+            edge_lits.append(_unanimous_str(row.get("lit", "")).lower())
 
     print(f"  Edges skipped — ferry: {skipped_ferry}, foot=no: {skipped_foot}, "
           f"access=no/private: {skipped_access}")
@@ -446,5 +457,7 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
         edge_sidewalk_left=edge_sidewalk_left,
         edge_sidewalk_right=edge_sidewalk_right,
         edge_sidewalk_both=edge_sidewalk_both,
+        edge_surfaces=edge_surfaces,
+        edge_lits=edge_lits,
         street_sidewalk_status=street_sidewalk_status,
     )
