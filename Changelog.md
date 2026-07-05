@@ -1,5 +1,30 @@
 # Changelog
 
+## 2026-07-05
+
+### Fixed
+- `sidewalk=separate` was classified as `unknown` and penalised — it now correctly counts as both-sided sidewalk documentation.
+- `sidewalk:left/right/both` schema (modern OSM tagging) was ignored; it now feeds the sidewalk status alongside the plain `sidewalk` tag.
+- `oneway=yes` was blocking pedestrian routing in the reverse direction; OSMnx graph is now built with `bidirectional=True`.
+- `access=private` roads were excluded even when `foot=yes` overrides them (standard OSM access hierarchy).
+- OSMnx simplification could merge ways with different names or sidewalk tags through degree-2 nodes, causing tag/name bleeding onto short connector ways (e.g. small squares inheriting a neighbour's `sidewalk=both`). Fixed via `edge_attrs_differ`.
+- Street sidewalk status was aggregated with a "best wins" rule: one tagged segment flipped a whole multi-segment street to ✅ Deux côtés. Status and penalty are now **length-weighted** — undocumented segments drag the score down proportionally.
+- Untagged streets were silently escaping `SIDEWALK_PENALTY_UNKNOWN` (dead code branch), producing unrealistically high walkability scores (~84–95% with zero sidewalk data). All road streets are now in the index.
+- Popup for `missing-crossings` closed on `mouseleave` before links (OSM / JOSM / iD) could be clicked. The layer now uses a persistent click popup with a close button.
+- "Infra piétonne" in the walkability popup showed trip-accumulated metres (up to 360 000 m for one street), which was confusing. Replaced by mapped infra within a 500 m radius of the street centroid.
+### Added
+- **`surface=*` and `lit=*` tag-completeness penalty**: walkability score is multiplied by `(1 − 0.15 × untagged_surface_share) × (1 − 0.10 × untagged_lit_share)` measured on pedestrian infrastructure within 500 m. A street with 100% routed score but zero surface/lit tags on surrounding footways now scores ≈ 76%.
+- Walkability popup shows: mapped infra metres within 500 m, % of infra with `surface=*`, % with `lit=*`, % of road length with a sidewalk tag.
+- Sidewalk status "non requis" for streets with no road edges (pure pedestrian ways, footpaths).
+- `missing-crossings` detection now emits `osm_id`, distance to the nearest `footway=crossing` way, and detection radius in the GeoJSON. The popup shows direct links to OSM, JOSM (remote control) and iD for the flagged node.
+- OSMnx export uses `--attributes=type,id` so flagged crossing nodes carry their OSM ID through the pipeline.
+- Unit test suite (`tests/`, 67 tests, ~10 s) covering classification helpers, spatial index, tag-completeness penalties, barrier splitting, OD sampling, geometry helpers, and end-to-end `build_graph` regressions.
+- CI workflow (`.github/workflows/tests.yml`) running pytest on every push or PR touching `scripts/` or `tests/`.
+### Removed
+- "Top 10 — rues à corriger" section from `stats.html`: the ranking was driven by a single factor and not statistically meaningful.
+
+
+
 ## 2026-06-12
 
 ### Nouvelle couche : Traversées manquantes ([#36](https://github.com/PasLoin/Brussels-Pedestrian-Network/issues/36))
