@@ -35,9 +35,6 @@ from config import (
     MIN_FLOW_THRESHOLD,
     MIN_OD_DISTANCE_M,
     PED_HIGHWAY_TYPES,
-    SIDEWALK_PENALTY_NONE,
-    SIDEWALK_PENALTY_PARTIAL,
-    SIDEWALK_PENALTY_UNKNOWN,
     TOP_RANK_PCT,
     WALK_SCORE_RADIUS_M,
 )
@@ -198,10 +195,10 @@ def export_walkability_scores(
     street_ped_m: dict[str, float],
     street_cyc_nf_m: dict[str, float],
     street_total_m: dict[str, float],
-    street_sidewalk_status: dict[str, str],
+    street_sidewalk_status: dict,  # street → build_graph.SidewalkInfo
     addr_gdf: gpd.GeoDataFrame,
 ) -> dict:
-    """Write street_scores.geojson with sidewalk-penalised walkability."""
+    """Write street_scores.geojson with length-weighted sidewalk-penalised walkability."""
     print("Computing walkability scores (first/last km + sidewalk penalty)...")
 
     addr_wgs = addr_gdf.to_crs("EPSG:4326")
@@ -226,17 +223,21 @@ def export_walkability_scores(
         cyc_m = street_cyc_nf_m.get(street, 0.0)
         base_score = ped_m / total_m
 
-        sw_status = street_sidewalk_status.get(street, "unknown")
-        if sw_status == "both":
+        info = street_sidewalk_status.get(street)
+        if info is None:
+            # No road edges under this name (fully pedestrian street,
+            # footpaths, …): no sidewalk expected → no penalty.
+            sw_status = "not_required"
             penalty = 1.0
-        elif sw_status == "partial":
-            penalty = SIDEWALK_PENALTY_PARTIAL
-        elif sw_status == "none":
-            penalty = SIDEWALK_PENALTY_NONE
-        elif street not in street_sidewalk_status:
-            penalty = 1.0
+            doc_pct = None
         else:
-            penalty = SIDEWALK_PENALTY_UNKNOWN
+            # Length-weighted penalty: undocumented or bad segments drag
+            # the score down proportionally to their length, so a single
+            # tagged segment can no longer grant the whole street a
+            # penalty-free "both".
+            sw_status = info.status
+            penalty = info.penalty
+            doc_pct = int(round(info.doc_share * 100))
 
         score = round(min(base_score * penalty, 1.0), 3)
         pen_stats[sw_status] += 1
@@ -253,6 +254,7 @@ def export_walkability_scores(
             "walkability": score,
             "walkability_raw": round(base_score, 3),
             "sidewalk": sw_status,
+            "sidewalk_doc_pct": -1 if doc_pct is None else doc_pct,
             "ped_meters": round(ped_m, 0),
             "cycleway_meters": round(cyc_m, 0),
             "total_meters": round(total_m, 0),
@@ -260,14 +262,14 @@ def export_walkability_scores(
 
     fb = {
         "geometry": None, "street": "", "walkability": 0.0,
-        "walkability_raw": 0.0, "sidewalk": "",
+        "walkability_raw": 0.0, "sidewalk": "", "sidewalk_doc_pct": -1,
         "ped_meters": 0.0, "cycleway_meters": 0.0, "total_meters": 0.0,
     }
     n_sc = _save_gdf(rows, fb, "EPSG:4326", "street_scores.geojson")
     print(f"  Street scores: {n_sc}")
     print(f"  Sidewalk penalties applied — both: {pen_stats['both']} | "
           f"partial: {pen_stats['partial']} | none: {pen_stats['none']} | "
-          f"unknown: {pen_stats['unknown']}")
+          f"unknown: {pen_stats['unknown']} | not required: {pen_stats['not_required']}")
 
     if scores:
         scores_arr = np.array(scores)
