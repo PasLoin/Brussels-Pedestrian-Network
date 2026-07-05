@@ -621,12 +621,23 @@ const HOVER_LAYERS = [
   {
     ids: ["street-scores"],
     format: p => {
-      const swLabels = { both: "✅ Deux côtés", partial: "⚠️ Un seul côté", none: "❌ Aucun", unknown: "❓ Non renseigné" };
+      const swLabels = {
+        both: "✅ Deux côtés",
+        partial: "⚠️ Un seul côté",
+        none: "❌ Aucun",
+        unknown: "❓ Non renseigné",
+        not_required: "— Non requis (voie piétonne)"
+      };
+      // sidewalk_doc_pct: share of road length carrying a sidewalk tag
+      // (-1 / absent on pedestrian-only streets and older builds).
+      const docPct = (typeof p.sidewalk_doc_pct === "number" && p.sidewalk_doc_pct >= 0)
+        ? p.sidewalk_doc_pct : null;
       return `
         <div class="popup-title">🏙 ${escapeHTML(p.street || "Rue inconnue")}</div>
         <div class="popup-row"><span class="label">Marchabilité</span><span class="value">${((p.walkability || 0) * 100).toFixed(0)}%</span></div>
         <div class="popup-row"><span class="label">Score brut</span><span class="value">${((p.walkability_raw || 0) * 100).toFixed(0)}%</span></div>
         <div class="popup-row"><span class="label">Trottoir</span><span class="value">${escapeHTML(swLabels[p.sidewalk] || p.sidewalk || "?")}</span></div>
+        ${docPct !== null ? `<div class="popup-row"><span class="label">Tags trottoir</span><span class="value">${docPct}% de la longueur</span></div>` : ""}
         <div class="popup-row"><span class="label">Infra piétonne</span><span class="value">${Math.round(p.ped_meters || 0)} m</span></div>
         <div class="popup-row"><span class="label">Cycleway (no foot)</span><span class="value">${Math.round(p.cycleway_meters || 0)} m</span></div>
         <div class="popup-row"><span class="label">Total routé</span><span class="value">${Math.round(p.total_meters || 0)} m</span></div>
