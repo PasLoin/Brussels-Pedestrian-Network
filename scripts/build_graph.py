@@ -32,10 +32,33 @@ from config import (
     FOOT_FORBIDDEN,
     PED_HIGHWAY_TYPES,
     ROAD_TYPES_SIDEWALK_EXPECTED,
+    SIDEWALK_PENALTY_NONE,
+    SIDEWALK_PENALTY_PARTIAL,
+    SIDEWALK_PENALTY_UNKNOWN,
 )
 from timing import step
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
+
+
+class SidewalkInfo(NamedTuple):
+    """Length-weighted sidewalk situation of one street.
+
+    ``status``
+        Dominant per-edge status by road length —
+        ``both`` | ``partial`` | ``none`` | ``unknown``.
+    ``penalty``
+        Length-weighted walkability multiplier in [0, 1]: each road
+        edge contributes its own penalty (both=1.0, partial/none/unknown
+        from config) weighted by its length.  A street half tagged
+        ``both`` and half untagged gets ≈ (1.0 + 0.5) / 2 = 0.75 —
+        no longer a free pass because one segment is documented.
+    ``doc_share``
+        Fraction of road length carrying a conclusive sidewalk tag.
+    """
+    status: str
+    penalty: float
+    doc_share: float
 
 
 class GraphBundle(NamedTuple):
@@ -55,31 +78,100 @@ class GraphBundle(NamedTuple):
     edge_sidewalk_left: list[str]    # sidewalk:left tag
     edge_sidewalk_right: list[str]   # sidewalk:right tag
     edge_sidewalk_both: list[str]    # sidewalk:both tag
-    street_sidewalk_status: dict[str, str]   # street → both|partial|none|unknown
+    edge_surfaces: list[str]         # surface tag ("" if absent/mixed)
+    edge_lits: list[str]             # lit tag ("" if absent/mixed)
+    street_sidewalk_status: dict[str, SidewalkInfo]  # street → length-weighted status/penalty
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Internal helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _classify_sidewalk(tags: list[str]) -> str:
-    """Determine best sidewalk status for a street from its road edges.
+# Tag values meaning "a sidewalk exists on this side / these sides".
+# ``separate`` means the sidewalk is mapped as its own way — the best
+# practice in OSM — so it MUST count as a sidewalk being present.
+# (Previously it fell through to "unknown" and was penalised, which
+# punished the best-mapped streets.)
+_SIDEWALK_POSITIVE = frozenset({"yes", "both", "separate"})
 
-    Priority of OSM tag values: ``both`` > ``yes`` > ``left``/``right`` >
-    ``no`` > ``unknown``.
 
-    The returned status ``"none"`` is an internal label meaning "no
-    sidewalk on either side" — it is NOT an OSM tag value (which would
-    be ``no``).
+def _edge_sidewalk_status(
+    sw: str, sw_left: str, sw_right: str, sw_both: str,
+) -> str:
+    """Classify one road edge's sidewalk situation from its four tags.
+
+    Inputs are the (lowercased) values of ``sidewalk``,
+    ``sidewalk:left``, ``sidewalk:right`` and ``sidewalk:both``.
+
+    Returns one of:
+
+    ``both``
+        Sidewalk present on both sides — ``yes``/``both``/``separate``
+        on ``sidewalk`` or ``sidewalk:both``, or positive values on
+        both ``sidewalk:left`` and ``sidewalk:right``.
+    ``partial``
+        Sidewalk documented on exactly one side — ``sidewalk=left`` /
+        ``right``, or a positive ``sidewalk:left`` xor ``:right``.
+    ``none``
+        Explicit absence on both sides.
+    ``unknown``
+        Nothing conclusive: no tags, or e.g. a lone
+        ``sidewalk:left=no`` which says nothing about the right side.
     """
-    s = set(tags)
-    if "both" in s or "yes" in s:
-        return "both"
-    if "left" in s or "right" in s:
-        return "partial"
-    if "no" in s:
+    if sw == "no" or sw_both == "no" or (sw_left == "no" and sw_right == "no"):
         return "none"
+    if sw in _SIDEWALK_POSITIVE or sw_both in _SIDEWALK_POSITIVE:
+        return "both"
+    left_ok = sw_left in _SIDEWALK_POSITIVE or sw == "left"
+    right_ok = sw_right in _SIDEWALK_POSITIVE or sw == "right"
+    if left_ok and right_ok:
+        return "both"
+    if left_ok or right_ok:
+        return "partial"
     return "unknown"
+
+
+# Per-edge penalty for each status (both = no penalty).
+_STATUS_PENALTY = {
+    "both": 1.0,
+    "partial": SIDEWALK_PENALTY_PARTIAL,
+    "none": SIDEWALK_PENALTY_NONE,
+    "unknown": SIDEWALK_PENALTY_UNKNOWN,
+}
+
+# Pessimistic tie-break order for the display status (worse wins ties).
+_STATUS_PESSIMISM = {"both": 0, "partial": 1, "none": 2, "unknown": 3}
+
+
+def _aggregate_sidewalk(length_by_status: dict[str, float]) -> SidewalkInfo:
+    """Aggregate per-edge statuses into one length-weighted street status.
+
+    *length_by_status* maps each status returned by
+    :func:`_edge_sidewalk_status` (``unknown`` included) to the total
+    road length carrying it.
+
+    Unlike the previous set-based "both wins" rule — where one tagged
+    segment flipped a whole multi-segment street to ✅ Deux côtés —
+    the status is now the **dominant category by length** and the
+    penalty is the **length-weighted average** of per-status penalties,
+    so undocumented segments always drag the score down.
+    """
+    total = sum(length_by_status.values())
+    if total <= 0:
+        return SidewalkInfo("unknown", SIDEWALK_PENALTY_UNKNOWN, 0.0)
+
+    status = max(
+        length_by_status.items(),
+        key=lambda kv: (kv[1], _STATUS_PESSIMISM.get(kv[0], 3)),
+    )[0]
+
+    penalty = sum(
+        length * _STATUS_PENALTY.get(st, SIDEWALK_PENALTY_UNKNOWN)
+        for st, length in length_by_status.items()
+    ) / total
+
+    documented = total - length_by_status.get("unknown", 0.0)
+    return SidewalkInfo(status, round(penalty, 3), round(documented / total, 3))
 
 
 def _first_str(val) -> str:
@@ -163,15 +255,46 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
     # Ensure foot/sidewalk tags survive import + simplification.
     # OSMnx only keeps tags listed in useful_tags_way; foot may be
     # missing in some versions → add it explicitly.
-    _extra_tags = {"foot", "route", "sidewalk", "sidewalk:left", "sidewalk:right", "sidewalk:both", "segregated"}
+    _extra_tags = {"foot", "route", "sidewalk", "sidewalk:left", "sidewalk:right", "sidewalk:both", "segregated", "surface", "lit"}
     if hasattr(ox, "settings"):
         existing = set(getattr(ox.settings, "useful_tags_way", []))
         if not _extra_tags.issubset(existing):
             ox.settings.useful_tags_way = list(existing | _extra_tags)
             print(f"  Added {_extra_tags - existing} to useful_tags_way")
 
+    # Tags whose values must not be blended across merged edges.  OSMnx
+    # simplification happily merges consecutive ways with DIFFERENT
+    # names/tags through degree-2 nodes; the merged edge then carries
+    # list-valued attributes and a short connector way (e.g. a small
+    # square between two streets) can inherit its neighbour's name,
+    # access restriction or sidewalk tags.  Forbidding merges when these
+    # attributes differ keeps every value per-way accurate.
+    _ATTRS_NO_MERGE = [
+        "name", "highway", "access", "foot",
+        "sidewalk", "sidewalk:left", "sidewalk:right", "sidewalk:both",
+    ]
+
     with step("ox.graph_from_xml"):
-        G = ox.graph_from_xml(osm_path, retain_all=True, simplify=True)
+        # bidirectional=True: ``oneway=yes`` applies to vehicles, not
+        # pedestrians.  Without it, OSMnx omits the reverse edge on
+        # one-way streets and the router cannot walk "against" traffic,
+        # biasing flows toward two-way streets.  (The rare
+        # ``oneway:foot=yes`` cases — e.g. some hiking paths — are
+        # knowingly ignored.)
+        G = ox.graph_from_xml(
+            osm_path, retain_all=True, simplify=False, bidirectional=True,
+        )
+    with step("ox.simplify_graph (edge_attrs_differ)"):
+        try:
+            G = ox.simplification.simplify_graph(
+                G, edge_attrs_differ=_ATTRS_NO_MERGE,
+            )
+        except TypeError:
+            # Older OSMnx without edge_attrs_differ: plain simplification.
+            # Tag bleeding is then mitigated by _unanimous_str below.
+            print("  WARNING: osmnx.simplify_graph lacks edge_attrs_differ; "
+                  "falling back to plain simplification")
+            G = ox.simplification.simplify_graph(G)
     with step("ox.project_graph (→ EPSG:31370)"):
         G_proj = ox.project_graph(G, to_crs="EPSG:31370")
     with step("ox.graph_to_gdfs"):
@@ -195,6 +318,8 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
     edge_sidewalk_left: list[str] = []
     edge_sidewalk_right: list[str] = []
     edge_sidewalk_both: list[str] = []
+    edge_surfaces: list[str] = []
+    edge_lits: list[str] = []
 
     skipped_foot = skipped_access = skipped_ferry = 0
 
@@ -213,7 +338,10 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
             if foot_tag in FOOT_FORBIDDEN:
                 skipped_foot += 1
                 continue
-            if access_tag in ACCESS_EXCLUDED:
+            if access_tag in ACCESS_EXCLUDED and foot_tag not in FOOT_ALLOWED:
+                # access=private/no bans pedestrians too — UNLESS an
+                # explicit foot=yes/permissive/designated overrides it
+                # (standard OSM access hierarchy).
                 skipped_access += 1
                 continue
 
@@ -244,6 +372,13 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
             edge_sidewalk_right.append(_unanimous_str(row.get("sidewalk:right", "")).lower())
             edge_sidewalk_both.append(_unanimous_str(row.get("sidewalk:both", "")).lower())
 
+            # ── surface / lit: tag-completeness of pedestrian infra ──────
+            # _unanimous_str is deliberately conservative: a merged edge
+            # where only part of the segments carry the tag counts as
+            # untagged, so completeness is never overstated.
+            edge_surfaces.append(_unanimous_str(row.get("surface", "")).lower())
+            edge_lits.append(_unanimous_str(row.get("lit", "")).lower())
+
     print(f"  Edges skipped — ferry: {skipped_ferry}, foot=no: {skipped_foot}, "
           f"access=no/private: {skipped_access}")
 
@@ -265,27 +400,46 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
 
     # ── 3b. Sidewalk index ────────────────────────────────────────────────
     with step("sidewalk index"):
-        street_tags: dict[str, list[str]] = defaultdict(list)
+        # Per street: road length carrying each status, "unknown"
+        # INCLUDED.  Recording undocumented road edges is what makes the
+        # length-weighted penalty honest — and it also means untagged
+        # streets are now IN the index with penalty ≈ 0.5, instead of
+        # silently escaping any penalty (the old dead-branch bug where
+        # SIDEWALK_PENALTY_UNKNOWN was never applied).  Streets with no
+        # road edges at all (fully pedestrian) stay out, on purpose: no
+        # sidewalk is expected there.
+        street_lengths: dict[str, dict[str, float]] = defaultdict(
+            lambda: defaultdict(float)
+        )
         for eid in range(len(edge_names)):
             name = edge_names[eid]
             hw = edge_highways[eid]
             if not name or hw not in ROAD_TYPES_SIDEWALK_EXPECTED:
                 continue
-            sw = edge_sidewalks[eid]
-            if sw:
-                street_tags[name].append(sw)
+            status = _edge_sidewalk_status(
+                edge_sidewalks[eid],
+                edge_sidewalk_left[eid],
+                edge_sidewalk_right[eid],
+                edge_sidewalk_both[eid],
+            )
+            street_lengths[name][status] += edge_lengths[eid]
 
         street_sidewalk_status = {
-            name: _classify_sidewalk(tags) for name, tags in street_tags.items()
+            name: _aggregate_sidewalk(lengths)
+            for name, lengths in street_lengths.items()
         }
 
     counts = defaultdict(int)
-    for v in street_sidewalk_status.values():
-        counts[v] += 1
-    print(f"  Sidewalk status — both: {counts['both']} | "
+    for info in street_sidewalk_status.values():
+        counts[info.status] += 1
+    n_documented = sum(
+        1 for info in street_sidewalk_status.values() if info.doc_share > 0
+    )
+    print(f"  Sidewalk status (dominant) — both: {counts['both']} | "
           f"partial: {counts['partial']} | none: {counts['none']} | "
-          f"unknown (no tag): {counts['unknown']}")
-    print(f"  Streets with road edges: {len(street_sidewalk_status)}")
+          f"unknown: {counts['unknown']}")
+    print(f"  Streets with road edges: {len(street_sidewalk_status)} "
+          f"(with ≥1 sidewalk tag: {n_documented})")
 
     return GraphBundle(
         graph=g,
@@ -303,5 +457,7 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
         edge_sidewalk_left=edge_sidewalk_left,
         edge_sidewalk_right=edge_sidewalk_right,
         edge_sidewalk_both=edge_sidewalk_both,
+        edge_surfaces=edge_surfaces,
+        edge_lits=edge_lits,
         street_sidewalk_status=street_sidewalk_status,
     )

@@ -1,0 +1,36 @@
+name: Tests
+
+# Fast unit-test job
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/**"
+      - "tests/**"
+      - ".github/workflows/tests.yml"
+  pull_request:
+    paths:
+      - "scripts/**"
+      - "tests/**"
+      - ".github/workflows/tests.yml"
+  workflow_dispatch:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Same dependency set as build.yml, plus pytest.
+      - name: Install Python dependencies
+        run: pip install "shapely>=2" osmnx geopandas igraph numpy pyproj pytest
+
+      - name: Run unit tests
+        run: python -m pytest tests/ -v

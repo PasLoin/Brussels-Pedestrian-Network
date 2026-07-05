@@ -26,18 +26,20 @@ from collections import Counter, defaultdict
 
 import geopandas as gpd
 import numpy as np
+import shapely
 from pyproj import Transformer
+from shapely import STRtree
 from shapely.geometry import Point
 
 from config import (
     FOOT_ALLOWED,
+    LIT_PENALTY_MAX,
     MAX_OD_DISTANCE_M,
     MIN_FLOW_THRESHOLD,
     MIN_OD_DISTANCE_M,
     PED_HIGHWAY_TYPES,
-    SIDEWALK_PENALTY_NONE,
-    SIDEWALK_PENALTY_PARTIAL,
-    SIDEWALK_PENALTY_UNKNOWN,
+    PED_INFRA_RADIUS_M,
+    SURFACE_PENALTY_MAX,
     TOP_RANK_PCT,
     WALK_SCORE_RADIUS_M,
 )
@@ -194,15 +196,83 @@ def export_flow_layers(
 # Walkability scores
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _attr_quality_penalty(surface_share: float, lit_share: float) -> float:
+    """Multiplier < 1 when nearby pedestrian infra lacks surface/lit tags.
+
+    Linear in the untagged share of each attribute; with the default
+    config, fully untagged surroundings cost ×(1−0.15)×(1−0.10) ≈ 0.765.
+    Fully documented surroundings cost nothing.
+    """
+    return (
+        (1.0 - SURFACE_PENALTY_MAX * (1.0 - surface_share))
+        * (1.0 - LIT_PENALTY_MAX * (1.0 - lit_share))
+    )
+
+
+class _PedInfraIndex:
+    """Spatial index of the mapped pedestrian infrastructure.
+
+    Deduplicates the bidirectional edge pairs (each physical way appears
+    once) and answers, for a point: how many metres of pedestrian infra
+    lie within PED_INFRA_RADIUS_M, and which share of that length
+    carries a ``surface=*`` / ``lit=*`` tag.
+    """
+
+    def __init__(self, edge_tuples, edge_geoms, edge_highways,
+                 edge_surfaces, edge_lits):
+        geoms, surf, lit = [], [], []
+        seen: set[tuple] = set()
+        for i, hw in enumerate(edge_highways):
+            if hw not in PED_HIGHWAY_TYPES:
+                continue
+            u, v = edge_tuples[i]
+            geom = edge_geoms[i]
+            key = (min(u, v), max(u, v), round(geom.length, 1))
+            if key in seen:
+                continue  # reverse direction of an already-seen edge
+            seen.add(key)
+            geoms.append(geom)
+            surf.append(bool(edge_surfaces[i]))
+            lit.append(bool(edge_lits[i]))
+        self._geoms = np.array(geoms, dtype=object)
+        self._surf = np.array(surf, dtype=bool)
+        self._lit = np.array(lit, dtype=bool)
+        self._tree = STRtree(geoms) if geoms else None
+
+    def local_stats(self, x: float, y: float) -> tuple[float, float, float]:
+        """→ (infra metres, surface-tagged share, lit-tagged share)."""
+        if self._tree is None:
+            return 0.0, 0.0, 0.0
+        disc = Point(x, y).buffer(PED_INFRA_RADIUS_M)
+        idx = self._tree.query(disc)
+        if len(idx) == 0:
+            return 0.0, 0.0, 0.0
+        clipped = shapely.intersection(self._geoms[idx], disc)
+        lengths = shapely.length(clipped)
+        total = float(lengths.sum())
+        if total <= 0:
+            return 0.0, 0.0, 0.0
+        surf_m = float(lengths[self._surf[idx]].sum())
+        lit_m = float(lengths[self._lit[idx]].sum())
+        return total, surf_m / total, lit_m / total
+
+
 def export_walkability_scores(
     street_ped_m: dict[str, float],
     street_cyc_nf_m: dict[str, float],
     street_total_m: dict[str, float],
-    street_sidewalk_status: dict[str, str],
+    street_sidewalk_status: dict,  # street → build_graph.SidewalkInfo
     addr_gdf: gpd.GeoDataFrame,
+    edge_tuples: list,
+    edge_geoms: list,
+    edge_highways: list[str],
+    edge_surfaces: list[str],
+    edge_lits: list[str],
 ) -> dict:
-    """Write street_scores.geojson with sidewalk-penalised walkability."""
-    print("Computing walkability scores (first/last km + sidewalk penalty)...")
+    """Write street_scores.geojson: length-weighted sidewalk penalty ×
+    surface/lit tag-completeness penalty on the routed base score."""
+    print("Computing walkability scores (first/last km + sidewalk "
+          "+ surface/lit penalties)...")
 
     addr_wgs = addr_gdf.to_crs("EPSG:4326")
     addr_wgs["_x"] = addr_wgs.geometry.x
@@ -213,6 +283,21 @@ def export_walkability_scores(
     )
     centroids_x = street_centroid_xy["_x"].to_dict()
     centroids_y = street_centroid_xy["_y"].to_dict()
+
+    # Projected centroids (metres) for the local-infra radius queries.
+    addr_prj = addr_gdf.copy()
+    addr_prj["_px"] = addr_prj.geometry.x
+    addr_prj["_py"] = addr_prj.geometry.y
+    street_centroid_prj = (
+        addr_prj.groupby("addr:street")[["_px", "_py"]].mean()
+    )
+    centroids_px = street_centroid_prj["_px"].to_dict()
+    centroids_py = street_centroid_prj["_py"].to_dict()
+
+    with step(f"ped-infra index (radius {PED_INFRA_RADIUS_M:.0f} m)"):
+        infra = _PedInfraIndex(
+            edge_tuples, edge_geoms, edge_highways, edge_surfaces, edge_lits,
+        )
 
     pen_stats: dict[str, int] = defaultdict(int)
     rows: list[dict] = []
@@ -226,24 +311,34 @@ def export_walkability_scores(
         cyc_m = street_cyc_nf_m.get(street, 0.0)
         base_score = ped_m / total_m
 
-        sw_status = street_sidewalk_status.get(street, "unknown")
-        if sw_status == "both":
+        info = street_sidewalk_status.get(street)
+        if info is None:
+            # No road edges under this name (fully pedestrian street,
+            # footpaths, …): no sidewalk expected → no penalty.
+            sw_status = "not_required"
             penalty = 1.0
-        elif sw_status == "partial":
-            penalty = SIDEWALK_PENALTY_PARTIAL
-        elif sw_status == "none":
-            penalty = SIDEWALK_PENALTY_NONE
-        elif street not in street_sidewalk_status:
-            penalty = 1.0
+            doc_pct = None
         else:
-            penalty = SIDEWALK_PENALTY_UNKNOWN
-
-        score = round(min(base_score * penalty, 1.0), 3)
-        pen_stats[sw_status] += 1
+            # Length-weighted penalty: undocumented or bad segments drag
+            # the score down proportionally to their length, so a single
+            # tagged segment can no longer grant the whole street a
+            # penalty-free "both".
+            sw_status = info.status
+            penalty = info.penalty
+            doc_pct = int(round(info.doc_share * 100))
 
         if street not in centroids_x:
             continue
         centroid = Point(centroids_x[street], centroids_y[street])
+
+        # ── Local mapped pedestrian infra + tag completeness ──────────
+        infra_m, surface_share, lit_share = infra.local_stats(
+            centroids_px[street], centroids_py[street],
+        )
+        attr_penalty = _attr_quality_penalty(surface_share, lit_share)
+
+        score = round(min(base_score * penalty * attr_penalty, 1.0), 3)
+        pen_stats[sw_status] += 1
 
         scores.append(score)
 
@@ -253,6 +348,15 @@ def export_walkability_scores(
             "walkability": score,
             "walkability_raw": round(base_score, 3),
             "sidewalk": sw_status,
+            "sidewalk_doc_pct": -1 if doc_pct is None else doc_pct,
+            # Mapped pedestrian infrastructure within PED_INFRA_RADIUS_M
+            # of the street — a human-scale figure, unlike the
+            # trip-accumulated ped_meters below.
+            "ped_infra_m": round(infra_m, 0),
+            "infra_radius": int(PED_INFRA_RADIUS_M),
+            "surface_pct": int(round(surface_share * 100)),
+            "lit_pct": int(round(lit_share * 100)),
+            # Trip-accumulated meters (score internals, kept for debug).
             "ped_meters": round(ped_m, 0),
             "cycleway_meters": round(cyc_m, 0),
             "total_meters": round(total_m, 0),
@@ -260,14 +364,16 @@ def export_walkability_scores(
 
     fb = {
         "geometry": None, "street": "", "walkability": 0.0,
-        "walkability_raw": 0.0, "sidewalk": "",
+        "walkability_raw": 0.0, "sidewalk": "", "sidewalk_doc_pct": -1,
+        "ped_infra_m": 0.0, "infra_radius": int(PED_INFRA_RADIUS_M),
+        "surface_pct": 0, "lit_pct": 0,
         "ped_meters": 0.0, "cycleway_meters": 0.0, "total_meters": 0.0,
     }
     n_sc = _save_gdf(rows, fb, "EPSG:4326", "street_scores.geojson")
     print(f"  Street scores: {n_sc}")
     print(f"  Sidewalk penalties applied — both: {pen_stats['both']} | "
           f"partial: {pen_stats['partial']} | none: {pen_stats['none']} | "
-          f"unknown: {pen_stats['unknown']}")
+          f"unknown: {pen_stats['unknown']} | not required: {pen_stats['not_required']}")
 
     if scores:
         scores_arr = np.array(scores)
@@ -297,112 +403,6 @@ def export_walkability_scores(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Top-N streets for the "rues à corriger" stats panel
-# ─────────────────────────────────────────────────────────────────────────────
-
-def compute_top_streets(
-    *,
-    missing_crossings_path: str = "missing_crossings.geojson",
-    sidewalk_roads_path:    str = "sidewalk_roads.geojson",
-    sidewalk_gaps_path:     str = "sidewalk_gaps.geojson",
-    top_n: int = 10,
-) -> dict:
-    """Compute three mapper-actionable Top-N lists from existing outputs.
-
-    Output format::
-
-        {
-          "missing_crossings": [{"name": "rue X", "value": 7}, ...],
-          "unknown_sidewalk":  [{"name": "rue Y", "value": 1.8}, ...],
-          "sidewalk_gaps":     [{"name": "rue Z", "value": 1.2}, ...],
-        }
-
-    The function is defensive: missing files or unexpected columns
-    return ``[]`` for that list, never raise.  stats.html only renders
-    the section when at least one of the three lists is non-empty.
-
-    Values:
-    * ``missing_crossings`` — count of flagged crossing nodes per street
-      (both ``missing_way`` and ``missing_tag`` types combined).
-    * ``unknown_sidewalk`` — cumulative km of road segments tagged as
-      ``sw=unknown`` (no sidewalk tag at all) per street.
-    * ``sidewalk_gaps`` — cumulative km of road segments where a
-      footway is detected on one side only.
-    """
-    return {
-        "missing_crossings": _top_missing_crossings(missing_crossings_path, top_n),
-        "unknown_sidewalk":  _top_unknown_sidewalk_km(sidewalk_roads_path, top_n),
-        "sidewalk_gaps":     _top_sidewalk_gaps_km(sidewalk_gaps_path, top_n),
-    }
-
-
-def _top_missing_crossings(path: str, top_n: int) -> list[dict]:
-    """Streets ranked by total count of flagged crossing nodes."""
-    try:
-        gdf = gpd.read_file(path)
-    except Exception:
-        return []
-    if "name" not in gdf.columns:
-        return []
-    counts: dict[str, int] = defaultdict(int)
-    for name in gdf["name"]:
-        if not name or not isinstance(name, str):
-            continue
-        counts[name] += 1
-    return _top_dict(counts, top_n)
-
-
-def _top_unknown_sidewalk_km(path: str, top_n: int) -> list[dict]:
-    """Streets ranked by km of sw=unknown segments (longest first).
-
-    Length is summed per street name in EPSG:31370 (metric).
-    """
-    try:
-        gdf = gpd.read_file(path).to_crs("EPSG:31370")
-    except Exception:
-        return []
-    if "name" not in gdf.columns or "sw" not in gdf.columns:
-        return []
-    unk = gdf[gdf["sw"] == "unknown"]
-    if unk.empty:
-        return []
-    unk = unk[unk["name"].notna() & (unk["name"].astype(str).str.strip() != "")]
-    if unk.empty:
-        return []
-    lengths_m = unk.geometry.length
-    by_street: dict[str, float] = defaultdict(float)
-    for nm, lm in zip(unk["name"], lengths_m):
-        by_street[str(nm)] += float(lm)
-    rounded = {nm: round(km_m / 1000.0, 2) for nm, km_m in by_street.items()}
-    return _top_dict(rounded, top_n)
-
-
-def _top_sidewalk_gaps_km(path: str, top_n: int) -> list[dict]:
-    """Streets ranked by km of sidewalk-gap (1-side) segments."""
-    try:
-        gdf = gpd.read_file(path).to_crs("EPSG:31370")
-    except Exception:
-        return []
-    if "name" not in gdf.columns:
-        return []
-    gdf = gdf[gdf["name"].notna() & (gdf["name"].astype(str).str.strip() != "")]
-    if gdf.empty:
-        return []
-    lengths_m = gdf.geometry.length
-    by_street: dict[str, float] = defaultdict(float)
-    for nm, lm in zip(gdf["name"], lengths_m):
-        by_street[str(nm)] += float(lm)
-    rounded = {nm: round(km_m / 1000.0, 2) for nm, km_m in by_street.items()}
-    return _top_dict(rounded, top_n)
-
-
-def _top_dict(d: dict, top_n: int) -> list[dict]:
-    """Sort {name: value} → [{name, value}], take top_n entries."""
-    items = sorted(d.items(), key=lambda kv: -kv[1])[:top_n]
-    return [{"name": k, "value": v} for k, v in items]
-
-
-# ─────────────────────────────────────────────────────────────────────────────
 # Stats
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -421,7 +421,6 @@ def save_stats(
     sidewalk_gap_stats: dict | None = None,
     sidewalk_road_stats: dict | None = None,
     missing_crossing_stats: dict | None = None,
-    top_streets: dict | None = None,
     network_stats: dict | None = None,
     od_sampling_stats: dict | None = None,
 ) -> None:
@@ -463,8 +462,6 @@ def save_stats(
         stats["sidewalk_roads"] = sidewalk_road_stats
     if missing_crossing_stats:
         stats["missing_crossings"] = missing_crossing_stats
-    if top_streets:
-        stats["top_streets"] = top_streets
 
     with open("stats.json", "w") as f:
         json.dump(stats, f, indent=2)

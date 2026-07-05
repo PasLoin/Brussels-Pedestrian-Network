@@ -49,7 +49,6 @@ from sample_od import sample_od_points, snap_to_graph
 from routing import generate_od_pairs, route_pairs
 from export import (
     compute_network_stats,
-    compute_top_streets,
     export_flow_layers,
     export_routing_graph,
     export_walkability_scores,
@@ -95,7 +94,13 @@ def main() -> None:
             1 for h, c in zip(gb.edge_highways, gb.edge_cycleway_nf)
             if h == "cycleway" and c
         ),
-        "streets_with_sidewalk_tags": len(gb.street_sidewalk_status),
+        # The index now contains EVERY street with road edges (untagged
+        # included, for the length-weighted penalty), so count only
+        # those actually carrying at least one sidewalk tag.
+        "streets_with_sidewalk_tags": sum(
+            1 for info in gb.street_sidewalk_status.values()
+            if info.doc_share > 0
+        ),
     }
 
     network_stats = compute_network_stats(
@@ -152,6 +157,8 @@ def main() -> None:
             result.street_ped_m, result.street_cyc_nf_m, result.street_total_m,
             gb.street_sidewalk_status,
             addr_gdf,
+            gb.edge_tuples, gb.edge_geoms, gb.edge_highways,
+            gb.edge_surfaces, gb.edge_lits,
         )
 
     # ── Step 8c: Sidewalk gap detection ───────────────────────────────────
@@ -173,13 +180,6 @@ def main() -> None:
             "sidewalk_roads_raw.geojson",
         )
 
-    # ── Step 8f: Top streets to fix (mapper-actionable lists) ─────────────
-    # Reads the GeoJSON outputs produced by steps 8c–8e and ranks streets
-    # by impact.  Fast (<1 s) and tolerant: returns empty lists for any
-    # file that's missing or malformed.
-    with step("compute_top_streets"):
-        top_streets = compute_top_streets()
-
     # ── Save stats ────────────────────────────────────────────────────────
     save_stats(
         routed=result.routed,
@@ -195,7 +195,6 @@ def main() -> None:
         sidewalk_gap_stats=sidewalk_gap_stats,
         sidewalk_road_stats=sidewalk_road_stats,
         missing_crossing_stats=missing_crossing_stats,
-        top_streets=top_streets,
         network_stats=network_stats,
         od_sampling_stats=od_sampling_stats,
     )

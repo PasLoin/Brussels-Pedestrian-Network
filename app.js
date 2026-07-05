@@ -596,20 +596,6 @@ const HOVER_LAYERS = [
     }
   },
   {
-    ids: ["missing-crossings"],
-    format: p => {
-      const isMissingWay = p.type === "missing_way";
-      return `
-        <div class="popup-title">${isMissingWay ? "🟠 Traversée non mappée" : "🟡 Tag footway=crossing absent"}</div>
-        <div class="popup-row"><span class="label">Rue</span><span class="value">${escapeHTML(p.name || "—")}</span></div>
-        <div class="popup-row"><span class="label">Problème</span><span class="value">${isMissingWay
-          ? "Aucune footway connectée au nœud"
-          : "Footway connectée mais sans tag footway=crossing"
-        }</span></div>
-      `;
-    }
-  },
-  {
     ids: ["flow-ped", "flow-cycleway", "flow-road"],
     format: p => `
       <div class="popup-title">📊 Flux simulé</div>
@@ -621,15 +607,34 @@ const HOVER_LAYERS = [
   {
     ids: ["street-scores"],
     format: p => {
-      const swLabels = { both: "✅ Deux côtés", partial: "⚠️ Un seul côté", none: "❌ Aucun", unknown: "❓ Non renseigné" };
+      const swLabels = {
+        both: "✅ Deux côtés",
+        partial: "⚠️ Un seul côté",
+        none: "❌ Aucun",
+        unknown: "❓ Non renseigné",
+        not_required: "— Non requis (voie piétonne)"
+      };
+      // sidewalk_doc_pct: share of road length carrying a sidewalk tag
+      // (-1 / absent on pedestrian-only streets and older builds).
+      const docPct = (typeof p.sidewalk_doc_pct === "number" && p.sidewalk_doc_pct >= 0)
+        ? p.sidewalk_doc_pct : null;
+      // ped_infra_m: mapped pedestrian infra within infra_radius of the
+      // street — human-scale, unlike the old trip-accumulated meters
+      // ("360 000 m" for one street) which confused everyone.
+      const radius = p.infra_radius || 500;
+      const hasInfra = typeof p.ped_infra_m === "number";
       return `
         <div class="popup-title">🏙 ${escapeHTML(p.street || "Rue inconnue")}</div>
         <div class="popup-row"><span class="label">Marchabilité</span><span class="value">${((p.walkability || 0) * 100).toFixed(0)}%</span></div>
         <div class="popup-row"><span class="label">Score brut</span><span class="value">${((p.walkability_raw || 0) * 100).toFixed(0)}%</span></div>
         <div class="popup-row"><span class="label">Trottoir</span><span class="value">${escapeHTML(swLabels[p.sidewalk] || p.sidewalk || "?")}</span></div>
+        ${docPct !== null ? `<div class="popup-row"><span class="label">Tags trottoir</span><span class="value">${docPct}% de la longueur</span></div>` : ""}
+        ${hasInfra ? `
+        <div class="popup-row"><span class="label">Infra piétonne (${radius} m)</span><span class="value">${Math.round(p.ped_infra_m)} m</span></div>
+        <div class="popup-row"><span class="label">Tag surface</span><span class="value">${p.surface_pct || 0}% de l'infra</span></div>
+        <div class="popup-row"><span class="label">Tag lit (éclairage)</span><span class="value">${p.lit_pct || 0}% de l'infra</span></div>` : `
         <div class="popup-row"><span class="label">Infra piétonne</span><span class="value">${Math.round(p.ped_meters || 0)} m</span></div>
-        <div class="popup-row"><span class="label">Cycleway (no foot)</span><span class="value">${Math.round(p.cycleway_meters || 0)} m</span></div>
-        <div class="popup-row"><span class="label">Total routé</span><span class="value">${Math.round(p.total_meters || 0)} m</span></div>
+        <div class="popup-row"><span class="label">Total routé</span><span class="value">${Math.round(p.total_meters || 0)} m</span></div>`}
       `;
     }
   },
@@ -640,6 +645,37 @@ const HOVER_LAYERS = [
       return `
         <div class="popup-title">🛤 Infrastructure</div>
         ${entries.map(([k, v]) => `<div class="popup-row"><span class="label">${escapeHTML(k)}</span><span class="value">${escapeHTML(v)}</span></div>`).join("")}
+      `;
+    }
+  },
+];
+
+// ── Click popup config (persistant — couches avec liens cliquables) ──────────
+// Contrairement aux hover popups qui se ferment dès que la souris quitte la
+// feature, ces popups restent ouverts jusqu'à un clic ailleurs ou le bouton ✕.
+// C'est indispensable pour les liens OSM / JOSM / iD dans le contenu.
+const CLICK_LAYERS = [
+  {
+    ids: ["missing-crossings"],
+    format: p => {
+      const isMissingWay = p.type === "missing_way";
+      const nearM = (typeof p.nearest_tag_m === "number" && p.nearest_tag_m >= 0)
+        ? p.nearest_tag_m : null;
+      const radius = p.detect_radius || 20;
+      const nid = parseInt(p.osm_id, 10) || 0;
+      return `
+        <div class="popup-title">${isMissingWay ? "🟠 Traversée non mappée" : "🟡 Tag footway=crossing absent"}</div>
+        <div class="popup-row"><span class="label">Rue</span><span class="value">${escapeHTML(p.name || "—")}</span></div>
+        <div class="popup-row"><span class="label">Problème</span><span class="value">${isMissingWay
+          ? "Aucune footway connectée au nœud"
+          : "Footway connectée mais sans tag footway=crossing"
+        }</span></div>
+        ${nearM !== null && !isMissingWay ? `<div class="popup-row"><span class="label">footway=crossing le + proche</span><span class="value">${nearM} m <span style="opacity:.7">(rayon ${radius} m)</span></span></div>` : ""}
+        ${nid > 0 ? `<div class="popup-row"><span class="label">Nœud</span><span class="value">
+          <a href="https://www.openstreetmap.org/node/${nid}" target="_blank" rel="noopener">n${nid}</a>
+          · <a href="http://127.0.0.1:8111/load_object?objects=n${nid}" target="_blank" rel="noopener">JOSM</a>
+          · <a href="https://www.openstreetmap.org/edit?node=${nid}" target="_blank" rel="noopener">iD</a>
+        </span></div>` : ""}
       `;
     }
   },
@@ -912,6 +948,42 @@ function initMap(style) {
     });
 
     map.on("mouseleave", allHoverIds, () => { popup.remove(); if (!navMode) map.getCanvas().style.cursor = ""; });
+
+    // ── Click popups (persistants — liens OSM/JOSM/iD cliquables) ─────────
+    // Un seul popup réutilisé ; un nouveau clic sur la même couche le déplace.
+    // Cliquer ailleurs sur la carte le ferme (closeOnClick: true par défaut).
+    const clickPopup = new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: "300px" });
+    const allClickIds = CLICK_LAYERS.flatMap(c => c.ids);
+
+    map.on("click", (e) => {
+      if (navMode) return;
+      const visibleIds = allClickIds.filter(id => {
+        try { return map.getLayoutProperty(id, "visibility") !== "none"; }
+        catch { return false; }
+      });
+      if (!visibleIds.length) return;
+      const features = map.queryRenderedFeatures(e.point, { layers: visibleIds });
+      if (!features.length) return;
+      // Empêcher le handler de navigation de s'exécuter aussi
+      e.preventDefault && e.preventDefault();
+      const f = features[0];
+      const conf = CLICK_LAYERS.find(c => c.ids.includes(f.layer.id));
+      if (!conf) return;
+      map.getCanvas().style.cursor = "pointer";
+      clickPopup.setLngLat(e.lngLat).setHTML(conf.format(f.properties)).addTo(map);
+    });
+
+    // Curseur pointer au survol des couches click
+    map.on("mousemove", (e) => {
+      if (navMode) return;
+      const visibleIds = allClickIds.filter(id => {
+        try { return map.getLayoutProperty(id, "visibility") !== "none"; }
+        catch { return false; }
+      });
+      if (!visibleIds.length) return;
+      const features = map.queryRenderedFeatures(e.point, { layers: visibleIds });
+      map.getCanvas().style.cursor = features.length ? "pointer" : "";
+    });
   });
 
   map.on("moveend", () => {

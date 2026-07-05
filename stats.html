@@ -238,48 +238,6 @@
     .chart-wrap { position: relative; max-height: 260px; }
     .chart-wrap canvas { width: 100% !important; max-height: 260px; }
 
-    /* Top streets to fix */
-    .top-list {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 8px 0;
-      font-size: 12px;
-      max-height: 320px;
-      overflow-y: auto;
-    }
-    .top-list-empty {
-      padding: 18px;
-      color: var(--text-muted);
-      font-size: 11px;
-      text-align: center;
-    }
-    .top-row {
-      display: grid;
-      grid-template-columns: 28px 1fr auto;
-      gap: 8px;
-      align-items: baseline;
-      padding: 5px 12px;
-      border-bottom: 1px dotted var(--border);
-    }
-    .top-row:last-child { border-bottom: none; }
-    .top-row .rank {
-      color: var(--text-muted);
-      font-variant-numeric: tabular-nums;
-      text-align: right;
-    }
-    .top-row .name {
-      color: var(--text);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .top-row .val {
-      color: var(--text-dim);
-      font-variant-numeric: tabular-nums;
-      font-size: 11px;
-    }
-
     .loading {
       text-align: center;
       padding: 48px 20px;
@@ -676,50 +634,7 @@ function render(s) {
       </div>
     </div>`;
 
-  // ── 5. Top streets to fix (mapper-actionable, only if data present) ──
-  // The Python pipeline doesn't currently produce these arrays — see the
-  // companion patch in export.py.  We render the section only when the
-  // arrays are non-empty so older builds keep working.
-  const hasTops = (s.top_streets && (
-    (s.top_streets.missing_crossings || []).length ||
-    (s.top_streets.unknown_sidewalk || []).length ||
-    (s.top_streets.sidewalk_gaps || []).length
-  ));
-  if (hasTops) {
-    const ts = s.top_streets;
-    const renderList = (arr, valLabel) => {
-      if (!arr || !arr.length) return `<div class="top-list-empty">aucune donnée</div>`;
-      return arr.map((r, i) => `
-        <div class="top-row">
-          <div class="rank">#${i + 1}</div>
-          <div class="name">${escapeHTML(r.name || '—')}</div>
-          <div class="val">${escapeHTML(typeof r.value === 'number' ? r.value.toString() : r.value)} ${escapeHTML(valLabel)}</div>
-        </div>
-      `).join('');
-    };
-
-    el.innerHTML += `
-      <div class="section">
-        <div class="section-title">Top 10 — rues à corriger</div>
-        <div class="section-intro">Cibles concrètes pour les mappeurs.  Triées par impact estimé.</div>
-        <div class="charts">
-          <div class="chart-card">
-            <h3>Plus de crossings manquants</h3>
-            <div class="top-list">${renderList(ts.missing_crossings, 'crossings')}</div>
-          </div>
-          <div class="chart-card">
-            <h3>Plus longues sans tag sidewalk</h3>
-            <div class="top-list">${renderList(ts.unknown_sidewalk, 'km')}</div>
-          </div>
-          <div class="chart-card">
-            <h3>Plus longues avec gap (1 côté)</h3>
-            <div class="top-list">${renderList(ts.sidewalk_gaps, 'km')}</div>
-          </div>
-        </div>
-      </div>`;
-  }
-
-  // ── 6. Marchabilité ──────────────────────────────────────────────────
+  // ── 5. Marchabilité ──────────────────────────────────────────────────
   el.innerHTML += `
     <div class="section">
       <div class="section-title">Marchabilité</div>
@@ -743,7 +658,7 @@ function render(s) {
       </div>
     </div>`;
 
-  // ── 7. Simulation ───────────────────────────────────────────────────
+  // ── 6. Simulation ───────────────────────────────────────────────────
   el.innerHTML += `
     <div class="section">
       <div class="section-title">Simulation</div>

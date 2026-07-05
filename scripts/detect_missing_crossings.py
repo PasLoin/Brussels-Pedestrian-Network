@@ -220,12 +220,19 @@ def _load_crossing_nodes(highways_path: str) -> gpd.GeoDataFrame:
         if _safe_str(props.get("highway")) != "crossing":
             continue
         try:
+            osm_id = int(props.get("@id") or 0)
+        except (TypeError, ValueError):
+            osm_id = 0
+        try:
             rows.append({
                 "geometry": shape(geom),
                 # crossing:continuous=yes means the road surface itself
                 # is continuous across the crossing (raised crossing /
                 # plateau).  No separate crossing way should be drawn.
                 "continuous": _safe_str(props.get("crossing:continuous")) == "yes",
+                # OSM node id (0 when the extract lacks @id) so the
+                # mapper can open the exact flagged node in OSM/JOSM.
+                "osm_id": osm_id,
             })
         except Exception:
             continue
@@ -499,12 +506,25 @@ def detect_missing_crossings(
             else:
                 n_missing_tag += 1
 
+            # Distance to the nearest footway=crossing way — the key
+            # diagnostic for "but the way IS tagged!" reports: on wide
+            # boulevards a kerb-split crossing chain can have its tagged
+            # piece on the other carriageway, farther than the tier-1
+            # radius from THIS node.
+            nearest_tag_m = -1.0
+            if cw_tree is not None and len(cw_geoms):
+                ni = cw_tree.nearest(node_pt)
+                nearest_tag_m = round(float(cw_geoms[ni].distance(node_pt)), 1)
+
             rows.append({
                 "geometry": node_pt,
                 "name":  road_name,
                 "type":  crossing_type,
                 "left":  has_left,
                 "right": has_right,
+                "osm_id": int(node_row.get("osm_id") or 0),
+                "nearest_tag_m": nearest_tag_m,
+                "detect_radius": int(CROSSING_WAY_SEARCH_RADIUS_M),
             })
 
     with step("write missing_crossings.geojson"):
@@ -513,7 +533,9 @@ def detect_missing_crossings(
         else:
             out_gdf = gpd.GeoDataFrame(
                 [{"geometry": None, "name": "", "type": "",
-                  "left": False, "right": False}],
+                  "left": False, "right": False, "osm_id": 0,
+                  "nearest_tag_m": -1.0,
+                  "detect_radius": int(CROSSING_WAY_SEARCH_RADIUS_M)}],
                 crs="EPSG:4326",
             )
         out_gdf.to_file("missing_crossings.geojson", driver="GeoJSON")
@@ -543,6 +565,8 @@ def detect_missing_crossings(
 
 def _write_empty_output() -> None:
     gpd.GeoDataFrame(
-        [{"geometry": None, "name": "", "type": "", "left": False, "right": False}],
+        [{"geometry": None, "name": "", "type": "", "left": False,
+          "right": False, "osm_id": 0, "nearest_tag_m": -1.0,
+          "detect_radius": int(CROSSING_WAY_SEARCH_RADIUS_M)}],
         crs="EPSG:4326",
     ).to_file("missing_crossings.geojson", driver="GeoJSON")
