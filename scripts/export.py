@@ -297,112 +297,6 @@ def export_walkability_scores(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Top-N streets for the "rues à corriger" stats panel
-# ─────────────────────────────────────────────────────────────────────────────
-
-def compute_top_streets(
-    *,
-    missing_crossings_path: str = "missing_crossings.geojson",
-    sidewalk_roads_path:    str = "sidewalk_roads.geojson",
-    sidewalk_gaps_path:     str = "sidewalk_gaps.geojson",
-    top_n: int = 10,
-) -> dict:
-    """Compute three mapper-actionable Top-N lists from existing outputs.
-
-    Output format::
-
-        {
-          "missing_crossings": [{"name": "rue X", "value": 7}, ...],
-          "unknown_sidewalk":  [{"name": "rue Y", "value": 1.8}, ...],
-          "sidewalk_gaps":     [{"name": "rue Z", "value": 1.2}, ...],
-        }
-
-    The function is defensive: missing files or unexpected columns
-    return ``[]`` for that list, never raise.  stats.html only renders
-    the section when at least one of the three lists is non-empty.
-
-    Values:
-    * ``missing_crossings`` — count of flagged crossing nodes per street
-      (both ``missing_way`` and ``missing_tag`` types combined).
-    * ``unknown_sidewalk`` — cumulative km of road segments tagged as
-      ``sw=unknown`` (no sidewalk tag at all) per street.
-    * ``sidewalk_gaps`` — cumulative km of road segments where a
-      footway is detected on one side only.
-    """
-    return {
-        "missing_crossings": _top_missing_crossings(missing_crossings_path, top_n),
-        "unknown_sidewalk":  _top_unknown_sidewalk_km(sidewalk_roads_path, top_n),
-        "sidewalk_gaps":     _top_sidewalk_gaps_km(sidewalk_gaps_path, top_n),
-    }
-
-
-def _top_missing_crossings(path: str, top_n: int) -> list[dict]:
-    """Streets ranked by total count of flagged crossing nodes."""
-    try:
-        gdf = gpd.read_file(path)
-    except Exception:
-        return []
-    if "name" not in gdf.columns:
-        return []
-    counts: dict[str, int] = defaultdict(int)
-    for name in gdf["name"]:
-        if not name or not isinstance(name, str):
-            continue
-        counts[name] += 1
-    return _top_dict(counts, top_n)
-
-
-def _top_unknown_sidewalk_km(path: str, top_n: int) -> list[dict]:
-    """Streets ranked by km of sw=unknown segments (longest first).
-
-    Length is summed per street name in EPSG:31370 (metric).
-    """
-    try:
-        gdf = gpd.read_file(path).to_crs("EPSG:31370")
-    except Exception:
-        return []
-    if "name" not in gdf.columns or "sw" not in gdf.columns:
-        return []
-    unk = gdf[gdf["sw"] == "unknown"]
-    if unk.empty:
-        return []
-    unk = unk[unk["name"].notna() & (unk["name"].astype(str).str.strip() != "")]
-    if unk.empty:
-        return []
-    lengths_m = unk.geometry.length
-    by_street: dict[str, float] = defaultdict(float)
-    for nm, lm in zip(unk["name"], lengths_m):
-        by_street[str(nm)] += float(lm)
-    rounded = {nm: round(km_m / 1000.0, 2) for nm, km_m in by_street.items()}
-    return _top_dict(rounded, top_n)
-
-
-def _top_sidewalk_gaps_km(path: str, top_n: int) -> list[dict]:
-    """Streets ranked by km of sidewalk-gap (1-side) segments."""
-    try:
-        gdf = gpd.read_file(path).to_crs("EPSG:31370")
-    except Exception:
-        return []
-    if "name" not in gdf.columns:
-        return []
-    gdf = gdf[gdf["name"].notna() & (gdf["name"].astype(str).str.strip() != "")]
-    if gdf.empty:
-        return []
-    lengths_m = gdf.geometry.length
-    by_street: dict[str, float] = defaultdict(float)
-    for nm, lm in zip(gdf["name"], lengths_m):
-        by_street[str(nm)] += float(lm)
-    rounded = {nm: round(km_m / 1000.0, 2) for nm, km_m in by_street.items()}
-    return _top_dict(rounded, top_n)
-
-
-def _top_dict(d: dict, top_n: int) -> list[dict]:
-    """Sort {name: value} → [{name, value}], take top_n entries."""
-    items = sorted(d.items(), key=lambda kv: -kv[1])[:top_n]
-    return [{"name": k, "value": v} for k, v in items]
-
-
-# ─────────────────────────────────────────────────────────────────────────────
 # Stats
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -421,7 +315,6 @@ def save_stats(
     sidewalk_gap_stats: dict | None = None,
     sidewalk_road_stats: dict | None = None,
     missing_crossing_stats: dict | None = None,
-    top_streets: dict | None = None,
     network_stats: dict | None = None,
     od_sampling_stats: dict | None = None,
 ) -> None:
@@ -463,8 +356,6 @@ def save_stats(
         stats["sidewalk_roads"] = sidewalk_road_stats
     if missing_crossing_stats:
         stats["missing_crossings"] = missing_crossing_stats
-    if top_streets:
-        stats["top_streets"] = top_streets
 
     with open("stats.json", "w") as f:
         json.dump(stats, f, indent=2)
