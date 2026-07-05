@@ -94,7 +94,13 @@ def main() -> None:
             1 for h, c in zip(gb.edge_highways, gb.edge_cycleway_nf)
             if h == "cycleway" and c
         ),
-        "streets_with_sidewalk_tags": len(gb.street_sidewalk_status),
+        # The index now contains EVERY street with road edges (untagged
+        # included, for the length-weighted penalty), so count only
+        # those actually carrying at least one sidewalk tag.
+        "streets_with_sidewalk_tags": sum(
+            1 for info in gb.street_sidewalk_status.values()
+            if info.doc_share > 0
+        ),
     }
 
     network_stats = compute_network_stats(
