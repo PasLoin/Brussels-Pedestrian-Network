@@ -713,7 +713,8 @@ function initMap(style) {
   const map = new maplibregl.Map({
     container: "map", style,
     center: [4.3517, 50.8503], zoom: 12,
-    attributionControl: false
+    attributionControl: false,
+    hash: true
   });
   mapRef = map;
 
