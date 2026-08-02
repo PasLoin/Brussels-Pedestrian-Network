@@ -49,20 +49,25 @@ is tagged but only one sidewalk was actually drawn.
 
 Footways are filtered to keep:
 
-- ``highway=footway`` AND ``footway`` in ``{sidewalk, link, crossing}``.
+- ``highway=footway`` AND ``footway`` in
+  ``{sidewalk, link, crossing, traffic_island}``.
   ``sidewalk`` is the canonical positive; ``link`` and ``crossing``
   are kept because some run parallel to roads and effectively serve
   as a sidewalk for that stretch (e.g. a long crossing along a
-  parking strip).  The per-piece parallel check naturally filters
-  out the perpendicular crossings — they fail the angle test and
-  contribute zero coverage.
+  parking strip). ``traffic_island`` is kept because a mapped refuge
+  often runs as a raised strip parallel to the road for a stretch
+  (e.g. between a service lane and the main carriageway, or along a
+  central reservation) and functions as a de-facto sidewalk for that
+  portion — it behaves like a sidewalk for coverage purposes even
+  though it isn't tagged as one. The per-piece parallel check
+  naturally filters out the perpendicular crossings and the
+  perpendicular tips of refuge islands — they fail the angle test
+  and contribute zero coverage.
 - ``highway=pedestrian`` — pedestrian zones, often used as a sidewalk
   at their edges along bordering streets.
 
-This drops untagged ``highway=footway`` (most often park paths) and
-``footway=traffic_island`` (physical refuge in the middle of the
-road) — common sources of false positives such as the Sablon park
-paths.
+This drops untagged ``highway=footway`` (most often park paths) —
+a common source of false positives such as the Sablon park paths.
 """
 
 from __future__ import annotations
@@ -205,12 +210,19 @@ def _load_sidewalk_footways(footways_geojson_path: str) -> tuple[list, dict]:
     mask_crossing = (
         (fw_gdf["_highway"] == "footway") & (fw_gdf["_footway"] == "crossing")
     )
+    mask_traffic_island = (
+        (fw_gdf["_highway"] == "footway") & (fw_gdf["_footway"] == "traffic_island")
+    )
     mask_pedestrian = (fw_gdf["_highway"] == "pedestrian")
-    keep_mask = mask_sidewalk | mask_link | mask_crossing | mask_pedestrian
+    keep_mask = (
+        mask_sidewalk | mask_link | mask_crossing | mask_traffic_island
+        | mask_pedestrian
+    )
 
     n_sidewalk = int(mask_sidewalk.sum())
     n_link = int(mask_link.sum())
     n_crossing = int(mask_crossing.sum())
+    n_traffic_island = int(mask_traffic_island.sum())
     n_pedestrian = int(mask_pedestrian.sum())
     n_kept = int(keep_mask.sum())
     n_dropped = n_raw - n_kept
@@ -220,7 +232,7 @@ def _load_sidewalk_footways(footways_geojson_path: str) -> tuple[list, dict]:
 
     print(f"  Footways kept: {n_kept} "
           f"(sidewalk: {n_sidewalk} | link: {n_link} | crossing: {n_crossing} "
-          f"| pedestrian: {n_pedestrian}) "
+          f"| traffic_island: {n_traffic_island} | pedestrian: {n_pedestrian}) "
           f"| dropped: {n_dropped} / {n_raw}")
 
     return geoms, {
@@ -229,6 +241,7 @@ def _load_sidewalk_footways(footways_geojson_path: str) -> tuple[list, dict]:
         "kept_sidewalk": n_sidewalk,
         "kept_link": n_link,
         "kept_crossing": n_crossing,
+        "kept_traffic_island": n_traffic_island,
         "kept_pedestrian": n_pedestrian,
         "dropped": n_dropped,
     }
