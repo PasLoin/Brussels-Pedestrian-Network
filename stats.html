@@ -606,7 +606,7 @@ function render(s) {
         <div class="kpi">
           <div class="kpi-label">Routes analysées</div>
           <div class="kpi-val">${escapeHTML(fmt(gaps.roads_analysed))}</div>
-          <div class="kpi-sub">${escapeHTML(fmt(gaps.skipped_documented))} exclues (documentées)</div>
+          <div class="kpi-sub">${escapeHTML(fmt(gaps.skipped_no_sidewalk))} exclues (sidewalk=no documenté)</div>
         </div>
         <div class="kpi">
           <div class="kpi-label">Deux côtés</div>
@@ -628,6 +628,10 @@ function render(s) {
         <div class="chart-card">
           <h3>Résultat par segment</h3>
           <div class="chart-wrap"><canvas id="c-gap"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>Footways retenus (composition)</h3>
+          <div class="chart-wrap"><canvas id="c-fw-filter"></canvas></div>
         </div>
         <div class="chart-card">
           <h3>Marchabilité — distribution des scores</h3>
@@ -800,6 +804,29 @@ function renderCharts(s) {
       data: {
         labels: ['Deux côtés', 'Un seul côté', 'Aucun côté'],
         datasets: [{ data: [gaps.both_sides || 0, gaps.one_side_gap || 0, gaps.neither_side || 0], backgroundColor: [C.green, C.orange, C.red], borderWidth: 0 }],
+      },
+      options: { ...dOpts, plugins: { ...dOpts.plugins, tooltip: { callbacks: { label: c => c.label + ' : ' + fmt(c.raw) } } } },
+    });
+  }
+
+  // footway composition (what feeds the gap-detection coverage check)
+  const fwF = gaps.footway_filter || {};
+  if (fwF.kept != null) {
+    new Chart(document.getElementById('c-fw-filter'), {
+      type: 'doughnut',
+      data: {
+        labels: ['sidewalk', 'link', 'crossing', 'traffic_island', 'pedestrian'],
+        datasets: [{
+          data: [
+            fwF.kept_sidewalk || 0,
+            fwF.kept_link || 0,
+            fwF.kept_crossing || 0,
+            fwF.kept_traffic_island || 0,
+            fwF.kept_pedestrian || 0,
+          ],
+          backgroundColor: [C.green, C.purple, C.cyan, C.orange, C.blue],
+          borderWidth: 0,
+        }],
       },
       options: { ...dOpts, plugins: { ...dOpts.plugins, tooltip: { callbacks: { label: c => c.label + ' : ' + fmt(c.raw) } } } },
     });
