@@ -64,6 +64,7 @@ class _BrusselsStatsHandler:
         self.n_footway_sidewalk    = 0
         self.n_footway_crossing    = 0
         self.n_footway_link        = 0
+        self.n_footway_traffic_island = 0
         self.n_footway_with_surface    = 0
         self.n_footway_with_smoothness = 0
 
@@ -123,6 +124,8 @@ class _BrusselsStatsHandler:
                 self.n_footway_crossing += 1
             elif sub == "link":
                 self.n_footway_link += 1
+            elif sub == "traffic_island":
+                self.n_footway_traffic_island += 1
             if tags.get("surface"):
                 self.n_footway_with_surface += 1
             if tags.get("smoothness"):
@@ -194,6 +197,7 @@ def _build_record(date_iso: str, h: _BrusselsStatsHandler) -> dict:
         "footway_sidewalk":      h.n_footway_sidewalk,
         "footway_crossing":      h.n_footway_crossing,
         "footway_link":          h.n_footway_link,
+        "footway_traffic_island": h.n_footway_traffic_island,
         "footway_with_surface":     h.n_footway_with_surface,
         "footway_with_smoothness":  h.n_footway_with_smoothness,
         "road_ways":                   h.n_road_ways,
