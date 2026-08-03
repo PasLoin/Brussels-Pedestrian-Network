@@ -11,10 +11,17 @@ output GeoJSON:
     mapped at all in the pedestrian network.  Shown in orange.
 
 ``missing_tag``
-    A footway passes through the node (shared-node connectivity confirmed)
-    but no ``footway=crossing`` sub-tag exists within
+    A ``highway=footway`` passes through the node (shared-node connectivity
+    confirmed) but no ``footway=crossing`` sub-tag exists within
     ``CROSSING_WAY_SEARCH_RADIUS_M``.  The crossing exists geometrically
     but the tag is absent.  Shown in yellow.
+
+    If the *only* way connected at the node is a ``highway=pedestrian``
+    way (no ``highway=footway`` also connects), the node is skipped
+    entirely rather than flagged.  Pedestrian zones/plazas are continuous
+    surfaces by convention, so a crossing at their edge isn't expected to
+    be split out into its own ``footway=crossing`` way — flagging it would
+    be a false positive.
 
 Both categories require ``footway=sidewalk`` ways to be drawn on **both**
 sides of the road near the node AND roughly **parallel** to the road.
@@ -256,13 +263,32 @@ def _load_crossing_ways(footways_path: str) -> tuple[list, STRtree | None]:
     return geoms, (STRtree(geoms) if geoms else None)
 
 
-def _load_all_footways(footways_path: str) -> tuple[list, STRtree | None]:
-    """Tier 2 — ALL highway=footway/pedestrian (shared-node check)."""
+def _load_footway_ways(footways_path: str) -> tuple[list, STRtree | None]:
+    """Tier 2a — highway=footway ways only (any footway=* sub-tag)."""
     gdf = gpd.read_file(footways_path)
     gdf = gdf[gdf.geometry.geom_type == "LineString"].copy().to_crs("EPSG:31370")
     if "highway" not in gdf.columns:
         gdf["highway"] = ""
-    mask = gdf["highway"].apply(_safe_str).isin(["footway", "pedestrian"])
+    mask = gdf["highway"].apply(_safe_str) == "footway"
+    geoms = list(gdf[mask].geometry)
+    return geoms, (STRtree(geoms) if geoms else None)
+
+
+def _load_pedestrian_ways(footways_path: str) -> tuple[list, STRtree | None]:
+    """Tier 2b — highway=pedestrian ways only.
+
+    Kept separate from ``_load_footway_ways`` so the main loop can tell
+    whether a crossing node connects to a real ``highway=footway`` (a
+    genuine missing ``footway=crossing`` sub-tag) or only to a
+    ``highway=pedestrian`` way (a plaza/pedestrian zone edge, where a
+    separate ``footway=crossing`` sub-tag isn't expected — see the
+    pedestrian-only skip in the main loop).
+    """
+    gdf = gpd.read_file(footways_path)
+    gdf = gdf[gdf.geometry.geom_type == "LineString"].copy().to_crs("EPSG:31370")
+    if "highway" not in gdf.columns:
+        gdf["highway"] = ""
+    mask = gdf["highway"].apply(_safe_str) == "pedestrian"
     geoms = list(gdf[mask].geometry)
     return geoms, (STRtree(geoms) if geoms else None)
 
@@ -379,8 +405,10 @@ def detect_missing_crossings(
     print(f"  footway=crossing ways: {len(cw_geoms)}")
 
     with step("load all footways (tier 2)"):
-        all_fw_geoms, all_fw_tree = _load_all_footways(footways_geojson_path)
-    print(f"  All footway/pedestrian ways: {len(all_fw_geoms)}")
+        fw_geoms, fw_tree = _load_footway_ways(footways_geojson_path)
+        ped_geoms, ped_tree = _load_pedestrian_ways(footways_geojson_path)
+    print(f"  highway=footway ways: {len(fw_geoms)} | "
+          f"highway=pedestrian ways: {len(ped_geoms)}")
 
     with step("load footway=sidewalk ways"):
         sw_geoms, sw_tree = _load_sidewalk_ways(footways_geojson_path)
@@ -408,6 +436,7 @@ def detect_missing_crossings(
     n_excluded    = 0   # node on service / cycleway / track
     n_continuous  = 0   # crossing:continuous=yes — no crossing way expected
     n_fully_ok    = 0
+    n_pedestrian_only = 0   # connected only via highway=pedestrian, not footway
     n_no_sw       = 0
     n_missing_way = 0
     n_missing_tag = 0
@@ -458,12 +487,34 @@ def detect_missing_crossings(
                 continue
 
             # 3. Tier-2: any footway at the node → connected but tag may be absent
-            tier2 = (
-                all_fw_tree is not None and
+            #
+            # highway=footway and highway=pedestrian are checked separately:
+            # a connected highway=footway with no footway=crossing sub-tag is
+            # a genuine missing-tag case, but a highway=pedestrian way (a
+            # plaza / pedestrian-zone edge) isn't expected to carry a
+            # separate footway=crossing sub-tag by convention — see the
+            # pedestrian-only skip below.
+            connected_footway = (
+                fw_tree is not None and
                 _intersects_any(node_pt.buffer(CROSSING_NODE_CONNECTED_M),
-                                all_fw_tree, all_fw_geoms)
+                                fw_tree, fw_geoms)
             )
+            connected_pedestrian = (
+                ped_tree is not None and
+                _intersects_any(node_pt.buffer(CROSSING_NODE_CONNECTED_M),
+                                ped_tree, ped_geoms)
+            )
+            tier2 = connected_footway or connected_pedestrian
             crossing_type = "missing_tag" if tier2 else "missing_way"
+
+            # 3a. Skip crossings connected ONLY to a highway=pedestrian way
+            # (no highway=footway also connects). Pedestrian zones/plazas
+            # are continuous surfaces — a crossing at their edge isn't
+            # expected to be split out into its own footway=crossing way,
+            # so flagging it as a missing tag would be a false positive.
+            if crossing_type == "missing_tag" and not connected_footway:
+                n_pedestrian_only += 1
+                continue
 
             # 3b. Skip continuous (raised) crossings flagged as missing_tag.
             # When the node carries ``crossing:continuous=yes`` the road
@@ -546,6 +597,7 @@ def detect_missing_crossings(
     print(f"  Skipped — on service / cycleway / track: {n_excluded}")
     print(f"  Skipped — crossing:continuous=yes:       {n_continuous}")
     print(f"  Skipped — crossing fully mapped (t1):    {n_fully_ok}")
+    print(f"  Skipped — connected only to pedestrian:  {n_pedestrian_only}")
     print(f"  Skipped — no parallel sidewalk (both):   {n_no_sw}")
     print(f"  Missing crossing WAY detected:           {n_missing_way}")
     print(f"  Missing footway=crossing TAG detected:   {n_missing_tag}")
@@ -556,6 +608,7 @@ def detect_missing_crossings(
         "on_excluded_way":             n_excluded,
         "crossing_continuous":         n_continuous,
         "crossing_fully_mapped":       n_fully_ok,
+        "connected_pedestrian_only":   n_pedestrian_only,
         "sidewalk_missing_or_skewed":  n_no_sw,
         "missing_crossing_way":        n_missing_way,
         "missing_crossing_tag":        n_missing_tag,
