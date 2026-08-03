@@ -817,7 +817,8 @@ function renderCharts(data, labels, zoomed = false) {
   const others = data.map(d => Math.max(0, (d.footway_ways || 0)
     - (d.footway_sidewalk || 0)
     - (d.footway_crossing || 0)
-    - (d.footway_link     || 0)));
+    - (d.footway_link     || 0)
+    - (d.footway_traffic_island || 0)));
   makeChart('c-fw-mix', {
     type: 'line',
     data: {
@@ -826,6 +827,7 @@ function renderCharts(data, labels, zoomed = false) {
         { label: 'footway=sidewalk',   data: series('footway_sidewalk'), backgroundColor: C.green,  borderColor: C.green,  fill: true },
         { label: 'footway=crossing',    data: series('footway_crossing'), backgroundColor: C.cyan,   borderColor: C.cyan,   fill: true },
         { label: 'footway=link',         data: series('footway_link'),     backgroundColor: C.purple, borderColor: C.purple, fill: true },
+        { label: 'footway=traffic_island', data: series('footway_traffic_island'), backgroundColor: C.orange, borderColor: C.orange, fill: true },
         { label: 'autre / sans sous-tag', data: others,                    backgroundColor: '#bbb',   borderColor: '#aaa',  fill: true },
       ],
     },
