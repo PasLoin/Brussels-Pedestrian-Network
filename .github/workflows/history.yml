@@ -145,8 +145,16 @@ jobs:
                 '. + {filename: $fname, type: $etype}' \
                 snapshot_stats.json > snapshot_stats_enriched.json
 
+              # The "daily" entry is a provisional placeholder for "today's
+              # live state", not a stable historical milestone — at most
+              # one should ever exist in history.json. Every merge drops
+              # any previous entry with the same date AND any previous
+              # "daily" entry regardless of its date, so a new daily point
+              # always replaces the old one instead of piling up next to
+              # it, and a new real monthly snapshot supersedes a leftover
+              # daily placeholder for the period it now covers.
               jq --argjson new "$(cat snapshot_stats_enriched.json)" '
-                (map(select(.date != $new.date))) + [$new]
+                (map(select(.date != $new.date and .type != "daily"))) + [$new]
                 | sort_by(.date)
               ' "${HISTORY_JSON_PATH}" > history_new.json
               mv history_new.json "${HISTORY_JSON_PATH}"
