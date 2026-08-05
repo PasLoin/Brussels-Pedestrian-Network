@@ -57,6 +57,7 @@ from export import (
 from sidewalk_gap import detect_sidewalk_gaps
 from export_sidewalk_roads import export_sidewalk_roads
 from detect_missing_crossings import detect_missing_crossings
+from detect_footway_connectivity import detect_footway_connectivity_candidates
 from timing import step, print_summary
 
 
@@ -180,6 +181,16 @@ def main() -> None:
             "sidewalk_roads_raw.geojson",
         )
 
+    # ── Step 8f: Footway/sidewalk connectivity crossing candidates ────────
+    # Independent, lower-confidence complement to detect_missing_crossings:
+    # way-centric, doesn't rely on a reference-road bearing, so it catches
+    # diagonal crossings the node-based analysis silently drops.
+    with step("detect_footway_connectivity_candidates"):
+        footway_connectivity_stats = detect_footway_connectivity_candidates(
+            "sidewalk_footways_raw.geojson",
+            "sidewalk_roads_raw.geojson",
+        )
+
     # ── Save stats ────────────────────────────────────────────────────────
     save_stats(
         routed=result.routed,
@@ -195,6 +206,7 @@ def main() -> None:
         sidewalk_gap_stats=sidewalk_gap_stats,
         sidewalk_road_stats=sidewalk_road_stats,
         missing_crossing_stats=missing_crossing_stats,
+        footway_connectivity_stats=footway_connectivity_stats,
         network_stats=network_stats,
         od_sampling_stats=od_sampling_stats,
     )
