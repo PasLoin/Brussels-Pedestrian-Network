@@ -44,6 +44,11 @@ reintroducing an angle threshold:
    short (carriageway + refuge); long looping park paths that
    coincidentally touch a sidewalk at each end are excluded.
 
+Both the candidate footways and the sidewalks used to validate them
+also exclude ``location=underground`` — an underground footway (e.g. a
+pedestrian tunnel/gallery under a metro station forecourt) isn't a
+street-level crossing and shouldn't be flagged or used as evidence.
+
 Even with these filters this remains a heuristic — hence a dedicated
 output file and (eventually) a distinct, lower-emphasis map layer
 labelled "to verify" rather than merged into the higher-precision
@@ -168,30 +173,43 @@ def _load_footway_candidates(footways_path: str) -> gpd.GeoDataFrame:
     a mapper to add ``footway=crossing`` to a way that's legitimately a
     sidewalk). Untagged footways and ``footway=link`` remain candidates:
     those are genuinely ambiguous.
+
+    Also excludes ``location=underground`` — an underground footway
+    (pedestrian tunnel/gallery, e.g. under a metro station forecourt)
+    doesn't cross a road at street level and isn't expected to carry
+    ``footway=crossing`` at all, so it isn't a genuine candidate.
     """
     gdf = gpd.read_file(footways_path)
     gdf = gdf[gdf.geometry.geom_type == "LineString"].copy().to_crs("EPSG:31370")
-    for col in ("highway", "footway"):
+    for col in ("highway", "footway", "location"):
         if col not in gdf.columns:
             gdf[col] = ""
     if "@id" not in gdf.columns:
         gdf["@id"] = 0
     mask = (
         (gdf["highway"].apply(_safe_str) == "footway") &
-        (~gdf["footway"].apply(_safe_str).isin(_ALREADY_CLASSIFIED))
+        (~gdf["footway"].apply(_safe_str).isin(_ALREADY_CLASSIFIED)) &
+        (gdf["location"].apply(_safe_str) != "underground")
     )
     return gdf[mask].reset_index(drop=True)
 
 
 def _load_sidewalk_ways(footways_path: str) -> tuple[list, STRtree | None]:
+    """footway=sidewalk ways, excluding underground ones.
+
+    An underground sidewalk (metro station gallery, tunnel) shouldn't
+    count as evidence that a *surface* crossing candidate connects to a
+    sidewalk on that side — it isn't at street level.
+    """
     gdf = gpd.read_file(footways_path)
     gdf = gdf[gdf.geometry.geom_type == "LineString"].copy().to_crs("EPSG:31370")
-    for col in ("highway", "footway"):
+    for col in ("highway", "footway", "location"):
         if col not in gdf.columns:
             gdf[col] = ""
     mask = (
         (gdf["highway"].apply(_safe_str) == "footway") &
-        (gdf["footway"].apply(_safe_str) == "sidewalk")
+        (gdf["footway"].apply(_safe_str) == "sidewalk") &
+        (gdf["location"].apply(_safe_str) != "underground")
     )
     geoms = list(gdf[mask].geometry)
     return geoms, (STRtree(geoms) if geoms else None)
