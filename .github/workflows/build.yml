@@ -98,6 +98,10 @@ env:
   CROSSING_SIDEWALK_SEARCH_M:   15
   CROSSING_SIDEWALK_MAX_ANGLE:  40
 
+  FOOTWAY_CONN_ENDPOINT_TOL_M: 3
+  FOOTWAY_CONN_TIP_MARGIN_M:   2
+  FOOTWAY_CONN_MAX_LEN_M:     40
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -252,6 +256,7 @@ jobs:
             cycleways_raw.geojson
             tracks_raw.geojson
             missing_crossings.geojson
+            footway_crossing_candidates.geojson
             highways.geojson
             addresses.geojson
             stats.json
