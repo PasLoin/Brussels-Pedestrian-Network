@@ -101,3 +101,52 @@ def test_footway_touching_same_side_twice_is_not_flagged(tmp_path):
     stats = detect_footway_connectivity_candidates(str(fw_p), str(roads_p))
     assert stats["flagged"] == 0
     assert stats["sidewalks_same_side"] == 1
+
+
+def test_underground_footway_is_not_a_candidate(tmp_path):
+    """A footway tagged location=underground must never be flagged, even
+    if it would otherwise pass every geometric filter (e.g. a metro
+    station pedestrian tunnel happening to sit under a road)."""
+    roads_p = tmp_path / "roads.geojson"
+    _write_geojson(roads_p, [_road_feature([(-50, 0), (50, 0)])])
+
+    fw_p = tmp_path / "footways.geojson"
+    _write_geojson(fw_p, [
+        {
+            "type": "Feature",
+            "geometry": {"type": "LineString",
+                         "coordinates": [_xy(-8, 8), _xy(10, -9)]},
+            "properties": {"highway": "footway", "location": "underground", "@id": 114},
+        },
+        _footway_feature([(-20, 8), (-8, 8), (5, 8)], footway="sidewalk", fid=201),
+        _footway_feature([(-5, -9), (10, -9), (25, -9)], footway="sidewalk", fid=202),
+    ])
+
+    stats = detect_footway_connectivity_candidates(str(fw_p), str(roads_p))
+    assert stats["candidates_scanned"] == 0
+    assert stats["flagged"] == 0
+
+
+def test_underground_sidewalk_does_not_validate_a_surface_candidate(tmp_path):
+    """A surface footway that only touches an UNDERGROUND sidewalk at one
+    end must not be flagged — the underground way isn't valid evidence
+    of a street-level sidewalk connection."""
+    roads_p = tmp_path / "roads.geojson"
+    _write_geojson(roads_p, [_road_feature([(-50, 0), (50, 0)])])
+
+    fw_p = tmp_path / "footways.geojson"
+    _write_geojson(fw_p, [
+        _footway_feature([(-8, 8), (10, -9)], fid=115),
+        _footway_feature([(-20, 8), (-8, 8), (5, 8)], footway="sidewalk", fid=203),
+        {
+            "type": "Feature",
+            "geometry": {"type": "LineString",
+                         "coordinates": [_xy(-5, -9), _xy(10, -9), _xy(25, -9)]},
+            "properties": {"highway": "footway", "footway": "sidewalk",
+                            "location": "underground", "@id": 206},
+        },
+    ])
+
+    stats = detect_footway_connectivity_candidates(str(fw_p), str(roads_p))
+    assert stats["flagged"] == 0
+    assert stats["no_sidewalk_both_ends"] == 1
