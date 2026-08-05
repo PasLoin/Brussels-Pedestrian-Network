@@ -286,7 +286,8 @@ jobs:
             --named-layer=flow_edges:flow_edges.geojson \
             --named-layer=street_scores:street_scores.geojson \
             --named-layer=sidewalk_gaps:sidewalk_gaps.geojson \
-            --named-layer=sidewalk_roads:sidewalk_roads.geojson
+            --named-layer=sidewalk_roads:sidewalk_roads.geojson \
+            --named-layer=footway_crossing_candidates:footway_crossing_candidates.geojson
 
       - name: Build missing_crossings PMTiles (preserve every point)
         run: |
