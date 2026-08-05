@@ -567,6 +567,22 @@ const PEDESTRIAN_LAYERS = [
       "circle-opacity": 0.9,
     }
   },
+  {
+    // Heuristic, lower-confidence complement to missing-crossings:
+    // footways that connect a sidewalk on both sides across a road but
+    // aren't tagged footway=crossing, found by way-topology rather than
+    // by searching near a highway=crossing node. Styled distinctly
+    // (violet, dotted) to signal "to verify" rather than "confirmed".
+    id: "footway-crossing-candidates", type: "line", source: "pedestrian",
+    "source-layer": "footway_crossing_candidates",
+    minzoom: 13, layout: { "line-cap": "round", "line-join": "round", visibility: "none" },
+    paint: {
+      "line-color": "#a855f7",
+      "line-width": ["interpolate", ["linear"], ["zoom"], 13, 2, 16, 5],
+      "line-opacity": 0.85,
+      "line-dasharray": [1, 2]
+    }
+  },
 ];
 
 // ── Hover popup config ───────────────────────────────────────────────────────
@@ -576,6 +592,14 @@ const HOVER_LAYERS = [
     format: p => `
       <div class="popup-title">🚧 Trottoir un seul côté</div>
       <div class="popup-row"><span class="label">Rue</span><span class="value">${escapeHTML(p.name || "—")}</span></div>
+    `
+  },
+  {
+    ids: ["footway-crossing-candidates"],
+    format: p => `
+      <div class="popup-title">🟣 Candidat crossing (à vérifier)</div>
+      <div class="popup-row"><span class="label">Rue traversée</span><span class="value">${escapeHTML(p.name || "—")}</span></div>
+      <div class="popup-row"><span class="label">Longueur</span><span class="value">${escapeHTML(p.length_m)} m</span></div>
     `
   },
   {
@@ -675,6 +699,23 @@ const CLICK_LAYERS = [
           <a href="https://www.openstreetmap.org/node/${nid}" target="_blank" rel="noopener">n${nid}</a>
           · <a href="http://127.0.0.1:8111/load_object?objects=n${nid}" target="_blank" rel="noopener">JOSM</a>
           · <a href="https://www.openstreetmap.org/edit?node=${nid}" target="_blank" rel="noopener">iD</a>
+        </span></div>` : ""}
+      `;
+    }
+  },
+  {
+    ids: ["footway-crossing-candidates"],
+    format: p => {
+      const wid = parseInt(p.osm_id, 10) || 0;
+      return `
+        <div class="popup-title">🟣 Candidat crossing (à vérifier)</div>
+        <div class="popup-row"><span class="label">Rue traversée</span><span class="value">${escapeHTML(p.name || "—")}</span></div>
+        <div class="popup-row"><span class="label">Longueur</span><span class="value">${escapeHTML(p.length_m)} m</span></div>
+        <div class="popup-row"><span class="label">Problème</span><span class="value">Relie un trottoir de chaque côté d'une route mais n'a pas le tag footway=crossing</span></div>
+        ${wid > 0 ? `<div class="popup-row"><span class="label">Way</span><span class="value">
+          <a href="https://www.openstreetmap.org/way/${wid}" target="_blank" rel="noopener">w${wid}</a>
+          · <a href="http://127.0.0.1:8111/load_object?objects=w${wid}" target="_blank" rel="noopener">JOSM</a>
+          · <a href="https://www.openstreetmap.org/edit?way=${wid}" target="_blank" rel="noopener">iD</a>
         </span></div>` : ""}
       `;
     }
@@ -868,6 +909,7 @@ function initMap(style) {
 
     addSection("Analyse spatiale et qualité");
     legendEl.appendChild(makeItem({ layerId: "sidewalk-gaps", label: "Trottoir un seul côté", color: "#f59e0b", dashed: true }));
+    legendEl.appendChild(makeItem({ layerId: "footway-crossing-candidates", label: "Candidat crossing (à vérifier)", color: "#a855f7", dashed: true }));
 
     // ── Traversée manquante + sub-filter ─────────────────────────────────
     const mcSub = document.createElement("div");
