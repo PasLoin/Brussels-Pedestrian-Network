@@ -260,13 +260,25 @@ const fmt  = v => v != null ? v.toLocaleString('fr-BE') : '—';
 const fkm  = v => v != null ? v.toLocaleString('fr-BE', { maximumFractionDigits: 1 }) : '—';
 const fpct = v => v != null ? v.toFixed(1) + ' %' : '—';
 
-// "2024-04-01" → "avr 24". Daily snapshots get a "*" suffix so they're
-// visually distinguishable from full monthly snapshots on the x-axis.
+// "2024-04-01" → "avr 24". Daily snapshots get a "*" suffix AND the exact
+// day (e.g. "05 aoû 26 *") instead of just the month, so the orange "today"
+// marker always shows the real extraction date at a glance rather than
+// silently rounding to the current month.
 const fmonth = (iso, isDaily = false) => {
-  const [y, m] = iso.split('-');
+  const [y, m, d] = iso.split('-');
   const months = ['jan','fév','mar','avr','mai','jun','jul','aoû','sep','oct','nov','déc'];
-  const base = months[parseInt(m,10)-1] + ' ' + y.slice(2);
-  return isDaily ? base + ' *' : base;
+  if (isDaily) {
+    return `${d} ${months[parseInt(m,10)-1]} ${y.slice(2)} *`;
+  }
+  return months[parseInt(m,10)-1] + ' ' + y.slice(2);
+};
+
+// ISO date exactly `n` calendar months before `iso`. Used to default the
+// "Période d'analyse" range to the last 6 months instead of full history.
+const monthsBefore = (iso, n) => {
+  const d = new Date(iso + 'T00:00:00Z');
+  d.setUTCMonth(d.getUTCMonth() - n);
+  return d.toISOString().slice(0, 10);
 };
 
 function escapeHTML(str) {
@@ -339,36 +351,28 @@ function render(data) {
       </div>
     </div>`;
 
-  // ── Section: comparison vs latest daily extract ─────────────────────
-  if (showComparison) {
-    el.innerHTML += `
-      <div class="section" id="compare-section">
-        <div class="section-title">Depuis le dernier snapshot mensuel</div>
-        <div class="chart-card">
-          <h3>Km par type de voirie — snapshot vs aujourd'hui</h3>
-          <div class="subtitle">
-            Comparaison entre le dernier snapshot mensuel (${escapeHTML(lastSnapshot.date)})
-            et l'extract quotidien le plus récent (${escapeHTML(dailyEntry.date)}).
-            Les 10 types les plus représentés en km sont affichés.
-          </div>
-          <div class="chart-wrap"><canvas id="c-compare-hw"></canvas></div>
-        </div>
-        <div class="delta-grid" id="compare-deltas"></div>
-      </div>`;
-  }
-
   // ── Section: period / zoom controls ──────────────────────────────────
+  // Shown first, right after the intro card, since every section below
+  // reacts to this range. Defaults to the last 6 months (not full history)
+  // so the page opens zoomed on recent activity.
+  const defaultStart = (() => {
+    const sixMonthsAgo = monthsBefore(last.date, 6);
+    return sixMonthsAgo > first.date ? sixMonthsAgo : first.date;
+  })();
+
   el.innerHTML += `
     <div class="section">
       <div class="section-title">Période d'analyse</div>
       <div class="period-controls">
-        <label>Du <input type="date" id="period-start" min="${first.date}" max="${last.date}" value="${first.date}"></label>
+        <label>Du <input type="date" id="period-start" min="${first.date}" max="${last.date}" value="${defaultStart}"></label>
         <label>au <input type="date" id="period-end" min="${first.date}" max="${last.date}" value="${last.date}"></label>
+        <button type="button" id="period-6m">6 derniers mois</button>
         <button type="button" id="period-reset">Période complète</button>
         <span class="period-info" id="period-info"></span>
         <div class="period-hint">
           Resserrez la période pour zoomer sur les graphiques ci-dessous : l'échelle verticale
           s'ajuste automatiquement pour faire ressortir les petites variations.
+          Par défaut, les 6 derniers mois sont affichés.
         </div>
       </div>
     </div>`;
@@ -379,6 +383,35 @@ function render(data) {
       <div class="section-title" id="deltas-title">Évolution</div>
       <div class="delta-grid" id="deltas"></div>
     </div>`;
+
+  // ── Section: comparison vs latest daily extract ─────────────────────
+  // Focused on dedicated pedestrian infrastructure only (footway,
+  // pedestrian, path, living_street, steps, elevator): road types like
+  // primary/secondary barely move day to day and aren't the point here.
+  if (showComparison) {
+    el.innerHTML += `
+      <div class="section" id="compare-section">
+        <div class="section-title">Depuis le dernier snapshot mensuel</div>
+        <div class="chart-card">
+          <h3>Km par type d'infrastructure piétonne — snapshot vs aujourd'hui</h3>
+          <div class="subtitle">
+            Comparaison entre le dernier snapshot mensuel (${escapeHTML(lastSnapshot.date)})
+            et l'extrait quotidien le plus récent (${escapeHTML(dailyEntry.date)}).
+            Uniquement l'infrastructure piétonne dédiée — les routes (primary, etc.)
+            varient très peu d'un jour à l'autre et sont déjà couvertes plus bas.
+          </div>
+          <div class="chart-wrap"><canvas id="c-compare-hw"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>Sous-types de footway — snapshot vs aujourd'hui</h3>
+          <div class="subtitle">
+            Détail des ways highway=footway par sous-tag footway=*, mêmes deux dates.
+          </div>
+          <div class="chart-wrap"><canvas id="c-compare-fw"></canvas></div>
+        </div>
+        <div class="delta-grid" id="compare-deltas"></div>
+      </div>`;
+  }
 
   // ── Section 2: network length evolution ─────────────────────────────
   el.innerHTML += `
@@ -434,8 +467,12 @@ function render(data) {
       <div class="section-title">Footways — Composition</div>
 
       <div class="chart-card">
-        <h3>Stacké : sidewalk / crossing / link / autre</h3>
-        <div class="subtitle">Décomposition des ways highway=footway par sous-tag footway=*.</div>
+        <h3>Stacké : sidewalk / crossing / link / traffic_island / autre / sans tag</h3>
+        <div class="subtitle">
+          Décomposition des ways highway=footway par sous-tag footway=*.
+          "Autre" = un sous-tag existe mais n'est pas l'un des types ci-dessus ;
+          "sans tag" = aucun sous-tag footway=* du tout.
+        </div>
         <div class="chart-wrap"><canvas id="c-fw-mix"></canvas></div>
       </div>
     </div>`;
@@ -450,6 +487,16 @@ function render(data) {
         <div class="subtitle">Le passage progressif de "yes" vers "separate" indique une montée en qualité du mapping.</div>
         <div class="chart-wrap"><canvas id="c-sw-mix"></canvas></div>
       </div>
+
+      <div class="chart-card">
+        <h3>Détail par type de route</h3>
+        <div class="subtitle" id="sw-by-type-subtitle">
+          Même composition (separate / yes / partial / no / sans tag), ventilée par type de route,
+          pour le point le plus récent de la période sélectionnée.
+        </div>
+        <div class="chart-wrap" id="sw-by-type-chartwrap"><canvas id="c-sw-by-type"></canvas></div>
+        <p id="sw-by-type-note" style="display:none; color:var(--text-muted); font-size:11px; padding: 8px 0 0;"></p>
+      </div>
     </div>`;
 
   requestAnimationFrame(() => {
@@ -458,29 +505,52 @@ function render(data) {
   });
 }
 
+// Dedicated pedestrian infrastructure types (mirrors _PED_HIGHWAY_TYPES in
+// scripts/compute_history.py). Road types (primary, secondary…) are
+// deliberately excluded from the "since last snapshot" comparison: they
+// barely change day to day and aren't what this page is about.
+const PED_TYPES = ['footway', 'pedestrian', 'path', 'living_street', 'steps', 'elevator'];
+
+// Footway sub-type breakdown for one history.json entry, with a graceful
+// fallback for entries computed before the footway_other / footway_no_subtag
+// split existed: everything not individually tracked is attributed to
+// "sans tag" so older snapshots still render sensibly.
+function footwaySubtypeCounts(entry) {
+  const total    = entry.footway_ways || 0;
+  const sidewalk = entry.footway_sidewalk || 0;
+  const crossing = entry.footway_crossing || 0;
+  const link     = entry.footway_link || 0;
+  const island   = entry.footway_traffic_island || 0;
+  const hasSplit = entry.footway_other != null && entry.footway_no_subtag != null;
+  const other = hasSplit ? entry.footway_other : 0;
+  const noTag = hasSplit
+    ? entry.footway_no_subtag
+    : Math.max(0, total - sidewalk - crossing - link - island);
+  return { sidewalk, crossing, link, island, other, noTag };
+}
+
 // ── Comparison: last monthly snapshot vs latest daily extract ──────────────
 function renderComparison(lastSnapshot, dailyEntry) {
   const kmA = lastSnapshot.km_by_highway || {};
   const kmB = dailyEntry.km_by_highway || {};
 
-  const allTypes = Array.from(new Set([...Object.keys(kmA), ...Object.keys(kmB)]));
+  const allTypes = PED_TYPES.filter(t => (kmA[t] || 0) > 0 || (kmB[t] || 0) > 0);
   allTypes.sort((a, b) => ((kmB[b] || 0) + (kmA[b] || 0)) - ((kmB[a] || 0) + (kmA[a] || 0)));
-  const topTypes = allTypes.slice(0, 10);
 
   new Chart(document.getElementById('c-compare-hw'), {
     type: 'bar',
     data: {
-      labels: topTypes,
+      labels: allTypes,
       datasets: [
         {
           label: `Snapshot du ${lastSnapshot.date}`,
-          data: topTypes.map(t => kmA[t] || 0),
+          data: allTypes.map(t => kmA[t] || 0),
           backgroundColor: C.gray,
           borderRadius: 3,
         },
         {
           label: `Aujourd'hui (${dailyEntry.date})`,
-          data: topTypes.map(t => kmB[t] || 0),
+          data: allTypes.map(t => kmB[t] || 0),
           backgroundColor: C.green,
           borderRadius: 3,
         },
@@ -508,9 +578,56 @@ function renderComparison(lastSnapshot, dailyEntry) {
     },
   });
 
+  // ── Footway sub-type detail: sidewalk / crossing / link / traffic_island / autre / sans tag
+  const fwA = footwaySubtypeCounts(lastSnapshot);
+  const fwB = footwaySubtypeCounts(dailyEntry);
+  const fwLabels = ['sidewalk', 'crossing', 'link', 'traffic_island', 'autre', 'sans tag'];
+  const fwKeys   = ['sidewalk', 'crossing', 'link', 'island', 'other', 'noTag'];
+
+  new Chart(document.getElementById('c-compare-fw'), {
+    type: 'bar',
+    data: {
+      labels: fwLabels,
+      datasets: [
+        {
+          label: `Snapshot du ${lastSnapshot.date}`,
+          data: fwKeys.map(k => fwA[k]),
+          backgroundColor: C.gray,
+          borderRadius: 3,
+        },
+        {
+          label: `Aujourd'hui (${dailyEntry.date})`,
+          data: fwKeys.map(k => fwB[k]),
+          backgroundColor: C.cyan,
+          borderRadius: 3,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom' },
+        tooltip: {
+          callbacks: {
+            label: c => `${c.dataset.label} : ${fmt(c.parsed.y)} ways`,
+          },
+        },
+      },
+      scales: {
+        x: { grid: { display: false } },
+        y: {
+          beginAtZero: true,
+          grid: { color: '#eee' },
+          title: { display: true, text: 'ways', font: { size: 10 } },
+        },
+      },
+    },
+  });
+
   const grid = document.getElementById('compare-deltas');
   grid.innerHTML = '';
-  for (const t of topTypes) {
+  for (const t of allTypes) {
     const before = kmA[t] || 0;
     const after  = kmB[t] || 0;
     const delta = after - before;
@@ -543,6 +660,7 @@ function setupPeriodControls(data) {
   const startInput = document.getElementById('period-start');
   const endInput   = document.getElementById('period-end');
   const resetBtn   = document.getElementById('period-reset');
+  const sixMoBtn   = document.getElementById('period-6m');
 
   const minDate = data[0].date;
   const maxDate = data[data.length - 1].date;
@@ -556,6 +674,14 @@ function setupPeriodControls(data) {
     endInput.value = maxDate;
     apply();
   });
+  if (sixMoBtn) {
+    sixMoBtn.addEventListener('click', () => {
+      const sixMonthsAgo = monthsBefore(maxDate, 6);
+      startInput.value = sixMonthsAgo > minDate ? sixMonthsAgo : minDate;
+      endInput.value = maxDate;
+      apply();
+    });
+  }
 
   apply();
 }
@@ -593,6 +719,7 @@ function applyPeriod(data, minDate, maxDate) {
 
   renderDeltas(filtered[0], filtered[filtered.length - 1]);
   renderCharts(filtered, labels, !isFullRange);
+  renderSidewalkByType(filtered[filtered.length - 1]);
 }
 
 // Creates (or recreates) a Chart.js chart on the canvas with the given id,
@@ -819,22 +946,24 @@ function renderCharts(data, labels, zoomed = false) {
   });
 
   // ── 7. Footway composition stacked ───────────────────────────────────
-  // "Other" = footways without a recognized footway=* sub-tag.
-  const others = data.map(d => Math.max(0, (d.footway_ways || 0)
-    - (d.footway_sidewalk || 0)
-    - (d.footway_crossing || 0)
-    - (d.footway_link     || 0)
-    - (d.footway_traffic_island || 0)));
+  // "Autre" (a real but uncommon footway=* value) is now dissociated from
+  // "sans tag" (no footway=* value at all) — see footwaySubtypeCounts().
+  // Snapshots computed before that split existed fall back to putting the
+  // whole leftover into "sans tag" (see the helper's docstring above).
+  const fwCountsSeries = data.map(footwaySubtypeCounts);
+  const fwOtherArr = fwCountsSeries.map(c => c.other);
+  const fwNoTagArr = fwCountsSeries.map(c => c.noTag);
   makeChart('c-fw-mix', {
     type: 'line',
     data: {
       labels,
       datasets: [
-        { label: 'footway=sidewalk',   data: series('footway_sidewalk'), backgroundColor: C.green,  borderColor: C.green,  fill: true },
-        { label: 'footway=crossing',    data: series('footway_crossing'), backgroundColor: C.cyan,   borderColor: C.cyan,   fill: true },
-        { label: 'footway=link',         data: series('footway_link'),     backgroundColor: C.purple, borderColor: C.purple, fill: true },
-        { label: 'footway=traffic_island', data: series('footway_traffic_island'), backgroundColor: C.orange, borderColor: C.orange, fill: true },
-        { label: 'autre / sans sous-tag', data: others,                    backgroundColor: '#bbb',   borderColor: '#aaa',  fill: true },
+        { label: 'footway=sidewalk',       data: series('footway_sidewalk'), backgroundColor: C.green,  borderColor: C.green,  fill: true },
+        { label: 'footway=crossing',        data: series('footway_crossing'), backgroundColor: C.cyan,   borderColor: C.cyan,   fill: true },
+        { label: 'footway=link',             data: series('footway_link'),     backgroundColor: C.purple, borderColor: C.purple, fill: true },
+        { label: 'footway=traffic_island',   data: series('footway_traffic_island'), backgroundColor: C.orange, borderColor: C.orange, fill: true },
+        { label: 'autre (sous-tag reconnu)', data: fwOtherArr,                 backgroundColor: '#999',   borderColor: '#888',  fill: true },
+        { label: 'sans tag',                  data: fwNoTagArr,                backgroundColor: '#ddd',   borderColor: '#ccc',  fill: true },
       ],
     },
     options: stackedOpts(),
@@ -864,6 +993,106 @@ function renderCharts(data, labels, zoomed = false) {
       ],
     },
     options: stackedOpts(),
+  });
+}
+
+// ── Sidewalk tag composition, broken down by road type ─────────────────────
+//
+// Uses `road_sidewalk_by_type` on a single history.json entry (the most
+// recent point in the currently selected period) rather than a full time
+// series: 4 road groups × 5 statuses would be 20 stacked series, which
+// isn't readable as a line chart. A single snapshot bar chart answers the
+// actual question ("which road types are worst documented right now?").
+//
+// `road_sidewalk_by_type` is only present on entries computed after this
+// field was added to scripts/compute_history.py — older snapshots (and any
+// snapshot until the next pipeline run) simply don't have it yet, so this
+// degrades to an explanatory note instead of a broken/empty chart.
+const ROAD_TYPE_GROUPS = [
+  { label: 'Résidentiel', keys: ['residential', 'unclassified'] },
+  { label: 'Tertiaire',   keys: ['tertiary', 'tertiary_link'] },
+  { label: 'Secondaire',  keys: ['secondary', 'secondary_link'] },
+  { label: 'Primaire',    keys: ['primary', 'primary_link'] },
+];
+
+function renderSidewalkByType(point) {
+  const wrap = document.getElementById('sw-by-type-chartwrap');
+  const note = document.getElementById('sw-by-type-note');
+  if (!wrap || !note) return;
+
+  const byType = point && point.road_sidewalk_by_type;
+  const hasData = byType && Object.keys(byType).length > 0;
+
+  if (!hasData) {
+    if (chartInstances['c-sw-by-type']) {
+      chartInstances['c-sw-by-type'].destroy();
+      delete chartInstances['c-sw-by-type'];
+    }
+    wrap.style.display = 'none';
+    note.style.display = 'block';
+    note.textContent = point
+      ? `Détail par type de route pas encore disponible pour le ${point.date} — sera présent à partir de la prochaine extraction traitée avec le pipeline mis à jour.`
+      : 'Détail par type de route pas encore disponible.';
+    return;
+  }
+
+  wrap.style.display = '';
+  note.style.display = 'none';
+
+  const groups = ROAD_TYPE_GROUPS.map(g => {
+    const agg = { total: 0, separate: 0, yes_or_both: 0, partial: 0, no_explicit: 0 };
+    for (const k of g.keys) {
+      const b = byType[k];
+      if (!b) continue;
+      agg.total       += b.total       || 0;
+      agg.separate    += b.separate    || 0;
+      agg.yes_or_both += b.yes_or_both || 0;
+      agg.partial      += b.partial      || 0;
+      agg.no_explicit += b.no_explicit || 0;
+    }
+    return { label: g.label, ...agg };
+  });
+
+  const pct = (n, d) => d > 0 ? +(n / d * 100).toFixed(1) : 0;
+  const labels     = groups.map(g => g.label);
+  const sepPct     = groups.map(g => pct(g.separate, g.total));
+  const yesPct     = groups.map(g => pct(g.yes_or_both, g.total));
+  const partPct    = groups.map(g => pct(g.partial, g.total));
+  const noPct      = groups.map(g => pct(g.no_explicit, g.total));
+  const noTagPct   = groups.map((g, i) => Math.max(0, +(100 - sepPct[i] - yesPct[i] - partPct[i] - noPct[i]).toFixed(1)));
+
+  makeChart('c-sw-by-type', {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'separate',        data: sepPct,   backgroundColor: C.green,  stack: 'sw' },
+        { label: 'yes / both',       data: yesPct,   backgroundColor: C.cyan,   stack: 'sw' },
+        { label: 'partial (1 côté)', data: partPct,  backgroundColor: C.orange, stack: 'sw' },
+        { label: 'no (explicite)',   data: noPct,    backgroundColor: C.red,    stack: 'sw' },
+        { label: 'sans tag',          data: noTagPct, backgroundColor: '#bbb',   stack: 'sw' },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom' },
+        tooltip: {
+          callbacks: {
+            label: c => `${c.dataset.label} : ${c.parsed.y.toFixed(1)} %`,
+            afterBody: items => {
+              const g = groups[items[0].dataIndex];
+              return `${fmt(g.total)} routes au total`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: { stacked: true, grid: { display: false } },
+        y: { stacked: true, beginAtZero: true, max: 100, grid: { color: '#eee' }, title: { display: true, text: '%', font: { size: 10 } } },
+      },
+    },
   });
 }
 </script>
