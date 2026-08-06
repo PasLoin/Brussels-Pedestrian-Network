@@ -65,6 +65,13 @@ class _BrusselsStatsHandler:
         self.n_footway_crossing    = 0
         self.n_footway_link        = 0
         self.n_footway_traffic_island = 0
+        # "other" = footway=* carries a real (if uncommon) value we don't
+        # bucket individually (e.g. alley, conveyor, access_aisle…).
+        # "no_subtag" = no footway=* tag at all. Kept apart from "other" so
+        # the evolution chart can distinguish "documented but unusual" from
+        # "not documented yet" instead of lumping both into one bucket.
+        self.n_footway_other        = 0
+        self.n_footway_no_subtag    = 0
         self.n_footway_with_surface    = 0
         self.n_footway_with_smoothness = 0
 
@@ -74,6 +81,13 @@ class _BrusselsStatsHandler:
         self.n_road_sidewalk_yes_or_both  = 0
         self.n_road_sidewalk_no_explicit  = 0
         self.n_road_sidewalk_partial      = 0
+
+        # Same sidewalk-tag classification as above, but broken down per
+        # highway=* road type so the evolution page can chart sidewalk
+        # documentation quality per road class instead of one aggregate.
+        self.road_sidewalk_by_type: dict[str, dict[str, int]] = defaultdict(
+            lambda: defaultdict(int)
+        )
 
     def process_feature(self, feature: dict) -> None:
         geom = feature.get("geometry")
@@ -126,6 +140,10 @@ class _BrusselsStatsHandler:
                 self.n_footway_link += 1
             elif sub == "traffic_island":
                 self.n_footway_traffic_island += 1
+            elif sub:
+                self.n_footway_other += 1
+            else:
+                self.n_footway_no_subtag += 1
             if tags.get("surface"):
                 self.n_footway_with_surface += 1
             if tags.get("smoothness"):
@@ -142,14 +160,23 @@ class _BrusselsStatsHandler:
             if has_any:
                 self.n_road_sidewalk_any_tag += 1
 
+            by_type = self.road_sidewalk_by_type[hw]
+            by_type["total"] += 1
+            if has_any:
+                by_type["any_tag"] += 1
+
             if sw == "separate" or sw_b == "separate" or (sw_l == "separate" and sw_r == "separate"):
                 self.n_road_sidewalk_separate += 1
+                by_type["separate"] += 1
             elif sw in ("yes", "both") or sw_b in ("yes", "both"):
                 self.n_road_sidewalk_yes_or_both += 1
+                by_type["yes_or_both"] += 1
             elif sw == "no" or sw_b == "no":
                 self.n_road_sidewalk_no_explicit += 1
+                by_type["no_explicit"] += 1
             elif (sw_l and not sw_r) or (sw_r and not sw_l):
                 self.n_road_sidewalk_partial += 1
+                by_type["partial"] += 1
 
     def _way_length_m(self, coords: list[list[float]]) -> float:
         if len(coords) < 2:
@@ -198,6 +225,8 @@ def _build_record(date_iso: str, h: _BrusselsStatsHandler) -> dict:
         "footway_crossing":      h.n_footway_crossing,
         "footway_link":          h.n_footway_link,
         "footway_traffic_island": h.n_footway_traffic_island,
+        "footway_other":          h.n_footway_other,
+        "footway_no_subtag":      h.n_footway_no_subtag,
         "footway_with_surface":     h.n_footway_with_surface,
         "footway_with_smoothness":  h.n_footway_with_smoothness,
         "road_ways":                   h.n_road_ways,
@@ -206,6 +235,17 @@ def _build_record(date_iso: str, h: _BrusselsStatsHandler) -> dict:
         "road_sidewalk_yes_or_both":   h.n_road_sidewalk_yes_or_both,
         "road_sidewalk_no_explicit":   h.n_road_sidewalk_no_explicit,
         "road_sidewalk_partial":       h.n_road_sidewalk_partial,
+        "road_sidewalk_by_type": {
+            hw: {
+                "total":       b.get("total", 0),
+                "any_tag":     b.get("any_tag", 0),
+                "separate":    b.get("separate", 0),
+                "yes_or_both": b.get("yes_or_both", 0),
+                "partial":     b.get("partial", 0),
+                "no_explicit": b.get("no_explicit", 0),
+            }
+            for hw, b in h.road_sidewalk_by_type.items()
+        },
         "crossing_tagged_pct":      _safe_div(h.n_footway_crossing, h.n_crossing_nodes),
         "sidewalk_documented_pct":  _safe_div(sw_doc, h.n_road_ways),
         "sidewalk_separate_pct":    _safe_div(h.n_road_sidewalk_separate, h.n_road_ways),
