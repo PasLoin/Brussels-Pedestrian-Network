@@ -162,11 +162,19 @@ body { font-family: "Inter", system-ui, sans-serif; background: #1a1a1a; }
 #route-clear:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
 
 /* ── Legend panel ─────────────────────────────────────────────────────────── */
+/* Anchored top-right, just below the zoom badge. Its bottom edge must
+   never overlap the attribution control, whose rendered height varies
+   (narrow viewports wrap the attribution text onto two lines) — so the
+   max-height clears --attribution-clearance, a custom property kept in
+   sync with the control's actual height by updateLegendClearance() in
+   app.js rather than a hard-coded guess. */
 #legend {
-  position: absolute; bottom: 28px; left: 12px; z-index: 10;
+  position: absolute; top: 50px; right: 12px; z-index: 10;
   background: rgba(255,255,255,0.96); border-radius: 10px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.15);
-  min-width: 210px; max-height: calc(100vh - 120px); overflow-y: auto;
+  min-width: 210px;
+  max-height: calc(100vh - 50px - var(--attribution-clearance, 40px));
+  overflow-y: auto;
   transition: max-height 0.3s ease, padding 0.3s ease;
 }
 #legend.open { padding: 12px 14px; }
@@ -244,8 +252,9 @@ body { font-family: "Inter", system-ui, sans-serif; background: #1a1a1a; }
 .legend-sub-label { color: #444; }
 
 /* ── Zoom badge ───────────────────────────────────────────────────────────── */
+/* Right-aligned with the legend/route panel below it. */
 #zoom-badge {
-  position: absolute; top: 12px; right: 52px; z-index: 10;
+  position: absolute; top: 12px; right: 12px; z-index: 10;
   background: rgba(255,255,255,0.9); border-radius: 6px; padding: 4px 8px;
   font-size: 11px; color: #555; pointer-events: none;
 }
@@ -290,7 +299,8 @@ body { font-family: "Inter", system-ui, sans-serif; background: #1a1a1a; }
 @media (max-width: 600px) {
   #header { max-width: 200px; }
   #header h1 { font-size: 12px; }
-  #legend { min-width: 180px; bottom: 16px; left: 8px; }
+  #zoom-badge { right: 8px; }
+  #legend { min-width: 180px; top: 44px; right: 8px; }
   #route-panel { bottom: 16px; right: 8px; min-width: 200px; max-width: 240px; }
 }
 
