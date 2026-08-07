@@ -443,3 +443,39 @@ def test_sidewalk_way_sharing_the_crossing_nodes_vertex_is_never_used(
     stats = detect_tactile_paving_issues()
     assert stats["flagged"] == 0
     assert stats["no_crossing_way_found"] == 1
+
+# ── Tolerance must be tight (near-exact), not merely "nearby" ──────────────
+#
+# Regression coverage for a real false positive spotted in JOSM: a
+# highway=crossing node with no dedicated footway=crossing way of its
+# own (it just sits on a plain sidewalk/service-road) was matched to a
+# genuinely different, separately-mapped crossing ~1.2 m away, because
+# the old tolerance (1.5 m) was loose enough to treat "nearby" as if it
+# meant "the same shared node".
+
+def test_a_different_nearby_crossing_does_not_hijack_the_match(tmp_path, monkeypatch):
+    """No footway=crossing way actually touches this node (it's on a
+    plain sidewalk, matching the real-world case) — but a genuine
+    footway=crossing way for a DIFFERENT nearby crossing has a vertex
+    1.2 m away. That's a different physical node, not this one, and
+    must not be matched."""
+    monkeypatch.chdir(tmp_path)
+    _write_geojson(tmp_path / "highways.geojson", [
+        _crossing_feature(0, 0, "yes", fid=12),
+    ])
+    _write_geojson(tmp_path / "sidewalk_footways_raw.geojson", [
+        # The node's own path: a sidewalk, not a crossing.
+        _sidewalk_way_feature(0, 0, -8, 4, fid=113),
+        # A real footway=crossing way — but for a different crossing,
+        # 1.2 m away (well within the old 1.5 m tolerance, outside the
+        # new 0.5 m one).
+        _crossing_way_2pt_feature(1.2, -3, 1.2, 3, fid=114),
+    ])
+    _write_geojson(tmp_path / "kerbs_raw.geojson", [
+        _kerb_feature(1.2, -3, "no", fid=222),
+        _kerb_feature(1.2, 3, "no", fid=223),
+    ])
+
+    stats = detect_tactile_paving_issues()
+    assert stats["flagged"] == 0
+    assert stats["no_crossing_way_found"] == 1
