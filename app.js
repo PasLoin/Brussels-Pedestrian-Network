@@ -743,8 +743,6 @@ const CLICK_LAYERS = [
       const nid = parseInt(p.osm_id, 10) || 0;
       const wid = parseInt(p.way_osm_id, 10) || 0;
       const reasonLabels = {
-        kerb_missing:         "Kerb introuvable à une des deux extrémités",
-        kerb_untagged:        "Un kerb n'a pas de tag tactile_paving",
         value_mismatch:       "tactile_paving du kerb différent de celui du crossing",
         incorrect_not_mixed:  "incorrect attendu : un kerb yes + un kerb no",
       };
