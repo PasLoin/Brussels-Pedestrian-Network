@@ -584,6 +584,22 @@ const PEDESTRIAN_LAYERS = [
       "line-dasharray": [1, 2]
     }
   },
+  {
+    // tactile_paving incohérent entre le nœud highway=crossing et les
+    // nœuds barrier=kerb aux deux extrémités du footway=crossing associé.
+    // Voir scripts/detect_tactile_paving_issues.py pour le détail des cas
+    // (kerb manquant, kerb non tagué, valeur qui ne correspond pas...).
+    id: "tactile-paving-issues", type: "circle", source: "pedestrian",
+    "source-layer": "tactile_paving_issues",
+    minzoom: 13, layout: { visibility: "none" },
+    paint: {
+      "circle-color": "#a855f7",
+      "circle-radius": ["interpolate", ["linear"], ["zoom"], 13, 4, 16, 9],
+      "circle-stroke-color": "#fff",
+      "circle-stroke-width": 1.5,
+      "circle-opacity": 0.9,
+    }
+  },
 ];
 
 // ── Hover popup config ───────────────────────────────────────────────────────
@@ -721,6 +737,35 @@ const CLICK_LAYERS = [
       `;
     }
   },
+  {
+    ids: ["tactile-paving-issues"],
+    format: p => {
+      const nid = parseInt(p.osm_id, 10) || 0;
+      const wid = parseInt(p.way_osm_id, 10) || 0;
+      const reasonLabels = {
+        kerb_missing:         "Kerb introuvable à une des deux extrémités",
+        kerb_untagged:        "Un kerb n'a pas de tag tactile_paving",
+        value_mismatch:       "tactile_paving du kerb différent de celui du crossing",
+        incorrect_not_mixed:  "incorrect attendu : un kerb yes + un kerb no",
+      };
+      return `
+        <div class="popup-title">🟣 Bande podotactile incohérente</div>
+        <div class="popup-row"><span class="label">Crossing</span><span class="value">tactile_paving=${escapeHTML(p.crossing_tp || "?")}</span></div>
+        <div class="popup-row"><span class="label">Kerb côté 1</span><span class="value">${escapeHTML(p.kerb1_tp) || "absent"}</span></div>
+        <div class="popup-row"><span class="label">Kerb côté 2</span><span class="value">${escapeHTML(p.kerb2_tp) || "absent"}</span></div>
+        <div class="popup-row"><span class="label">Problème</span><span class="value">${escapeHTML(reasonLabels[p.reason] || p.reason || "?")}</span></div>
+        ${nid > 0 ? `<div class="popup-row"><span class="label">Nœud crossing</span><span class="value">
+          <a href="https://www.openstreetmap.org/node/${nid}" target="_blank" rel="noopener">n${nid}</a>
+          · <a href="http://127.0.0.1:8111/load_object?objects=n${nid}" target="_blank" rel="noopener">JOSM</a>
+          · <a href="https://www.openstreetmap.org/edit?node=${nid}" target="_blank" rel="noopener">iD</a>
+        </span></div>` : ""}
+        ${wid > 0 ? `<div class="popup-row"><span class="label">Way crossing</span><span class="value">
+          <a href="https://www.openstreetmap.org/way/${wid}" target="_blank" rel="noopener">w${wid}</a>
+          · <a href="http://127.0.0.1:8111/load_object?objects=w${wid}" target="_blank" rel="noopener">JOSM</a>
+        </span></div>` : ""}
+      `;
+    }
+  },
 ];
 
 // ── Load style & init ────────────────────────────────────────────────────────
@@ -767,6 +812,21 @@ function initMap(style) {
     }),
     "bottom-right"
   );
+
+  // ── Keep the legend panel clear of the attribution control ─────────────
+  // The legend lives top-right, below the zoom badge; its bottom edge
+  // must never overlap the attribution bar. The attribution's rendered
+  // height isn't constant (narrow viewports wrap the text onto two
+  // lines), so we measure the actual gap instead of hard-coding it.
+  const updateLegendClearance = () => {
+    const attrEl = document.querySelector(".maplibregl-ctrl-bottom-right");
+    if (!attrEl) return;
+    const rect = attrEl.getBoundingClientRect();
+    const clearance = Math.max(40, window.innerHeight - rect.top + 8);
+    document.documentElement.style.setProperty("--attribution-clearance", `${clearance}px`);
+  };
+  updateLegendClearance();
+  window.addEventListener("resize", updateLegendClearance);
 
   map.on("load", () => {
     map.addSource("pedestrian", { type: "vector", url: `pmtiles://${PMTILES_URL}` });
@@ -911,6 +971,7 @@ function initMap(style) {
     addSection("Analyse spatiale et qualité");
     legendEl.appendChild(makeItem({ layerId: "sidewalk-gaps", label: "Trottoir un seul côté", color: "#f59e0b", dashed: true }));
     legendEl.appendChild(makeItem({ layerId: "footway-crossing-candidates", label: "Candidat crossing (à vérifier)", color: "#7f1d1d", dashed: true }));
+    legendEl.appendChild(makeItem({ layerId: "tactile-paving-issues", label: "Bande podotactile incohérente", color: "#a855f7", swatchType: "dot" }));
 
     // ── Traversée manquante + sub-filter ─────────────────────────────────
     const mcSub = document.createElement("div");
