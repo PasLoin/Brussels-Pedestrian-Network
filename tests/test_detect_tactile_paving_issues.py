@@ -11,6 +11,7 @@ from shapely.strtree import STRtree
 
 from detect_tactile_paving_issues import (
     _classify,
+    _is_footway_crossing,
     _match_crossing_way,
     detect_tactile_paving_issues,
 )
@@ -57,6 +58,17 @@ def _crossing_way_2pt_feature(x0, y0, x1, y1, fid):
         "type": "Feature",
         "geometry": {"type": "LineString", "coordinates": [_xy(x0, y0), _xy(x1, y1)]},
         "properties": {"highway": "footway", "footway": "crossing", "@id": fid},
+    }
+
+
+def _sidewalk_way_feature(x0, y0, x1, y1, fid):
+    """A footway=sidewalk way — NOT a crossing, even though it can
+    legitimately share a node with one (e.g. where a sidewalk meets a
+    crossing)."""
+    return {
+        "type": "Feature",
+        "geometry": {"type": "LineString", "coordinates": [_xy(x0, y0), _xy(x1, y1)]},
+        "properties": {"highway": "footway", "footway": "sidewalk", "@id": fid},
     }
 
 
@@ -390,3 +402,44 @@ def test_ambiguous_way_match_is_skipped_not_flagged_end_to_end(tmp_path, monkeyp
     stats = detect_tactile_paving_issues()
     assert stats["flagged"] == 0
     assert stats["ambiguous_way_match"] == 1
+
+
+# ── Way must genuinely be footway=crossing, not just footway=sidewalk ──────
+#
+# Regression coverage for a real false positive spotted in JOSM: a node
+# that legitimately sits where a footway=sidewalk meets the crossing was
+# being treated as if the sidewalk itself were the crossing way.
+
+def test_is_footway_crossing():
+    assert _is_footway_crossing({"highway": "footway", "footway": "crossing"}) is True
+    assert _is_footway_crossing({"highway": "footway", "footway": "sidewalk"}) is False
+    assert _is_footway_crossing({"highway": "footway", "footway": ""}) is False
+    assert _is_footway_crossing({"highway": "path", "footway": "crossing"}) is False
+    assert _is_footway_crossing({}) is False
+
+
+def test_sidewalk_way_sharing_the_crossing_nodes_vertex_is_never_used(
+    tmp_path, monkeypatch,
+):
+    """A footway=sidewalk way has a vertex exactly at the crossing
+    node's location (normal topology: the sidewalk meets the crossing
+    there) — it must never be picked up as "the" crossing way, even
+    though it passes the vertex-coincidence check that a plain
+    footway=crossing way would."""
+    monkeypatch.chdir(tmp_path)
+    _write_geojson(tmp_path / "highways.geojson", [
+        _crossing_feature(0, 0, "yes", fid=11),
+    ])
+    _write_geojson(tmp_path / "sidewalk_footways_raw.geojson", [
+        # Only a sidewalk here — no footway=crossing way at all for
+        # this node, mirroring the real-world case in JOSM.
+        _sidewalk_way_feature(0, 0, 10, 5, fid=112),
+    ])
+    _write_geojson(tmp_path / "kerbs_raw.geojson", [
+        _kerb_feature(-3, 0, "no", fid=220),
+        _kerb_feature(3, 0, "no", fid=221),
+    ])
+
+    stats = detect_tactile_paving_issues()
+    assert stats["flagged"] == 0
+    assert stats["no_crossing_way_found"] == 1
