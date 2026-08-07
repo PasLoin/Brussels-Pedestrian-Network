@@ -102,6 +102,9 @@ env:
   FOOTWAY_CONN_TIP_MARGIN_M:   2
   FOOTWAY_CONN_MAX_LEN_M:     40
 
+  TACTILE_PAVING_WAY_MATCH_M:  1.5
+  TACTILE_PAVING_KERB_MATCH_M: 1.0
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -162,6 +165,7 @@ jobs:
                 access:     .access,
                 segregated: .segregated,
                 "crossing:continuous": .["crossing:continuous"],
+                tactile_paving: .tactile_paving,
                 "@type": .["@type"],
                 "@id": .["@id"]
               }
@@ -196,9 +200,23 @@ jobs:
           osmium tags-filter brussels.osm.pbf \
             w/highway=footway w/highway=pedestrian \
             -o footways_sidewalk.osm.pbf --overwrite
+          # --attributes=type,id adds @id so footway=crossing ways can be
+          # traced back to OSM (used by detect_tactile_paving_issues.py
+          # and, as a side benefit, fixes osm_id in footway_crossing_candidates
+          # which previously always fell back to 0 without it).
           osmium export footways_sidewalk.osm.pbf \
             --geometry-types=linestring \
+            --attributes=type,id \
             -o sidewalk_footways_raw.geojson --overwrite
+
+      - name: Export kerb nodes for tactile paving QA
+        run: |
+          osmium tags-filter brussels.osm.pbf n/barrier=kerb \
+            -o kerbs.osm.pbf --overwrite
+          osmium export kerbs.osm.pbf \
+            --geometry-types=point \
+            --attributes=type,id \
+            -o kerbs_raw.geojson --overwrite
 
       - name: Export excluded ways for crossing exclusion
         run: |
@@ -257,6 +275,8 @@ jobs:
             tracks_raw.geojson
             missing_crossings.geojson
             footway_crossing_candidates.geojson
+            kerbs_raw.geojson
+            tactile_paving_issues.geojson
             highways.geojson
             addresses.geojson
             stats.json
@@ -266,13 +286,13 @@ jobs:
 
       # ── Build PMTiles in two passes ─────────────────────────────────────
       # The main archive uses --drop-densest-as-needed which silently
-      # removes features at low zoom when a tile gets too dense.  For the
-      # missing_crossings QA layer we want EVERY point at EVERY zoom
-      # ≥ MIN_ZOOM with no exceptions.  Build it separately, then merge
-      # with tile-join — the points then survive any density pressure
-      # from the other layers.
+      # removes features at low zoom when a tile gets too dense.  For QA
+      # point layers (missing_crossings, tactile_paving_issues) we want
+      # EVERY point at EVERY zoom ≥ MIN_ZOOM with no exceptions.  Build
+      # them separately, then merge with tile-join — the points then
+      # survive any density pressure from the other layers.
 
-      - name: Build main PMTiles (without missing_crossings)
+      - name: Build main PMTiles (without QA point layers)
         run: |
           tippecanoe \
             -o main.pmtiles \
@@ -289,17 +309,18 @@ jobs:
             --named-layer=sidewalk_roads:sidewalk_roads.geojson \
             --named-layer=footway_crossing_candidates:footway_crossing_candidates.geojson
 
-      - name: Build missing_crossings PMTiles (preserve every point)
+      - name: Build QA point layers PMTiles (preserve every point)
         run: |
           tippecanoe \
-            -o missing_crossings.pmtiles \
+            -o qa_points.pmtiles \
             --force \
             -Z${{ env.MIN_ZOOM }} -z${{ env.MAX_ZOOM }} \
             -B${{ env.MIN_ZOOM }} \
             -r1 \
             --no-tile-size-limit \
             --no-feature-limit \
-            --named-layer=missing_crossings:missing_crossings.geojson
+            --named-layer=missing_crossings:missing_crossings.geojson \
+            --named-layer=tactile_paving_issues:tactile_paving_issues.geojson
 
       - name: Merge into single PMTiles archive
         run: |
@@ -309,8 +330,8 @@ jobs:
             --name "Brussels Pedestrian Network" \
             --attribution "© OpenStreetMap contributors" \
             main.pmtiles \
-            missing_crossings.pmtiles
-          ls -lh main.pmtiles missing_crossings.pmtiles pedestrian.pmtiles
+            qa_points.pmtiles
+          ls -lh main.pmtiles qa_points.pmtiles pedestrian.pmtiles
 
       - name: Add build timestamp to state.txt
         run: echo "build_timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> state.txt
