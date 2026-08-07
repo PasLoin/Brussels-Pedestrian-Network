@@ -27,13 +27,25 @@ Three ``tactile_paving`` values on the crossing node are in scope here:
 ``incorrect``
     Tactile paving present on **one side only**. Exactly one kerb is
     expected to carry ``tactile_paving=yes`` and the other
-    ``tactile_paving=no`` (a mixed pair) — anything else (both yes,
-    both no, a missing/untagged kerb) means the ``incorrect`` tag
+    ``tactile_paving=no`` (a mixed pair) — a pair that's explicitly
+    tagged otherwise (both yes, both no) means the ``incorrect`` tag
     doesn't actually describe a one-sided situation and is flagged.
 
 Any other ``tactile_paving`` value on the crossing node (``contrasted``,
 ``primitive``, etc.) is out of scope for this specific coherence check
 and is skipped.
+
+Missing data is explicitly OUT OF SCOPE and never flagged
+------------------------------------------------------------
+This check only flags a genuine *contradiction* between two explicitly
+tagged values. If a kerb node can't be matched at one (or both)
+extremities, or a matched kerb simply has no ``tactile_paving`` tag,
+that's a data-completeness gap, not an incoherence — there's nothing to
+contradict. Those cases are counted separately in the returned stats
+(``kerb_missing`` / ``kerb_untagged``) for visibility but are never
+written to the output layer. Revisiting that (e.g. surfacing "kerb data
+missing near this crossing" as its own, lower-confidence layer) is a
+possible future addition, not part of this check.
 
 Matching crossing ↔ way ↔ kerb is purely geometric (osmium's GeoJSON
 export doesn't preserve node/way membership ids), following the same
@@ -55,21 +67,20 @@ Inputs
 Output
 ------
 ``tactile_paving_issues.geojson`` — point layer (at the crossing node's
-location) with properties:
+location) with one feature per **flagged** (genuinely contradictory)
+crossing — see "Missing data is explicitly OUT OF SCOPE" above.
+Properties:
   ``osm_id``      OSM node id of the flagged crossing node
   ``way_osm_id``  OSM way id of the associated footway=crossing (0 if
                   none could be matched)
   ``crossing_tp`` tactile_paving value on the crossing node
   ``kerb1_tp``    tactile_paving value found at the way's first
-                  extremity ("" if no kerb node matched there)
-  ``kerb1_osm_id`` OSM node id of that kerb (0 if none matched)
+                  extremity
+  ``kerb1_osm_id`` OSM node id of that kerb
   ``kerb2_tp``    tactile_paving value found at the way's second
-                  extremity ("" if no kerb node matched there)
-  ``kerb2_osm_id`` OSM node id of that kerb (0 if none matched)
+                  extremity
+  ``kerb2_osm_id`` OSM node id of that kerb
   ``reason``      machine-readable reason code, one of:
-                    "kerb_missing"        — no kerb node at ≥1 extremity
-                    "kerb_untagged"       — a matched kerb has no
-                                             tactile_paving tag
                     "value_mismatch"      — a matched kerb's value
                                              disagrees with the crossing
                     "incorrect_not_mixed" — tactile_paving=incorrect but
@@ -308,8 +319,10 @@ def detect_tactile_paving_issues(
 
             if reason == "kerb_missing":
                 n_kerb_missing += 1
+                continue
             elif reason == "kerb_untagged":
                 n_kerb_untagged += 1
+                continue
             elif reason == "value_mismatch":
                 n_value_mismatch += 1
             else:
@@ -336,14 +349,14 @@ def detect_tactile_paving_issues(
 
     n_total = len(crossing_gdf)
     n_flagged = len(rows)
-    print(f"  Crossings in scope (yes/no/incorrect):   {n_total}")
-    print(f"  Skipped — no footway=crossing way found: {n_no_way}")
-    print(f"  Coherent (not flagged):                  {n_ok}")
-    print(f"  Flagged — kerb missing at an extremity:  {n_kerb_missing}")
-    print(f"  Flagged — kerb without tactile_paving:   {n_kerb_untagged}")
-    print(f"  Flagged — kerb value mismatch:           {n_value_mismatch}")
-    print(f"  Flagged — incorrect not a yes/no pair:   {n_incorrect_mixed}")
-    print(f"  Total flagged:                           {n_flagged}")
+    print(f"  Crossings in scope (yes/no/incorrect):     {n_total}")
+    print(f"  Skipped — no footway=crossing way found:   {n_no_way}")
+    print(f"  Coherent (not flagged):                    {n_ok}")
+    print(f"  Skipped — kerb missing at an extremity:    {n_kerb_missing} (data gap, out of scope)")
+    print(f"  Skipped — kerb without tactile_paving:     {n_kerb_untagged} (data gap, out of scope)")
+    print(f"  Flagged — kerb value mismatch:              {n_value_mismatch}")
+    print(f"  Flagged — incorrect not a yes/no pair:       {n_incorrect_mixed}")
+    print(f"  Total flagged:                              {n_flagged}")
 
     return {
         "crossings_in_scope":       n_total,
