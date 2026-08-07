@@ -422,6 +422,7 @@ def save_stats(
     sidewalk_road_stats: dict | None = None,
     missing_crossing_stats: dict | None = None,
     footway_connectivity_stats: dict | None = None,
+    tactile_paving_stats: dict | None = None,
     network_stats: dict | None = None,
     od_sampling_stats: dict | None = None,
 ) -> None:
@@ -465,6 +466,8 @@ def save_stats(
         stats["missing_crossings"] = missing_crossing_stats
     if footway_connectivity_stats:
         stats["footway_connectivity_candidates"] = footway_connectivity_stats
+    if tactile_paving_stats:
+        stats["tactile_paving_issues"] = tactile_paving_stats
 
     with open("stats.json", "w") as f:
         json.dump(stats, f, indent=2)
