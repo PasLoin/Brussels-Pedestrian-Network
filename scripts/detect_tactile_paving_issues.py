@@ -50,10 +50,25 @@ possible future addition, not part of this check.
 Matching crossing ↔ way ↔ kerb is purely geometric (osmium's GeoJSON
 export doesn't preserve node/way membership ids), following the same
 approach as ``detect_missing_crossings.py`` and
-``detect_footway_connectivity.py``: a node that is genuinely a vertex of
-a way, or genuinely one of its two endpoints, sits at (near-)zero
-distance from it after reprojection, so a small tolerance in metres is
-enough to recover the topology.
+``detect_footway_connectivity.py``.
+
+Crossing node → footway=crossing way is matched by VERTEX coincidence,
+not by point-to-line distance. At a busy or complex intersection, two
+footway=crossing ways can legitimately run within a metre or two of
+each other; a plain "nearest line" search can latch onto the wrong one
+just because it happens to pass close by, even though the crossing node
+isn't actually one of its own vertices — this produced real false
+positives (a node flagged against the kerbs of an unrelated, merely
+nearby crossing). Requiring the node to literally be one of the
+candidate way's coordinates rules that out. If more than one way
+qualifies (e.g. a refuge-island node genuinely shared by two crossing
+segments), the match is treated as ambiguous and skipped rather than
+guessed — see ``ambiguous_way_match`` in the returned stats.
+
+Way endpoint → kerb node stays a plain nearest-point-within-tolerance
+search: kerb nodes are standalone points, so there's no line/vertex
+distinction to exploit there, and a genuinely shared node sits at
+~0 m regardless.
 
 Inputs
 ------
@@ -157,9 +172,19 @@ def _load_crossing_nodes(highways_path: str) -> gpd.GeoDataFrame:
 
 def _load_crossing_ways(
     footways_path: str,
-) -> tuple[gpd.GeoDataFrame, list, STRtree | None]:
-    """footway=crossing ways, kept as a GeoDataFrame so endpoints and
-    ``@id`` stay attached to each geometry for the STRtree lookup."""
+) -> tuple[gpd.GeoDataFrame, STRtree | None, list, list]:
+    """footway=crossing ways, plus a VERTEX-level spatial index (every
+    individual coordinate of every way, not the lines themselves).
+
+    Matching a crossing node against this vertex index — instead of
+    against the lines' overall geometry — is what lets
+    ``_match_crossing_way`` require literal vertex coincidence. Two
+    footway=crossing ways can legitimately run within a metre or two of
+    each other at a busy/complex intersection; a plain point-to-line
+    distance check would happily "match" the wrong one just because it
+    happens to pass close by, even though the node isn't actually one of
+    its vertices.
+    """
     gdf = gpd.read_file(footways_path)
     gdf = gdf[gdf.geometry.geom_type == "LineString"].copy().to_crs("EPSG:31370")
     for col in ("highway", "footway"):
@@ -172,8 +197,16 @@ def _load_crossing_ways(
         (gdf["footway"].apply(_safe_str) == "crossing")
     )
     gdf = gdf[mask].reset_index(drop=True)
-    geoms = list(gdf.geometry)
-    return gdf, geoms, (STRtree(geoms) if geoms else None)
+
+    vertex_points: list[Point] = []
+    vertex_way_idx: list[int] = []
+    for w_idx, geom in enumerate(gdf.geometry):
+        for coord in geom.coords:
+            vertex_points.append(Point(coord))
+            vertex_way_idx.append(w_idx)
+
+    vertex_tree = STRtree(vertex_points) if vertex_points else None
+    return gdf, vertex_tree, vertex_points, vertex_way_idx
 
 
 def _load_kerb_nodes(
@@ -218,6 +251,42 @@ def _nearest_within(pt: Point, tree: STRtree | None, geoms: list, tol_m: float):
     if not cands:
         return None
     return min(cands, key=lambda i: geoms[i].distance(pt))
+
+
+def _match_crossing_way(
+    node_pt: Point,
+    vertex_tree: STRtree | None,
+    vertex_points: list,
+    vertex_way_idx: list,
+    tol_m: float,
+) -> tuple[int | None, bool]:
+    """Return (way_idx, ambiguous).
+
+    *way_idx* is the index (into way_gdf) of the footway=crossing way
+    that genuinely has *node_pt* as one of its OWN vertices within
+    *tol_m* — i.e. the crossing node is a real, shared OSM node on that
+    way — or None if no way qualifies.
+
+    This is deliberately a vertex-coincidence check, not a
+    point-to-line distance check: a different way that merely runs
+    close to the node without the node actually being one of its
+    vertices must never be picked up (see the module docstring for the
+    real-world case that motivated this).
+
+    *ambiguous* is True when more than one distinct way has a
+    qualifying vertex (e.g. a refuge-island node shared by two crossing
+    segments). The caller treats this conservatively — it means "can't
+    be sure which way owns this node", not "pick the nearest anyway".
+    """
+    if vertex_tree is None:
+        return None, False
+    zone = node_pt.buffer(tol_m)
+    cand_idxs = list(vertex_tree.query(zone))
+    if not cand_idxs:
+        return None, False
+    best = min(cand_idxs, key=lambda i: vertex_points[i].distance(node_pt))
+    distinct_ways = {vertex_way_idx[i] for i in cand_idxs}
+    return vertex_way_idx[best], len(distinct_ways) > 1
 
 
 def _kerb_tp_at(
@@ -279,8 +348,8 @@ def detect_tactile_paving_issues(
         return {"crossings_in_scope": 0, "flagged": 0}
 
     with step("load footway=crossing ways"):
-        way_gdf, way_geoms, way_tree = _load_crossing_ways(footways_geojson_path)
-    print(f"  footway=crossing ways: {len(way_gdf)}")
+        way_gdf, vertex_tree, vertex_points, vertex_way_idx = _load_crossing_ways(footways_geojson_path)
+    print(f"  footway=crossing ways: {len(way_gdf)} ({len(vertex_points)} vertices indexed)")
 
     with step("load kerb nodes"):
         kerb_gdf, kerb_geoms, kerb_tree = _load_kerb_nodes(kerbs_geojson_path)
@@ -288,6 +357,7 @@ def detect_tactile_paving_issues(
 
     rows: list[dict] = []
     n_no_way          = 0
+    n_ambiguous_way    = 0
     n_kerb_missing     = 0
     n_kerb_untagged    = 0
     n_value_mismatch   = 0
@@ -299,9 +369,19 @@ def detect_tactile_paving_issues(
             node_pt = node_row.geometry
             crossing_tp = node_row["tactile_paving"]
 
-            way_idx = _nearest_within(node_pt, way_tree, way_geoms, TACTILE_PAVING_WAY_MATCH_M)
+            way_idx, ambiguous = _match_crossing_way(
+                node_pt, vertex_tree, vertex_points, vertex_way_idx,
+                TACTILE_PAVING_WAY_MATCH_M,
+            )
             if way_idx is None:
                 n_no_way += 1
+                continue
+            if ambiguous:
+                # More than one footway=crossing way has a vertex here —
+                # can't be sure which one actually owns this crossing
+                # node, so don't guess (that's exactly the kind of false
+                # match this check exists to avoid).
+                n_ambiguous_way += 1
                 continue
 
             way_row = way_gdf.iloc[way_idx]
@@ -351,6 +431,7 @@ def detect_tactile_paving_issues(
     n_flagged = len(rows)
     print(f"  Crossings in scope (yes/no/incorrect):     {n_total}")
     print(f"  Skipped — no footway=crossing way found:   {n_no_way}")
+    print(f"  Skipped — ambiguous way match (≥2 ways):   {n_ambiguous_way}")
     print(f"  Coherent (not flagged):                    {n_ok}")
     print(f"  Skipped — kerb missing at an extremity:    {n_kerb_missing} (data gap, out of scope)")
     print(f"  Skipped — kerb without tactile_paving:     {n_kerb_untagged} (data gap, out of scope)")
@@ -361,6 +442,7 @@ def detect_tactile_paving_issues(
     return {
         "crossings_in_scope":       n_total,
         "no_crossing_way_found":    n_no_way,
+        "ambiguous_way_match":      n_ambiguous_way,
         "coherent":                 n_ok,
         "kerb_missing":             n_kerb_missing,
         "kerb_untagged":            n_kerb_untagged,
