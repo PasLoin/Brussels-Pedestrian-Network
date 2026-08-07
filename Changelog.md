@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-08-07
+ 
+### Nouvelle couche : Incohérences tactile_paving crossing ↔ kerb
+ 
+- **Détection** : nouveau module `scripts/detect_tactile_paving_issues.py`. Pour chaque nœud `highway=crossing` taggé `tactile_paving=yes/no/incorrect`, on retrouve la way `footway=crossing` associée.
+- **Règle de cohérence** : `tactile_paving=yes` ou `no` sur le crossing attend la même valeur sur les deux kerbs ; `incorrect` attend un kerb `yes` + un kerb `no` (mixte). Seules les contradictions explicites sont flaguées — un kerb absent ou non tagué est une lacune de données, pas une incohérence, donc hors scope (comptabilisé dans les stats mais pas affiché sur la carte).
+- **Interface** : couche point violette `tactile-paving-issues`, toggle dans la légende ("Analyse spatiale et qualité"), popup avec liens OSM/JOSM/iD vers le nœud crossing et la way.
+
+
 ## 2026-07-05
 
 ### Fixed
