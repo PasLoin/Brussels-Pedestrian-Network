@@ -65,6 +65,14 @@ qualifies (e.g. a refuge-island node genuinely shared by two crossing
 segments), the match is treated as ambiguous and skipped rather than
 guessed — see ``ambiguous_way_match`` in the returned stats.
 
+The candidate pool itself is restricted to ``highway=footway`` +
+``footway=crossing`` ways at load time (``_load_crossing_ways``), and
+that tag is re-checked a second time right before a matched way is
+used. A ``footway=sidewalk`` (or any other non-crossing footway) that
+happens to share a node with the real crossing way — perfectly normal,
+legitimate OSM topology where a sidewalk meets a crossing — must never
+be treated as if it were the crossing itself.
+
 Way endpoint → kerb node stays a plain nearest-point-within-tolerance
 search: kerb nodes are standalone points, so there's no line/vertex
 distinction to exploit there, and a genuinely shared node sits at
@@ -302,6 +310,18 @@ def _kerb_tp_at(
     return (tp if tp else ""), int(row["osm_id"])
 
 
+def _is_footway_crossing(way_row) -> bool:
+    """True if *way_row* is genuinely tagged highway=footway +
+    footway=crossing. Used as a defense-in-depth re-check right before a
+    matched way is actually used — see the module docstring ("The
+    candidate pool itself...") for why this matters even though
+    way_gdf is already filtered to this at load time."""
+    return (
+        _safe_str(way_row.get("highway")) == "footway" and
+        _safe_str(way_row.get("footway")) == "crossing"
+    )
+
+
 def _classify(crossing_tp: str, tp1: str | None, tp2: str | None) -> str | None:
     """Return a reason code if the pair (tp1, tp2) is inconsistent with
     *crossing_tp*, or None if it's coherent."""
@@ -385,6 +405,18 @@ def detect_tactile_paving_issues(
                 continue
 
             way_row = way_gdf.iloc[way_idx]
+
+            # Defense in depth: way_gdf is already filtered to
+            # highway=footway + footway=crossing when it's loaded (see
+            # _load_crossing_ways), so this should always hold. Re-check
+            # it here anyway, right before the way is actually used, so
+            # a footway=sidewalk (or any other non-crossing way) can
+            # never silently slip through — e.g. if that upstream filter
+            # is ever loosened, or on malformed/unexpected input data.
+            if not _is_footway_crossing(way_row):
+                n_no_way += 1
+                continue
+
             way_geom = way_row.geometry
             p1 = Point(way_geom.coords[0])
             p2 = Point(way_geom.coords[-1])
