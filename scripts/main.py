@@ -58,6 +58,7 @@ from sidewalk_gap import detect_sidewalk_gaps
 from export_sidewalk_roads import export_sidewalk_roads
 from detect_missing_crossings import detect_missing_crossings
 from detect_footway_connectivity import detect_footway_connectivity_candidates
+from detect_tactile_paving_issues import detect_tactile_paving_issues
 from timing import step, print_summary
 
 
@@ -191,6 +192,17 @@ def main() -> None:
             "sidewalk_roads_raw.geojson",
         )
 
+    # ── Step 8g: Tactile paving coherence (crossing ↔ kerb) ────────────────
+    # Flags highway=crossing nodes whose tactile_paving tag disagrees with
+    # the tactile_paving tags on the barrier=kerb nodes at each end of the
+    # attached footway=crossing way. See detect_tactile_paving_issues.py.
+    with step("detect_tactile_paving_issues"):
+        tactile_paving_stats = detect_tactile_paving_issues(
+            "highways.geojson",
+            "sidewalk_footways_raw.geojson",
+            "kerbs_raw.geojson",
+        )
+
     # ── Save stats ────────────────────────────────────────────────────────
     save_stats(
         routed=result.routed,
@@ -207,6 +219,7 @@ def main() -> None:
         sidewalk_road_stats=sidewalk_road_stats,
         missing_crossing_stats=missing_crossing_stats,
         footway_connectivity_stats=footway_connectivity_stats,
+        tactile_paving_stats=tactile_paving_stats,
         network_stats=network_stats,
         od_sampling_stats=od_sampling_stats,
     )
