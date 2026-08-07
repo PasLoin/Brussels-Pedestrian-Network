@@ -52,18 +52,20 @@ export doesn't preserve node/way membership ids), following the same
 approach as ``detect_missing_crossings.py`` and
 ``detect_footway_connectivity.py``.
 
-Crossing node → footway=crossing way is matched by VERTEX coincidence,
-not by point-to-line distance. At a busy or complex intersection, two
-footway=crossing ways can legitimately run within a metre or two of
-each other; a plain "nearest line" search can latch onto the wrong one
-just because it happens to pass close by, even though the crossing node
-isn't actually one of its own vertices — this produced real false
-positives (a node flagged against the kerbs of an unrelated, merely
-nearby crossing). Requiring the node to literally be one of the
-candidate way's coordinates rules that out. If more than one way
-qualifies (e.g. a refuge-island node genuinely shared by two crossing
-segments), the match is treated as ambiguous and skipped rather than
-guessed — see ``ambiguous_way_match`` in the returned stats.
+Crossing node → footway=crossing way is matched by VERTEX coincidence
+with a TIGHT tolerance (0.5 m by default), not by point-to-line
+distance and not by "nearby". A genuinely shared OSM node sits at ~0 m
+from the way regardless of which export reads it — a loose tolerance
+(anything in the metre-plus range) risks matching a *different*,
+separately-mapped crossing a metre or two away instead (e.g. the node
+actually sits on a plain sidewalk/service-road, with no dedicated
+crossing way of its own, while a real crossing way for a *different*
+nearby crossing has a vertex just within a loose tolerance) — this
+produced real false positives. Requiring near-exact vertex coincidence
+rules that out. If more than one way qualifies (e.g. a refuge-island
+node genuinely shared by two crossing segments), the match is treated
+as ambiguous and skipped rather than guessed — see
+``ambiguous_way_match`` in the returned stats.
 
 The candidate pool itself is restricted to ``highway=footway`` +
 ``footway=crossing`` ways at load time (``_load_crossing_ways``), and
@@ -74,9 +76,9 @@ legitimate OSM topology where a sidewalk meets a crossing — must never
 be treated as if it were the crossing itself.
 
 Way endpoint → kerb node stays a plain nearest-point-within-tolerance
-search: kerb nodes are standalone points, so there's no line/vertex
-distinction to exploit there, and a genuinely shared node sits at
-~0 m regardless.
+search (also tightened to 0.5 m for the same reason): kerb nodes are
+standalone points, so there's no line/vertex distinction to exploit
+there, and a genuinely shared node sits at ~0 m regardless.
 
 Inputs
 ------
@@ -129,15 +131,20 @@ from timing import step
 _IN_SCOPE_VALUES = frozenset({"yes", "no", "incorrect"})
 
 # Tolerance (m) for "this footway=crossing way is the one attached to
-# the crossing node" — the node is expected to be a shared vertex of
-# the way, so real matches sit at ~0 m; kept small on purpose to avoid
-# picking up an unrelated crossing way from a nearby, separately-mapped
-# carriageway.
-TACTILE_PAVING_WAY_MATCH_M = float(os.environ.get("TACTILE_PAVING_WAY_MATCH_M", 1.5))
+# the crossing node" — a genuinely shared OSM node sits at ~0 m from the
+# way (same node, same coordinates, whichever export reads it), so this
+# only needs to absorb reprojection float noise, not real distance.
+# Kept deliberately tight: a *different*, separately-mapped crossing a
+# metre or two away (e.g. across a side street a few metres from the
+# crossing over the main road) must never be treated as coincident just
+# because it happens to be nearby — that produced real false positives
+# with a looser value.
+TACTILE_PAVING_WAY_MATCH_M = float(os.environ.get("TACTILE_PAVING_WAY_MATCH_M", 0.5))
 
 # Tolerance (m) for "this barrier=kerb node sits at this way extremity"
-# — again expected to be an exact shared node, small on purpose.
-TACTILE_PAVING_KERB_MATCH_M = float(os.environ.get("TACTILE_PAVING_KERB_MATCH_M", 1.0))
+# — same reasoning: a genuinely shared node is ~0 m away, so this stays
+# tight rather than merely "nearby".
+TACTILE_PAVING_KERB_MATCH_M = float(os.environ.get("TACTILE_PAVING_KERB_MATCH_M", 0.5))
 
 
 # ── String helper ────────────────────────────────────────────────────────────
