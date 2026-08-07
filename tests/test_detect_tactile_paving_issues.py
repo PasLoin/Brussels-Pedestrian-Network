@@ -6,7 +6,14 @@ attached footway=crossing way."""
 import json
 import math
 
-from detect_tactile_paving_issues import _classify, detect_tactile_paving_issues
+from shapely.geometry import Point
+from shapely.strtree import STRtree
+
+from detect_tactile_paving_issues import (
+    _classify,
+    _match_crossing_way,
+    detect_tactile_paving_issues,
+)
 
 LAT0 = 50.85
 LON0 = 4.35
@@ -39,6 +46,16 @@ def _crossing_way_feature(x0, y0, xc, yc, x1, y1, fid):
         "type": "Feature",
         "geometry": {"type": "LineString",
                      "coordinates": [_xy(x0, y0), _xy(xc, yc), _xy(x1, y1)]},
+        "properties": {"highway": "footway", "footway": "crossing", "@id": fid},
+    }
+
+
+def _crossing_way_2pt_feature(x0, y0, x1, y1, fid):
+    """A plain 2-vertex footway=crossing way (e.g. a boulevard split into
+    two segments meeting exactly at the crossing node)."""
+    return {
+        "type": "Feature",
+        "geometry": {"type": "LineString", "coordinates": [_xy(x0, y0), _xy(x1, y1)]},
         "properties": {"highway": "footway", "footway": "crossing", "@id": fid},
     }
 
@@ -256,3 +273,120 @@ def test_crossing_without_nearby_crossing_way_is_skipped(tmp_path, monkeypatch):
     assert stats["crossings_in_scope"] == 1
     assert stats["no_crossing_way_found"] == 1
     assert stats["flagged"] == 0
+
+
+# ── Vertex-coincidence matching (not just spatial proximity) ───────────────
+#
+# Regression coverage for a real false positive: a footway=crossing that
+# runs very close (but not coincident) to an unrelated, separately-mapped
+# way must never be matched as "the" crossing way just because a plain
+# point-to-line distance check would have found it within tolerance.
+
+def test_match_crossing_way_ignores_a_nearby_but_unrelated_way():
+    """A distractor way passes 0.3 m from the node (well inside the old
+    line-distance tolerance) but the node isn't one of ITS vertices —
+    its own vertices are 10 m away. The real crossing way genuinely has
+    the node as a vertex. Only the real way must match."""
+    real_way    = [(-3, 0), (0, 0), (3, 0)]        # node (0,0) is a real vertex
+    distractor  = [(-10, 0.3), (10, 0.3)]           # passes close, but no vertex near (0,0)
+
+    vertex_points, vertex_way_idx = [], []
+    for w_idx, coords in enumerate([real_way, distractor]):
+        for c in coords:
+            vertex_points.append(Point(c))
+            vertex_way_idx.append(w_idx)
+    tree = STRtree(vertex_points)
+
+    way_idx, ambiguous = _match_crossing_way(
+        Point(0, 0), tree, vertex_points, vertex_way_idx, tol_m=1.5,
+    )
+    assert way_idx == 0        # the real way, not the distractor
+    assert ambiguous is False
+
+
+def test_match_crossing_way_finds_nothing_when_only_the_distractor_is_close():
+    """Same distractor, but this time there's no real crossing way at
+    all near this node — the old line-distance check would have wrongly
+    matched the distractor anyway (0.3 m < old tolerance); the
+    vertex-based check must correctly find no match."""
+    distractor = [(-10, 0.3), (10, 0.3)]
+
+    vertex_points = [Point(c) for c in distractor]
+    vertex_way_idx = [0, 0]
+    tree = STRtree(vertex_points)
+
+    way_idx, ambiguous = _match_crossing_way(
+        Point(0, 0), tree, vertex_points, vertex_way_idx, tol_m=1.5,
+    )
+    assert way_idx is None
+    assert ambiguous is False
+
+
+def test_match_crossing_way_flags_ambiguous_when_two_ways_share_the_vertex():
+    """A node genuinely shared by two footway=crossing ways (e.g. a
+    refuge-island node) — both matches are legitimate, so this must be
+    reported as ambiguous rather than silently picking one."""
+    way_a = [(-3, 0), (0, 0)]
+    way_b = [(0, 0), (3, 0)]
+
+    vertex_points, vertex_way_idx = [], []
+    for w_idx, coords in enumerate([way_a, way_b]):
+        for c in coords:
+            vertex_points.append(Point(c))
+            vertex_way_idx.append(w_idx)
+    tree = STRtree(vertex_points)
+
+    way_idx, ambiguous = _match_crossing_way(
+        Point(0, 0), tree, vertex_points, vertex_way_idx, tol_m=1.5,
+    )
+    assert way_idx in (0, 1)
+    assert ambiguous is True
+
+
+def test_nearby_unrelated_way_does_not_produce_a_false_positive_end_to_end(
+    tmp_path, monkeypatch,
+):
+    """End-to-end regression: a crossing node with tactile_paving=no
+    sits right next to an unrelated footway=crossing way whose own
+    (far-away) kerbs are tagged "yes" — a value that would flag a false
+    mismatch if that unrelated way got matched. There's no real
+    footway=crossing way for this node at all, so it must be skipped,
+    not flagged."""
+    monkeypatch.chdir(tmp_path)
+    _write_geojson(tmp_path / "highways.geojson", [
+        _crossing_feature(0, 0, "no", fid=9),
+    ])
+    _write_geojson(tmp_path / "sidewalk_footways_raw.geojson", [
+        # Passes ~0.3 m from the node — close enough to fool a plain
+        # line-distance check — but its own vertices (only at the two
+        # far ends) are nowhere near (0, 0).
+        _crossing_way_2pt_feature(-10, 0.3, 10, 0.3, fid=109),
+    ])
+    _write_geojson(tmp_path / "kerbs_raw.geojson", [
+        _kerb_feature(-10, 0.3, "yes", fid=216),
+        _kerb_feature(10, 0.3, "yes", fid=217),
+    ])
+
+    stats = detect_tactile_paving_issues()
+    assert stats["flagged"] == 0
+    assert stats["no_crossing_way_found"] == 1
+
+
+def test_ambiguous_way_match_is_skipped_not_flagged_end_to_end(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    _write_geojson(tmp_path / "highways.geojson", [
+        _crossing_feature(0, 0, "yes", fid=10),
+    ])
+    _write_geojson(tmp_path / "sidewalk_footways_raw.geojson", [
+        # Two footway=crossing ways genuinely sharing the (0,0) vertex.
+        _crossing_way_2pt_feature(-3, 0, 0, 0, fid=110),
+        _crossing_way_2pt_feature(0, 0, 3, 0, fid=111),
+    ])
+    _write_geojson(tmp_path / "kerbs_raw.geojson", [
+        _kerb_feature(-3, 0, "yes", fid=218),
+        _kerb_feature(3, 0, "yes", fid=219),
+    ])
+
+    stats = detect_tactile_paving_issues()
+    assert stats["flagged"] == 0
+    assert stats["ambiguous_way_match"] == 1
