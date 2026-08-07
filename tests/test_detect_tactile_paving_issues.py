@@ -78,12 +78,16 @@ def test_classify_incorrect_flagged_when_kerbs_not_mixed():
     assert _classify("incorrect", "no", "no") == "incorrect_not_mixed"
 
 
-def test_classify_missing_kerb_flagged():
+def test_classify_missing_kerb_is_a_reason_code_but_not_flagged_by_caller():
+    """_classify itself still reports the pair as inconsistent (there's
+    nothing to compare) — it's detect_tactile_paving_issues() that
+    decides not to write it to the output layer, see the pipeline test
+    below."""
     assert _classify("yes", "yes", None) == "kerb_missing"
     assert _classify("incorrect", None, None) == "kerb_missing"
 
 
-def test_classify_untagged_kerb_flagged():
+def test_classify_untagged_kerb_is_a_reason_code_but_not_flagged_by_caller():
     assert _classify("no", "no", "") == "kerb_untagged"
 
 
@@ -169,7 +173,9 @@ def test_incorrect_crossing_with_both_kerbs_yes_is_flagged(tmp_path, monkeypatch
     assert stats["incorrect_not_mixed"] == 1
 
 
-def test_missing_kerb_at_one_extremity_is_flagged(tmp_path, monkeypatch):
+def test_missing_kerb_at_one_extremity_is_not_flagged(tmp_path, monkeypatch):
+    """Out of scope for now: a missing kerb node is a data gap, not a
+    contradiction — don't flag it, but keep it visible in stats."""
     monkeypatch.chdir(tmp_path)
     _write_geojson(tmp_path / "highways.geojson", [
         _crossing_feature(0, 0, "yes", fid=5),
@@ -183,11 +189,18 @@ def test_missing_kerb_at_one_extremity_is_flagged(tmp_path, monkeypatch):
     ])
 
     stats = detect_tactile_paving_issues()
-    assert stats["flagged"] == 1
+    assert stats["flagged"] == 0
     assert stats["kerb_missing"] == 1
 
+    out = json.loads((tmp_path / "tactile_paving_issues.geojson").read_text())
+    # Empty-output placeholder feature only, no real flagged feature.
+    assert all(f["properties"].get("osm_id", 0) != 5 for f in out["features"])
 
-def test_kerb_without_tactile_paving_tag_is_flagged(tmp_path, monkeypatch):
+
+def test_kerb_without_tactile_paving_tag_is_not_flagged(tmp_path, monkeypatch):
+    """Out of scope for now: a kerb with no tactile_paving tag at all is
+    a data gap, not a contradiction — don't flag it, but keep it visible
+    in stats."""
     monkeypatch.chdir(tmp_path)
     _write_geojson(tmp_path / "highways.geojson", [
         _crossing_feature(0, 0, "no", fid=6),
@@ -201,7 +214,7 @@ def test_kerb_without_tactile_paving_tag_is_flagged(tmp_path, monkeypatch):
     ])
 
     stats = detect_tactile_paving_issues()
-    assert stats["flagged"] == 1
+    assert stats["flagged"] == 0
     assert stats["kerb_untagged"] == 1
 
 
