@@ -801,7 +801,7 @@ const CLICK_LAYERS = [
         <div class="popup-row"><span class="label">Kerb côté 1</span><span class="value">${escapeHTML(p.kerb1_tp) || "absent"}</span></div>
         ${sidesChecked === 2
           ? `<div class="popup-row"><span class="label">Kerb côté 2</span><span class="value">${escapeHTML(p.kerb2_tp) || "absent"}</span></div>`
-          : `<div class="popup-row"><span class="label">Kerb côté 2</span><span class="value" style="opacity:.7">— traversée mappée à moitié, côté non vérifié</span></div>`
+          : `<div class="popup-row"><span class="label">Kerb côté 2</span><span class="value" style="opacity:.7">— way à moitié dessinée (kerb → nœud crossing seulement), côté non vérifié</span></div>`
         }
         <div class="popup-row"><span class="label">Problème</span><span class="value">${escapeHTML(reasonLabels[p.reason] || p.reason || "?")}</span></div>
         ${nid > 0 ? `<div class="popup-row"><span class="label">Nœud crossing</span><span class="value">
