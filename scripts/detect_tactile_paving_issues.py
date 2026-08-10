@@ -51,8 +51,10 @@ kerb node matched at all) or ``type=kerb_untagged`` (a kerb was matched
 but carries no ``tactile_paving`` value). Crossing-level counts
 (``kerb_missing`` / ``kerb_untagged``) and point-level counts
 (``kerb_missing_points`` / ``kerb_untagged_points``) are both returned
-in stats — the latter can exceed the former since a single crossing can
-have both extremities affected.
+in stats — the latter can exceed the former since a fully-mapped
+crossing (both extremities checked, see below) can have both affected;
+a half-mapped one never contributes more than one point, since only one
+extremity is ever checked for it.
 
 Matching crossing ↔ way ↔ kerb is purely geometric (osmium's GeoJSON
 export doesn't preserve node/way membership ids), following the same
