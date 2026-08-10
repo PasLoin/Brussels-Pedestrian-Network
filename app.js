@@ -115,10 +115,10 @@ function updateMissingCrossingsFilter() {
 // scripts/detect_tactile_paving_issues.py.
 
 const KERB_ISSUE_TYPES = [
-  { value: "kerb_missing",  label: "Kerb absent",              color: "#1e3a8a" },
-  { value: "kerb_untagged", label: "Kerb sans tactile_paving",  color: "#7c2d12" },
+  { value: "kerb_missing",  label: "Kerb absent",             color: "#1e3a8a" },
+  { value: "kerb_untagged", label: "Kerb sans tactile_paving", color: "#7c2d12" },
 ];
-const activeKerbIssueTypes = new Set(KERB_ISSUE_TYPES.map(t => t.value));
+const activeKerbIssueTypes = new Set();
 
 function updateKerbIssuesFilter() {
   if (!mapRef) return;
@@ -975,6 +975,50 @@ function initMap(style) {
       return item;
     };
 
+    // ── Standalone toggle for one kerb-issue type ───────────────────────────
+    // Two independent legend dots (Kerb absent / Kerb sans tactile_paving)
+    // sharing a single MapLibre layer ("kerb-issues") filtered by the
+    // "type" property. No parent item, no select-all — each dot just adds
+    // or removes its own type from activeKerbIssueTypes and keeps the
+    // underlying layer's visibility in sync (visible as soon as at least
+    // one type is active).
+    const makeKerbTypeItem = ({ type, label, color }) => {
+      const item = document.createElement("div");
+      item.className = "legend-item";
+      item.setAttribute("role", "button");
+      item.setAttribute("tabindex", "0");
+
+      const swatch = document.createElement("div");
+      swatch.className = "legend-dot";
+      swatch.style.background = color;
+
+      const lbl = document.createElement("span");
+      lbl.className = "legend-label";
+      lbl.textContent = label;
+      item.append(swatch, lbl);
+
+      const updateState = () => {
+        const isActive = activeKerbIssueTypes.has(type);
+        item.classList.toggle("hidden", !isActive);
+        item.setAttribute("aria-pressed", isActive);
+      };
+      updateState();
+
+      const toggle = () => {
+        if (activeKerbIssueTypes.has(type)) activeKerbIssueTypes.delete(type);
+        else activeKerbIssueTypes.add(type);
+        updateState();
+        try {
+          map.setLayoutProperty("kerb-issues", "visibility",
+            activeKerbIssueTypes.size > 0 ? "visible" : "none");
+        } catch (_) { }
+        updateKerbIssuesFilter();
+      };
+      item.onclick = toggle;
+      item.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } };
+      return item;
+    };
+
     // ── Helper to build a sub-filter block ────────────────────────────────
     // Used for both the sidewalk-status and the missing-crossings sub-filters.
     const makeSubFilter = ({ items, activeSet, dataKey, updateFn, parentSub }) => {
@@ -1053,33 +1097,10 @@ function initMap(style) {
     legendEl.appendChild(makeItem({ layerId: "footway-crossing-candidates", label: "Candidat crossing (à vérifier)", color: "#7f1d1d", dashed: true }));
     legendEl.appendChild(makeItem({ layerId: "tactile-paving-issues", label: "Bande podotactile incohérente", color: "#a855f7", swatchType: "dot" }));
 
-    // ── Kerb issues (data gap) + sub-filter ──────────────────────────────
-    const kiSub = document.createElement("div");
-    kiSub.className = "legend-sub";
-
-    legendEl.appendChild(makeItem({
-      layerId: "kerb-issues",
-      label: "Données kerb manquantes",
-      color: "#1e3a8a",
-      swatchType: "dot",
-      onToggle: (isVisible) => {
-        kiSub.classList.toggle("parent-hidden", !isVisible);
-        if (isVisible) {
-          KERB_ISSUE_TYPES.forEach(t => activeKerbIssueTypes.add(t.value));
-          kiSub.querySelectorAll(".legend-sub-item").forEach(el => el.classList.remove("hidden"));
-          updateKerbIssuesFilter();
-        }
-      }
-    }));
-
-    makeSubFilter({
-      items:     KERB_ISSUE_TYPES,
-      activeSet: activeKerbIssueTypes,
-      dataKey:   "type",
-      updateFn:  updateKerbIssuesFilter,
-      parentSub: kiSub,
+    // ── Kerb issues (data gap) — two independent toggles, no parent ──────
+    KERB_ISSUE_TYPES.forEach(t => {
+      legendEl.appendChild(makeKerbTypeItem({ type: t.value, label: t.label, color: t.color }));
     });
-    legendEl.appendChild(kiSub);
 
     // ── Traversée manquante + sub-filter ─────────────────────────────────
     const mcSub = document.createElement("div");
