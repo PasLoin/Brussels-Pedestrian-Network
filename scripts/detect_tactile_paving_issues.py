@@ -39,12 +39,10 @@ Missing data is explicitly OUT OF SCOPE for the coherence check itself
 ------------------------------------------------------------------------
 This check only *flags* (in ``tactile_paving_issues.geojson``) a genuine
 *contradiction* between two explicitly tagged values. If a kerb node
-can't be matched at a *checked* extremity (see "Not every
-footway=crossing way spans the full kerb-to-kerb width" below for what
-"checked" means), or a matched kerb simply has no ``tactile_paving``
-tag, that's a data-completeness gap, not an incoherence — there's
-nothing to contradict, so it's never counted towards ``flagged`` and
-never written to ``tactile_paving_issues.geojson``.
+can't be matched at one (or both) extremities, or a matched kerb simply
+has no ``tactile_paving`` tag, that's a data-completeness gap, not an
+incoherence — there's nothing to contradict, so it's never counted
+towards ``flagged`` and never written to ``tactile_paving_issues.geojson``.
 
 Those gaps are still surfaced, just separately and at lower confidence:
 each deficient extremity (crossing-side, not way-side) is written as its
@@ -89,42 +87,39 @@ search (also tightened to 0.5 m for the same reason): kerb nodes are
 standalone points, so there's no line/vertex distinction to exploit
 there, and a genuinely shared node sits at ~0 m regardless.
 
-Not every footway=crossing way spans the full kerb-to-kerb width,
-though — it's common practice to map a crossing as two separate way
-segments (one from each kerb, meeting somewhere in the middle), or to
-have a crossing way continue directly into its attached sidewalk at one
-end rather than terminating at a kerb there. In both cases, ONE
-extremity of the matched way is a genuine dead end (nothing else
-connects there — a kerb is expected) while the OTHER is a junction: a
-shared vertex with some other way (the rest of the crossing, the
-attached sidewalk, ...) that simply continues the network rather than
-marking a physical edge of the crossing. That junction extremity was
-never meant to have a kerb of its own, so searching for one there and
-flagging it "missing" would be a false positive.
+Some footway=crossing ways only span HALF the physical crossing —
+kerb → crossing node — instead of continuing to a second kerb on the
+far side. Confirmed on real production data (way 875635271: exactly two
+vertices, ``[kerb_node_coords, crossing_node_coords]``, both an EXACT
+match — no unsplit approach path, no distance/tolerance issue, two
+earlier hypotheses about this were tried and were both wrong). When
+this happens, one of the way's own endpoints (``coords[0]`` or
+``coords[-1]``) IS the crossing node's own position, not a kerb — of
+course no kerb is found there, that's mathematically what "the crossing
+node's own coordinates" means. Searching for one and calling it
+"missing" was the actual bug, confirmed against ~1000 real cases in
+production (see ``half_mapped_sides`` in stats).
 
-Guarded against with a dead-end check (``_is_dead_end``) run before any
-kerb lookup: an extremity only counts as "expected to have a kerb" if no
-OTHER way (crossing or not — checked against every ``highway=footway``/
-``highway=pedestrian`` way, not just crossing ones) has a vertex within
-``TACTILE_PAVING_WAY_MATCH_M`` of it. A crossing where only one
-extremity qualifies is checked on that one side only (see
-``partial_crossing_sides`` in stats) — ``incorrect`` can't be evaluated
-from a single side, since it specifically describes a yes/no PAIR across
-both sides, so a one-sided ``incorrect`` crossing is skipped entirely
-rather than guessed (see ``partial_incorrect_skipped``). A crossing
-where NEITHER extremity qualifies isn't really "a crossing" from this
-way's perspective at all — just an internal segment of a larger footway
-network with no edge to check — and is skipped too (see
-``no_dead_end_side``).
+Guarded against with a check that's purely internal to the matched
+way's own two endpoints and the crossing node — no cross-referencing
+against other ways, unlike an earlier, WRONG, and much more damaging
+attempt (an "is this endpoint shared with some OTHER way" heuristic
+that broke ~69% of all crossings, since a kerb shared with its attached
+sidewalk is the NORMAL case, not a signal of anything — see git history
+if curious, not repeating that mistake here): if ``coords[0]`` or
+``coords[-1]`` sits within ``TACTILE_PAVING_WAY_MATCH_M`` of the
+crossing node itself, that endpoint is excluded from the kerb search
+and only the OTHER endpoint is checked. ``incorrect`` can't be evaluated
+from a single side, since it specifically describes a yes/no PAIR, so a
+half-mapped ``incorrect`` crossing is skipped entirely rather than
+guessed (see ``half_mapped_incorrect_skipped``).
 
 Inputs
 ------
 * ``highways.geojson``              — slimmed osmium export; used for
   ``highway=crossing`` points (needs a ``tactile_paving`` property).
 * ``sidewalk_footways_raw.geojson`` — raw osmium footway export (needs
-  ``footway`` + ``@id``); used for ``footway=crossing`` ways AND (for
-  the dead-end check above) every other ``highway=footway``/
-  ``highway=pedestrian`` way.
+  ``footway`` + ``@id``); used for ``footway=crossing`` ways.
 * ``kerbs_raw.geojson``             — raw osmium export of
   ``barrier=kerb`` nodes (needs ``tactile_paving`` + ``@id``).
 
@@ -138,13 +133,13 @@ Properties:
   ``way_osm_id``  OSM way id of the associated footway=crossing (0 if
                   none could be matched)
   ``crossing_tp`` tactile_paving value on the crossing node
-  ``sides_checked`` 1 or 2 — how many extremities of the way were
-                  genuine dead ends and therefore actually checked (see
-                  "Not every footway=crossing way spans the full
-                  kerb-to-kerb width" above). When 1, ``kerb2_tp``/
-                  ``kerb2_osm_id`` are blank/0 — the other side simply
-                  wasn't expected to have a kerb, not that one is
-                  missing.
+  ``sides_checked`` 1 or 2 — how many of the way's extremities were
+                  genuine kerb positions and therefore actually checked
+                  (see "Some footway=crossing ways only span HALF the
+                  physical crossing" above). When 1, ``kerb2_tp``/
+                  ``kerb2_osm_id`` are blank/0 — the other endpoint was
+                  the crossing node's own position, not a kerb that
+                  could be missing.
   ``kerb1_tp``    tactile_paving value found at the way's first checked
                   extremity
   ``kerb1_osm_id`` OSM node id of that kerb
@@ -284,58 +279,6 @@ def _load_crossing_ways(
     return gdf, vertex_tree, vertex_points, vertex_way_idx
 
 
-def _load_all_footway_vertices(
-    footways_path: str,
-) -> tuple[STRtree | None, list, list]:
-    """Vertex-level index over EVERY ``highway=footway``/``pedestrian``
-    way in *footways_path* — crossing or not — keyed by OSM way id
-    rather than position.
-
-    Used by ``_is_dead_end`` to tell apart a crossing way's genuine dead
-    end (a kerb is expected there) from a junction where the network
-    continues into some other way — the rest of the crossing mapped as
-    its own segment, an attached sidewalk, etc. — which was never meant
-    to have a kerb at all. See "Not every footway=crossing way spans the
-    full kerb-to-kerb width" in the module docstring.
-    """
-    gdf = gpd.read_file(footways_path)
-    gdf = gdf[gdf.geometry.geom_type == "LineString"].copy().to_crs("EPSG:31370")
-    if "@id" not in gdf.columns:
-        gdf["@id"] = 0
-
-    vertex_points: list[Point] = []
-    vertex_way_ids: list[int] = []
-    for _, row in gdf.iterrows():
-        wid = _safe_id(row.get("@id"))
-        for coord in row.geometry.coords:
-            vertex_points.append(Point(coord))
-            vertex_way_ids.append(wid)
-
-    vertex_tree = STRtree(vertex_points) if vertex_points else None
-    return vertex_tree, vertex_points, vertex_way_ids
-
-
-def _is_dead_end(
-    pt: Point,
-    own_way_id: int,
-    vertex_tree: STRtree | None,
-    vertex_way_ids: list,
-    tol_m: float,
-) -> bool:
-    """True if *pt* is a genuine dead end: no way OTHER than the
-    crossing way itself (``own_way_id``) has a vertex within *tol_m* of
-    it. A kerb is only expected at a genuine dead end — a junction where
-    some other way's vertex sits at the same spot means the network
-    continues there (the rest of the crossing, an attached sidewalk,
-    ...), so that "extremity" isn't really the edge of the crossing and
-    shouldn't be checked for a kerb.
-    """
-    if vertex_tree is None:
-        return True
-    cand_idxs = list(vertex_tree.query(pt.buffer(tol_m)))
-    return all(vertex_way_ids[i] == own_way_id for i in cand_idxs)
-
-
 def _load_kerb_nodes(
     kerbs_path: str,
 ) -> tuple[gpd.GeoDataFrame, list, STRtree | None]:
@@ -459,9 +402,10 @@ def _classify(crossing_tp: str, tp1: str | None, tp2: str | None) -> str | None:
 
 
 def _classify_single(crossing_tp: str, tp: str | None) -> str | None:
-    """Same idea as ``_classify``, but for a partially-mapped crossing
-    (see module docstring) where only ONE extremity is a genuine dead
-    end and therefore checkable. Callers must never pass
+    """Same idea as ``_classify``, but for a half-mapped crossing (see
+    module docstring) where only ONE of the way's endpoints is a
+    genuine kerb position — the other IS the crossing node's own
+    position, not a second kerb. Callers must never pass
     ``crossing_tp == "incorrect"`` here — that value specifically
     describes a yes/no PAIR across both sides, which a single side
     can't confirm or contradict either way."""
@@ -510,10 +454,6 @@ def detect_tactile_paving_issues(
         way_gdf, vertex_tree, vertex_points, vertex_way_idx = _load_crossing_ways(footways_geojson_path)
     print(f"  footway=crossing ways: {len(way_gdf)} ({len(vertex_points)} vertices indexed)")
 
-    with step("load all footway/pedestrian ways (dead-end check)"):
-        all_vertex_tree, all_vertex_points, all_vertex_way_ids = _load_all_footway_vertices(footways_geojson_path)
-    print(f"  all footway/pedestrian vertices indexed: {len(all_vertex_points)}")
-
     with step("load kerb nodes"):
         kerb_gdf, kerb_geoms, kerb_tree = _load_kerb_nodes(kerbs_geojson_path)
     print(f"  barrier=kerb nodes: {len(kerb_gdf)}")
@@ -522,9 +462,9 @@ def detect_tactile_paving_issues(
     kerb_issue_rows: list[dict] = []
     n_no_way          = 0
     n_ambiguous_way    = 0
-    n_no_dead_end_side = 0
-    n_partial_crossing_sides   = 0
-    n_partial_incorrect_skipped = 0
+    n_degenerate_way   = 0
+    n_half_mapped_sides = 0
+    n_half_mapped_incorrect_skipped = 0
     n_kerb_missing     = 0
     n_kerb_untagged    = 0
     n_kerb_missing_points  = 0
@@ -571,43 +511,33 @@ def detect_tactile_paving_issues(
             p2 = Point(way_geom.coords[-1])
             own_wid = _safe_id(way_row.get("@id"))
 
-            # Which extremities are genuine dead ends (a kerb is
-            # expected there) vs junctions into the rest of the footway
-            # network (never meant to have a kerb of their own) — see
-            # "Not every footway=crossing way spans the full
-            # kerb-to-kerb width" in the module docstring.
-            side1_expected = _is_dead_end(
-                p1, own_wid, all_vertex_tree, all_vertex_way_ids, TACTILE_PAVING_WAY_MATCH_M)
-            side2_expected = _is_dead_end(
-                p2, own_wid, all_vertex_tree, all_vertex_way_ids, TACTILE_PAVING_WAY_MATCH_M)
+            # Half-mapped crossing check: purely internal to this way's
+            # own two endpoints and its own crossing node — no
+            # cross-referencing against other ways (see module
+            # docstring for why that matters). If an endpoint IS the
+            # crossing node's own position, it was never a kerb to
+            # begin with.
+            p1_is_crossing_node = p1.distance(node_pt) <= TACTILE_PAVING_WAY_MATCH_M
+            p2_is_crossing_node = p2.distance(node_pt) <= TACTILE_PAVING_WAY_MATCH_M
 
-            if not side1_expected and not side2_expected:
-                # Neither extremity is a genuine dead end — just an
-                # internal segment of a larger footway network from
-                # this check's perspective, with no edge to validate a
-                # kerb against.
-                n_no_dead_end_side += 1
+            if p1_is_crossing_node and p2_is_crossing_node:
+                # Degenerate way (e.g. a zero-length or duplicate-point
+                # way) — neither "extremity" is a real position at all.
+                n_degenerate_way += 1
                 continue
 
-            if not (side1_expected and side2_expected):
-                # Partially-mapped crossing: only one extremity is a
-                # dead end (e.g. the crossing is split into two way
-                # segments meeting mid-street, or continues straight
-                # into its attached sidewalk at one end). "incorrect"
-                # describes a yes/no PAIR across both sides and can't
-                # be evaluated from a single one, so skip it entirely
-                # rather than guess.
+            if p1_is_crossing_node or p2_is_crossing_node:
+                # Half-mapped crossing: only the OTHER endpoint is a
+                # genuine kerb position. "incorrect" describes a yes/no
+                # PAIR and can't be evaluated from a single side, so
+                # skip it entirely rather than guess.
                 if crossing_tp == "incorrect":
-                    n_partial_incorrect_skipped += 1
+                    n_half_mapped_incorrect_skipped += 1
                     continue
-                n_partial_crossing_sides += 1
+                n_half_mapped_sides += 1
 
-                if side1_expected:
-                    pt = p1
-                    tp, kerb_id = _kerb_tp_at(p1, kerb_gdf, kerb_tree, kerb_geoms)
-                else:
-                    pt = p2
-                    tp, kerb_id = _kerb_tp_at(p2, kerb_gdf, kerb_tree, kerb_geoms)
+                pt = p2 if p1_is_crossing_node else p1
+                tp, kerb_id = _kerb_tp_at(pt, kerb_gdf, kerb_tree, kerb_geoms)
 
                 reason = _classify_single(crossing_tp, tp)
                 if reason is None:
@@ -655,8 +585,8 @@ def detect_tactile_paving_issues(
                 })
                 continue
 
-            # Fully-mapped crossing (the common case): both extremities
-            # are dead ends, check both sides exactly as before.
+            # Normal case (unchanged): the crossing node is a genuine
+            # middle vertex, both endpoints are real kerb positions.
             tp1, kerb1_id = _kerb_tp_at(p1, kerb_gdf, kerb_tree, kerb_geoms)
             tp2, kerb2_id = _kerb_tp_at(p2, kerb_gdf, kerb_tree, kerb_geoms)
 
@@ -733,9 +663,9 @@ def detect_tactile_paving_issues(
     print(f"  Crossings in scope (yes/no/incorrect):     {n_total}")
     print(f"  Skipped — no footway=crossing way found:   {n_no_way}")
     print(f"  Skipped — ambiguous way match (≥2 ways):   {n_ambiguous_way}")
-    print(f"  Skipped — neither extremity a dead end:    {n_no_dead_end_side} (internal segment, no edge to check)")
-    print(f"  Partially-mapped — one side only checked:  {n_partial_crossing_sides}")
-    print(f"  Skipped — one-sided incorrect crossing:    {n_partial_incorrect_skipped} (needs both sides, see docstring)")
+    print(f"  Skipped — degenerate way:                  {n_degenerate_way} (both endpoints == crossing node)")
+    print(f"  Half-mapped — one side only checked:       {n_half_mapped_sides}")
+    print(f"  Skipped — half-mapped incorrect crossing:  {n_half_mapped_incorrect_skipped} (needs both sides)")
     print(f"  Coherent (not flagged):                    {n_ok}")
     print(f"  Skipped — kerb missing at an extremity:    {n_kerb_missing} (data gap, not flagged — see kerb_issues.geojson)")
     print(f"  Skipped — kerb without tactile_paving:     {n_kerb_untagged} (data gap, not flagged — see kerb_issues.geojson)")
@@ -746,20 +676,20 @@ def detect_tactile_paving_issues(
     print(f"  Total flagged:                              {n_flagged}")
 
     return {
-        "crossings_in_scope":         n_total,
-        "no_crossing_way_found":      n_no_way,
-        "ambiguous_way_match":        n_ambiguous_way,
-        "no_dead_end_side":           n_no_dead_end_side,
-        "partial_crossing_sides":     n_partial_crossing_sides,
-        "partial_incorrect_skipped":  n_partial_incorrect_skipped,
-        "coherent":                   n_ok,
-        "kerb_missing":               n_kerb_missing,
-        "kerb_untagged":              n_kerb_untagged,
-        "kerb_missing_points":        n_kerb_missing_points,
-        "kerb_untagged_points":       n_kerb_untagged_points,
-        "value_mismatch":             n_value_mismatch,
-        "incorrect_not_mixed":        n_incorrect_mixed,
-        "flagged":                    n_flagged,
+        "crossings_in_scope":              n_total,
+        "no_crossing_way_found":           n_no_way,
+        "ambiguous_way_match":             n_ambiguous_way,
+        "degenerate_way":                  n_degenerate_way,
+        "half_mapped_sides":               n_half_mapped_sides,
+        "half_mapped_incorrect_skipped":   n_half_mapped_incorrect_skipped,
+        "coherent":                        n_ok,
+        "kerb_missing":                    n_kerb_missing,
+        "kerb_untagged":                   n_kerb_untagged,
+        "kerb_missing_points":             n_kerb_missing_points,
+        "kerb_untagged_points":            n_kerb_untagged_points,
+        "value_mismatch":                  n_value_mismatch,
+        "incorrect_not_mixed":             n_incorrect_mixed,
+        "flagged":                         n_flagged,
     }
 
 
