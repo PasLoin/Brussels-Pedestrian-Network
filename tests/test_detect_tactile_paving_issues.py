@@ -479,3 +479,105 @@ def test_a_different_nearby_crossing_does_not_hijack_the_match(tmp_path, monkeyp
     stats = detect_tactile_paving_issues()
     assert stats["flagged"] == 0
     assert stats["no_crossing_way_found"] == 1
+
+
+# ── Partially-mapped crossings: only one extremity is a dead end ───────────
+#
+# Regression coverage for a real false positive spotted in JOSM/aerial
+# imagery: a footway=crossing way split into two segments (or running
+# straight into its attached sidewalk) at one end, rather than spanning
+# kerb-to-kerb on its own. That end is a junction — a shared vertex with
+# another way — not a place a kerb is ever expected, and must never be
+# checked for one.
+
+def test_partial_crossing_coherent_when_the_checked_side_matches(tmp_path, monkeypatch):
+    """kerb (-3,0) — crossing (0,0) — junction (3,0), where (3,0) is
+    also a vertex of an attached sidewalk. Only the kerb side should be
+    checked; the junction side must never be flagged kerb_missing."""
+    monkeypatch.chdir(tmp_path)
+    _write_geojson(tmp_path / "highways.geojson", [
+        _crossing_feature(0, 0, "yes", fid=1),
+    ])
+    _write_geojson(tmp_path / "sidewalk_footways_raw.geojson", [
+        _crossing_way_feature(-3, 0, 0, 0, 3, 0, fid=101),
+        _sidewalk_way_feature(3, 0, 3, 5, fid=102),
+    ])
+    _write_geojson(tmp_path / "kerbs_raw.geojson", [
+        _kerb_feature(-3, 0, "yes", fid=201),
+    ])
+
+    stats = detect_tactile_paving_issues()
+    assert stats["crossings_in_scope"] == 1
+    assert stats["partial_crossing_sides"] == 1
+    assert stats["coherent"] == 1
+    assert stats["kerb_missing"] == 0
+    assert stats["flagged"] == 0
+
+
+def test_partial_crossing_flags_mismatch_on_the_checked_side(tmp_path, monkeypatch):
+    """Same topology, but the one real kerb disagrees with the crossing
+    node — that's a genuine, checkable contradiction and must still be
+    flagged even though the crossing is only half-mapped."""
+    monkeypatch.chdir(tmp_path)
+    _write_geojson(tmp_path / "highways.geojson", [
+        _crossing_feature(0, 0, "yes", fid=1),
+    ])
+    _write_geojson(tmp_path / "sidewalk_footways_raw.geojson", [
+        _crossing_way_feature(-3, 0, 0, 0, 3, 0, fid=101),
+        _sidewalk_way_feature(3, 0, 3, 5, fid=102),
+    ])
+    _write_geojson(tmp_path / "kerbs_raw.geojson", [
+        _kerb_feature(-3, 0, "no", fid=201),
+    ])
+
+    stats = detect_tactile_paving_issues()
+    assert stats["partial_crossing_sides"] == 1
+    assert stats["value_mismatch"] == 1
+    assert stats["flagged"] == 1
+
+
+def test_partial_crossing_with_incorrect_tag_is_skipped_not_guessed(tmp_path, monkeypatch):
+    """tactile_paving=incorrect describes a yes/no PAIR across both
+    sides — with only one checkable side there's no pair to confirm or
+    contradict, so this must be skipped entirely, not flagged and not
+    counted as coherent either."""
+    monkeypatch.chdir(tmp_path)
+    _write_geojson(tmp_path / "highways.geojson", [
+        _crossing_feature(0, 0, "incorrect", fid=1),
+    ])
+    _write_geojson(tmp_path / "sidewalk_footways_raw.geojson", [
+        _crossing_way_feature(-3, 0, 0, 0, 3, 0, fid=101),
+        _sidewalk_way_feature(3, 0, 3, 5, fid=102),
+    ])
+    _write_geojson(tmp_path / "kerbs_raw.geojson", [
+        _kerb_feature(-3, 0, "yes", fid=201),
+    ])
+
+    stats = detect_tactile_paving_issues()
+    assert stats["partial_incorrect_skipped"] == 1
+    assert stats["partial_crossing_sides"] == 0
+    assert stats["coherent"] == 0
+    assert stats["flagged"] == 0
+
+
+def test_crossing_with_no_dead_end_side_is_skipped(tmp_path, monkeypatch):
+    """Both extremities are junctions (shared with other ways) — the
+    matched way is just an internal segment of a larger footway network
+    from this check's perspective, with no edge to validate a kerb
+    against. Must be skipped, not treated as two missing kerbs."""
+    monkeypatch.chdir(tmp_path)
+    _write_geojson(tmp_path / "highways.geojson", [
+        _crossing_feature(0, 0, "yes", fid=1),
+    ])
+    _write_geojson(tmp_path / "sidewalk_footways_raw.geojson", [
+        _crossing_way_feature(-3, 0, 0, 0, 3, 0, fid=101),
+        _sidewalk_way_feature(-3, 0, -3, -5, fid=102),
+        _sidewalk_way_feature(3, 0, 3, 5, fid=103),
+    ])
+    _write_geojson(tmp_path / "kerbs_raw.geojson", [])
+
+    stats = detect_tactile_paving_issues()
+    assert stats["no_dead_end_side"] == 1
+    assert stats["kerb_missing"] == 0
+    assert stats["coherent"] == 0
+    assert stats["flagged"] == 0
