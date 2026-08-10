@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-08-10
+ 
+### Nouvelle couche : barrier=kerb absent sur l'extrémité d'un crossing way + absence d'info sur tactile paving on kerb.
+
 ## 2026-08-07
  
 ### Nouvelle couche : Incohérences tactile_paving crossing ↔ kerb

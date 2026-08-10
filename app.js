@@ -107,6 +107,33 @@ function updateMissingCrossingsFilter() {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+//  KERB ISSUES TYPE FILTER
+// ══════════════════════════════════════════════════════════════════════════════
+// Complément "data gap" de tactile-paving-issues : extrémités de
+// footway=crossing sans kerb matché (kerb_missing) ou avec un kerb
+// matché mais sans tactile_paving (kerb_untagged). Voir
+// scripts/detect_tactile_paving_issues.py.
+
+const KERB_ISSUE_TYPES = [
+  { value: "kerb_missing",  label: "Kerb absent",             color: "#1e3a8a" },
+  { value: "kerb_untagged", label: "Kerb sans tactile_paving", color: "#7c2d12" },
+];
+const activeKerbIssueTypes = new Set();
+
+function updateKerbIssuesFilter() {
+  if (!mapRef) return;
+  let filter;
+  if (activeKerbIssueTypes.size === 0) {
+    filter = ["==", ["get", "type"], "__none__"];
+  } else if (activeKerbIssueTypes.size === KERB_ISSUE_TYPES.length) {
+    filter = null;
+  } else {
+    filter = ["in", ["get", "type"], ["literal", [...activeKerbIssueTypes]]];
+  }
+  try { mapRef.setFilter("kerb-issues", filter); } catch (_) { }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 //  CLIENT-SIDE DIJKSTRA ROUTING
 // ══════════════════════════════════════════════════════════════════════════════
 
@@ -600,6 +627,27 @@ const PEDESTRIAN_LAYERS = [
       "circle-opacity": 0.9,
     }
   },
+  {
+    // Extrémités de footway=crossing sans kerb matché (kerb_missing) ou
+    // avec un kerb matché mais sans tactile_paving (kerb_untagged).
+    // Complément "data gap" de tactile-paving-issues, qui ne couvre que
+    // les vraies incohérences de valeur. Voir
+    // scripts/detect_tactile_paving_issues.py.
+    id: "kerb-issues", type: "circle", source: "pedestrian",
+    "source-layer": "kerb_issues",
+    minzoom: 13, layout: { visibility: "none" },
+    paint: {
+      "circle-color": ["match", ["get", "type"],
+        "kerb_missing",  "#1e3a8a",
+        "kerb_untagged", "#7c2d12",
+        "#1e3a8a"
+      ],
+      "circle-radius": ["interpolate", ["linear"], ["zoom"], 13, 4, 16, 9],
+      "circle-stroke-color": "#fff",
+      "circle-stroke-width": 1.5,
+      "circle-opacity": 0.9,
+    }
+  },
 ];
 
 // ── Hover popup config ───────────────────────────────────────────────────────
@@ -742,6 +790,7 @@ const CLICK_LAYERS = [
     format: p => {
       const nid = parseInt(p.osm_id, 10) || 0;
       const wid = parseInt(p.way_osm_id, 10) || 0;
+      const sidesChecked = parseInt(p.sides_checked, 10) || 2;
       const reasonLabels = {
         value_mismatch:       "tactile_paving du kerb différent de celui du crossing",
         incorrect_not_mixed:  "incorrect attendu : un kerb yes + un kerb no",
@@ -750,12 +799,45 @@ const CLICK_LAYERS = [
         <div class="popup-title">🟣 Bande podotactile incohérente</div>
         <div class="popup-row"><span class="label">Crossing</span><span class="value">tactile_paving=${escapeHTML(p.crossing_tp || "?")}</span></div>
         <div class="popup-row"><span class="label">Kerb côté 1</span><span class="value">${escapeHTML(p.kerb1_tp) || "absent"}</span></div>
-        <div class="popup-row"><span class="label">Kerb côté 2</span><span class="value">${escapeHTML(p.kerb2_tp) || "absent"}</span></div>
+        ${sidesChecked === 2
+          ? `<div class="popup-row"><span class="label">Kerb côté 2</span><span class="value">${escapeHTML(p.kerb2_tp) || "absent"}</span></div>`
+          : `<div class="popup-row"><span class="label">Kerb côté 2</span><span class="value" style="opacity:.7">— way à moitié dessinée (kerb → nœud crossing seulement), côté non vérifié</span></div>`
+        }
         <div class="popup-row"><span class="label">Problème</span><span class="value">${escapeHTML(reasonLabels[p.reason] || p.reason || "?")}</span></div>
         ${nid > 0 ? `<div class="popup-row"><span class="label">Nœud crossing</span><span class="value">
           <a href="https://www.openstreetmap.org/node/${nid}" target="_blank" rel="noopener">n${nid}</a>
           · <a href="http://127.0.0.1:8111/load_object?objects=n${nid}" target="_blank" rel="noopener">JOSM</a>
           · <a href="https://www.openstreetmap.org/edit?node=${nid}" target="_blank" rel="noopener">iD</a>
+        </span></div>` : ""}
+        ${wid > 0 ? `<div class="popup-row"><span class="label">Way crossing</span><span class="value">
+          <a href="https://www.openstreetmap.org/way/${wid}" target="_blank" rel="noopener">w${wid}</a>
+          · <a href="http://127.0.0.1:8111/load_object?objects=w${wid}" target="_blank" rel="noopener">JOSM</a>
+        </span></div>` : ""}
+      `;
+    }
+  },
+  {
+    ids: ["kerb-issues"],
+    format: p => {
+      const isMissing = p.type === "kerb_missing";
+      const cid = parseInt(p.crossing_osm_id, 10) || 0;
+      const wid = parseInt(p.way_osm_id, 10) || 0;
+      const kid = parseInt(p.kerb_osm_id, 10) || 0;
+      return `
+        <div class="popup-title">${isMissing ? "🔵 Kerb absent" : "🟤 Kerb sans tactile_paving"}</div>
+        <div class="popup-row"><span class="label">Problème</span><span class="value">${isMissing
+          ? "Aucun nœud barrier=kerb trouvé à cette extrémité"
+          : "Kerb présent mais sans tag tactile_paving"
+        }</span></div>
+        ${cid > 0 ? `<div class="popup-row"><span class="label">Crossing</span><span class="value">
+          <a href="https://www.openstreetmap.org/node/${cid}" target="_blank" rel="noopener">n${cid}</a>
+          · <a href="http://127.0.0.1:8111/load_object?objects=n${cid}" target="_blank" rel="noopener">JOSM</a>
+          · <a href="https://www.openstreetmap.org/edit?node=${cid}" target="_blank" rel="noopener">iD</a>
+        </span></div>` : ""}
+        ${!isMissing && kid > 0 ? `<div class="popup-row"><span class="label">Kerb</span><span class="value">
+          <a href="https://www.openstreetmap.org/node/${kid}" target="_blank" rel="noopener">n${kid}</a>
+          · <a href="http://127.0.0.1:8111/load_object?objects=n${kid}" target="_blank" rel="noopener">JOSM</a>
+          · <a href="https://www.openstreetmap.org/edit?node=${kid}" target="_blank" rel="noopener">iD</a>
         </span></div>` : ""}
         ${wid > 0 ? `<div class="popup-row"><span class="label">Way crossing</span><span class="value">
           <a href="https://www.openstreetmap.org/way/${wid}" target="_blank" rel="noopener">w${wid}</a>
@@ -893,6 +975,50 @@ function initMap(style) {
       return item;
     };
 
+    // ── Standalone toggle for one kerb-issue type ───────────────────────────
+    // Two independent legend dots (Kerb absent / Kerb sans tactile_paving)
+    // sharing a single MapLibre layer ("kerb-issues") filtered by the
+    // "type" property. No parent item, no select-all — each dot just adds
+    // or removes its own type from activeKerbIssueTypes and keeps the
+    // underlying layer's visibility in sync (visible as soon as at least
+    // one type is active).
+    const makeKerbTypeItem = ({ type, label, color }) => {
+      const item = document.createElement("div");
+      item.className = "legend-item";
+      item.setAttribute("role", "button");
+      item.setAttribute("tabindex", "0");
+
+      const swatch = document.createElement("div");
+      swatch.className = "legend-dot";
+      swatch.style.background = color;
+
+      const lbl = document.createElement("span");
+      lbl.className = "legend-label";
+      lbl.textContent = label;
+      item.append(swatch, lbl);
+
+      const updateState = () => {
+        const isActive = activeKerbIssueTypes.has(type);
+        item.classList.toggle("hidden", !isActive);
+        item.setAttribute("aria-pressed", isActive);
+      };
+      updateState();
+
+      const toggle = () => {
+        if (activeKerbIssueTypes.has(type)) activeKerbIssueTypes.delete(type);
+        else activeKerbIssueTypes.add(type);
+        updateState();
+        try {
+          map.setLayoutProperty("kerb-issues", "visibility",
+            activeKerbIssueTypes.size > 0 ? "visible" : "none");
+        } catch (_) { }
+        updateKerbIssuesFilter();
+      };
+      item.onclick = toggle;
+      item.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } };
+      return item;
+    };
+
     // ── Helper to build a sub-filter block ────────────────────────────────
     // Used for both the sidewalk-status and the missing-crossings sub-filters.
     const makeSubFilter = ({ items, activeSet, dataKey, updateFn, parentSub }) => {
@@ -970,6 +1096,11 @@ function initMap(style) {
     legendEl.appendChild(makeItem({ layerId: "sidewalk-gaps", label: "Trottoir un seul côté", color: "#f59e0b", dashed: true }));
     legendEl.appendChild(makeItem({ layerId: "footway-crossing-candidates", label: "Candidat crossing (à vérifier)", color: "#7f1d1d", dashed: true }));
     legendEl.appendChild(makeItem({ layerId: "tactile-paving-issues", label: "Bande podotactile incohérente", color: "#a855f7", swatchType: "dot" }));
+
+    // ── Kerb issues (data gap) — two independent toggles, no parent ──────
+    KERB_ISSUE_TYPES.forEach(t => {
+      legendEl.appendChild(makeKerbTypeItem({ type: t.value, label: t.label, color: t.color }));
+    });
 
     // ── Traversée manquante + sub-filter ─────────────────────────────────
     const mcSub = document.createElement("div");
