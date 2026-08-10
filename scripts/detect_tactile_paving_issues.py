@@ -35,17 +35,24 @@ Any other ``tactile_paving`` value on the crossing node (``contrasted``,
 ``primitive``, etc.) is out of scope for this specific coherence check
 and is skipped.
 
-Missing data is explicitly OUT OF SCOPE and never flagged
-------------------------------------------------------------
-This check only flags a genuine *contradiction* between two explicitly
-tagged values. If a kerb node can't be matched at one (or both)
-extremities, or a matched kerb simply has no ``tactile_paving`` tag,
-that's a data-completeness gap, not an incoherence — there's nothing to
-contradict. Those cases are counted separately in the returned stats
-(``kerb_missing`` / ``kerb_untagged``) for visibility but are never
-written to the output layer. Revisiting that (e.g. surfacing "kerb data
-missing near this crossing" as its own, lower-confidence layer) is a
-possible future addition, not part of this check.
+Missing data is explicitly OUT OF SCOPE for the coherence check itself
+------------------------------------------------------------------------
+This check only *flags* (in ``tactile_paving_issues.geojson``) a genuine
+*contradiction* between two explicitly tagged values. If a kerb node
+can't be matched at one (or both) extremities, or a matched kerb simply
+has no ``tactile_paving`` tag, that's a data-completeness gap, not an
+incoherence — there's nothing to contradict, so it's never counted
+towards ``flagged`` and never written to ``tactile_paving_issues.geojson``.
+
+Those gaps are still surfaced, just separately and at lower confidence:
+each deficient extremity (crossing-side, not way-side) is written as its
+own point to ``kerb_issues.geojson``, tagged ``type=kerb_missing`` (no
+kerb node matched at all) or ``type=kerb_untagged`` (a kerb was matched
+but carries no ``tactile_paving`` value). Crossing-level counts
+(``kerb_missing`` / ``kerb_untagged``) and point-level counts
+(``kerb_missing_points`` / ``kerb_untagged_points``) are both returned
+in stats — the latter can exceed the former since a single crossing can
+have both extremities affected.
 
 Matching crossing ↔ way ↔ kerb is purely geometric (osmium's GeoJSON
 export doesn't preserve node/way membership ids), following the same
@@ -111,6 +118,20 @@ Properties:
                     "incorrect_not_mixed" — tactile_paving=incorrect but
                                              the two kerbs aren't a
                                              yes/no pair
+
+``kerb_issues.geojson`` — point layer, lower confidence, one feature per
+**deficient extremity** (not per crossing — a crossing with both sides
+affected produces two points). Located at the footway=crossing way's
+endpoint (the matched kerb's own position for ``kerb_untagged``, the
+expected-but-absent position for ``kerb_missing`` — within
+``TACTILE_PAVING_KERB_MATCH_M`` of each other in practice). Properties:
+  ``type``             "kerb_missing" (no barrier=kerb node matched at
+                        this extremity) or "kerb_untagged" (a kerb was
+                        matched but has no tactile_paving tag)
+  ``crossing_osm_id``  OSM node id of the associated crossing
+  ``way_osm_id``       OSM way id of the associated footway=crossing
+  ``kerb_osm_id``      OSM node id of the matched kerb (0 for
+                        kerb_missing, since none was matched)
 """
 
 from __future__ import annotations
@@ -372,6 +393,7 @@ def detect_tactile_paving_issues(
     if crossing_gdf.empty:
         print("  Nothing to analyse — skipping.")
         _write_empty_output()
+        _write_empty_kerb_issues_output()
         return {"crossings_in_scope": 0, "flagged": 0}
 
     with step("load footway=crossing ways"):
@@ -383,10 +405,13 @@ def detect_tactile_paving_issues(
     print(f"  barrier=kerb nodes: {len(kerb_gdf)}")
 
     rows: list[dict] = []
+    kerb_issue_rows: list[dict] = []
     n_no_way          = 0
     n_ambiguous_way    = 0
     n_kerb_missing     = 0
     n_kerb_untagged    = 0
+    n_kerb_missing_points  = 0
+    n_kerb_untagged_points = 0
     n_value_mismatch   = 0
     n_incorrect_mixed  = 0
     n_ok               = 0
@@ -438,9 +463,34 @@ def detect_tactile_paving_issues(
 
             if reason == "kerb_missing":
                 n_kerb_missing += 1
+                # One point per extremity that has no matched kerb node
+                # at all — located at the way's endpoint (the "expected"
+                # kerb position), since there's no real kerb to point to.
+                for pt, tp in ((p1, tp1), (p2, tp2)):
+                    if tp is None:
+                        n_kerb_missing_points += 1
+                        kerb_issue_rows.append({
+                            "geometry":        pt,
+                            "type":            "kerb_missing",
+                            "crossing_osm_id": int(node_row["osm_id"]),
+                            "way_osm_id":       _safe_id(way_row.get("@id")),
+                            "kerb_osm_id":      0,
+                        })
                 continue
             elif reason == "kerb_untagged":
                 n_kerb_untagged += 1
+                # One point per extremity whose matched kerb node has no
+                # tactile_paving value at all.
+                for pt, tp, kid in ((p1, tp1, kerb1_id), (p2, tp2, kerb2_id)):
+                    if tp == "":
+                        n_kerb_untagged_points += 1
+                        kerb_issue_rows.append({
+                            "geometry":        pt,
+                            "type":            "kerb_untagged",
+                            "crossing_osm_id": int(node_row["osm_id"]),
+                            "way_osm_id":       _safe_id(way_row.get("@id")),
+                            "kerb_osm_id":      kid,
+                        })
                 continue
             elif reason == "value_mismatch":
                 n_value_mismatch += 1
@@ -466,14 +516,23 @@ def detect_tactile_paving_issues(
             out_gdf = _empty_gdf()
         out_gdf.to_file("tactile_paving_issues.geojson", driver="GeoJSON")
 
+    with step("write kerb_issues.geojson"):
+        if kerb_issue_rows:
+            kerb_out_gdf = gpd.GeoDataFrame(kerb_issue_rows, crs="EPSG:31370").to_crs("EPSG:4326")
+        else:
+            kerb_out_gdf = _empty_kerb_issues_gdf()
+        kerb_out_gdf.to_file("kerb_issues.geojson", driver="GeoJSON")
+
     n_total = len(crossing_gdf)
     n_flagged = len(rows)
     print(f"  Crossings in scope (yes/no/incorrect):     {n_total}")
     print(f"  Skipped — no footway=crossing way found:   {n_no_way}")
     print(f"  Skipped — ambiguous way match (≥2 ways):   {n_ambiguous_way}")
     print(f"  Coherent (not flagged):                    {n_ok}")
-    print(f"  Skipped — kerb missing at an extremity:    {n_kerb_missing} (data gap, out of scope)")
-    print(f"  Skipped — kerb without tactile_paving:     {n_kerb_untagged} (data gap, out of scope)")
+    print(f"  Skipped — kerb missing at an extremity:    {n_kerb_missing} (data gap, not flagged — see kerb_issues.geojson)")
+    print(f"  Skipped — kerb without tactile_paving:     {n_kerb_untagged} (data gap, not flagged — see kerb_issues.geojson)")
+    print(f"  Kerb-issue points — kerb absent:            {n_kerb_missing_points}")
+    print(f"  Kerb-issue points — kerb sans tactile_paving:{n_kerb_untagged_points}")
     print(f"  Flagged — kerb value mismatch:              {n_value_mismatch}")
     print(f"  Flagged — incorrect not a yes/no pair:       {n_incorrect_mixed}")
     print(f"  Total flagged:                              {n_flagged}")
@@ -485,6 +544,8 @@ def detect_tactile_paving_issues(
         "coherent":                 n_ok,
         "kerb_missing":             n_kerb_missing,
         "kerb_untagged":            n_kerb_untagged,
+        "kerb_missing_points":      n_kerb_missing_points,
+        "kerb_untagged_points":     n_kerb_untagged_points,
         "value_mismatch":           n_value_mismatch,
         "incorrect_not_mixed":      n_incorrect_mixed,
         "flagged":                  n_flagged,
@@ -502,3 +563,15 @@ def _empty_gdf() -> gpd.GeoDataFrame:
 
 def _write_empty_output() -> None:
     _empty_gdf().to_file("tactile_paving_issues.geojson", driver="GeoJSON")
+
+
+def _empty_kerb_issues_gdf() -> gpd.GeoDataFrame:
+    return gpd.GeoDataFrame(
+        [{"geometry": None, "type": "", "crossing_osm_id": 0,
+          "way_osm_id": 0, "kerb_osm_id": 0}],
+        crs="EPSG:4326",
+    )
+
+
+def _write_empty_kerb_issues_output() -> None:
+    _empty_kerb_issues_gdf().to_file("kerb_issues.geojson", driver="GeoJSON")
