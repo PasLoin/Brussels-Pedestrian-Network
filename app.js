@@ -831,6 +831,8 @@ const CLICK_LAYERS = [
         }</span></div>
         ${cid > 0 ? `<div class="popup-row"><span class="label">Crossing</span><span class="value">
           <a href="https://www.openstreetmap.org/node/${cid}" target="_blank" rel="noopener">n${cid}</a>
+          · <a href="http://127.0.0.1:8111/load_object?objects=n${cid}" target="_blank" rel="noopener">JOSM</a>
+          · <a href="https://www.openstreetmap.org/edit?node=${cid}" target="_blank" rel="noopener">iD</a>
         </span></div>` : ""}
         ${!isMissing && kid > 0 ? `<div class="popup-row"><span class="label">Kerb</span><span class="value">
           <a href="https://www.openstreetmap.org/node/${kid}" target="_blank" rel="noopener">n${kid}</a>
@@ -839,6 +841,7 @@ const CLICK_LAYERS = [
         </span></div>` : ""}
         ${wid > 0 ? `<div class="popup-row"><span class="label">Way crossing</span><span class="value">
           <a href="https://www.openstreetmap.org/way/${wid}" target="_blank" rel="noopener">w${wid}</a>
+          · <a href="http://127.0.0.1:8111/load_object?objects=w${wid}" target="_blank" rel="noopener">JOSM</a>
         </span></div>` : ""}
       `;
     }
