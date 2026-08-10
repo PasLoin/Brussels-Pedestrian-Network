@@ -277,6 +277,7 @@ jobs:
             footway_crossing_candidates.geojson
             kerbs_raw.geojson
             tactile_paving_issues.geojson
+            kerb_issues.geojson
             highways.geojson
             addresses.geojson
             stats.json
@@ -320,7 +321,8 @@ jobs:
             --no-tile-size-limit \
             --no-feature-limit \
             --named-layer=missing_crossings:missing_crossings.geojson \
-            --named-layer=tactile_paving_issues:tactile_paving_issues.geojson
+            --named-layer=tactile_paving_issues:tactile_paving_issues.geojson \
+            --named-layer=kerb_issues:kerb_issues.geojson
 
       - name: Merge into single PMTiles archive
         run: |
