@@ -87,32 +87,21 @@ search (also tightened to 0.5 m for the same reason): kerb nodes are
 standalone points, so there's no line/vertex distinction to exploit
 there, and a genuinely shared node sits at ~0 m regardless.
 
-Some footway=crossing ways only span HALF the physical crossing —
-kerb → crossing node — instead of continuing to a second kerb on the
-far side. Confirmed on real production data (way 875635271: exactly two
-vertices, ``[kerb_node_coords, crossing_node_coords]``, both an EXACT
-match — no unsplit approach path, no distance/tolerance issue, two
-earlier hypotheses about this were tried and were both wrong). When
-this happens, one of the way's own endpoints (``coords[0]`` or
-``coords[-1]``) IS the crossing node's own position, not a kerb — of
-course no kerb is found there, that's mathematically what "the crossing
-node's own coordinates" means. Searching for one and calling it
-"missing" was the actual bug, confirmed against ~1000 real cases in
-production (see ``half_mapped_sides`` in stats).
+Some footway=crossing ways only span HALF the physical crossing — kerb
+→ crossing node — instead of continuing to a second kerb on the far
+side. When this happens, one of the way's own endpoints (``coords[0]``
+or ``coords[-1]``) IS the crossing node's own position, not a kerb, so
+searching for one there and calling it "missing" would be wrong.
 
 Guarded against with a check that's purely internal to the matched
 way's own two endpoints and the crossing node — no cross-referencing
-against other ways, unlike an earlier, WRONG, and much more damaging
-attempt (an "is this endpoint shared with some OTHER way" heuristic
-that broke ~69% of all crossings, since a kerb shared with its attached
-sidewalk is the NORMAL case, not a signal of anything — see git history
-if curious, not repeating that mistake here): if ``coords[0]`` or
-``coords[-1]`` sits within ``TACTILE_PAVING_WAY_MATCH_M`` of the
-crossing node itself, that endpoint is excluded from the kerb search
-and only the OTHER endpoint is checked. ``incorrect`` can't be evaluated
-from a single side, since it specifically describes a yes/no PAIR, so a
-half-mapped ``incorrect`` crossing is skipped entirely rather than
-guessed (see ``half_mapped_incorrect_skipped``).
+against other ways: if ``coords[0]`` or ``coords[-1]`` sits within
+``TACTILE_PAVING_WAY_MATCH_M`` of the crossing node itself, that
+endpoint is excluded from the kerb search and only the OTHER endpoint
+is checked. ``incorrect`` can't be evaluated from a single side, since
+it specifically describes a yes/no PAIR, so a half-mapped ``incorrect``
+crossing is skipped entirely rather than guessed (see
+``half_mapped_incorrect_skipped``).
 
 Inputs
 ------
