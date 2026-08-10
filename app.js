@@ -790,6 +790,7 @@ const CLICK_LAYERS = [
     format: p => {
       const nid = parseInt(p.osm_id, 10) || 0;
       const wid = parseInt(p.way_osm_id, 10) || 0;
+      const sidesChecked = parseInt(p.sides_checked, 10) || 2;
       const reasonLabels = {
         value_mismatch:       "tactile_paving du kerb différent de celui du crossing",
         incorrect_not_mixed:  "incorrect attendu : un kerb yes + un kerb no",
@@ -798,7 +799,10 @@ const CLICK_LAYERS = [
         <div class="popup-title">🟣 Bande podotactile incohérente</div>
         <div class="popup-row"><span class="label">Crossing</span><span class="value">tactile_paving=${escapeHTML(p.crossing_tp || "?")}</span></div>
         <div class="popup-row"><span class="label">Kerb côté 1</span><span class="value">${escapeHTML(p.kerb1_tp) || "absent"}</span></div>
-        <div class="popup-row"><span class="label">Kerb côté 2</span><span class="value">${escapeHTML(p.kerb2_tp) || "absent"}</span></div>
+        ${sidesChecked === 2
+          ? `<div class="popup-row"><span class="label">Kerb côté 2</span><span class="value">${escapeHTML(p.kerb2_tp) || "absent"}</span></div>`
+          : `<div class="popup-row"><span class="label">Kerb côté 2</span><span class="value" style="opacity:.7">— traversée mappée à moitié, côté non vérifié</span></div>`
+        }
         <div class="popup-row"><span class="label">Problème</span><span class="value">${escapeHTML(reasonLabels[p.reason] || p.reason || "?")}</span></div>
         ${nid > 0 ? `<div class="popup-row"><span class="label">Nœud crossing</span><span class="value">
           <a href="https://www.openstreetmap.org/node/${nid}" target="_blank" rel="noopener">n${nid}</a>
