@@ -267,6 +267,7 @@ jobs:
             forced_cycleway.geojson
             street_scores.geojson
             sidewalk_gaps.geojson
+            sidewalk_separate_candidates.geojson
             sidewalk_roads.geojson
             sidewalk_roads_raw.geojson
             sidewalk_footways_raw.geojson
@@ -307,6 +308,7 @@ jobs:
             --named-layer=flow_edges:flow_edges.geojson \
             --named-layer=street_scores:street_scores.geojson \
             --named-layer=sidewalk_gaps:sidewalk_gaps.geojson \
+            --named-layer=sidewalk_separate_candidates:sidewalk_separate_candidates.geojson \
             --named-layer=sidewalk_roads:sidewalk_roads.geojson \
             --named-layer=footway_crossing_candidates:footway_crossing_candidates.geojson
 
