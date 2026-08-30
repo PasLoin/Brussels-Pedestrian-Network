@@ -278,14 +278,17 @@ def detect_sidewalk_gaps(
 
     # ── Check each road way ───────────────────────────────────────────────
     rows: list[dict] = []
+    candidate_rows: list[dict] = []
     n_roads = 0
     n_both = 0
     n_none = 0
     n_gap = 0
     n_skipped_no_sidewalk = 0
+    n_separate_candidates = 0
     gap_length_m = 0.0
     both_length_m = 0.0
     none_length_m = 0.0
+    separate_candidate_length_m = 0.0
 
     # ── Main analysis loop ────────────────────────────────────────────────
     # Likely-expensive: per-road offset_curve + buffer + STRtree.query
@@ -347,6 +350,13 @@ def detect_sidewalk_gaps(
             if has_left and has_right:
                 n_both += 1
                 both_length_m += road_length
+                if not sw and not sw_l and not sw_r and not sw_b:
+                    n_separate_candidates += 1
+                    separate_candidate_length_m += road_length
+                    candidate_rows.append({
+                        "geometry": geom,
+                        "name": _safe_str(road.get("name")) or "",
+                    })
             elif not has_left and not has_right:
                 n_none += 1
                 none_length_m += road_length
@@ -367,11 +377,25 @@ def detect_sidewalk_gaps(
             gdf = gpd.GeoDataFrame([fb], crs="EPSG:4326")
         gdf.to_file("sidewalk_gaps.geojson", driver="GeoJSON")
 
+    with step("write sidewalk_separate_candidates.geojson"):
+        fb_cand = {"geometry": None, "name": ""}
+        if candidate_rows:
+            candidates_gdf = gpd.GeoDataFrame(
+                candidate_rows, crs="EPSG:31370",
+            ).to_crs("EPSG:4326")
+        else:
+            candidates_gdf = gpd.GeoDataFrame([fb_cand], crs="EPSG:4326")
+        candidates_gdf.to_file(
+            "sidewalk_separate_candidates.geojson", driver="GeoJSON",
+        )
+
     print(f"  Roads analysed: {n_roads} | "
           f"Skipped (sidewalk=no on a side): {n_skipped_no_sidewalk}")
     print(f"  Both sides: {n_both} | One side (gap): {n_gap} | "
           f"Neither side: {n_none}")
     print(f"  Sidewalk gaps exported: {len(rows)}")
+    print(f"  sidewalk:both=separate candidates (no tag, both sides covered): "
+          f"{n_separate_candidates}")
 
     return {
         "roads_analysed": n_roads,
@@ -384,4 +408,8 @@ def detect_sidewalk_gaps(
         "neither_length_km": round(none_length_m / 1000, 2),
         "footway_segments_indexed": len(footway_geoms),
         "footway_filter": footway_filter_stats,
+        "separate_candidates": n_separate_candidates,
+        "separate_candidates_length_km": round(
+            separate_candidate_length_m / 1000, 2,
+        ),
     }
