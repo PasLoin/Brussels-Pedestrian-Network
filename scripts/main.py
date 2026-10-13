@@ -5,6 +5,7 @@ import time
 
 from config import (
     MAX_OD_DISTANCE_M,
+    MAX_SNAP_DISTANCE_M,
     MAX_OD_PAIRS,
     MIN_OD_DISTANCE_M,
     OD_SAMPLE_INTERVAL_M,
@@ -27,6 +28,7 @@ from export import (
     save_stats,
     undirected_edge_groups,
 )
+from detect_graph_islands import detect_graph_islands
 from sidewalk_gap import detect_sidewalk_gaps
 from export_sidewalk_roads import export_sidewalk_roads
 from detect_missing_crossings import detect_missing_crossings
@@ -82,6 +84,14 @@ def main() -> None:
         ),
     }
 
+    with step("detect_graph_islands"):
+        main_mask, island_stats = detect_graph_islands(
+            gb.graph, edge_groups,
+            gb.edge_tuples, gb.edge_geoms, gb.edge_lengths,
+            gb.edge_highways, gb.edge_osm_ids,
+        )
+    graph_stats["components"] = island_stats
+
     network_stats = compute_network_stats(
         edge_groups,
         gb.edge_highways, gb.edge_lengths,
@@ -92,12 +102,22 @@ def main() -> None:
         od_points, od_streets, od_sides, addr_gdf = sample_od_points("addresses.geojson")
 
     with step("snap_to_graph"):
-        snapped = snap_to_graph(
+        snapped, snap_stats = snap_to_graph(
             od_points, gb.node_list, gb.nodes_gdf,
             gb.edge_tuples, gb.edge_geoms,
+            vertex_mask=main_mask,
+            max_snap_m=MAX_SNAP_DISTANCE_M,
         )
 
+    keep = [i for i, s in enumerate(snapped) if s >= 0]
+    if len(keep) < len(snapped):
+        od_points = [od_points[i] for i in keep]
+        od_streets = [od_streets[i] for i in keep]
+        od_sides = [od_sides[i] for i in keep]
+        snapped = [snapped[i] for i in keep]
+
     od_sampling_stats = {
+        **snap_stats,
         "streets_sampled": len(set(od_streets)),
         "points_even": sum(1 for s in od_sides if s == "even"),
         "points_odd": sum(1 for s in od_sides if s == "odd"),
