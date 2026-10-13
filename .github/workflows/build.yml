@@ -20,7 +20,6 @@ on:
       - "style.json"
   workflow_dispatch:
 
-# ─── Highway type filters ────────────────────────────────────────────────────
 env:
   HIGHWAY_TYPES_PED: >-
     w/highway=footway
@@ -80,6 +79,8 @@ env:
   MIN_FLOW_THRESHOLD: 5
   POINTS_PER_SIDE: 5
   OD_SAMPLE_INTERVAL_M: 100
+  MAX_SNAP_DISTANCE_M: 150
+  ISLAND_UNJOINED_GAP_M: 2
 
   WALK_SCORE_RADIUS_M: 1000
   SIDEWALK_PENALTY_NONE: 0.3
@@ -136,8 +137,6 @@ jobs:
 
       - name: Export pedestrian GeoJSON
         run: |
-          # --attributes=type,id adds @type/@id properties so flagged
-          # crossing nodes can be traced back to the exact OSM object.
           osmium export highways_ped.osm.pbf \
             --geometry-types=linestring,point \
             --attributes=type,id \
@@ -200,10 +199,6 @@ jobs:
           osmium tags-filter brussels.osm.pbf \
             w/highway=footway w/highway=pedestrian \
             -o footways_sidewalk.osm.pbf --overwrite
-          # --attributes=type,id adds @id so footway=crossing ways can be
-          # traced back to OSM (used by detect_tactile_paving_issues.py
-          # and, as a side benefit, fixes osm_id in footway_crossing_candidates
-          # which previously always fell back to 0 without it).
           osmium export footways_sidewalk.osm.pbf \
             --geometry-types=linestring \
             --attributes=type,id \
@@ -280,19 +275,12 @@ jobs:
             tactile_paving_issues.geojson
             kerb_issues.geojson
             highways.geojson
+            graph_islands.geojson
             addresses.geojson
             stats.json
             graph.json
           retention-days: 30
           if-no-files-found: warn
-
-      # ── Build PMTiles in two passes ─────────────────────────────────────
-      # The main archive uses --drop-densest-as-needed which silently
-      # removes features at low zoom when a tile gets too dense.  For QA
-      # point layers (missing_crossings, tactile_paving_issues) we want
-      # EVERY point at EVERY zoom ≥ MIN_ZOOM with no exceptions.  Build
-      # them separately, then merge with tile-join — the points then
-      # survive any density pressure from the other layers.
 
       - name: Build main PMTiles (without QA point layers)
         run: |
@@ -310,7 +298,8 @@ jobs:
             --named-layer=sidewalk_gaps:sidewalk_gaps.geojson \
             --named-layer=sidewalk_separate_candidates:sidewalk_separate_candidates.geojson \
             --named-layer=sidewalk_roads:sidewalk_roads.geojson \
-            --named-layer=footway_crossing_candidates:footway_crossing_candidates.geojson
+            --named-layer=footway_crossing_candidates:footway_crossing_candidates.geojson \
+            --named-layer=graph_islands:graph_islands.geojson
 
       - name: Build QA point layers PMTiles (preserve every point)
         run: |
@@ -340,12 +329,6 @@ jobs:
       - name: Add build timestamp to state.txt
         run: echo "build_timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> state.txt
 
-      # ── Ensure history.json is present ──────────────────────────────────
-      # history.json is the canonical historical dataset, normally committed
-      # to `main` by "Compute History" but may also be present/updated on
-      # other branches (e.g. when testing from a feature branch).  We use
-      # whatever is in this checkout, falling back to an empty placeholder
-      # only if the file is missing or invalid.
       - name: Ensure history.json is present
         run: |
           if [[ -f history.json ]] && jq empty history.json 2>/dev/null; then
@@ -355,21 +338,12 @@ jobs:
             echo '[]' > history.json
           fi
 
-      # ── Keep sitemap.xml lastmod dates fresh ─────────────────────────────
-      # All pages are effectively regenerated on every run (new PMTiles,
-      # stats.json, history.json), so a single build-date lastmod accurately
-      # reflects "data available at this URL was last updated on this date".
-      # Only the deployed gh-pages copy is touched — sitemap.xml on `main`
-      # keeps its original dates.
       - name: Update sitemap lastmod dates
         run: |
           TODAY=$(date -u +%Y-%m-%d)
           sed -i "s#<lastmod>[0-9-]*</lastmod>#<lastmod>${TODAY}</lastmod>#g" sitemap.xml
           echo "sitemap.xml lastmod set to ${TODAY}"
 
-      # ── Prepare the site directory ──────────────────────────────────────
-      # Copies all static front-end files plus the freshly-built PMTiles
-      # and history.json (sourced from the current checkout, see step above).
       - name: Prepare site
         run: |
           mv pedestrian.pmtiles pedestrian.pmtiles.gz
