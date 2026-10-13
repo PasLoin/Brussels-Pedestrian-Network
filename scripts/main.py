@@ -1,38 +1,11 @@
 #!/usr/bin/env python3
-"""
-Brussels Pedestrian Network — routing pipeline.
-
-Orchestrates the full pipeline:
-
-1. **clean_osm** — Sanitise the OSM XML (split ways at blocked barriers,
-   remove dangling references).
-2. **build_graph** — Load the cleaned data into an OSMnx graph, project
-   to Belgian Lambert 72, then convert to a weighted igraph.
-3. **sample_od** — Sample origin-destination points from OSM address
-   nodes and snap them to the nearest graph vertices.
-4. **routing** — Generate random OD pairs with distance constraints and
-   compute shortest paths.  Accumulate per-edge flow counts and
-   per-street walkability metrics.
-5. **export** — Write GeoJSON layers (flow, forced segments, walkability
-   scores) and a compact JSON graph for client-side navigation.
-
-All tunable parameters are read from environment variables — see
-``config.py`` for the full list and their defaults.
-
-Each major step is wrapped in :func:`timing.step` so the bottleneck is
-visible in a single line at the end of the run.
-
-Usage (from the repository root)::
-
-    python3 scripts/main.py
-"""
-
 from __future__ import annotations
 
 import time
 
 from config import (
     MAX_OD_DISTANCE_M,
+    MAX_SNAP_DISTANCE_M,
     MAX_OD_PAIRS,
     MIN_OD_DISTANCE_M,
     OD_SAMPLE_INTERVAL_M,
@@ -53,7 +26,9 @@ from export import (
     export_routing_graph,
     export_walkability_scores,
     save_stats,
+    undirected_edge_groups,
 )
+from detect_graph_islands import detect_graph_islands
 from sidewalk_gap import detect_sidewalk_gaps
 from export_sidewalk_roads import export_sidewalk_roads
 from detect_missing_crossings import detect_missing_crossings
@@ -65,7 +40,6 @@ from timing import step, print_summary
 def main() -> None:
     t0 = time.time()
 
-    # Log active configuration
     print(f"Config: MIN_DIST={MIN_OD_DISTANCE_M}m "
           f"MAX_DIST={MAX_OD_DISTANCE_M}m "
           f"MAX_PAIRS={MAX_OD_PAIRS} "
@@ -77,83 +51,98 @@ def main() -> None:
           f"partial={SIDEWALK_PENALTY_PARTIAL} "
           f"unknown={SIDEWALK_PENALTY_UNKNOWN}")
 
-    # ── Step 1: Clean OSM XML ─────────────────────────────────────────────
     with step("clean_osm"):
         clean_osm("routing_raw.osm", "routing_clean.osm")
 
-    # ── Step 2–3: Build graph ─────────────────────────────────────────────
     with step("build_graph"):
         gb = build_graph("routing_clean.osm")
 
+    with step("undirected_edge_groups"):
+        edge_groups = undirected_edge_groups(
+            gb.edge_tuples, gb.edge_geoms, gb.edge_lengths,
+        )
+    print(f"  Physical segments: {len(edge_groups)} "
+          f"(directed edges: {gb.graph.ecount()})")
+
     graph_stats = {
         "nodes": gb.graph.vcount(),
-        "edges": gb.graph.ecount(),
+        "edges": len(edge_groups),
+        "directed_edges": gb.graph.ecount(),
         "cycleways_foot_yes": sum(
-            1 for h, c in zip(gb.edge_highways, gb.edge_cycleway_nf)
-            if h == "cycleway" and not c
+            1 for eids in edge_groups
+            if gb.edge_highways[eids[0]] == "cycleway"
+            and not gb.edge_cycleway_nf[eids[0]]
         ),
         "cycleways_no_foot": sum(
-            1 for h, c in zip(gb.edge_highways, gb.edge_cycleway_nf)
-            if h == "cycleway" and c
+            1 for eids in edge_groups
+            if gb.edge_highways[eids[0]] == "cycleway"
+            and gb.edge_cycleway_nf[eids[0]]
         ),
-        # The index now contains EVERY street with road edges (untagged
-        # included, for the length-weighted penalty), so count only
-        # those actually carrying at least one sidewalk tag.
         "streets_with_sidewalk_tags": sum(
             1 for info in gb.street_sidewalk_status.values()
             if info.doc_share > 0
         ),
     }
 
+    with step("detect_graph_islands"):
+        main_mask, island_stats = detect_graph_islands(
+            gb.graph, edge_groups,
+            gb.edge_tuples, gb.edge_geoms, gb.edge_lengths,
+            gb.edge_highways, gb.edge_osm_ids,
+        )
+    graph_stats["components"] = island_stats
+
     network_stats = compute_network_stats(
+        edge_groups,
         gb.edge_highways, gb.edge_lengths,
         gb.edge_cycleway_nf, gb.edge_foot_tags,
     )
 
-    # ── Step 4: Sample OD points ──────────────────────────────────────────
     with step("sample_od_points"):
         od_points, od_streets, od_sides, addr_gdf = sample_od_points("addresses.geojson")
 
-    # ── Step 5: Snap OD points to graph ───────────────────────────────────
     with step("snap_to_graph"):
-        snapped = snap_to_graph(
+        snapped, snap_stats = snap_to_graph(
             od_points, gb.node_list, gb.nodes_gdf,
             gb.edge_tuples, gb.edge_geoms,
+            vertex_mask=main_mask,
+            max_snap_m=MAX_SNAP_DISTANCE_M,
         )
 
-    n_streets_both = len(set(
-        s for s, side in zip(od_streets, od_sides)
-    ))
+    keep = [i for i, s in enumerate(snapped) if s >= 0]
+    if len(keep) < len(snapped):
+        od_points = [od_points[i] for i in keep]
+        od_streets = [od_streets[i] for i in keep]
+        od_sides = [od_sides[i] for i in keep]
+        snapped = [snapped[i] for i in keep]
+
     od_sampling_stats = {
-        "streets_sampled": n_streets_both,
+        **snap_stats,
+        "streets_sampled": len(set(od_streets)),
         "points_even": sum(1 for s in od_sides if s == "even"),
         "points_odd": sum(1 for s in od_sides if s == "odd"),
     }
 
-    # ── Step 6: Generate OD pairs ─────────────────────────────────────────
     with step("generate_od_pairs"):
         od_pairs, rejected_near, rejected_far = generate_od_pairs(
             od_points, snapped, od_streets,
         )
 
-    # ── Step 7: Route ─────────────────────────────────────────────────────
     with step("route_pairs"):
         result = route_pairs(
             gb.graph, od_pairs,
             gb.edge_lengths, gb.edge_highways, gb.edge_cycleway_nf,
         )
 
-    # ── Step 8a: Export flow layers ───────────────────────────────────────
     with step("export_flow_layers"):
         flow_stats = export_flow_layers(
             result.flow_arr,
+            edge_groups,
             gb.edge_highways, gb.edge_geoms,
             gb.edge_lengths, gb.edge_cycleway_nf,
             gb.edge_foot_tags,
-            gb.graph.ecount(),
         )
 
-    # ── Step 8b: Walkability scores ───────────────────────────────────────
     with step("export_walkability_scores"):
         walkability_stats = export_walkability_scores(
             result.street_ped_m, result.street_cyc_nf_m, result.street_total_m,
@@ -163,18 +152,15 @@ def main() -> None:
             gb.edge_surfaces, gb.edge_lits,
         )
 
-    # ── Step 8c: Sidewalk gap detection ───────────────────────────────────
     with step("detect_sidewalk_gaps"):
         sidewalk_gap_stats = detect_sidewalk_gaps(
             "sidewalk_roads_raw.geojson",
             "sidewalk_footways_raw.geojson",
         )
 
-    # ── Step 8d: Sidewalk tag status on roads ─────────────────────────────
     with step("export_sidewalk_roads"):
         sidewalk_road_stats = export_sidewalk_roads("sidewalk_roads_raw.geojson")
 
-    # ── Step 8e: Missing crossing way detection ───────────────────────────
     with step("detect_missing_crossings"):
         missing_crossing_stats = detect_missing_crossings(
             "highways.geojson",
@@ -182,20 +168,12 @@ def main() -> None:
             "sidewalk_roads_raw.geojson",
         )
 
-    # ── Step 8f: Footway/sidewalk connectivity crossing candidates ────────
-    # Independent, lower-confidence complement to detect_missing_crossings:
-    # way-centric, doesn't rely on a reference-road bearing, so it catches
-    # diagonal crossings the node-based analysis silently drops.
     with step("detect_footway_connectivity_candidates"):
         footway_connectivity_stats = detect_footway_connectivity_candidates(
             "sidewalk_footways_raw.geojson",
             "sidewalk_roads_raw.geojson",
         )
 
-    # ── Step 8g: Tactile paving coherence (crossing ↔ kerb) ────────────────
-    # Flags highway=crossing nodes whose tactile_paving tag disagrees with
-    # the tactile_paving tags on the barrier=kerb nodes at each end of the
-    # attached footway=crossing way. See detect_tactile_paving_issues.py.
     with step("detect_tactile_paving_issues"):
         tactile_paving_stats = detect_tactile_paving_issues(
             "highways.geojson",
@@ -203,7 +181,6 @@ def main() -> None:
             "kerbs_raw.geojson",
         )
 
-    # ── Save stats ────────────────────────────────────────────────────────
     save_stats(
         routed=result.routed,
         total_routed_distance=result.total_routed_distance,
@@ -224,7 +201,6 @@ def main() -> None:
         od_sampling_stats=od_sampling_stats,
     )
 
-    # ── Step 9: Client-side routing graph ─────────────────────────────────
     with step("export_routing_graph"):
         export_routing_graph(
             gb.node_list, gb.nodes_gdf,

@@ -1,7 +1,3 @@
-// ══════════════════════════════════════════════════════════════════════════════
-//  PANEL TOGGLES
-// ══════════════════════════════════════════════════════════════════════════════
-
 function toggleHeader() {
   const el = document.getElementById("header");
   const isOpen = el.classList.toggle("open");
@@ -16,7 +12,6 @@ function toggleLegend() {
   document.getElementById("legend-toggle").setAttribute("aria-expanded", isOpen);
 }
 
-// Auto-close panels on narrow screens
 (function () {
   if (window.innerWidth <= 600) {
     const legend = document.getElementById("legend");
@@ -31,7 +26,6 @@ function toggleLegend() {
   }
 })();
 
-// ── Security: HTML Sanitization ─────────────────────────────────────────────
 function escapeHTML(str) {
   if (!str) return str;
   return String(str)
@@ -41,10 +35,6 @@ function escapeHTML(str) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
-
-// ══════════════════════════════════════════════════════════════════════════════
-//  FLOW THRESHOLD FILTER
-// ══════════════════════════════════════════════════════════════════════════════
 
 function updateFlowFilter(rawValue) {
   const minPct = parseInt(rawValue, 10);
@@ -56,10 +46,6 @@ function updateFlowFilter(rawValue) {
     : baseFilter;
   try { mapRef.setFilter("flow-road", filter); } catch (_) { }
 }
-
-// ══════════════════════════════════════════════════════════════════════════════
-//  SIDEWALK STATUS FILTER
-// ══════════════════════════════════════════════════════════════════════════════
 
 const SIDEWALK_STATUSES = [
   { value: "separate",   label: "separate",          color: "#22c55e" },
@@ -83,10 +69,6 @@ function updateSidewalkFilter() {
   try { mapRef.setFilter("sidewalk-roads", filter); } catch (_) { }
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-//  MISSING CROSSINGS TYPE FILTER
-// ══════════════════════════════════════════════════════════════════════════════
-
 const MISSING_CROSSING_TYPES = [
   { value: "missing_way", label: "Way non mappé",               color: "#f97316" },
   { value: "missing_tag", label: "Tag footway=crossing absent",  color: "#eab308" },
@@ -106,14 +88,6 @@ function updateMissingCrossingsFilter() {
   try { mapRef.setFilter("missing-crossings", filter); } catch (_) { }
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-//  KERB ISSUES TYPE FILTER
-// ══════════════════════════════════════════════════════════════════════════════
-// Complément "data gap" de tactile-paving-issues : extrémités de
-// footway=crossing sans kerb matché (kerb_missing) ou avec un kerb
-// matché mais sans tactile_paving (kerb_untagged). Voir
-// scripts/detect_tactile_paving_issues.py.
-
 const KERB_ISSUE_TYPES = [
   { value: "kerb_missing",  label: "Kerb absent",             color: "#1e3a8a" },
   { value: "kerb_untagged", label: "Kerb sans tactile_paving", color: "#7c2d12" },
@@ -132,10 +106,6 @@ function updateKerbIssuesFilter() {
   }
   try { mapRef.setFilter("kerb-issues", filter); } catch (_) { }
 }
-
-// ══════════════════════════════════════════════════════════════════════════════
-//  CLIENT-SIDE DIJKSTRA ROUTING
-// ══════════════════════════════════════════════════════════════════════════════
 
 class MinHeap {
   constructor() { this.d = []; }
@@ -166,9 +136,52 @@ class MinHeap {
   }
 }
 
+const ISLAND_TYPES = [
+  { value: "unjoined", label: "Jonction manquante (≤ 2 m)", color: "#db2777" },
+  { value: "isolated", label: "Îlot isolé",                 color: "#0d9488" },
+];
+const activeIslandTypes = new Set(ISLAND_TYPES.map(t => t.value));
+
+function updateIslandsFilter() {
+  if (!mapRef) return;
+  let filter;
+  if (activeIslandTypes.size === 0) {
+    filter = ["==", ["get", "type"], "__none__"];
+  } else if (activeIslandTypes.size === ISLAND_TYPES.length) {
+    filter = null;
+  } else {
+    filter = ["in", ["get", "type"], ["literal", [...activeIslandTypes]]];
+  }
+  try { mapRef.setFilter("graph-islands", filter); } catch (_) { }
+}
+
 let graphData = null;
 let adjList   = null;
+let mainComponent = null;
 let graphReady = false;
+
+function computeMainComponent(nNodes, edges) {
+  const parent = new Int32Array(nNodes);
+  for (let i = 0; i < nNodes; i++) parent[i] = i;
+  const find = (x) => {
+    while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; }
+    return x;
+  };
+  for (const e of edges) {
+    const a = find(e[0]), b = find(e[1]);
+    if (a !== b) parent[a] = b;
+  }
+  const size = new Int32Array(nNodes);
+  let bestRoot = 0;
+  for (let i = 0; i < nNodes; i++) {
+    const r = find(i);
+    size[r]++;
+    if (size[r] > size[bestRoot]) bestRoot = r;
+  }
+  const mask = new Uint8Array(nNodes);
+  for (let i = 0; i < nNodes; i++) if (find(i) === bestRoot) mask[i] = 1;
+  return mask;
+}
 
 fetch("./graph.json")
   .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
@@ -178,6 +191,7 @@ fetch("./graph.json")
     adjList = new Array(nNodes);
     for (let i = 0; i < nNodes; i++) adjList[i] = [];
     data.e.forEach((e, idx) => { adjList[e[0]].push([e[1], idx]); });
+    mainComponent = computeMainComponent(nNodes, data.e);
     graphReady = true;
     const btn = document.getElementById("nav-btn");
     btn.classList.remove("loading");
@@ -196,6 +210,7 @@ function nearestNode(lat, lng) {
   const nodes = graphData.n;
   let minD = Infinity, minI = 0;
   for (let i = 0; i < nodes.length; i++) {
+    if (mainComponent && !mainComponent[i]) continue;
     const dlat = nodes[i][0] - lat, dlng = nodes[i][1] - lng;
     const d = dlat * dlat + dlng * dlng;
     if (d < minD) { minD = d; minI = i; }
@@ -352,10 +367,6 @@ function handleNavClick(e) {
     handleNavClick(e);
   }
 }
-
-// ══════════════════════════════════════════════════════════════════════════════
-//  MAP INITIALISATION
-// ══════════════════════════════════════════════════════════════════════════════
 
 fetch("./state.txt")
   .then(r => r.text())
@@ -574,10 +585,6 @@ const PEDESTRIAN_LAYERS = [
     }
   },
   {
-    // Visible from zoom 12.
-    // Two sub-types distinguished by color:
-    //   missing_way (#f97316 orange) — no footway connected at all
-    //   missing_tag (#eab308 yellow) — footway present but lacks footway=crossing tag
     id: "missing-crossings", type: "circle", source: "pedestrian",
     "source-layer": "missing_crossings",
     minzoom: 12,
@@ -595,12 +602,6 @@ const PEDESTRIAN_LAYERS = [
     }
   },
   {
-    // Heuristic, lower-confidence complement to missing-crossings:
-    // footways that connect a sidewalk on both sides across a road but
-    // aren't tagged footway=crossing, found by way-topology rather than
-    // by searching near a highway=crossing node. Styled distinctly
-    // (dark red, dotted) to stand out while signaling "to verify"
-    // rather than "confirmed".
     id: "footway-crossing-candidates", type: "line", source: "pedestrian",
     "source-layer": "footway_crossing_candidates",
     minzoom: 13, layout: { "line-cap": "round", "line-join": "round", visibility: "none" },
@@ -612,10 +613,6 @@ const PEDESTRIAN_LAYERS = [
     }
   },
   {
-    // tactile_paving incohérent entre le nœud highway=crossing et les
-    // nœuds barrier=kerb aux deux extrémités du footway=crossing associé.
-    // Voir scripts/detect_tactile_paving_issues.py pour le détail des cas
-    // (kerb manquant, kerb non tagué, valeur qui ne correspond pas...).
     id: "tactile-paving-issues", type: "circle", source: "pedestrian",
     "source-layer": "tactile_paving_issues",
     minzoom: 13, layout: { visibility: "none" },
@@ -628,11 +625,20 @@ const PEDESTRIAN_LAYERS = [
     }
   },
   {
-    // Extrémités de footway=crossing sans kerb matché (kerb_missing) ou
-    // avec un kerb matché mais sans tactile_paving (kerb_untagged).
-    // Complément "data gap" de tactile-paving-issues, qui ne couvre que
-    // les vraies incohérences de valeur. Voir
-    // scripts/detect_tactile_paving_issues.py.
+    id: "graph-islands", type: "line", source: "pedestrian",
+    "source-layer": "graph_islands",
+    minzoom: 12, layout: { "line-cap": "round", "line-join": "round", visibility: "none" },
+    paint: {
+      "line-color": ["match", ["get", "type"],
+        "unjoined", "#db2777",
+        "isolated", "#0d9488",
+        "#0d9488"
+      ],
+      "line-width": ["interpolate", ["linear"], ["zoom"], 12, 3, 16, 7, 18, 10],
+      "line-opacity": 0.9
+    }
+  },
+  {
     id: "kerb-issues", type: "circle", source: "pedestrian",
     "source-layer": "kerb_issues",
     minzoom: 13, layout: { visibility: "none" },
@@ -650,7 +656,6 @@ const PEDESTRIAN_LAYERS = [
   },
 ];
 
-// ── Hover popup config ───────────────────────────────────────────────────────
 const HOVER_LAYERS = [
   {
     ids: ["sidewalk-gaps"],
@@ -703,13 +708,8 @@ const HOVER_LAYERS = [
         unknown: "❓ Non renseigné",
         not_required: "— Non requis (voie piétonne)"
       };
-      // sidewalk_doc_pct: share of road length carrying a sidewalk tag
-      // (-1 / absent on pedestrian-only streets and older builds).
       const docPct = (typeof p.sidewalk_doc_pct === "number" && p.sidewalk_doc_pct >= 0)
         ? p.sidewalk_doc_pct : null;
-      // ped_infra_m: mapped pedestrian infra within infra_radius of the
-      // street — human-scale, unlike the old trip-accumulated meters
-      // ("360 000 m" for one street) which confused everyone.
       const radius = p.infra_radius || 500;
       const hasInfra = typeof p.ped_infra_m === "number";
       return `
@@ -739,10 +739,6 @@ const HOVER_LAYERS = [
   },
 ];
 
-// ── Click popup config (persistant — couches avec liens cliquables) ──────────
-// Contrairement aux hover popups qui se ferment dès que la souris quitte la
-// feature, ces popups restent ouverts jusqu'à un clic ailleurs ou le bouton ✕.
-// C'est indispensable pour les liens OSM / JOSM / iD dans le contenu.
 const CLICK_LAYERS = [
   {
     ids: ["missing-crossings"],
@@ -817,6 +813,44 @@ const CLICK_LAYERS = [
     }
   },
   {
+    ids: ["graph-islands"],
+    format: p => {
+      const isUnjoined = p.type === "unjoined";
+      const ways = String(p.way_ids || "").split(",").map(w => parseInt(w, 10)).filter(w => w > 0);
+      const gap = (typeof p.gap_m === "number" && p.gap_m >= 0) ? p.gap_m : null;
+      const pad = 0.0005;
+      const w = Number(p.bbox_w) - pad, s = Number(p.bbox_s) - pad;
+      const e = Number(p.bbox_e) + pad, n = Number(p.bbox_n) + pad;
+      const hasBbox = [w, s, e, n].every(Number.isFinite);
+      const select = ways.length ? `&select=${ways.map(id => "w" + id).join(",")}` : "";
+      const josm = hasBbox
+        ? `http://127.0.0.1:8111/load_and_zoom?left=${w.toFixed(6)}&right=${e.toFixed(6)}&top=${n.toFixed(6)}&bottom=${s.toFixed(6)}${select}`
+        : null;
+      const idLink = ways.length
+        ? `https://www.openstreetmap.org/edit?way=${ways[0]}`
+        : (hasBbox ? `https://www.openstreetmap.org/edit#map=19/${((s + n) / 2).toFixed(6)}/${((w + e) / 2).toFixed(6)}` : null);
+      return `
+        <div class="popup-title">${isUnjoined ? "🩷 Jonction manquante" : "🟢 Îlot isolé du réseau"}</div>
+        <div class="popup-row"><span class="label">Problème</span><span class="value">${isUnjoined
+          ? "Touche presque le réseau principal mais ne partage aucun nœud avec lui"
+          : "Groupe de chemins sans aucune liaison avec le réseau principal"
+        }</span></div>
+        <div class="popup-row"><span class="label">Écart au réseau</span><span class="value">${gap !== null ? gap + " m" : "—"}</span></div>
+        <div class="popup-row"><span class="label">Longueur</span><span class="value">${Math.round(Number(p.length_m) || 0)} m</span></div>
+        <div class="popup-row"><span class="label">Types</span><span class="value">${escapeHTML(p.highways || "—")}</span></div>
+        <div class="popup-row"><span class="label">Ways</span><span class="value">${ways.length
+          ? ways.slice(0, 5).map(id => `<a href="https://www.openstreetmap.org/way/${id}" target="_blank" rel="noopener">w${id}</a>`).join(" ") + (ways.length > 5 ? ` +${ways.length - 5}` : "")
+          : "—"
+        }</span></div>
+        ${josm || idLink ? `<div class="popup-row"><span class="label">Éditer</span><span class="value">
+          ${josm ? `<a href="${josm}" target="_blank" rel="noopener">JOSM</a>` : ""}
+          ${josm && idLink ? " · " : ""}
+          ${idLink ? `<a href="${idLink}" target="_blank" rel="noopener">iD</a>` : ""}
+        </span></div>` : ""}
+      `;
+    }
+  },
+  {
     ids: ["kerb-issues"],
     format: p => {
       const isMissing = p.type === "kerb_missing";
@@ -848,7 +882,6 @@ const CLICK_LAYERS = [
   },
 ];
 
-// ── Load style & init ────────────────────────────────────────────────────────
 fetch("https://tiles.openfreemap.org/styles/liberty")
   .then(r => r.json())
   .then(libertyStyle => {
@@ -893,11 +926,6 @@ function initMap(style) {
     "bottom-right"
   );
 
-  // ── Keep the legend panel clear of the attribution control ─────────────
-  // The legend lives top-right, below the zoom badge; its bottom edge
-  // must never overlap the attribution bar. The attribution's rendered
-  // height isn't constant (narrow viewports wrap the text onto two
-  // lines), so we measure the actual gap instead of hard-coding it.
   const updateLegendClearance = () => {
     const attrEl = document.querySelector(".maplibregl-ctrl-bottom-right");
     if (!attrEl) return;
@@ -925,7 +953,6 @@ function initMap(style) {
     });
     map.on("click", handleNavClick);
 
-    // ── Légende ──────────────────────────────────────────────────────────
     const legendEl = document.getElementById("legend-content");
     const addSection = (txt) => {
       const s = document.createElement("div");
@@ -975,13 +1002,6 @@ function initMap(style) {
       return item;
     };
 
-    // ── Standalone toggle for one kerb-issue type ───────────────────────────
-    // Two independent legend dots (Kerb absent / Kerb sans tactile_paving)
-    // sharing a single MapLibre layer ("kerb-issues") filtered by the
-    // "type" property. No parent item, no select-all — each dot just adds
-    // or removes its own type from activeKerbIssueTypes and keeps the
-    // underlying layer's visibility in sync (visible as soon as at least
-    // one type is active).
     const makeKerbTypeItem = ({ type, label, color }) => {
       const item = document.createElement("div");
       item.className = "legend-item";
@@ -1019,8 +1039,6 @@ function initMap(style) {
       return item;
     };
 
-    // ── Helper to build a sub-filter block ────────────────────────────────
-    // Used for both the sidewalk-status and the missing-crossings sub-filters.
     const makeSubFilter = ({ items, activeSet, dataKey, updateFn, parentSub }) => {
       const header = document.createElement("div");
       header.className = "legend-sub-header";
@@ -1082,10 +1100,9 @@ function initMap(style) {
       });
 
       updateResetLabel();
-      return resetBtn;  // returned so caller can call updateResetLabel externally if needed
+      return resetBtn;
     };
 
-    // ── Sections ──────────────────────────────────────────────────────────
     addSection("Routage simulé");
     legendEl.appendChild(makeItem({ layerId: "flow-ped",      label: "Flux piéton",        color: "#bbf7d0", color2: "#14532d" }));
     legendEl.appendChild(makeItem({ layerId: "flow-cycleway",  label: "Flux cycleway",       color: "#bfdbfe", color2: "#3b0764" }));
@@ -1097,12 +1114,10 @@ function initMap(style) {
     legendEl.appendChild(makeItem({ layerId: "footway-crossing-candidates", label: "Candidat crossing (à vérifier)", color: "#7f1d1d", dashed: true }));
     legendEl.appendChild(makeItem({ layerId: "tactile-paving-issues", label: "Bande podotactile incohérente", color: "#a855f7", swatchType: "dot" }));
 
-    // ── Kerb issues (data gap) — two independent toggles, no parent ──────
     KERB_ISSUE_TYPES.forEach(t => {
       legendEl.appendChild(makeKerbTypeItem({ type: t.value, label: t.label, color: t.color }));
     });
 
-    // ── Traversée manquante + sub-filter ─────────────────────────────────
     const mcSub = document.createElement("div");
     mcSub.className = "legend-sub";
 
@@ -1130,7 +1145,33 @@ function initMap(style) {
     });
     legendEl.appendChild(mcSub);
 
-    // ── Tags sidewalk + sub-filter ────────────────────────────────────────
+    const islSub = document.createElement("div");
+    islSub.className = "legend-sub";
+
+    legendEl.appendChild(makeItem({
+      layerId: "graph-islands",
+      label: "Îlot déconnecté du réseau",
+      color: "#db2777",
+      color2: "#0d9488",
+      onToggle: (isVisible) => {
+        islSub.classList.toggle("parent-hidden", !isVisible);
+        if (isVisible) {
+          ISLAND_TYPES.forEach(t => activeIslandTypes.add(t.value));
+          islSub.querySelectorAll(".legend-sub-item").forEach(el => el.classList.remove("hidden"));
+          updateIslandsFilter();
+        }
+      }
+    }));
+
+    makeSubFilter({
+      items:     ISLAND_TYPES,
+      activeSet: activeIslandTypes,
+      dataKey:   "islandType",
+      updateFn:  updateIslandsFilter,
+      parentSub: islSub,
+    });
+    legendEl.appendChild(islSub);
+
     const swSub = document.createElement("div");
     swSub.className = "legend-sub";
 
@@ -1161,7 +1202,6 @@ function initMap(style) {
     addSection("Réseau de base");
     HIGHWAY_LAYERS.forEach(l => legendEl.appendChild(makeItem({ layerId: `highway-${l.id}`, label: l.label, color: l.color, dashed: l.dash })));
 
-    // ── Hover popups ──────────────────────────────────────────────────────
     const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, maxWidth: "280px" });
     const allHoverIds = HOVER_LAYERS.flatMap(h => h.ids);
 
@@ -1183,9 +1223,6 @@ function initMap(style) {
 
     map.on("mouseleave", allHoverIds, () => { popup.remove(); if (!navMode) map.getCanvas().style.cursor = ""; });
 
-    // ── Click popups (persistants — liens OSM/JOSM/iD cliquables) ─────────
-    // Un seul popup réutilisé ; un nouveau clic sur la même couche le déplace.
-    // Cliquer ailleurs sur la carte le ferme (closeOnClick: true par défaut).
     const clickPopup = new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: "300px" });
     const allClickIds = CLICK_LAYERS.flatMap(c => c.ids);
 
@@ -1198,7 +1235,6 @@ function initMap(style) {
       if (!visibleIds.length) return;
       const features = map.queryRenderedFeatures(e.point, { layers: visibleIds });
       if (!features.length) return;
-      // Empêcher le handler de navigation de s'exécuter aussi
       e.preventDefault && e.preventDefault();
       const f = features[0];
       const conf = CLICK_LAYERS.find(c => c.ids.includes(f.layer.id));
@@ -1207,7 +1243,6 @@ function initMap(style) {
       clickPopup.setLngLat(e.lngLat).setHTML(conf.format(f.properties)).addTo(map);
     });
 
-    // Curseur pointer au survol des couches click
     map.on("mousemove", (e) => {
       if (navMode) return;
       const visibleIds = allClickIds.filter(id => {

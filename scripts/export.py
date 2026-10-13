@@ -1,28 +1,8 @@
-"""
-Steps 8–9 — Export results to GeoJSON files and a client-side routing graph.
-
-This module produces:
-
-* **flow_edges.geojson** — every edge with its flow count and infra
-  type (pedestrian / cycleway_foot_yes / cycleway_no_foot / road),
-  plus ``highway`` tag for per-type styling in the frontend.
-* **forced_segments.geojson** — high-flow edges on *road* surfaces,
-  suggesting a missing pedestrian link.  Full properties kept for
-  artifact/stats purposes but NOT included in PMTiles.
-* **forced_cycleway.geojson** — high-flow edges on cycleways without
-  explicit pedestrian permission.  Same artifact-only policy.
-* **street_scores.geojson** — per-street walkability score (0–1) with
-  a sidewalk penalty applied.
-* **stats.json** — summary statistics for the run.
-* **graph.json** — compact routing graph for client-side Dijkstra
-  navigation in the browser.
-"""
-
 from __future__ import annotations
 
 import json
 import os
-from collections import Counter, defaultdict
+from collections import defaultdict
 
 import geopandas as gpd
 import numpy as np
@@ -46,12 +26,7 @@ from config import (
 from timing import step
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Helpers
-# ─────────────────────────────────────────────────────────────────────────────
-
 def _save_gdf(rows, fallback, crs_in, filename) -> int:
-    """Write a GeoDataFrame to GeoJSON, using *fallback* if rows is empty."""
     gdf = gpd.GeoDataFrame(
         rows if rows else [fallback], crs=crs_in,
     ).to_crs("EPSG:4326")
@@ -59,39 +34,79 @@ def _save_gdf(rows, fallback, crs_in, filename) -> int:
     return len(rows)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Flow edges + forced segments
-# ─────────────────────────────────────────────────────────────────────────────
+def undirected_edge_groups(
+    edge_tuples: list[tuple[int, int]],
+    edge_geoms: list,
+    edge_lengths: list[float],
+) -> list[list[int]]:
+    n = len(edge_tuples)
+    valid = np.zeros(n, dtype=bool)
+    geoms = np.empty(n, dtype=object)
+    for eid, geom in enumerate(edge_geoms):
+        if geom is not None and not geom.is_empty:
+            valid[eid] = True
+            geoms[eid] = geom
+
+    mid_x = np.full(n, np.nan)
+    mid_y = np.full(n, np.nan)
+    if valid.any():
+        mids = shapely.line_interpolate_point(
+            geoms[valid], 0.5, normalized=True,
+        )
+        mid_x[valid] = shapely.get_x(mids)
+        mid_y[valid] = shapely.get_y(mids)
+
+    groups: dict[tuple, list[int]] = {}
+    for eid, (u, v) in enumerate(edge_tuples):
+        if valid[eid]:
+            key = (
+                min(u, v), max(u, v),
+                round(float(edge_lengths[eid]), 1),
+                round(float(mid_x[eid]), 1),
+                round(float(mid_y[eid]), 1),
+            )
+        else:
+            key = (
+                min(u, v), max(u, v),
+                round(float(edge_lengths[eid]), 1),
+                None, None,
+            )
+        groups.setdefault(key, []).append(eid)
+    return list(groups.values())
+
+
+def _infra_type(hw: str, cycleway_nf: bool, foot: str) -> str:
+    if hw == "cycleway":
+        if foot in FOOT_ALLOWED or not cycleway_nf:
+            return "cycleway_foot_yes"
+        return "cycleway_no_foot"
+    if hw in PED_HIGHWAY_TYPES:
+        return "pedestrian"
+    return "road"
+
 
 def export_flow_layers(
     flow_arr: np.ndarray,
+    edge_groups: list[list[int]],
     edge_highways: list[str],
     edge_geoms: list,
     edge_lengths: list[float],
     edge_cycleway_nf: list[bool],
     edge_foot_tags: list[str],
-    n_edges: int,
 ) -> dict:
-    """Write flow_edges, forced_segments, and forced_cycleway GeoJSONs.
+    print("Building flow GeoJSONs (directions merged)...")
 
-    ``flow_edges`` now carries ``highway``, ``flow_pct``, and ``infra_type``
-    so the frontend can apply per-highway-type line-width without separate
-    forced layers in PMTiles.
-
-    ``forced_segments`` and ``forced_cycleway`` are still written as full
-    artifact outputs (with flow counts and length) but are no longer bundled
-    into the PMTiles tile archive.
-
-    Returns a dict of flow-layer statistics for stats.json.
-    """
-    print("Building flow GeoJSONs...")
-
-    max_flow = int(flow_arr.max()) if flow_arr.max() > 0 else 1
-    nonzero = flow_arr[flow_arr > 0]
+    group_flows = np.array(
+        [int(flow_arr[eids].sum()) for eids in edge_groups], dtype=np.int64,
+    )
+    max_flow = int(group_flows.max()) if len(group_flows) and group_flows.max() > 0 else 1
+    nonzero = group_flows[group_flows > 0]
     threshold = (
         float(np.percentile(nonzero, 100.0 - TOP_RANK_PCT))
         if len(nonzero) > 0 else 1.0
     )
+    print(f"  Physical segments: {len(edge_groups)} "
+          f"(directed edges: {len(flow_arr)})")
     print(f"  Flow threshold (top {TOP_RANK_PCT}%): {threshold:.0f} trips")
 
     rows_flow = []
@@ -111,29 +126,19 @@ def export_flow_layers(
     edges_by_infra: dict[str, int] = defaultdict(int)
     length_by_infra: dict[str, float] = defaultdict(float)
 
-    for eid in range(n_edges):
-        flow = int(flow_arr[eid])
-        if flow == 0 or edge_geoms[eid] is None:
+    for gi, eids in enumerate(edge_groups):
+        flow = int(group_flows[gi])
+        if flow == 0:
+            continue
+        eid = eids[0]
+        geom = edge_geoms[eid]
+        if geom is None:
             continue
 
         hw = edge_highways[eid]
         lm = float(edge_lengths[eid])
-        cnf = bool(edge_cycleway_nf[eid])
         foot = edge_foot_tags[eid] if eid < len(edge_foot_tags) else ""
-        foot_allowed = foot in FOOT_ALLOWED
-
-        if hw == "cycleway":
-            if foot_allowed or not cnf:
-                infra_type = "cycleway_foot_yes"
-            else:
-                infra_type = "cycleway_no_foot"
-            is_ped = False
-        elif hw in PED_HIGHWAY_TYPES:
-            infra_type = "pedestrian"
-            is_ped = True
-        else:
-            infra_type = "road"
-            is_ped = False
+        infra_type = _infra_type(hw, bool(edge_cycleway_nf[eid]), foot)
 
         flow_pct = round(flow / max_flow * 100, 2)
 
@@ -143,7 +148,7 @@ def export_flow_layers(
 
         if flow >= threshold:
             forced_row = {
-                "geometry": edge_geoms[eid],
+                "geometry": geom,
                 "highway": hw,
                 "flow": flow,
                 "flow_pct": flow_pct,
@@ -152,7 +157,7 @@ def export_flow_layers(
             }
             if infra_type == "cycleway_no_foot":
                 rows_forced_cycleway.append(forced_row)
-            elif not is_ped and infra_type != "cycleway_foot_yes":
+            elif infra_type == "road":
                 rows_forced_road.append(forced_row)
 
         if flow < MIN_FLOW_THRESHOLD:
@@ -160,7 +165,7 @@ def export_flow_layers(
             continue
 
         rows_flow.append({
-            "geometry": edge_geoms[eid],
+            "geometry": geom,
             "flow_pct": flow_pct,
             "infra_type": infra_type,
             "highway": hw,
@@ -192,17 +197,7 @@ def export_flow_layers(
     }
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Walkability scores
-# ─────────────────────────────────────────────────────────────────────────────
-
 def _attr_quality_penalty(surface_share: float, lit_share: float) -> float:
-    """Multiplier < 1 when nearby pedestrian infra lacks surface/lit tags.
-
-    Linear in the untagged share of each attribute; with the default
-    config, fully untagged surroundings cost ×(1−0.15)×(1−0.10) ≈ 0.765.
-    Fully documented surroundings cost nothing.
-    """
     return (
         (1.0 - SURFACE_PENALTY_MAX * (1.0 - surface_share))
         * (1.0 - LIT_PENALTY_MAX * (1.0 - lit_share))
@@ -210,13 +205,6 @@ def _attr_quality_penalty(surface_share: float, lit_share: float) -> float:
 
 
 class _PedInfraIndex:
-    """Spatial index of the mapped pedestrian infrastructure.
-
-    Deduplicates the bidirectional edge pairs (each physical way appears
-    once) and answers, for a point: how many metres of pedestrian infra
-    lie within PED_INFRA_RADIUS_M, and which share of that length
-    carries a ``surface=*`` / ``lit=*`` tag.
-    """
 
     def __init__(self, edge_tuples, edge_geoms, edge_highways,
                  edge_surfaces, edge_lits):
@@ -229,7 +217,7 @@ class _PedInfraIndex:
             geom = edge_geoms[i]
             key = (min(u, v), max(u, v), round(geom.length, 1))
             if key in seen:
-                continue  # reverse direction of an already-seen edge
+                continue
             seen.add(key)
             geoms.append(geom)
             surf.append(bool(edge_surfaces[i]))
@@ -240,7 +228,6 @@ class _PedInfraIndex:
         self._tree = STRtree(geoms) if geoms else None
 
     def local_stats(self, x: float, y: float) -> tuple[float, float, float]:
-        """→ (infra metres, surface-tagged share, lit-tagged share)."""
         if self._tree is None:
             return 0.0, 0.0, 0.0
         disc = Point(x, y).buffer(PED_INFRA_RADIUS_M)
@@ -261,7 +248,7 @@ def export_walkability_scores(
     street_ped_m: dict[str, float],
     street_cyc_nf_m: dict[str, float],
     street_total_m: dict[str, float],
-    street_sidewalk_status: dict,  # street → build_graph.SidewalkInfo
+    street_sidewalk_status: dict,
     addr_gdf: gpd.GeoDataFrame,
     edge_tuples: list,
     edge_geoms: list,
@@ -269,8 +256,6 @@ def export_walkability_scores(
     edge_surfaces: list[str],
     edge_lits: list[str],
 ) -> dict:
-    """Write street_scores.geojson: length-weighted sidewalk penalty ×
-    surface/lit tag-completeness penalty on the routed base score."""
     print("Computing walkability scores (first/last km + sidewalk "
           "+ surface/lit penalties)...")
 
@@ -284,7 +269,6 @@ def export_walkability_scores(
     centroids_x = street_centroid_xy["_x"].to_dict()
     centroids_y = street_centroid_xy["_y"].to_dict()
 
-    # Projected centroids (metres) for the local-infra radius queries.
     addr_prj = addr_gdf.copy()
     addr_prj["_px"] = addr_prj.geometry.x
     addr_prj["_py"] = addr_prj.geometry.y
@@ -313,16 +297,10 @@ def export_walkability_scores(
 
         info = street_sidewalk_status.get(street)
         if info is None:
-            # No road edges under this name (fully pedestrian street,
-            # footpaths, …): no sidewalk expected → no penalty.
             sw_status = "not_required"
             penalty = 1.0
             doc_pct = None
         else:
-            # Length-weighted penalty: undocumented or bad segments drag
-            # the score down proportionally to their length, so a single
-            # tagged segment can no longer grant the whole street a
-            # penalty-free "both".
             sw_status = info.status
             penalty = info.penalty
             doc_pct = int(round(info.doc_share * 100))
@@ -331,7 +309,6 @@ def export_walkability_scores(
             continue
         centroid = Point(centroids_x[street], centroids_y[street])
 
-        # ── Local mapped pedestrian infra + tag completeness ──────────
         infra_m, surface_share, lit_share = infra.local_stats(
             centroids_px[street], centroids_py[street],
         )
@@ -349,14 +326,10 @@ def export_walkability_scores(
             "walkability_raw": round(base_score, 3),
             "sidewalk": sw_status,
             "sidewalk_doc_pct": -1 if doc_pct is None else doc_pct,
-            # Mapped pedestrian infrastructure within PED_INFRA_RADIUS_M
-            # of the street — a human-scale figure, unlike the
-            # trip-accumulated ped_meters below.
             "ped_infra_m": round(infra_m, 0),
             "infra_radius": int(PED_INFRA_RADIUS_M),
             "surface_pct": int(round(surface_share * 100)),
             "lit_pct": int(round(lit_share * 100)),
-            # Trip-accumulated meters (score internals, kept for debug).
             "ped_meters": round(ped_m, 0),
             "cycleway_meters": round(cyc_m, 0),
             "total_meters": round(total_m, 0),
@@ -402,10 +375,6 @@ def export_walkability_scores(
     }
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Stats
-# ─────────────────────────────────────────────────────────────────────────────
-
 def save_stats(
     routed: int,
     total_routed_distance: float,
@@ -426,7 +395,6 @@ def save_stats(
     network_stats: dict | None = None,
     od_sampling_stats: dict | None = None,
 ) -> None:
-    """Write stats.json with comprehensive run summary."""
     avg_dist = total_routed_distance / routed if routed > 0 else 0
     stats: dict = {
         "routing": {
@@ -474,37 +442,25 @@ def save_stats(
     print("  Stats saved to stats.json")
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Network stats (base graph, before routing)
-# ─────────────────────────────────────────────────────────────────────────────
-
 def compute_network_stats(
+    edge_groups: list[list[int]],
     edge_highways: list[str],
     edge_lengths: list[float],
     edge_cycleway_nf: list[bool],
     edge_foot_tags: list[str],
 ) -> dict:
-    """Compute base network statistics by highway type."""
     km_by_highway: dict[str, float] = defaultdict(float)
     km_by_category: dict[str, float] = defaultdict(float)
     count_by_highway: dict[str, int] = defaultdict(int)
 
-    for eid in range(len(edge_highways)):
+    for eids in edge_groups:
+        eid = eids[0]
         hw = edge_highways[eid]
-        lm = edge_lengths[eid]
-        km_by_highway[hw] += lm / 1000
+        km = edge_lengths[eid] / 1000
+        km_by_highway[hw] += km
         count_by_highway[hw] += 1
-
-        if hw == "cycleway":
-            foot = edge_foot_tags[eid] if eid < len(edge_foot_tags) else ""
-            if foot in FOOT_ALLOWED:
-                km_by_category["cycleway_foot_yes"] += lm / 1000
-            else:
-                km_by_category["cycleway_no_foot"] += lm / 1000
-        elif hw in PED_HIGHWAY_TYPES:
-            km_by_category["pedestrian"] += lm / 1000
-        else:
-            km_by_category["road"] += lm / 1000
+        foot = edge_foot_tags[eid] if eid < len(edge_foot_tags) else ""
+        km_by_category[_infra_type(hw, bool(edge_cycleway_nf[eid]), foot)] += km
 
     total_km = sum(km_by_highway.values())
 
@@ -515,10 +471,6 @@ def compute_network_stats(
         "km_by_category": {k: round(v, 2) for k, v in sorted(km_by_category.items(), key=lambda x: -x[1])},
     }
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Client-side routing graph
-# ─────────────────────────────────────────────────────────────────────────────
 
 def export_routing_graph(
     node_list: list,
@@ -531,7 +483,6 @@ def export_routing_graph(
     edge_cycleway_nf: list[bool],
     edge_foot_tags: list[str],
 ) -> None:
-    """Export a compact JSON graph for client-side Dijkstra navigation."""
     print("Exporting routing graph for client-side navigation...")
     transformer = Transformer.from_crs("EPSG:31370", "EPSG:4326", always_xy=True)
 

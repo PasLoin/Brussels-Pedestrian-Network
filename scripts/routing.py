@@ -1,42 +1,12 @@
-"""
-Steps 6–7 — Generate OD pairs and run shortest-path routing.
-
-OD pair generation
-------------------
-Random pairs of snapped OD points are drawn, subject to distance
-constraints:
-
-* **Minimum distance** filters out trivially short trips (e.g. same
-  block).
-* **Maximum distance** avoids unrealistically long walking trips.
-
-Both thresholds are straight-line (Euclidean in the projected CRS).
-
-Routing
--------
-Shortest paths are computed with **igraph** using Dijkstra's algorithm.
-Pairs are grouped by source node so that a single shortest-path-tree
-computation covers all destinations from the same origin — much faster
-than running one Dijkstra per pair.
-
-Two kinds of accumulation happen during routing:
-
-1. **Flow accumulation** — every edge traversed increments a counter.
-   This produces the "flow" layer shown on the map.
-2. **Walkability accumulation** — only the first and last
-   ``WALK_SCORE_RADIUS_M`` metres of each trip are measured, tracking
-   how much of that distance is on pedestrian infrastructure vs. road.
-   This feeds the per-street walkability score.
-"""
-
 from __future__ import annotations
 
-import random
 import time
 from collections import defaultdict
 from typing import Iterable, NamedTuple
 
 import numpy as np
+import shapely
+from shapely import STRtree
 
 from config import (
     MAX_OD_DISTANCE_M,
@@ -47,78 +17,99 @@ from config import (
 )
 from timing import record
 
+_OD_RANDOM_SEED = 42
+_OD_QUERY_CHUNK = 2000
+
 
 class RoutingResult(NamedTuple):
-    """All outputs produced by the routing step."""
-    flow_arr: np.ndarray             # per-edge flow count
-    street_ped_m: dict[str, float]   # ped metres per street (first/last km)
-    street_cyc_nf_m: dict[str, float]  # cycleway-no-foot metres per street
-    street_total_m: dict[str, float]   # total metres per street (first/last km)
-    routed: int                      # number of successfully routed pairs
-    total_routed_distance: float     # sum of all trip distances (metres)
+    flow_arr: np.ndarray
+    street_ped_m: dict[str, float]
+    street_cyc_nf_m: dict[str, float]
+    street_total_m: dict[str, float]
+    routed: int
+    total_routed_distance: float
     routing_time_s: float
     od_pairs_count: int
     rejected_near: int
     rejected_far: int
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# OD pair generation
-# ─────────────────────────────────────────────────────────────────────────────
+def _enumerate_valid_pairs(
+    od_xy: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, int, int]:
+    n = len(od_xy)
+    min_d2 = MIN_OD_DISTANCE_M ** 2
+
+    pts = shapely.points(od_xy)
+    tree = STRtree(pts)
+
+    kept_i: list[np.ndarray] = []
+    kept_j: list[np.ndarray] = []
+    n_within_max = 0
+    n_near = 0
+
+    for start in range(0, n, _OD_QUERY_CHUNK):
+        chunk = pts[start:start + _OD_QUERY_CHUNK]
+        qi, qj = tree.query(chunk, predicate="dwithin", distance=MAX_OD_DISTANCE_M)
+        qi = qi + start
+        mask = qi < qj
+        qi, qj = qi[mask], qj[mask]
+        n_within_max += len(qi)
+
+        d = od_xy[qi] - od_xy[qj]
+        d2 = d[:, 0] * d[:, 0] + d[:, 1] * d[:, 1]
+        keep = d2 >= min_d2
+        n_near += int((~keep).sum())
+
+        kept_i.append(qi[keep].astype(np.int32))
+        kept_j.append(qj[keep].astype(np.int32))
+
+    pair_i = np.concatenate(kept_i) if kept_i else np.empty(0, dtype=np.int32)
+    pair_j = np.concatenate(kept_j) if kept_j else np.empty(0, dtype=np.int32)
+    n_far = n * (n - 1) // 2 - n_within_max
+    return pair_i, pair_j, n_near, n_far
+
 
 def generate_od_pairs(
     od_points: list[tuple[float, float]],
     snapped: list[int],
     od_streets: list[str],
 ) -> tuple[list[tuple[int, int, str, str]], int, int]:
-    """Generate random OD pairs with distance filtering.
-
-    Returns
-    -------
-    od_pairs : list of (src_node, tgt_node, src_street, tgt_street)
-    rejected_near : int
-    rejected_far : int
-    """
-    print("Generating OD pairs...")
-    random.seed(42)
+    print("Generating OD pairs (exhaustive enumeration + random sample)...")
     n_pts = len(od_points)
-    od_xy = np.array(od_points)
-    min_d2 = MIN_OD_DISTANCE_M ** 2
-    max_d2 = MAX_OD_DISTANCE_M ** 2
+    if n_pts < 2:
+        print("  Not enough OD points.")
+        return [], 0, 0
 
-    od_pairs: list[tuple[int, int, str, str]] = []
-    seen: set[tuple[int, int]] = set()
-    rejected_near = rejected_far = 0
-    attempts = 0
+    od_xy = np.asarray(od_points, dtype=np.float64)
+    pair_i, pair_j, rejected_near, rejected_far = _enumerate_valid_pairs(od_xy)
 
-    while len(od_pairs) < MAX_OD_PAIRS and attempts < MAX_OD_PAIRS * 20:
-        i, j = random.randrange(n_pts), random.randrange(n_pts)
-        attempts += 1
-        if i == j:
-            continue
-        key = (min(i, j), max(i, j))
-        if key in seen:
-            continue
-        dx = od_xy[i, 0] - od_xy[j, 0]
-        dy = od_xy[i, 1] - od_xy[j, 1]
-        d2 = dx * dx + dy * dy
-        if d2 < min_d2:
-            rejected_near += 1
-            continue
-        if d2 > max_d2:
-            rejected_far += 1
-            continue
-        od_pairs.append((snapped[i], snapped[j], od_streets[i], od_streets[j]))
-        seen.add(key)
+    snapped_arr = np.asarray(snapped, dtype=np.int64)
+    same_node = snapped_arr[pair_i] == snapped_arr[pair_j]
+    n_same_node = int(same_node.sum())
+    pair_i, pair_j = pair_i[~same_node], pair_j[~same_node]
+    n_valid = len(pair_i)
 
-    print(f"  OD pairs: {len(od_pairs)}")
-    print(f"  Rejected — near: {rejected_near} | far: {rejected_far}")
+    rng = np.random.default_rng(_OD_RANDOM_SEED)
+    if n_valid > MAX_OD_PAIRS:
+        sel = rng.choice(n_valid, size=MAX_OD_PAIRS, replace=False)
+        pair_i, pair_j = pair_i[sel], pair_j[sel]
+
+    flip = rng.random(len(pair_i)) < 0.5
+    src_idx = np.where(flip, pair_j, pair_i)
+    tgt_idx = np.where(flip, pair_i, pair_j)
+
+    od_pairs = [
+        (int(snapped_arr[a]), int(snapped_arr[b]), od_streets[a], od_streets[b])
+        for a, b in zip(src_idx.tolist(), tgt_idx.tolist())
+    ]
+
+    print(f"  Valid pairs available ({MIN_OD_DISTANCE_M:.0f}–{MAX_OD_DISTANCE_M:.0f} m): {n_valid}")
+    print(f"  Excluded — same snapped node: {n_same_node}")
+    print(f"  OD pairs sampled: {len(od_pairs)} (cap {MAX_OD_PAIRS})")
+    print(f"  Out of range — near: {rejected_near} | far: {rejected_far}")
     return od_pairs, rejected_near, rejected_far
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Routing
-# ─────────────────────────────────────────────────────────────────────────────
 
 def _accumulate_capped(
     eids: Iterable[int],
@@ -127,13 +118,6 @@ def _accumulate_capped(
     is_ped_mask: np.ndarray,
     is_cyc_nf_mask: np.ndarray,
 ) -> tuple[float, float, float]:
-    """Walk along edges up to *cap_m* metres.
-
-    Accepts any iterable of edge ids so callers can pass a ``reversed()``
-    iterator directly without materialising a full list copy.
-
-    Returns (ped_metres, cycleway_metres, total_metres).
-    """
     ped = cyc = total = 0.0
     remaining = cap_m
     for eid in eids:
@@ -146,7 +130,7 @@ def _accumulate_capped(
             cyc += used_len
         elif is_ped_mask[eid]:
             ped += used_len
-        remaining -= full_len  # consume full edge even if capped
+        remaining -= full_len
     return ped, cyc, total
 
 
@@ -157,27 +141,19 @@ def route_pairs(
     edge_highways: list[str],
     edge_cycleway_nf: list[bool],
 ) -> RoutingResult:
-    """Run Dijkstra routing for all OD pairs.
-
-    Pairs are grouped by source to exploit igraph's multi-target
-    shortest-path computation (one Dijkstra tree per source).
-    """
     print("Routing pairs with igraph (grouped by source)...")
     t_route = time.time()
 
     n_edges = graph.ecount()
     flow_arr = np.zeros(n_edges, dtype=np.int32)
-    # Chunking eids to avoid excessive memory usage for very large OD pair counts
     chunk_traversed_eids: list[int] = []
 
-    # Pre-calculate boolean masks for high-performance lookups in _accumulate_capped
     is_cyc_nf_mask = np.array(edge_cycleway_nf, dtype=bool)
     is_ped_mask = np.array([
         (hw in PED_HIGHWAY_TYPES or hw == "cycleway")
         for hw in edge_highways
     ], dtype=bool)
 
-    # Group pairs by source node
     pairs_by_src: dict[int, list[tuple[int, str, str]]] = defaultdict(list)
     for src, tgt, st_src, st_tgt in od_pairs:
         pairs_by_src[src].append((tgt, st_src, st_tgt))
@@ -188,11 +164,6 @@ def route_pairs(
     routed = 0
     n_sources = len(pairs_by_src)
 
-    # ── Cumulative timers ────────────────────────────────────────────────
-    # Wrapping every loop iteration with a context manager would add
-    # measurable overhead (~µs × 10⁵ iterations).  Use simple time deltas
-    # accumulated into counters; report them once at the end via
-    # timing.record() so they appear in the summary.
     t_dijkstra = 0.0
     t_accum = 0.0
     t_bincount = 0.0
@@ -216,17 +187,12 @@ def route_pairs(
                 continue
             routed += 1
 
-            # Store eids for bulk accumulation via np.bincount
             chunk_traversed_eids.extend(eids)
 
-            # Walkability: first WALK_SCORE_RADIUS_M for source street
             src_ped, src_cyc, src_total = _accumulate_capped(
                 eids, WALK_SCORE_RADIUS_M,
                 edge_lengths, is_ped_mask, is_cyc_nf_mask,
             )
-            # … and last WALK_SCORE_RADIUS_M for target street.
-            # ``reversed(eids)`` is a lazy iterator — _accumulate_capped
-            # only walks the sequence once, so we skip the list copy.
             tgt_ped, tgt_cyc, tgt_total = _accumulate_capped(
                 reversed(eids), WALK_SCORE_RADIUS_M,
                 edge_lengths, is_ped_mask, is_cyc_nf_mask,
@@ -241,26 +207,22 @@ def route_pairs(
             street_total_m[st_tgt] += tgt_total
         t_accum += time.time() - _ta0
 
-        # Flush chunk to avoid memory pressure and speed up final step
         if len(chunk_traversed_eids) > 1000000:
             _tb0 = time.time()
             flow_arr += np.bincount(chunk_traversed_eids, minlength=n_edges).astype(np.int32)
             t_bincount += time.time() - _tb0
             chunk_traversed_eids = []
 
-    # Final flush
     if chunk_traversed_eids:
         _tb0 = time.time()
         flow_arr += np.bincount(chunk_traversed_eids, minlength=n_edges).astype(np.int32)
         t_bincount += time.time() - _tb0
 
-    # Vectorized distance calculation: sum(flow * lengths)
     edge_lengths_arr = np.array(edge_lengths, dtype=np.float64)
     total_routed_distance = float(np.dot(flow_arr, edge_lengths_arr))
 
     routing_time = time.time() - t_route
 
-    # ── Report cumulative sub-timers ─────────────────────────────────────
     record("dijkstra get_shortest_paths", t_dijkstra)
     record("walkability + flow accumulation", t_accum)
     record("np.bincount flushes", t_bincount)
@@ -277,6 +239,6 @@ def route_pairs(
         total_routed_distance=total_routed_distance,
         routing_time_s=round(routing_time, 1),
         od_pairs_count=len(od_pairs),
-        rejected_near=0,   # filled by caller
+        rejected_near=0,
         rejected_far=0,
     )
