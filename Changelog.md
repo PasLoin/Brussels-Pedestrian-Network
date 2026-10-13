@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-10-13
+ 
+### Corrections
+ 
+- **Arêtes comptées en double** : le graphe OSMnx étant construit avec `bidirectional=True`, chaque tronçon physique existe sous forme de deux arêtes dirigées (aller/retour). `export_flow_layers` et `compute_network_stats` les traitaient séparément : longueurs du réseau doublées dans `stats.json, flux répartis sur deux lignes superposées portant chacune environ la moitié du trafic, seuils `MIN_FLOW_THRESHOLD` / `TOP_RANK_PCT` appliqués à des flux directionnels. Nouvelle fonction `undirected_edge_groups` (clé : paire de nœuds + longueur + point à mi-longueur) qui regroupe les deux sens ; flux additionnés, longueurs comptées une seule fois. `graph.edges` compte désormais les segments physiques, `graph.directed_edges` conserve l'ancien chiffre.
+- **`MAX_OD_PAIRS` jamais atteint** : les paires OD étaient tirées au hasard puis rejetées si hors de l'anneau 600 m – 1 km (≈ 1,5 % d'acceptation). La boucle s'arrêtait sur la limite cachée de 20 × `MAX_OD_PAIRS` tirages : 271 291 paires simulées au lieu des 900 000 configurées, pour 18 millions d'itérations Python. Remplacé par une énumération exhaustive des paires valides via un index spatial (STRtree `dwithin`, par paquets), puis un tirage aléatoire de exactement `MAX_OD_PAIRS` paires (graine fixe, reproductible). Les paires dont les deux points sont accrochés au même nœud sont exclues d'office, et le sens origine/destination est tiré au hasard. `rejected_near` / `rejected_far` comptent désormais toutes les paires hors de l'anneau (et non plus des tirages ratés).
+- **Historique : perte de snapshots mensuels** (`history.yml`). Deux bugs combinés : une entrée était reconnue par sa seule date (une `daily` du 1er du mois masquait le snapshot publié ensuite à la même date), et la fusion jq supprimait toutes les entrées `daily` à chaque ajout. Conséquence : le snapshot 2026-09-01 manquait et 2026-10-01 était typé `daily`. L'entrée est maintenant identifiée par le couple date + type, et la fusion ne retire les autres `daily` que si la nouvelle entrée en est une. L'historique se répare au prochain run en mode `update`.
+- **Adresses accrochées à des îlots du graphe** : avec `retain_all=True`, les composantes déconnectées sont conservées et le snapping pouvait y rattacher des points OD, rendant leurs trajets impossibles (≈ 1,6 % des paires perdues silencieusement). Le snapping, y compris le repli sur le nœud le plus proche, est désormais limité au réseau principal (plus grande composante). Une adresse à plus de `MAX_SNAP_DISTANCE_M` (150 m) du réseau principal est écartée. Nouveaux compteurs `points_redirected_from_islands` et `points_dropped_too_far` dans `stats.json`.
+- **Navigation** : le nœud de départ/arrivée choisi au clic ignore les îlots du graphe (composante principale calculée côté navigateur), ce qui supprime les faux « Aucun itinéraire trouvé ».
+### Nouvelle couche : Îlots déconnectés du réseau
+ 
+- **Détection** : nouveau module `scripts/detect_graph_islands.py`. Chaque composante du graphe non reliée au réseau principal est exportée comme une entité (MultiLineString) avec sa longueur, ses types de voies, ses identifiants de ways OSM, et sa distance au réseau principal.
+- **Deux catégories** :
+  -  **`unjoined`** — écart ≤ `ISLAND_UNJOINED_GAP_M` (2 m) : le chemin touche presque le réseau, il manque très probablement un nœud commun.
+  -  **`isolated`** — aucune liaison proche : réseau isolé, souvent dû à des accès privés, des portails ou une cartographie incomplète.
+- **Interface** : couche `graph-islands` visible dès z12, toggle « Îlot déconnecté du réseau » avec sous-filtre par type, popup au clic avec écart, longueur, types, liens vers les ways OSM, lien JOSM (`load_and_zoom` cadré sur l'îlot avec sélection des ways) et lien iD.
+- **Données** : `graph_islands.geojson` ajouté aux artifacts CI et à l'archive PMTiles. `build_graph.py` conserve désormais les identifiants de ways OSM des arêtes (`edge_osm_ids`). Statistiques dans `stats.json` sous `graph.components`.
+- **Premier relevé (13/10/2026)** : réseau principal = 98,6 % des nœuds connectés ; 416 îlots (38,7 km), dont 66 jonctions manquantes et 350 îlots isolés ; 101 adresses redirigées vers le réseau principal.
+### Paramètres
+ 
+- Nouveaux : `MAX_SNAP_DISTANCE_M` (150), `ISLAND_UNJOINED_GAP_M` (2).
+- Avec 900 000 trajets réellement simulés, le routage passe d'environ 5 à 7 minutes ; les seuils d'affichage (`flow_pct`) restent inchangés.
+
 ## 2026-08-10
  
 ### Nouvelle couche : barrier=kerb absent sur l'extrémité d'un crossing way + absence d'info sur tactile paving on kerb.
