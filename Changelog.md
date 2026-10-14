@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-14
+ 
+### Corrections / Amélioration
+
+- **highway=track** : inclus dans lé réseau piétons sauf mentions explicites
+- **vérification présence highway=*** : edge case , mais on trouves des fois des foot=yes sur des choses inatendues (ex landuse)
+- **îlots déconnectés** : on exclus les cas où footway,steps connectent public_transport=platform
+- **sidewalk gap** : on prend en compte désormais les sidewalk=right/no etc  (ancien schéma mais tjrs présent) => élimination de faux positifs
+- **Portails bloquants malgré foot=yes**. clean_osm coupe le graphe à tout barrier=gate avec access=private ou no, sans regarder foot. ==> correction
+
+
 ## 2026-10-13
  
 ### Corrections
