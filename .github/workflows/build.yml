@@ -29,6 +29,7 @@ env:
     w/highway=steps
     w/highway=elevator
     w/highway=cycleway
+    w/highway=track
     n/highway=elevator
     n/highway=crossing
     n/amenity=elevator
@@ -50,6 +51,7 @@ env:
     w/highway=secondary_link
     w/highway=primary
     w/highway=primary_link
+    w/highway=track
     w/foot=yes
     w/foot=designated
     n/highway=elevator
