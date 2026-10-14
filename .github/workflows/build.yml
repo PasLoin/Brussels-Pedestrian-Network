@@ -83,6 +83,7 @@ env:
   OD_SAMPLE_INTERVAL_M: 100
   MAX_SNAP_DISTANCE_M: 150
   ISLAND_UNJOINED_GAP_M: 2
+  ISLAND_PLATFORM_TOLERANCE_M: 1
 
   WALK_SCORE_RADIUS_M: 1000
   SIDEWALK_PENALTY_NONE: 0.3
@@ -214,6 +215,15 @@ jobs:
             --geometry-types=point \
             --attributes=type,id \
             -o kerbs_raw.geojson --overwrite
+
+      - name: Export public transport platforms for island QA
+        run: |
+          osmium tags-filter brussels.osm.pbf nwr/public_transport=platform \
+            -o platforms.osm.pbf --overwrite
+          osmium export platforms.osm.pbf \
+            --geometry-types=point,linestring,polygon \
+            --attributes=type,id \
+            -o platforms_raw.geojson --overwrite
 
       - name: Export excluded ways for crossing exclusion
         run: |
