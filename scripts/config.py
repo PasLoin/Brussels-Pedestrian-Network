@@ -20,6 +20,8 @@ MAX_SNAP_DISTANCE_M = float(os.environ.get("MAX_SNAP_DISTANCE_M", 150))
 
 ISLAND_UNJOINED_GAP_M = float(os.environ.get("ISLAND_UNJOINED_GAP_M", 2))
 
+ISLAND_PLATFORM_TOLERANCE_M = float(os.environ.get("ISLAND_PLATFORM_TOLERANCE_M", 1))
+
 
 WALK_SCORE_RADIUS_M = float(os.environ.get("WALK_SCORE_RADIUS_M", 1000))
 
@@ -39,6 +41,7 @@ LIT_PENALTY_MAX = float(os.environ.get("LIT_PENALTY_MAX", 0.10))
 PED_HIGHWAY_TYPES = frozenset({
     "footway", "pedestrian", "path",
     "living_street", "steps", "elevator",
+    "track", "bridleway",
 })
 
 ROAD_TYPES_SIDEWALK_EXPECTED = frozenset({
@@ -53,6 +56,8 @@ EDGE_COST = {
     "pedestrian":     1.0,
     "footway":        1.0,
     "path":           1.2,
+    "track":          1.2,
+    "bridleway":      1.2,
     "living_street":  1.2,
     "cycleway":       1.7,
     "steps":          1.5,

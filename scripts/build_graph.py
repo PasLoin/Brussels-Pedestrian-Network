@@ -216,22 +216,29 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
     edge_osm_ids: list[tuple[int, ...]] = []
 
     skipped_foot = skipped_access = skipped_ferry = 0
+    skipped_no_highway = skipped_bridleway = 0
 
     with step("edges_gdf.iterrows → arrays"):
         for (u, v, _k), row in edges_gdf.iterrows():
             route_tag = _first_str(row.get("route", "")).lower()
-            hw = _first_str(row.get("highway", "unclassified")) or "unclassified"
+            hw = _first_str(row.get("highway", ""))
             foot_tag = _first_str(row.get("foot", "")).lower()
             access_tag = _first_str(row.get("access", "")).lower()
 
             if route_tag == "ferry":
                 skipped_ferry += 1
                 continue
+            if not hw:
+                skipped_no_highway += 1
+                continue
             if foot_tag in FOOT_FORBIDDEN:
                 skipped_foot += 1
                 continue
             if access_tag in ACCESS_EXCLUDED and foot_tag not in FOOT_ALLOWED:
                 skipped_access += 1
+                continue
+            if hw == "bridleway" and foot_tag not in FOOT_ALLOWED:
+                skipped_bridleway += 1
                 continue
 
             base_cost = EDGE_COST.get(hw, EDGE_COST_DEFAULT)
@@ -264,7 +271,8 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
             edge_osm_ids.append(_osm_way_ids(row.get("osmid")))
 
     print(f"  Edges skipped — ferry: {skipped_ferry}, foot=no: {skipped_foot}, "
-          f"access=no/private: {skipped_access}")
+          f"access=no/private: {skipped_access}, no highway tag: {skipped_no_highway}, "
+          f"bridleway without foot=yes: {skipped_bridleway}")
 
     n_cyc_foot = sum(1 for h, c in zip(edge_highways, edge_cycleway_nf) if h == "cycleway" and not c)
     n_cyc_nf   = sum(1 for h, c in zip(edge_highways, edge_cycleway_nf) if h == "cycleway" and c)

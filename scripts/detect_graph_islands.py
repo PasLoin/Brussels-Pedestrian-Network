@@ -1,13 +1,17 @@
 from __future__ import annotations
 
+import json
+import os
 from collections import defaultdict
 
 import geopandas as gpd
 import numpy as np
+import shapely
+from pyproj import Transformer
 from shapely import STRtree
-from shapely.geometry import MultiLineString
+from shapely.geometry import MultiLineString, shape
 
-from config import ISLAND_UNJOINED_GAP_M
+from config import ISLAND_PLATFORM_TOLERANCE_M, ISLAND_UNJOINED_GAP_M
 
 _MAX_WAY_IDS = 50
 
@@ -41,6 +45,31 @@ def _write_output(rows: list[dict], path: str) -> None:
     gdf.to_file(path, driver="GeoJSON")
 
 
+def _load_platforms(path: str) -> list:
+    if not os.path.exists(path):
+        print(f"  ⚠ {path} not found — platform exclusion disabled")
+        return []
+    with open(path) as f:
+        data = json.load(f)
+    features = data.get("features", [])
+    transformer = Transformer.from_crs("EPSG:4326", "EPSG:31370", always_xy=True)
+    geoms = []
+    for feat in features:
+        geom_json = feat.get("geometry")
+        if not geom_json:
+            continue
+        try:
+            geom = shape(geom_json)
+        except (ValueError, TypeError, AttributeError):
+            continue
+        if geom.is_empty:
+            continue
+        geoms.append(shapely.transform(
+            geom, lambda xy: np.column_stack(transformer.transform(xy[:, 0], xy[:, 1])),
+        ))
+    return geoms
+
+
 def main_component_mask(graph) -> tuple[np.ndarray, np.ndarray, int]:
     comps = graph.connected_components(mode="weak")
     membership = np.asarray(comps.membership, dtype=np.int64)
@@ -58,6 +87,7 @@ def detect_graph_islands(
     edge_highways: list[str],
     edge_osm_ids: list[tuple[int, ...]],
     output_path: str = "graph_islands.geojson",
+    platforms_path: str = "platforms_raw.geojson",
 ) -> tuple[np.ndarray, dict]:
     print("Detecting graph islands (components disconnected from the main network)...")
 
@@ -94,6 +124,10 @@ def detect_graph_islands(
                 island_ways[comp].append(way_id)
 
     main_tree = STRtree(main_geoms) if main_geoms else None
+    platform_geoms = _load_platforms(platforms_path)
+    platform_tree = STRtree(platform_geoms) if platform_geoms else None
+    n_platform_linked = 0
+    platform_linked_length_m = 0.0
 
     comps_sorted = sorted(island_lines, key=lambda c: -island_length[c])
     rows: list[dict] = []
@@ -101,8 +135,16 @@ def detect_graph_islands(
     total_length_m = 0.0
     unjoined_length_m = 0.0
 
-    for island_id, comp in enumerate(comps_sorted, start=1):
+    island_id = 0
+    for comp in comps_sorted:
         geom = MultiLineString(island_lines[comp])
+        if platform_tree is not None and len(platform_tree.query(
+            geom, predicate="dwithin", distance=ISLAND_PLATFORM_TOLERANCE_M,
+        )):
+            n_platform_linked += 1
+            platform_linked_length_m += island_length[comp]
+            continue
+        island_id += 1
         gap_m = -1.0
         if main_tree is not None:
             _, dists = main_tree.query_nearest(geom, return_distance=True)
@@ -140,6 +182,9 @@ def detect_graph_islands(
     print(f"  Vertices: {n_vertices} | main network: {n_main_vertices} "
           f"({main_share_pct:.1f} % of vertices with edges) | "
           f"isolated vertices (no edge): {n_isolated_vertices}")
+    print(f"  Linked to a public_transport=platform (not flagged): "
+          f"{n_platform_linked} ({platform_linked_length_m / 1000:.1f} km), "
+          f"platforms loaded: {len(platform_geoms)}")
     print(f"  Islands: {n_islands} ({total_length_m / 1000:.1f} km) | "
           f"unjoined (gap ≤ {ISLAND_UNJOINED_GAP_M} m): {n_unjoined} | "
           f"isolated: {n_islands - n_unjoined}")
@@ -154,5 +199,8 @@ def detect_graph_islands(
         "islands_length_km": round(total_length_m / 1000, 2),
         "islands_unjoined_length_km": round(unjoined_length_m / 1000, 2),
         "unjoined_gap_m": ISLAND_UNJOINED_GAP_M,
+        "platform_linked_components": n_platform_linked,
+        "platform_linked_length_km": round(platform_linked_length_m / 1000, 2),
+        "platform_tolerance_m": ISLAND_PLATFORM_TOLERANCE_M,
     }
     return main_mask, stats

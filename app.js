@@ -467,6 +467,7 @@ const HIGHWAY_LAYERS = [
   { id: "cycleway",      label: "Piste cyclable",    color: "#0000ff", width: 2.5, dash: false, hidden: true },
   { id: "path",          label: "Sentier",           color: "#86efac", width: 1.5, dash: true,  hidden: true },
   { id: "steps",         label: "Escaliers",         color: "#166534", width: 2,   dash: true,  hidden: true },
+  { id: "track",         label: "Chemin rural / forestier", color: "#a16207", width: 1.5, dash: true, hidden: true },
 ];
 
 const FLOW_PCT = ["to-number", ["get", "flow_pct"], 0];
