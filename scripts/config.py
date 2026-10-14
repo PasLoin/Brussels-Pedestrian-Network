@@ -20,6 +20,8 @@ MAX_SNAP_DISTANCE_M = float(os.environ.get("MAX_SNAP_DISTANCE_M", 150))
 
 ISLAND_UNJOINED_GAP_M = float(os.environ.get("ISLAND_UNJOINED_GAP_M", 2))
 
+ISLAND_PLATFORM_TOLERANCE_M = float(os.environ.get("ISLAND_PLATFORM_TOLERANCE_M", 1))
+
 
 WALK_SCORE_RADIUS_M = float(os.environ.get("WALK_SCORE_RADIUS_M", 1000))
 
