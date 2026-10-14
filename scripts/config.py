@@ -39,6 +39,7 @@ LIT_PENALTY_MAX = float(os.environ.get("LIT_PENALTY_MAX", 0.10))
 PED_HIGHWAY_TYPES = frozenset({
     "footway", "pedestrian", "path",
     "living_street", "steps", "elevator",
+    "track", "bridleway",
 })
 
 ROAD_TYPES_SIDEWALK_EXPECTED = frozenset({
@@ -53,6 +54,8 @@ EDGE_COST = {
     "pedestrian":     1.0,
     "footway":        1.0,
     "path":           1.2,
+    "track":          1.2,
+    "bridleway":      1.2,
     "living_street":  1.2,
     "cycleway":       1.7,
     "steps":          1.5,
