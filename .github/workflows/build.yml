@@ -265,7 +265,7 @@ jobs:
 
       - name: Upload GeoJSON artifacts
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: geojson-outputs
           path: |
@@ -291,7 +291,7 @@ jobs:
             addresses.geojson
             stats.json
             graph.json
-          retention-days: 30
+          retention-days: 7
           if-no-files-found: warn
 
       - name: Build main PMTiles (without QA point layers)
