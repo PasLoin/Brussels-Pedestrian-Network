@@ -139,6 +139,7 @@ class MinHeap {
 const ISLAND_TYPES = [
   { value: "unjoined", label: "Jonction manquante (≤ 2 m)", color: "#db2777" },
   { value: "isolated", label: "Îlot isolé",                 color: "#0d9488" },
+  { value: "level",    label: "Discontinuité de niveau",    color: "#ea580c" },
 ];
 const activeIslandTypes = new Set(ISLAND_TYPES.map(t => t.value));
 
@@ -633,6 +634,7 @@ const PEDESTRIAN_LAYERS = [
       "line-color": ["match", ["get", "type"],
         "unjoined", "#db2777",
         "isolated", "#0d9488",
+        "level",    "#ea580c",
         "#0d9488"
       ],
       "line-width": ["interpolate", ["linear"], ["zoom"], 12, 3, 16, 7, 18, 10],
@@ -817,13 +819,16 @@ const CLICK_LAYERS = [
     ids: ["graph-islands"],
     format: p => {
       const isUnjoined = p.type === "unjoined";
+      const isLevel = p.type === "level";
+      const nodeId = parseInt(p.node_id, 10) || 0;
       const ways = String(p.way_ids || "").split(",").map(w => parseInt(w, 10)).filter(w => w > 0);
       const gap = (typeof p.gap_m === "number" && p.gap_m >= 0) ? p.gap_m : null;
       const pad = 0.0005;
       const w = Number(p.bbox_w) - pad, s = Number(p.bbox_s) - pad;
       const e = Number(p.bbox_e) + pad, n = Number(p.bbox_n) + pad;
       const hasBbox = [w, s, e, n].every(Number.isFinite);
-      const select = ways.length ? `&select=${ways.map(id => "w" + id).join(",")}` : "";
+      const selIds = ways.map(id => "w" + id).concat(nodeId > 0 ? ["n" + nodeId] : []);
+      const select = selIds.length ? `&select=${selIds.join(",")}` : "";
       const josm = hasBbox
         ? `http://127.0.0.1:8111/load_and_zoom?left=${w.toFixed(6)}&right=${e.toFixed(6)}&top=${n.toFixed(6)}&bottom=${s.toFixed(6)}${select}`
         : null;
@@ -831,12 +836,18 @@ const CLICK_LAYERS = [
         ? `https://www.openstreetmap.org/edit?way=${ways[0]}`
         : (hasBbox ? `https://www.openstreetmap.org/edit#map=19/${((s + n) / 2).toFixed(6)}/${((w + e) / 2).toFixed(6)}` : null);
       return `
-        <div class="popup-title">${isUnjoined ? "🩷 Jonction manquante" : "🟢 Îlot isolé du réseau"}</div>
-        <div class="popup-row"><span class="label">Problème</span><span class="value">${isUnjoined
-          ? "Touche presque le réseau principal mais ne partage aucun nœud avec lui"
-          : "Groupe de chemins sans aucune liaison avec le réseau principal"
+        <div class="popup-title">${isLevel ? "🟠 Discontinuité de niveau" : isUnjoined ? "🩷 Jonction manquante" : "🟢 Îlot isolé du réseau"}</div>
+        <div class="popup-row"><span class="label">Problème</span><span class="value">${isLevel
+          ? "Escalier (steps) dont le level=* ne recouvre pas celui d'un chemin directement raccordé : liaison théoriquement non praticable"                                                                                        
+          : isUnjoined
+            ? "Touche presque le réseau principal mais ne partage aucun nœud avec lui"
+            : "Groupe de chemins sans aucune liaison avec le réseau principal"
         }</span></div>
-        <div class="popup-row"><span class="label">Écart au réseau</span><span class="value">${gap !== null ? gap + " m" : "—"}</span></div>
+        ${isLevel
+          ? `<div class="popup-row"><span class="label">Niveaux</span><span class="value">${escapeHTML(p.levels || "—")}</span></div>
+        ${nodeId > 0 ? `<div class="popup-row"><span class="label">Nœud</span><span class="value"><a href="https://www.openstreetmap.org/node/${nodeId}" target="_blank" rel="noopener">n${nodeId}</a></span></div>` : ""}`
+          : `<div class="popup-row"><span class="label">Écart au réseau</span><span class="value">${gap !== null ? gap + " m" : "—"}</span></div>`
+        }
         <div class="popup-row"><span class="label">Longueur</span><span class="value">${Math.round(Number(p.length_m) || 0)} m</span></div>
         <div class="popup-row"><span class="label">Types</span><span class="value">${escapeHTML(p.highways || "—")}</span></div>
         <div class="popup-row"><span class="label">Ways</span><span class="value">${ways.length

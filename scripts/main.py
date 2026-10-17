@@ -89,6 +89,9 @@ def main() -> None:
             gb.graph, edge_groups,
             gb.edge_tuples, gb.edge_geoms, gb.edge_lengths,
             gb.edge_highways, gb.edge_osm_ids,
+            edge_levels=gb.edge_levels,
+            elevator_vertices=gb.elevator_vertices,
+            node_list=gb.node_list,
         )
     graph_stats["components"] = island_stats
 

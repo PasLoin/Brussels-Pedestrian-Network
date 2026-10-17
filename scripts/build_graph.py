@@ -54,6 +54,8 @@ class GraphBundle(NamedTuple):
     edge_lits: list[str]
     street_sidewalk_status: dict[str, SidewalkInfo]
     edge_osm_ids: list[tuple[int, ...]] = []
+    edge_levels: list[str] = []
+    elevator_vertices: frozenset = frozenset()
 
 
 _SIDEWALK_POSITIVE = frozenset({"yes", "both", "separate"})
@@ -160,20 +162,72 @@ def _unanimous_str(val) -> str:
     return str(val).strip() if val else ""
 
 
+LEVEL_UNKNOWN = "?"
+
+_UNDERGROUND_TUNNEL_EXEMPT = frozenset({"", "no", "building_passage"})
+_INDOOR_EXEMPT = frozenset({"", "no"})
+_UNDERGROUND_LOCATIONS = frozenset({"underground", "indoor"})
+
+
+def _all_str(val) -> list[str]:
+    values = val if isinstance(val, list) else [val]
+    out: list[str] = []
+    for item in values:
+        if item is None or (isinstance(item, float) and np.isnan(item)):
+            out.append("")
+        else:
+            out.append(str(item).strip().lower())
+    return out
+
+
+def _edge_level(level, tunnel, indoor, location) -> str:
+    levels = _all_str(level)
+    tagged = {v for v in levels if v}
+    if len(tagged) > 1 or (tagged and "" in levels):
+        return LEVEL_UNKNOWN
+    if tagged:
+        return next(iter(tagged))
+    if any(v not in _UNDERGROUND_TUNNEL_EXEMPT for v in _all_str(tunnel)):
+        return LEVEL_UNKNOWN
+    if any(v not in _INDOOR_EXEMPT for v in _all_str(indoor)):
+        return LEVEL_UNKNOWN
+    if any(v in _UNDERGROUND_LOCATIONS for v in _all_str(location)):
+        return LEVEL_UNKNOWN
+    return ""
+
+
+_ELEVATOR_NODE_TAGS = (("highway", "elevator"), ("amenity", "elevator"))
+
+
+def _elevator_vertices(nodes_gdf, node_map: dict) -> frozenset:
+    out: set[int] = set()
+    for col, value in _ELEVATOR_NODE_TAGS:
+        if col not in nodes_gdf.columns:
+            continue
+        for nid, val in nodes_gdf[col].items():
+            if value in _all_str(val):
+                out.add(node_map[nid])
+    return frozenset(out)
+
+
 def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
 
     print("Building osmnx graph (simplified)...")
 
-    _extra_tags = {"foot", "route", "sidewalk", "sidewalk:left", "sidewalk:right", "sidewalk:both", "segregated", "surface", "lit"}
+    _extra_tags = {"foot", "route", "sidewalk", "sidewalk:left", "sidewalk:right", "sidewalk:both", "segregated", "surface", "lit", "level", "indoor", "tunnel", "location"}
     if hasattr(ox, "settings"):
         existing = set(getattr(ox.settings, "useful_tags_way", []))
         if not _extra_tags.issubset(existing):
             ox.settings.useful_tags_way = list(existing | _extra_tags)
             print(f"  Added {_extra_tags - existing} to useful_tags_way")
+        existing_nodes = set(getattr(ox.settings, "useful_tags_node", []))
+        if not {"highway", "amenity"}.issubset(existing_nodes):
+            ox.settings.useful_tags_node = list(existing_nodes | {"highway", "amenity"})
 
     _ATTRS_NO_MERGE = [
         "name", "highway", "access", "foot",
         "sidewalk", "sidewalk:left", "sidewalk:right", "sidewalk:both",
+        "level",
     ]
 
     with step("ox.graph_from_xml"):
@@ -214,6 +268,7 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
     edge_surfaces: list[str] = []
     edge_lits: list[str] = []
     edge_osm_ids: list[tuple[int, ...]] = []
+    edge_levels: list[str] = []
 
     skipped_foot = skipped_access = skipped_ferry = 0
     skipped_no_highway = skipped_bridleway = 0
@@ -269,6 +324,10 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
             edge_surfaces.append(_unanimous_str(row.get("surface", "")).lower())
             edge_lits.append(_unanimous_str(row.get("lit", "")).lower())
             edge_osm_ids.append(_osm_way_ids(row.get("osmid")))
+            edge_levels.append(_edge_level(
+                row.get("level"), row.get("tunnel"),
+                row.get("indoor"), row.get("location"),
+            ))
 
     print(f"  Edges skipped — ferry: {skipped_ferry}, foot=no: {skipped_foot}, "
           f"access=no/private: {skipped_access}, no highway tag: {skipped_no_highway}, "
@@ -343,4 +402,6 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
         edge_lits=edge_lits,
         street_sidewalk_status=street_sidewalk_status,
         edge_osm_ids=edge_osm_ids,
+        edge_levels=edge_levels,
+        elevator_vertices=_elevator_vertices(nodes_gdf, node_map),
     )
