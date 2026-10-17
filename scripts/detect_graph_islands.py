@@ -118,6 +118,36 @@ def _comparable_level(raw: str, untagged_as_ground: bool) -> tuple[float, float]
     return parse_level(raw)
 
 
+def _contains(interval: tuple[float, float], value: float) -> bool:
+    return interval[0] - 1e-9 <= value <= interval[1] + 1e-9
+
+
+def _missing_level(
+    end_neighbours: list[str], other_neighbours: list[str],
+    steps_level: tuple[float, float],
+) -> float | None:
+    lo, hi = steps_level
+    if hi - lo < 1e-9 or not other_neighbours:
+        return None
+    end_ivs = [iv for iv in (parse_level(r) for r in end_neighbours if r not in ("", _LEVEL_UNKNOWN)) if iv]
+    touches_lo = any(_contains(iv, lo) for iv in end_ivs)
+    touches_hi = any(_contains(iv, hi) for iv in end_ivs)
+    if touches_lo == touches_hi:
+        return None
+    missing = lo if touches_hi else hi
+    for raw in other_neighbours:
+        if raw == _LEVEL_UNKNOWN:
+            return None
+        if raw == "":
+            if abs(missing) < 1e-9:
+                return None
+            continue
+        iv = parse_level(raw)
+        if iv is None or _contains(iv, missing):
+            return None
+    return missing
+
+
 def find_level_discontinuities(
     edge_groups: list[list[int]],
     edge_tuples: list[tuple[int, int]],
@@ -125,7 +155,7 @@ def find_level_discontinuities(
     edge_levels: list[str],
     skip_vertices: frozenset = frozenset(),
     untagged_as_ground: bool = LEVEL_UNTAGGED_AS_GROUND,
-) -> list[tuple[int, list[int]]]:
+) -> list[tuple[int, list[int], float | None]]:
     incident: dict[int, list[int]] = defaultdict(list)
     for gi, eids in enumerate(edge_groups):
         eid = eids[0]
@@ -136,7 +166,16 @@ def find_level_discontinuities(
         if v != u:
             incident[v].append(gi)
 
-    found: dict[int, list[int]] = {}
+    found: dict[int, list] = {}
+
+    def _add(vertex: int, gs: list[int], missing: float | None) -> None:
+        entry = found.setdefault(vertex, [[], None])
+        for g in gs:
+            if g not in entry[0]:
+                entry[0].append(g)
+        if missing is not None:
+            entry[1] = missing
+
     for gi, eids in enumerate(edge_groups):
         eid = eids[0]
         if edge_highways[eid] not in _LEVEL_CHECKED_HIGHWAYS:
@@ -145,26 +184,41 @@ def find_level_discontinuities(
         if steps_level is None:
             continue
         u, v = edge_tuples[eid]
-        for vertex in {u, v}:
+        if u == v:
+            continue
+        neighbours = {
+            vertex: [g for g in incident[vertex] if g != gi]
+            for vertex in (u, v)
+        }
+        for vertex in (u, v):
             if vertex in skip_vertices:
                 continue
-            for other in incident[vertex]:
-                if other == gi:
-                    continue
+            for other in neighbours[vertex]:
                 other_level = _comparable_level(
                     edge_levels[edge_groups[other][0]], untagged_as_ground,
                 )
                 if other_level is None or levels_overlap(steps_level, other_level):
                     continue
-                involved = found.setdefault(vertex, [])
-                for g in (gi, other):
-                    if g not in involved:
-                        involved.append(g)
-    return sorted(found.items())
+                _add(vertex, [gi, other], None)
+        if u in skip_vertices or v in skip_vertices:
+            continue
+        for end, other_end in ((u, v), (v, u)):
+            missing = _missing_level(
+                [edge_levels[edge_groups[g][0]] for g in neighbours[end]],
+                [edge_levels[edge_groups[g][0]] for g in neighbours[other_end]],
+                steps_level,
+            )
+            if missing is not None:
+                _add(other_end, [gi] + neighbours[other_end], missing)
+    return [(vertex, gs, missing) for vertex, (gs, missing) in sorted(found.items())]
 
 
 def _level_label(raw: str) -> str:
     return raw if raw else _UNTAGGED_LEVEL_LABEL
+
+
+def _fmt_level(value: float) -> str:
+    return str(int(value)) if float(value).is_integer() else str(value)
 
 
 def main_component_mask(graph) -> tuple[np.ndarray, np.ndarray, int]:
@@ -276,7 +330,7 @@ def detect_graph_islands(
     n_level = 0
     level_length_m = 0.0
     if edge_levels:
-        for vertex, groups in find_level_discontinuities(
+        for vertex, groups, missing in find_level_discontinuities(
             edge_groups, edge_tuples, edge_highways, edge_levels, elevator_vertices,
         ):
             lines, ways, highways, labels = [], [], set(), []
@@ -315,7 +369,10 @@ def detect_graph_islands(
                 "n_ways": len(ways),
                 "highways": ", ".join(sorted(highways)),
                 "way_ids": ",".join(str(w) for w in ways[:_MAX_WAY_IDS]),
-                "levels": " ≠ ".join(labels),
+                "levels": (
+                    f"{labels[0]} : niveau {_fmt_level(missing)} non raccordé"
+                    if missing is not None else " ≠ ".join(labels)
+                ),
                 "node_id": node_id,
             })
 
