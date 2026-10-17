@@ -12,7 +12,11 @@ from pyproj import Transformer
 from shapely import STRtree
 from shapely.geometry import MultiLineString, shape
 
-from config import ISLAND_PLATFORM_TOLERANCE_M, ISLAND_UNJOINED_GAP_M
+from config import (
+    ISLAND_PLATFORM_TOLERANCE_M,
+    ISLAND_UNJOINED_GAP_M,
+    LEVEL_UNTAGGED_AS_GROUND,
+)
 
 _MAX_WAY_IDS = 50
 
@@ -76,6 +80,7 @@ def _load_platforms(path: str) -> list:
 _LEVEL_UNKNOWN = "?"
 _LEVEL_RANGE_RE = re.compile(r"^(-?\d+(?:\.\d+)?)-(-?\d+(?:\.\d+)?)$")
 _LEVEL_WILDCARD_HIGHWAYS = frozenset({"elevator"})
+_LEVEL_CHECKED_HIGHWAYS = frozenset({"steps"})
 _UNTAGGED_LEVEL_LABEL = "0 (non tagué)"
 
 
@@ -107,40 +112,55 @@ def levels_overlap(a: tuple[float, float], b: tuple[float, float]) -> bool:
     return a[0] <= b[1] + 1e-9 and b[0] <= a[1] + 1e-9
 
 
+def _comparable_level(raw: str, untagged_as_ground: bool) -> tuple[float, float] | None:
+    if raw == "" and not untagged_as_ground:
+        return None
+    return parse_level(raw)
+
+
 def find_level_discontinuities(
     edge_groups: list[list[int]],
     edge_tuples: list[tuple[int, int]],
     edge_highways: list[str],
     edge_levels: list[str],
     skip_vertices: frozenset = frozenset(),
+    untagged_as_ground: bool = LEVEL_UNTAGGED_AS_GROUND,
 ) -> list[tuple[int, list[int]]]:
     incident: dict[int, list[int]] = defaultdict(list)
     for gi, eids in enumerate(edge_groups):
         eid = eids[0]
         if edge_highways[eid] in _LEVEL_WILDCARD_HIGHWAYS:
             continue
-        if parse_level(edge_levels[eid]) is None:
-            continue
         u, v = edge_tuples[eid]
         incident[u].append(gi)
         if v != u:
             incident[v].append(gi)
 
-    out: list[tuple[int, list[int]]] = []
-    for vertex in sorted(incident):
-        groups = incident[vertex]
-        if len(groups) < 2 or vertex in skip_vertices:
+    found: dict[int, list[int]] = {}
+    for gi, eids in enumerate(edge_groups):
+        eid = eids[0]
+        if edge_highways[eid] not in _LEVEL_CHECKED_HIGHWAYS:
             continue
-        intervals = [parse_level(edge_levels[edge_groups[g][0]]) for g in groups]
-        involved: set[int] = set()
-        for i in range(len(groups)):
-            for j in range(i + 1, len(groups)):
-                if not levels_overlap(intervals[i], intervals[j]):
-                    involved.add(groups[i])
-                    involved.add(groups[j])
-        if involved:
-            out.append((vertex, [g for g in groups if g in involved]))
-    return out
+        steps_level = _comparable_level(edge_levels[eid], False)
+        if steps_level is None:
+            continue
+        u, v = edge_tuples[eid]
+        for vertex in {u, v}:
+            if vertex in skip_vertices:
+                continue
+            for other in incident[vertex]:
+                if other == gi:
+                    continue
+                other_level = _comparable_level(
+                    edge_levels[edge_groups[other][0]], untagged_as_ground,
+                )
+                if other_level is None or levels_overlap(steps_level, other_level):
+                    continue
+                involved = found.setdefault(vertex, [])
+                for g in (gi, other):
+                    if g not in involved:
+                        involved.append(g)
+    return sorted(found.items())
 
 
 def _level_label(raw: str) -> str:
@@ -315,7 +335,8 @@ def detect_graph_islands(
     print(f"  Islands: {n_islands} ({total_length_m / 1000:.1f} km) | "
           f"unjoined (gap ≤ {ISLAND_UNJOINED_GAP_M} m): {n_unjoined} | "
           f"isolated: {n_islands - n_unjoined}")
-    print(f"  Level discontinuities (incompatible level=* at a shared node): "
+    print(f"  Level discontinuities (steps level=* incompatible with a connected way, "
+          f"untagged as ground: {LEVEL_UNTAGGED_AS_GROUND}): "
           f"{n_level} | elevator nodes skipped: {len(elevator_vertices)}")
 
     stats = {
