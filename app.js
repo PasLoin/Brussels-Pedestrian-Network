@@ -838,7 +838,7 @@ const CLICK_LAYERS = [
       return `
         <div class="popup-title">${isLevel ? "🟠 Discontinuité de niveau" : isUnjoined ? "🩷 Jonction manquante" : "🟢 Îlot isolé du réseau"}</div>
         <div class="popup-row"><span class="label">Problème</span><span class="value">${isLevel
-          ? "Des chemins aux tags level=* incompatibles partagent un nœud : liaison théoriquement non praticable"
+          ? "Escalier (steps) dont le level=* ne recouvre pas celui d'un chemin directement raccordé : liaison théoriquement non praticable"                                                                                        
           : isUnjoined
             ? "Touche presque le réseau principal mais ne partage aucun nœud avec lui"
             : "Groupe de chemins sans aucune liaison avec le réseau principal"
