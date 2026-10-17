@@ -160,6 +160,25 @@ _TEST_OSM = """<?xml version='1.0' encoding='UTF-8'?>
     <tag k="level" v="2"/>
   </way>
 
+  <node id="71" lat="50.9200" lon="4.4200" version="1"/>
+  <node id="72" lat="50.9201" lon="4.4201" version="1"/>
+  <node id="73" lat="50.9202" lon="4.4202" version="1"/>
+  <node id="74" lat="50.9203" lon="4.4203" version="1"/>
+  <way id="701" version="1">
+    <nd ref="71"/><nd ref="72"/>
+    <tag k="highway" v="residential"/>
+  </way>
+  <way id="702" version="1">
+    <nd ref="72"/><nd ref="73"/>
+    <tag k="highway" v="steps"/>
+    <tag k="level" v="-1;0"/>
+  </way>
+  <way id="703" version="1">
+    <nd ref="73"/><nd ref="74"/>
+    <tag k="highway" v="footway"/>
+    <tag k="level" v="-1"/>
+  </way>
+
   <node id="31" lat="50.8800" lon="4.3800" version="1"/>
   <node id="32" lat="50.8801" lon="4.3801" version="1"/>
   <node id="33" lat="50.8802" lon="4.3802" version="1"/>
@@ -195,7 +214,7 @@ def _flagged_nodes(bundle, groups, untagged_as_ground=False):
         bundle.edge_levels, bundle.elevator_vertices,
         untagged_as_ground=untagged_as_ground,
     )
-    return {bundle.node_list[v]: g for v, g in found}
+    return {bundle.node_list[v]: (g, m) for v, g, m in found}
 
 
 def _ways(bundle, groups, group_ids):
@@ -215,25 +234,38 @@ def test_elevator_node_detected(bundle):
 def test_steps_with_incompatible_tagged_neighbour_are_flagged(bundle, groups):
     flagged = _flagged_nodes(bundle, groups)
     assert 62 in flagged
-    assert _ways(bundle, groups, flagged[62]) == {601, 602}
+    assert _ways(bundle, groups, flagged[62][0]) == {601, 602}
     assert 63 not in flagged
 
 
 def test_only_steps_are_checked(bundle, groups):
     flagged = _flagged_nodes(bundle, groups)
-    assert set(flagged) == {62}
+    assert set(flagged) == {2, 62}
 
 
-def test_untagged_neighbour_is_ignored_by_default(bundle, groups):
+def test_untagged_non_steps_neighbour_is_ignored(bundle, groups):
     flagged = _flagged_nodes(bundle, groups)
-    assert 2 not in flagged
     assert 42 not in flagged
+
+
+def test_issue_50_unreached_bottom_level_is_flagged(bundle, groups):
+    flagged = _flagged_nodes(bundle, groups)
+    assert 2 in flagged
+    group_ids, missing = flagged[2]
+    assert missing == -2.0
+    assert _ways(bundle, groups, group_ids) == {101, 496286153}
+    assert 3 not in flagged
+
+
+def test_untagged_end_accepted_when_missing_level_is_ground(bundle, groups):
+    flagged = _flagged_nodes(bundle, groups)
+    assert 72 not in flagged
 
 
 def test_issue_50_with_untagged_as_ground(bundle, groups):
     flagged = _flagged_nodes(bundle, groups, untagged_as_ground=True)
     assert set(flagged) == {2, 62}
-    assert _ways(bundle, groups, flagged[2]) == {101, 496286153}
+    assert _ways(bundle, groups, flagged[2][0]) == {101, 496286153}
 
 
 def test_consistent_steps_are_not_flagged(bundle, groups):
@@ -255,11 +287,14 @@ def test_level_rows_written_to_islands_layer(bundle, groups, tmp_path):
         elevator_vertices=bundle.elevator_vertices,
         node_list=bundle.node_list,
     )
-    assert stats["level_discontinuities"] == 1
+    assert stats["level_discontinuities"] == 2
     features = json.loads(out.read_text())["features"]
-    level = [f for f in features if f["properties"]["type"] == "level"]
-    assert len(level) == 1
-    props = level[0]["properties"]
-    assert props["node_id"] == 62
-    assert props["levels"] == "1;2 ≠ 0"
-    assert set(props["way_ids"].split(",")) == {"601", "602"}
+    level = {
+        f["properties"]["node_id"]: f["properties"]
+        for f in features if f["properties"]["type"] == "level"
+    }
+    assert set(level) == {2, 62}
+    assert level[62]["levels"] == "1;2 : niveau 1 non raccordé"
+    assert set(level[62]["way_ids"].split(",")) == {"601", "602"}
+    assert level[2]["levels"] == "-2;-1 : niveau -2 non raccordé"
+    assert set(level[2]["way_ids"].split(",")) == {"101", "496286153"}
