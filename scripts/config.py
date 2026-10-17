@@ -22,6 +22,7 @@ ISLAND_UNJOINED_GAP_M = float(os.environ.get("ISLAND_UNJOINED_GAP_M", 2))
 
 ISLAND_PLATFORM_TOLERANCE_M = float(os.environ.get("ISLAND_PLATFORM_TOLERANCE_M", 1))
 
+LEVEL_UNTAGGED_AS_GROUND = os.environ.get("LEVEL_UNTAGGED_AS_GROUND", "0").strip().lower() in ("1", "true", "yes")
 
 WALK_SCORE_RADIUS_M = float(os.environ.get("WALK_SCORE_RADIUS_M", 1000))
 
