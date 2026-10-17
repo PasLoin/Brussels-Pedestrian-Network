@@ -111,6 +111,55 @@ _TEST_OSM = """<?xml version='1.0' encoding='UTF-8'?>
     <tag k="level" v="-1"/>
   </way>
 
+  <node id="41" lat="50.8900" lon="4.3900" version="1"/>
+  <node id="42" lat="50.8901" lon="4.3901" version="1"/>
+  <node id="43" lat="50.8902" lon="4.3902" version="1"/>
+  <way id="182174380" version="1">
+    <nd ref="41"/><nd ref="42"/>
+    <tag k="highway" v="footway"/>
+    <tag k="level" v="1"/>
+  </way>
+  <way id="182174379" version="1">
+    <nd ref="42"/><nd ref="43"/>
+    <tag k="highway" v="footway"/>
+    <tag k="bridge" v="covered"/>
+    <tag k="layer" v="1"/>
+  </way>
+
+  <node id="51" lat="50.9000" lon="4.4000" version="1"/>
+  <node id="52" lat="50.9001" lon="4.4001" version="1"/>
+  <node id="53" lat="50.9002" lon="4.4002" version="1"/>
+  <way id="501" version="1">
+    <nd ref="51"/><nd ref="52"/>
+    <tag k="highway" v="footway"/>
+    <tag k="level" v="0"/>
+  </way>
+  <way id="502" version="1">
+    <nd ref="52"/><nd ref="53"/>
+    <tag k="highway" v="footway"/>
+    <tag k="level" v="-1"/>
+  </way>
+
+  <node id="61" lat="50.9100" lon="4.4100" version="1"/>
+  <node id="62" lat="50.9101" lon="4.4101" version="1"/>
+  <node id="63" lat="50.9102" lon="4.4102" version="1"/>
+  <node id="64" lat="50.9103" lon="4.4103" version="1"/>
+  <way id="601" version="1">
+    <nd ref="61"/><nd ref="62"/>
+    <tag k="highway" v="footway"/>
+    <tag k="level" v="0"/>
+  </way>
+  <way id="602" version="1">
+    <nd ref="62"/><nd ref="63"/>
+    <tag k="highway" v="steps"/>
+    <tag k="level" v="1;2"/>
+  </way>
+  <way id="603" version="1">
+    <nd ref="63"/><nd ref="64"/>
+    <tag k="highway" v="footway"/>
+    <tag k="level" v="2"/>
+  </way>
+
   <node id="31" lat="50.8800" lon="4.3800" version="1"/>
   <node id="32" lat="50.8801" lon="4.3801" version="1"/>
   <node id="33" lat="50.8802" lon="4.3802" version="1"/>
@@ -140,12 +189,17 @@ def groups(bundle):
     return undirected_edge_groups(bundle.edge_tuples, bundle.edge_geoms, bundle.edge_lengths)
 
 
-def _flagged_nodes(bundle, groups):
+def _flagged_nodes(bundle, groups, untagged_as_ground=False):
     found = find_level_discontinuities(
         groups, bundle.edge_tuples, bundle.edge_highways,
         bundle.edge_levels, bundle.elevator_vertices,
+        untagged_as_ground=untagged_as_ground,
     )
     return {bundle.node_list[v]: g for v, g in found}
+
+
+def _ways(bundle, groups, group_ids):
+    return {w for g in group_ids for w in bundle.edge_osm_ids[groups[g][0]]}
 
 
 def test_levels_survive_simplification(bundle):
@@ -158,25 +212,35 @@ def test_elevator_node_detected(bundle):
     assert osmid_to_idx[22] in bundle.elevator_vertices
 
 
-def test_issue_50_steps_not_reaching_ground_are_flagged(bundle, groups):
+def test_steps_with_incompatible_tagged_neighbour_are_flagged(bundle, groups):
     flagged = _flagged_nodes(bundle, groups)
-    assert 2 in flagged
-    ways = {w for g in flagged[2] for w in bundle.edge_osm_ids[groups[g][0]]}
-    assert ways == {101, 496286153}
-    assert 3 not in flagged
+    assert 62 in flagged
+    assert _ways(bundle, groups, flagged[62]) == {601, 602}
+    assert 63 not in flagged
+
+
+def test_only_steps_are_checked(bundle, groups):
+    flagged = _flagged_nodes(bundle, groups)
+    assert set(flagged) == {62}
+
+
+def test_untagged_neighbour_is_ignored_by_default(bundle, groups):
+    flagged = _flagged_nodes(bundle, groups)
+    assert 2 not in flagged
+    assert 42 not in flagged
+
+
+def test_issue_50_with_untagged_as_ground(bundle, groups):
+    flagged = _flagged_nodes(bundle, groups, untagged_as_ground=True)
+    assert set(flagged) == {2, 62}
+    assert _ways(bundle, groups, flagged[2]) == {101, 496286153}
 
 
 def test_consistent_steps_are_not_flagged(bundle, groups):
-    flagged = _flagged_nodes(bundle, groups)
+    flagged = _flagged_nodes(bundle, groups, untagged_as_ground=True)
     assert 12 not in flagged
     assert 13 not in flagged
-
-
-def test_elevator_and_unknown_levels_are_not_flagged(bundle, groups):
-    flagged = _flagged_nodes(bundle, groups)
-    assert 22 not in flagged
-    assert 32 not in flagged
-    assert set(flagged) == {2}
+    assert 3 not in flagged
 
 
 def test_level_rows_written_to_islands_layer(bundle, groups, tmp_path):
@@ -196,6 +260,6 @@ def test_level_rows_written_to_islands_layer(bundle, groups, tmp_path):
     level = [f for f in features if f["properties"]["type"] == "level"]
     assert len(level) == 1
     props = level[0]["properties"]
-    assert props["node_id"] == 2
-    assert props["levels"] == "0 (non tagué) ≠ -2;-1"
-    assert set(props["way_ids"].split(",")) == {"101", "496286153"}
+    assert props["node_id"] == 62
+    assert props["levels"] == "1;2 ≠ 0"
+    assert set(props["way_ids"].split(",")) == {"601", "602"}
