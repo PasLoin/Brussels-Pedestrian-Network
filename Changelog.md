@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-17
+
+### Îlots déconnectés : discontinuités de niveau sur les escaliers (#50)
+
+- **Détection** : on part de chaque `highway=steps` portant un `level=*` et on compare uniquement les ways directement raccordées à ses extrémités. Si le niveau d'une de ces ways ne recouvre pas celui de l'escalier, le nœud est signalé 
+- **Hors périmètre** : les jonctions entre ways qui ne sont pas des steps.
+- Le routage/simulation n'est pas modifié uniquement QA (peut inclure de faux positifs lié au choix des levels pour des stations complexes (train/metro)
+
+
+
 ## 2026-10-14
  
 ### Corrections / Amélioration
