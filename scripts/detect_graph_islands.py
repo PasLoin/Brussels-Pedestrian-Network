@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from collections import defaultdict
 
 import geopandas as gpd
@@ -25,6 +26,8 @@ _EMPTY_ROW = {
     "n_ways": 0,
     "highways": "",
     "way_ids": "",
+    "levels": "",
+    "node_id": 0,
     "bbox_w": 0.0,
     "bbox_s": 0.0,
     "bbox_e": 0.0,
@@ -70,6 +73,80 @@ def _load_platforms(path: str) -> list:
     return geoms
 
 
+_LEVEL_UNKNOWN = "?"
+_LEVEL_RANGE_RE = re.compile(r"^(-?\d+(?:\.\d+)?)-(-?\d+(?:\.\d+)?)$")
+_LEVEL_WILDCARD_HIGHWAYS = frozenset({"elevator"})
+_UNTAGGED_LEVEL_LABEL = "0 (non tagué)"
+
+
+def parse_level(raw: str) -> tuple[float, float] | None:
+    if raw == _LEVEL_UNKNOWN:
+        return None
+    if raw == "":
+        return (0.0, 0.0)
+    values: list[float] = []
+    for part in raw.replace(",", ".").split(";"):
+        part = part.strip()
+        if not part:
+            continue
+        try:
+            values.append(float(part))
+            continue
+        except ValueError:
+            pass
+        m = _LEVEL_RANGE_RE.match(part)
+        if not m:
+            return None
+        values.extend((float(m.group(1)), float(m.group(2))))
+    if not values:
+        return None
+    return (min(values), max(values))
+
+
+def levels_overlap(a: tuple[float, float], b: tuple[float, float]) -> bool:
+    return a[0] <= b[1] + 1e-9 and b[0] <= a[1] + 1e-9
+
+
+def find_level_discontinuities(
+    edge_groups: list[list[int]],
+    edge_tuples: list[tuple[int, int]],
+    edge_highways: list[str],
+    edge_levels: list[str],
+    skip_vertices: frozenset = frozenset(),
+) -> list[tuple[int, list[int]]]:
+    incident: dict[int, list[int]] = defaultdict(list)
+    for gi, eids in enumerate(edge_groups):
+        eid = eids[0]
+        if edge_highways[eid] in _LEVEL_WILDCARD_HIGHWAYS:
+            continue
+        if parse_level(edge_levels[eid]) is None:
+            continue
+        u, v = edge_tuples[eid]
+        incident[u].append(gi)
+        if v != u:
+            incident[v].append(gi)
+
+    out: list[tuple[int, list[int]]] = []
+    for vertex in sorted(incident):
+        groups = incident[vertex]
+        if len(groups) < 2 or vertex in skip_vertices:
+            continue
+        intervals = [parse_level(edge_levels[edge_groups[g][0]]) for g in groups]
+        involved: set[int] = set()
+        for i in range(len(groups)):
+            for j in range(i + 1, len(groups)):
+                if not levels_overlap(intervals[i], intervals[j]):
+                    involved.add(groups[i])
+                    involved.add(groups[j])
+        if involved:
+            out.append((vertex, [g for g in groups if g in involved]))
+    return out
+
+
+def _level_label(raw: str) -> str:
+    return raw if raw else _UNTAGGED_LEVEL_LABEL
+
+
 def main_component_mask(graph) -> tuple[np.ndarray, np.ndarray, int]:
     comps = graph.connected_components(mode="weak")
     membership = np.asarray(comps.membership, dtype=np.int64)
@@ -88,6 +165,9 @@ def detect_graph_islands(
     edge_osm_ids: list[tuple[int, ...]],
     output_path: str = "graph_islands.geojson",
     platforms_path: str = "platforms_raw.geojson",
+    edge_levels: list[str] | None = None,
+    elevator_vertices: frozenset = frozenset(),
+    node_list: list | None = None,
 ) -> tuple[np.ndarray, dict]:
     print("Detecting graph islands (components disconnected from the main network)...")
 
@@ -171,9 +251,56 @@ def detect_graph_islands(
             "way_ids": ",".join(str(w) for w in ways[:_MAX_WAY_IDS]),
         })
 
+    n_islands = len(rows)
+
+    n_level = 0
+    level_length_m = 0.0
+    if edge_levels:
+        for vertex, groups in find_level_discontinuities(
+            edge_groups, edge_tuples, edge_highways, edge_levels, elevator_vertices,
+        ):
+            lines, ways, highways, labels = [], [], set(), []
+            length_m = 0.0
+            for g in groups:
+                eid = edge_groups[g][0]
+                geom = edge_geoms[eid]
+                if geom is not None and not geom.is_empty:
+                    lines.append(geom)
+                length_m += float(edge_lengths[eid])
+                highways.add(edge_highways[eid])
+                label = _level_label(edge_levels[eid])
+                if label not in labels:
+                    labels.append(label)
+                for way_id in edge_osm_ids[eid] if eid < len(edge_osm_ids) else ():
+                    if way_id not in ways:
+                        ways.append(way_id)
+            if not lines:
+                continue
+            n_level += 1
+            level_length_m += length_m
+            island_id += 1
+            node_id = 0
+            if node_list is not None and vertex < len(node_list):
+                try:
+                    node_id = int(node_list[vertex])
+                except (TypeError, ValueError):
+                    node_id = 0
+            rows.append({
+                "geometry": MultiLineString(lines),
+                "island_id": island_id,
+                "type": "level",
+                "gap_m": -1.0,
+                "length_m": round(length_m, 1),
+                "n_segments": len(lines),
+                "n_ways": len(ways),
+                "highways": ", ".join(sorted(highways)),
+                "way_ids": ",".join(str(w) for w in ways[:_MAX_WAY_IDS]),
+                "levels": " ≠ ".join(labels),
+                "node_id": node_id,
+            })
+
     _write_output(rows, output_path)
 
-    n_islands = len(rows)
     n_connected_vertices = n_vertices - n_isolated_vertices
     main_share_pct = (
         round(n_main_vertices / n_connected_vertices * 100, 2)
@@ -188,6 +315,8 @@ def detect_graph_islands(
     print(f"  Islands: {n_islands} ({total_length_m / 1000:.1f} km) | "
           f"unjoined (gap ≤ {ISLAND_UNJOINED_GAP_M} m): {n_unjoined} | "
           f"isolated: {n_islands - n_unjoined}")
+    print(f"  Level discontinuities (incompatible level=* at a shared node): "
+          f"{n_level} | elevator nodes skipped: {len(elevator_vertices)}")
 
     stats = {
         "main_component_vertices": n_main_vertices,
@@ -202,5 +331,7 @@ def detect_graph_islands(
         "platform_linked_components": n_platform_linked,
         "platform_linked_length_km": round(platform_linked_length_m / 1000, 2),
         "platform_tolerance_m": ISLAND_PLATFORM_TOLERANCE_M,
+        "level_discontinuities": n_level,
+        "level_discontinuities_length_km": round(level_length_m / 1000, 2),
     }
     return main_mask, stats
