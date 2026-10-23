@@ -1,59 +1,3 @@
-"""
-Detect highway=crossing nodes that are missing a corresponding crossing way
-or the ``footway=crossing`` tag.
-
-Two categories are detected and stored in the ``type`` property of the
-output GeoJSON:
-
-``missing_way``
-    No ``highway=footway`` or ``highway=pedestrian`` way passes within
-    ``CROSSING_NODE_CONNECTED_M`` of the node.  The crossing is not
-    mapped at all in the pedestrian network.  Shown in orange.
-
-``missing_tag``
-    A ``highway=footway`` passes through the node (shared-node connectivity
-    confirmed) but no ``footway=crossing`` sub-tag exists within
-    ``CROSSING_WAY_SEARCH_RADIUS_M``.  The crossing exists geometrically
-    but the tag is absent.  Shown in yellow.
-
-    If the *only* way connected at the node is a ``highway=pedestrian``
-    way (no ``highway=footway`` also connects), the node is skipped
-    entirely rather than flagged.  Pedestrian zones/plazas are continuous
-    surfaces by convention, so a crossing at their edge isn't expected to
-    be split out into its own ``footway=crossing`` way — flagging it would
-    be a false positive.
-
-Both categories require ``footway=sidewalk`` ways to be drawn on **both**
-sides of the road near the node AND roughly **parallel** to the road.
-
-Why the parallel filter matters
---------------------------------
-Without an angle check, the search zones (7 m offset + 15 m radius) can
-reach the sidewalk of a *crossing* street.  At a diagonal intersection the
-angle between the two roads can be small enough that the cross-street
-sidewalk passes a naive "is there anything in this zone?" test on both
-sides, producing false positives.
-
-Restricting accepted sidewalks to those whose bearing is within
-``CROSSING_SIDEWALK_MAX_ANGLE`` degrees of the road bearing eliminates
-these cases: a perpendicular or sharply-angled cross-street sidewalk fails
-the bearing test and is ignored.
-
-Inputs
-------
-* ``highways.geojson``              — crossing nodes (Point, highway=crossing)
-* ``sidewalk_footways_raw.geojson`` — raw osmium footway export
-* ``sidewalk_roads_raw.geojson``    — raw osmium road export
-
-Output
-------
-``missing_crossings.geojson`` — point layer with properties:
-  ``name``   road name
-  ``type``   ``"missing_way"`` or ``"missing_tag"``
-  ``left``   True if a parallel footway=sidewalk was found on the left side
-  ``right``  True if a parallel footway=sidewalk was found on the right side
-"""
-
 from __future__ import annotations
 
 import json
@@ -83,6 +27,9 @@ CROSSING_SIDEWALK_SEARCH_M   = float(os.environ.get("CROSSING_SIDEWALK_SEARCH_M"
 # 40° is tight enough to reject diagonal cross-street sidewalks yet loose
 # enough to accept sidewalks on roads that curve slightly near the node.
 CROSSING_SIDEWALK_MAX_ANGLE  = float(os.environ.get("CROSSING_SIDEWALK_MAX_ANGLE",  40.0))
+CROSSING_WRONG_TAG_SNAP_M    = float(os.environ.get("CROSSING_WRONG_TAG_SNAP_M",     0.5))
+
+_WRONG_FOOTWAY_VALUES = frozenset({"sidewalk"})
 
 # Minimum clipped length (metres) before trusting a piece's bearing.
 _MIN_CLIP_LEN = 3.0
@@ -96,6 +43,15 @@ def _safe_str(val) -> str:
     if isinstance(val, float) and math.isnan(val):
         return ""
     return str(val).strip().lower()
+
+
+def _safe_int(val) -> int:
+    try:
+        if val is None or (isinstance(val, float) and math.isnan(val)):
+            return 0
+        return int(val)
+    except (TypeError, ValueError):
+        return 0
 
 
 # ── Geometry helpers ──────────────────────────────────────────────────────────
@@ -309,6 +265,40 @@ def _load_sidewalk_ways(footways_path: str) -> tuple[list, STRtree | None]:
     return geoms, (STRtree(geoms) if geoms else None)
 
 
+def _load_wrong_tag_ways(footways_path: str) -> tuple[list, list, list, STRtree | None]:
+    gdf = gpd.read_file(footways_path)
+    gdf = gdf[gdf.geometry.geom_type == "LineString"].copy().to_crs("EPSG:31370")
+    for col in ("highway", "footway", "location"):
+        if col not in gdf.columns:
+            gdf[col] = ""
+    if "@id" not in gdf.columns:
+        gdf["@id"] = 0
+    mask = (
+        (gdf["highway"].apply(_safe_str) == "footway") &
+        (gdf["footway"].apply(_safe_str).isin(_WRONG_FOOTWAY_VALUES)) &
+        (gdf["location"].apply(_safe_str) != "underground")
+    )
+    sub = gdf[mask]
+    geoms = list(sub.geometry)
+    ids = [_safe_int(v) for v in sub["@id"]]
+    values = [_safe_str(v) for v in sub["footway"]]
+    return geoms, ids, values, (STRtree(geoms) if geoms else None)
+
+
+def _find_wrong_tag_way(
+    node_pt: Point, tree: STRtree | None, geoms: list, ids: list, values: list
+) -> tuple[int, str] | None:
+    if tree is None:
+        return None
+    zone = node_pt.buffer(CROSSING_WRONG_TAG_SNAP_M)
+    hits = [i for i in tree.query(zone)
+            if geoms[i].distance(node_pt) <= CROSSING_WRONG_TAG_SNAP_M]
+    if not hits:
+        return None
+    best = min(hits, key=lambda i: geoms[i].distance(node_pt))
+    return ids[best], values[best]
+
+
 def _load_roads(roads_path: str) -> tuple[gpd.GeoDataFrame, list, STRtree]:
     gdf = gpd.read_file(roads_path)
     gdf = gdf[gdf.geometry.geom_type == "LineString"].copy().to_crs("EPSG:31370")
@@ -413,6 +403,10 @@ def detect_missing_crossings(
     with step("load footway=sidewalk ways"):
         sw_geoms, sw_tree = _load_sidewalk_ways(footways_geojson_path)
 
+    with step("load wrongly tagged crossing ways"):
+        wt_geoms, wt_ids, wt_values, wt_tree = _load_wrong_tag_ways(footways_geojson_path)
+    print(f"  wrong-tag candidate ways: {len(wt_geoms)}")
+
     with step("load eligible roads"):
         roads_gdf, road_geoms, road_tree = _load_roads(roads_geojson_path)
     print(f"  Eligible road segments: {len(roads_gdf)}")
@@ -440,6 +434,7 @@ def detect_missing_crossings(
     n_no_sw       = 0
     n_missing_way = 0
     n_missing_tag = 0
+    n_wrong_tag   = 0
 
     with step("crossing node analysis loop"):
         for _, node_row in crossing_nodes.iterrows():
@@ -475,6 +470,19 @@ def detect_missing_crossings(
                 if on_excluded:
                     n_excluded += 1
                     continue
+
+            continuous = bool(node_row.get("continuous"))
+            wrong = None
+            if not continuous and best_dist <= CROSSING_WRONG_TAG_SNAP_M:
+                wrong = _find_wrong_tag_way(node_pt, wt_tree, wt_geoms, wt_ids, wt_values)
+            if wrong is not None:
+                n_wrong_tag += 1
+                rows.append(_flag_row(
+                    node_pt, node_row, road_geom, roads_gdf, best_idx,
+                    "wrong_tag", sw_tree, sw_geoms, cw_tree, cw_geoms,
+                    wrong_way_id=wrong[0], wrong_value=wrong[1],
+                ))
+                continue
 
             # 2. Tier-1: footway=crossing → fully mapped, skip ─────────────
             tier1 = (
@@ -548,45 +556,23 @@ def detect_missing_crossings(
                 continue
 
             # 6. Flag ──────────────────────────────────────────────────────
-            road_name = ""
-            if "name" in roads_gdf.columns:
-                road_name = _safe_str(roads_gdf.iloc[best_idx]["name"])
-
             if crossing_type == "missing_way":
                 n_missing_way += 1
             else:
                 n_missing_tag += 1
 
-            # Distance to the nearest footway=crossing way — the key
-            # diagnostic for "but the way IS tagged!" reports: on wide
-            # boulevards a kerb-split crossing chain can have its tagged
-            # piece on the other carriageway, farther than the tier-1
-            # radius from THIS node.
-            nearest_tag_m = -1.0
-            if cw_tree is not None and len(cw_geoms):
-                ni = cw_tree.nearest(node_pt)
-                nearest_tag_m = round(float(cw_geoms[ni].distance(node_pt)), 1)
-
-            rows.append({
-                "geometry": node_pt,
-                "name":  road_name,
-                "type":  crossing_type,
-                "left":  has_left,
-                "right": has_right,
-                "osm_id": int(node_row.get("osm_id") or 0),
-                "nearest_tag_m": nearest_tag_m,
-                "detect_radius": int(CROSSING_WAY_SEARCH_RADIUS_M),
-            })
+            rows.append(_flag_row(
+                node_pt, node_row, road_geom, roads_gdf, best_idx,
+                crossing_type, sw_tree, sw_geoms, cw_tree, cw_geoms,
+                has_left=has_left, has_right=has_right,
+            ))
 
     with step("write missing_crossings.geojson"):
         if rows:
             out_gdf = gpd.GeoDataFrame(rows, crs="EPSG:31370").to_crs("EPSG:4326")
         else:
             out_gdf = gpd.GeoDataFrame(
-                [{"geometry": None, "name": "", "type": "",
-                  "left": False, "right": False, "osm_id": 0,
-                  "nearest_tag_m": -1.0,
-                  "detect_radius": int(CROSSING_WAY_SEARCH_RADIUS_M)}],
+                [_empty_row()],
                 crs="EPSG:4326",
             )
         out_gdf.to_file("missing_crossings.geojson", driver="GeoJSON")
@@ -601,6 +587,7 @@ def detect_missing_crossings(
     print(f"  Skipped — no parallel sidewalk (both):   {n_no_sw}")
     print(f"  Missing crossing WAY detected:           {n_missing_way}")
     print(f"  Missing footway=crossing TAG detected:   {n_missing_tag}")
+    print(f"  Wrong footway=* TAG on crossing way:     {n_wrong_tag}")
 
     return {
         "crossing_nodes_found":        n_total,
@@ -612,14 +599,57 @@ def detect_missing_crossings(
         "sidewalk_missing_or_skewed":  n_no_sw,
         "missing_crossing_way":        n_missing_way,
         "missing_crossing_tag":        n_missing_tag,
-        "missing_crossings_detected":  n_missing_way + n_missing_tag,
+        "wrong_crossing_tag":          n_wrong_tag,
+        "missing_crossings_detected":  n_missing_way + n_missing_tag + n_wrong_tag,
     }
+
+
+def _flag_row(
+    node_pt, node_row, road_geom, roads_gdf, best_idx, crossing_type,
+    sw_tree, sw_geoms, cw_tree, cw_geoms,
+    has_left: bool | None = None, has_right: bool | None = None,
+    wrong_way_id: int = 0, wrong_value: str = "",
+) -> dict:
+    if has_left is None or has_right is None:
+        has_left = has_right = False
+        perp, road_bearing = _road_geometry_at(road_geom, node_pt)
+        if perp is not None and sw_tree is not None:
+            left_zone, right_zone = _sidewalk_zones(node_pt, perp)
+            has_left  = _has_parallel_sidewalk(left_zone,  road_bearing, sw_tree, sw_geoms)
+            has_right = _has_parallel_sidewalk(right_zone, road_bearing, sw_tree, sw_geoms)
+
+    road_name = ""
+    if "name" in roads_gdf.columns:
+        road_name = _safe_str(roads_gdf.iloc[best_idx]["name"])
+
+    nearest_tag_m = -1.0
+    if cw_tree is not None and len(cw_geoms):
+        ni = cw_tree.nearest(node_pt)
+        nearest_tag_m = round(float(cw_geoms[ni].distance(node_pt)), 1)
+
+    return {
+        "geometry": node_pt,
+        "name":  road_name,
+        "type":  crossing_type,
+        "left":  bool(has_left),
+        "right": bool(has_right),
+        "osm_id": int(node_row.get("osm_id") or 0),
+        "nearest_tag_m": nearest_tag_m,
+        "detect_radius": int(CROSSING_WAY_SEARCH_RADIUS_M),
+        "way_osm_id": int(wrong_way_id or 0),
+        "footway_value": wrong_value,
+    }
+
+
+def _empty_row() -> dict:
+    return {"geometry": None, "name": "", "type": "", "left": False,
+            "right": False, "osm_id": 0, "nearest_tag_m": -1.0,
+            "detect_radius": int(CROSSING_WAY_SEARCH_RADIUS_M),
+            "way_osm_id": 0, "footway_value": ""}
 
 
 def _write_empty_output() -> None:
     gpd.GeoDataFrame(
-        [{"geometry": None, "name": "", "type": "", "left": False,
-          "right": False, "osm_id": 0, "nearest_tag_m": -1.0,
-          "detect_radius": int(CROSSING_WAY_SEARCH_RADIUS_M)}],
+        [_empty_row()],
         crs="EPSG:4326",
     ).to_file("missing_crossings.geojson", driver="GeoJSON")
