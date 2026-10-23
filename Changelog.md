@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-23
+ 
+### Traversée manquante : ways de traversée taguées `footway=sidewalk` (#52)
+ 
+- **Détection** : quand un nœud `highway=crossing` situé sur la route est partagé par un way `highway=footway` + `footway=sidewalk`, le nœud est signalé avec le type `wrong_tag` (nouveau point rouge « Taguée footway=sidewalk » dans « Traversée manquante »). Jusqu'ici seuls les tags absents étaient vérifiés, pas les tags erronés.
+- **Exclusions** : nœuds `crossing:continuous=yes` (trottoir continu attendu)
+
 ## 2026-10-17
 
 ### Îlots déconnectés : discontinuités de niveau sur les escaliers (#50)
