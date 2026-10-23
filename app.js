@@ -72,6 +72,7 @@ function updateSidewalkFilter() {
 const MISSING_CROSSING_TYPES = [
   { value: "missing_way", label: "Way non mappé",               color: "#f97316" },
   { value: "missing_tag", label: "Tag footway=crossing absent",  color: "#eab308" },
+  { value: "wrong_tag",   label: "Taguée footway=sidewalk",      color: "#dc2626" },
 ];
 const activeMissingTypes = new Set(MISSING_CROSSING_TYPES.map(t => t.value));
 
@@ -595,6 +596,7 @@ const PEDESTRIAN_LAYERS = [
       "circle-color": ["match", ["get", "type"],
         "missing_way", "#f97316",
         "missing_tag", "#eab308",
+        "wrong_tag",   "#dc2626",
         "#f97316"
       ],
       "circle-radius": 12,
@@ -742,10 +744,33 @@ const HOVER_LAYERS = [
   },
 ];
 
+function formatWrongTagCrossing(p) {
+  const nid = parseInt(p.osm_id, 10) || 0;
+  const wid = parseInt(p.way_osm_id, 10) || 0;
+  const val = p.footway_value || "sidewalk";
+  const objs = [nid > 0 ? `n${nid}` : "", wid > 0 ? `w${wid}` : ""].filter(Boolean).join(",");
+  return `
+    <div class="popup-title">🔴 Traversée taguée footway=${escapeHTML(val)}</div>
+    <div class="popup-row"><span class="label">Rue</span><span class="value">${escapeHTML(p.name || "—")}</span></div>
+    <div class="popup-row"><span class="label">Problème</span><span class="value">Le way qui traverse la route au nœud crossing porte footway=${escapeHTML(val)} au lieu de footway=crossing</span></div>
+    ${nid > 0 ? `<div class="popup-row"><span class="label">Nœud</span><span class="value">
+      <a href="https://www.openstreetmap.org/node/${nid}" target="_blank" rel="noopener">n${nid}</a>
+    </span></div>` : ""}
+    ${wid > 0 ? `<div class="popup-row"><span class="label">Way</span><span class="value">
+      <a href="https://www.openstreetmap.org/way/${wid}" target="_blank" rel="noopener">w${wid}</a>
+      · <a href="https://www.openstreetmap.org/edit?way=${wid}" target="_blank" rel="noopener">iD</a>
+    </span></div>` : ""}
+    ${objs ? `<div class="popup-row"><span class="label">Éditer</span><span class="value">
+      <a href="http://127.0.0.1:8111/load_object?objects=${objs}" target="_blank" rel="noopener">JOSM</a>
+    </span></div>` : ""}
+  `;
+}
+
 const CLICK_LAYERS = [
   {
     ids: ["missing-crossings"],
     format: p => {
+      if (p.type === "wrong_tag") return formatWrongTagCrossing(p);
       const isMissingWay = p.type === "missing_way";
       const nearM = (typeof p.nearest_tag_m === "number" && p.nearest_tag_m >= 0)
         ? p.nearest_tag_m : null;
