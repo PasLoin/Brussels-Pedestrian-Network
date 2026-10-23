@@ -381,8 +381,9 @@ function computeCompleteness(s) {
   //    footway=crossing.  missing_tag means the way exists but lacks
   //    the sub-tag.
   const nMissingTag = mc.missing_crossing_tag || 0;
+  const nWrongTag = mc.wrong_crossing_tag || 0;
   const crossingTagPct = nNodes > 0
-    ? clamp((1 - (nMissingWay + nMissingTag) / nNodes) * 100, 0, 100)
+    ? clamp((1 - (nMissingWay + nMissingTag + nWrongTag) / nNodes) * 100, 0, 100)
     : 100;
 
   // 5. Sidewalk continuity = both_length / (both + gap).  Excludes the
@@ -465,7 +466,7 @@ function render(s) {
   // QA layer.  Falls back gracefully when stats are missing (older runs).
   if (mc.crossing_nodes_found != null) {
     const total = mc.crossing_nodes_found || 0;
-    const taggedOk = total - (mc.missing_crossing_way || 0) - (mc.missing_crossing_tag || 0);
+    const taggedOk = total - (mc.missing_crossing_way || 0) - (mc.missing_crossing_tag || 0) - (mc.wrong_crossing_tag || 0);
     el.innerHTML += `
       <div class="section">
         <div class="section-title">Traversées piétonnes</div>
@@ -490,6 +491,11 @@ function render(s) {
             <div class="kpi-label">Tag manquant</div>
             <div class="kpi-val" style="color:#eab308">${escapeHTML(fmt(mc.missing_crossing_tag || 0))}</div>
             <div class="kpi-sub">footway=crossing absent</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Tag erroné</div>
+            <div class="kpi-val" style="color:#dc2626">${escapeHTML(fmt(mc.wrong_crossing_tag || 0))}</div>
+            <div class="kpi-sub">taguée footway=sidewalk</div>
           </div>
           <div class="kpi">
             <div class="kpi-label">Continus</div>
@@ -728,16 +734,16 @@ function renderCharts(s) {
   // missing-crossings doughnut
   if (mc.crossing_nodes_found != null) {
     const total = mc.crossing_nodes_found || 0;
-    const tagOk = total - (mc.missing_crossing_way || 0) - (mc.missing_crossing_tag || 0);
+    const tagOk = total - (mc.missing_crossing_way || 0) - (mc.missing_crossing_tag || 0) - (mc.wrong_crossing_tag || 0);
     const ctx = document.getElementById('c-mc');
     if (ctx) {
       new Chart(ctx, {
         type: 'doughnut',
         data: {
-          labels: ['Way + tag OK', 'Way manquant', 'Tag manquant'],
+          labels: ['Way + tag OK', 'Way manquant', 'Tag manquant', 'Tag erroné'],
           datasets: [{
-            data: [tagOk, mc.missing_crossing_way || 0, mc.missing_crossing_tag || 0],
-            backgroundColor: [C.green, '#f97316', C.yellow],
+            data: [tagOk, mc.missing_crossing_way || 0, mc.missing_crossing_tag || 0, mc.wrong_crossing_tag || 0],
+            backgroundColor: [C.green, '#f97316', C.yellow, '#dc2626'],
             borderWidth: 0,
           }],
         },
