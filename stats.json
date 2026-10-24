@@ -1,0 +1,233 @@
+{
+  "routing": {
+    "routed_trips": 900000,
+    "avg_distance_m": 1095.1,
+    "total_distance_km": 985600.3,
+    "routing_time_s": 231.8
+  },
+  "od_sampling": {
+    "od_points": 28015,
+    "od_pairs_generated": 900000,
+    "rejected_near": 3765724,
+    "rejected_far": 382608900,
+    "min_dist_m": 600.0,
+    "max_dist_m": 1000.0,
+    "walk_score_radius_m": 1000.0,
+    "points_redirected_from_islands": 100,
+    "points_dropped_too_far": 3,
+    "points_fallback_nearest_node": 2022,
+    "streets_sampled": 4953,
+    "points_even": 13985,
+    "points_odd": 14030
+  },
+  "routed_trips": 900000,
+  "avg_distance_m": 1095.1,
+  "graph": {
+    "nodes": 113648,
+    "edges": 158334,
+    "directed_edges": 317220,
+    "cycleways_foot_yes": 938,
+    "cycleways_no_foot": 5037,
+    "streets_with_sidewalk_tags": 2609,
+    "components": {
+      "main_component_vertices": 105685,
+      "main_component_share_pct": 98.64,
+      "isolated_vertices": 6511,
+      "islands": 308,
+      "islands_unjoined": 18,
+      "islands_isolated": 290,
+      "islands_length_km": 35.02,
+      "islands_unjoined_length_km": 0.88,
+      "unjoined_gap_m": 2.0,
+      "platform_linked_components": 92,
+      "platform_linked_length_km": 1.66,
+      "platform_tolerance_m": 1.0,
+      "level_discontinuities": 16,
+      "level_discontinuities_length_km": 0.53
+    }
+  },
+  "network": {
+    "total_km": 5222.83,
+    "km_by_highway": {
+      "footway": 2085.62,
+      "residential": 1132.61,
+      "service": 441.72,
+      "tertiary": 262.65,
+      "cycleway": 254.97,
+      "path": 246.97,
+      "pedestrian": 184.89,
+      "primary": 151.2,
+      "secondary": 151.0,
+      "living_street": 108.38,
+      "track": 98.06,
+      "unclassified": 63.53,
+      "steps": 34.54,
+      "primary_link": 3.32,
+      "bridleway": 1.26,
+      "secondary_link": 0.98,
+      "tertiary_link": 0.75,
+      "construction": 0.28,
+      "elevator": 0.1
+    },
+    "edges_by_highway": {
+      "footway": 78694,
+      "residential": 25598,
+      "service": 12960,
+      "tertiary": 7669,
+      "pedestrian": 6558,
+      "cycleway": 5975,
+      "path": 4796,
+      "steps": 3969,
+      "secondary": 3831,
+      "primary": 3236,
+      "living_street": 2891,
+      "unclassified": 1293,
+      "track": 669,
+      "primary_link": 93,
+      "tertiary_link": 39,
+      "secondary_link": 35,
+      "elevator": 18,
+      "bridleway": 7,
+      "construction": 3
+    },
+    "km_by_category": {
+      "pedestrian": 2759.82,
+      "road": 2208.03,
+      "cycleway_no_foot": 183.34,
+      "cycleway_foot_yes": 71.64
+    }
+  },
+  "flow": {
+    "forced_road_segments": 446,
+    "forced_cycleway_segments": 15,
+    "flow_edges_exported": 80665,
+    "flow_edges_dropped_low": 2002,
+    "flow_threshold_trips": 806.0,
+    "max_flow_trips": 5330,
+    "forced_road_length_m": 25400.0,
+    "forced_cycleway_length_m": 312.0,
+    "flow_by_infra": {
+      "pedestrian": 30280032,
+      "road": 2428794,
+      "cycleway_foot_yes": 281983,
+      "cycleway_no_foot": 105465
+    },
+    "edges_with_flow_by_infra": {
+      "pedestrian": 68129,
+      "road": 13045,
+      "cycleway_foot_yes": 802,
+      "cycleway_no_foot": 691
+    },
+    "length_with_flow_by_infra_m": {
+      "pedestrian": 1993004.0,
+      "road": 719087.0,
+      "cycleway_foot_yes": 53147.0,
+      "cycleway_no_foot": 32474.0
+    }
+  },
+  "walkability": {
+    "streets_scored": 4949,
+    "walkability_mean": 0.586,
+    "walkability_median": 0.582,
+    "walkability_min": 0.0,
+    "walkability_max": 0.967,
+    "score_distribution": {
+      "0_20": 213,
+      "20_40": 1410,
+      "40_60": 910,
+      "60_80": 979,
+      "80_100": 1437
+    },
+    "sidewalk_penalties": {
+      "both": 1926,
+      "partial": 210,
+      "not_required": 726,
+      "unknown": 2062,
+      "none": 25
+    }
+  },
+  "sidewalk_gaps": {
+    "roads_analysed": 12111,
+    "skipped_no_sidewalk": 1493,
+    "both_sides": 4421,
+    "one_side_gap": 2345,
+    "neither_side": 5325,
+    "gap_length_km": 237.67,
+    "both_length_km": 519.0,
+    "neither_length_km": 818.32,
+    "footway_segments_indexed": 44579,
+    "footway_filter": {
+      "raw": 62387,
+      "kept": 44579,
+      "kept_sidewalk": 24973,
+      "kept_link": 73,
+      "kept_crossing": 15486,
+      "kept_traffic_island": 1589,
+      "kept_pedestrian": 2458,
+      "dropped": 17808
+    },
+    "separate_candidates": 995,
+    "separate_candidates_length_km": 92.02
+  },
+  "sidewalk_roads": {
+    "total_road_ways": 14925,
+    "by_status": {
+      "separate": 3868,
+      "yes": 1759,
+      "documented": 1406,
+      "partial": 825,
+      "unknown": 7067
+    },
+    "pct_by_status": {
+      "separate": 25.9,
+      "yes": 11.8,
+      "documented": 9.4,
+      "partial": 5.5,
+      "unknown": 47.4
+    },
+    "km_by_status": {
+      "separate": 432.11,
+      "yes": 259.28,
+      "documented": 153.87,
+      "partial": 79.83,
+      "unknown": 856.25
+    }
+  },
+  "missing_crossings": {
+    "crossing_nodes_found": 23154,
+    "no_eligible_road": 724,
+    "on_excluded_way": 4116,
+    "crossing_continuous": 37,
+    "crossing_fully_mapped": 14890,
+    "connected_pedestrian_only": 22,
+    "sidewalk_missing_or_skewed": 3222,
+    "missing_crossing_way": 18,
+    "missing_crossing_tag": 43,
+    "wrong_crossing_tag": 82,
+    "missing_crossings_detected": 143
+  },
+  "footway_connectivity_candidates": {
+    "candidates_scanned": 16293,
+    "length_out_of_range": 4926,
+    "no_midway_road_crossing": 11250,
+    "sidewalks_same_side": 1,
+    "no_sidewalk_both_ends": 100,
+    "flagged": 16
+  },
+  "tactile_paving_issues": {
+    "crossings_in_scope": 16643,
+    "no_crossing_way_found": 3908,
+    "ambiguous_way_match": 162,
+    "degenerate_way": 0,
+    "half_mapped_sides": 738,
+    "half_mapped_incorrect_skipped": 20,
+    "coherent": 7581,
+    "kerb_missing": 3231,
+    "kerb_untagged": 1162,
+    "kerb_missing_points": 5121,
+    "kerb_untagged_points": 1949,
+    "value_mismatch": 543,
+    "incorrect_not_mixed": 36,
+    "flagged": 579
+  }
+}
