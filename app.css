@@ -1,9 +1,7 @@
-/* ── Reset ─────────────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: "Inter", system-ui, sans-serif; background: #1a1a1a; }
 #map { position: absolute; inset: 0; }
 
-/* ── Header panel ─────────────────────────────────────────────────────────── */
 #header {
   position: absolute; top: 12px; left: 12px; z-index: 10;
   background: rgba(255,255,255,0.96); border-radius: 10px;
@@ -47,7 +45,6 @@ body { font-family: "Inter", system-ui, sans-serif; background: #1a1a1a; }
 #routing-stats { font-size: 10px; color: #777; margin-top: 4px; line-height: 1.5; }
 #routing-stats span { font-weight: 600; color: #444; }
 
-/* ── Flow threshold slider ────────────────────────────────────────────────── */
 .flow-filter-wrap {
   margin-top: 10px;
   padding: 8px 10px;
@@ -100,7 +97,6 @@ body { font-family: "Inter", system-ui, sans-serif; background: #1a1a1a; }
   box-shadow: 0 1px 4px rgba(0,0,0,0.2);
 }
 
-/* ── Header buttons ───────────────────────────────────────────────────────── */
 .header-btn {
   display: flex; align-items: center; gap: 8px; margin-top: 10px;
   width: 100%; padding: 7px 10px; border: none; border-radius: 7px;
@@ -123,7 +119,6 @@ body { font-family: "Inter", system-ui, sans-serif; background: #1a1a1a; }
 #nav-btn.loading { background: #9ca3af; pointer-events: none; }
 #nav-hint { font-size: 10px; color: #aaa; margin-top: 4px; text-align: center; min-height: 14px; }
 
-/* ── Route stats panel ────────────────────────────────────────────────────── */
 #route-panel {
   position: absolute; bottom: 28px; right: 12px; z-index: 10;
   background: rgba(255,255,255,0.96); border-radius: 10px;
@@ -161,13 +156,6 @@ body { font-family: "Inter", system-ui, sans-serif; background: #1a1a1a; }
 #route-clear:hover { background: #f3f4f6; border-color: #bbb; color: #333; }
 #route-clear:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
 
-/* ── Legend panel ─────────────────────────────────────────────────────────── */
-/* Anchored top-right, just below the zoom badge. Its bottom edge must
-   never overlap the attribution control, whose rendered height varies
-   (narrow viewports wrap the attribution text onto two lines) — so the
-   max-height clears --attribution-clearance, a custom property kept in
-   sync with the control's actual height by updateLegendClearance() in
-   app.js rather than a hard-coded guess. */
 #legend {
   position: absolute; top: 50px; right: 12px; z-index: 10;
   background: rgba(255,255,255,0.96); border-radius: 10px;
@@ -221,7 +209,6 @@ body { font-family: "Inter", system-ui, sans-serif; background: #1a1a1a; }
 .legend-dot.gradient-dot { background: linear-gradient(135deg, var(--c1) 0%, var(--c2) 100%); }
 .legend-label { font-size: 12px; color: #333; }
 
-/* ── Sub-filter under a legend item ───────────────────────────────────────── */
 .legend-sub.parent-hidden { opacity: 0.4; pointer-events: none; }
 .legend-sub {
   margin: 4px 0 8px 0;
@@ -251,15 +238,12 @@ body { font-family: "Inter", system-ui, sans-serif; background: #1a1a1a; }
 }
 .legend-sub-label { color: #444; }
 
-/* ── Zoom badge ───────────────────────────────────────────────────────────── */
-/* Right-aligned with the legend/route panel below it. */
 #zoom-badge {
   position: absolute; top: 12px; right: 12px; z-index: 10;
   background: rgba(255,255,255,0.9); border-radius: 6px; padding: 4px 8px;
   font-size: 11px; color: #555; pointer-events: none;
 }
 
-/* ── Map popups ───────────────────────────────────────────────────────────── */
 .maplibregl-popup-content {
   background: rgba(30,30,30,0.92) !important;
   color: #eee !important;
@@ -275,7 +259,6 @@ body { font-family: "Inter", system-ui, sans-serif; background: #1a1a1a; }
 .popup-row { display: flex; justify-content: space-between; gap: 12px; }
 .popup-row .label { color: #aaa; }
 .popup-row .value { color: #fff; font-weight: 600; }
-/* Bouton ✕ du popup persistant (click) */
 .maplibregl-popup-close-button {
   color: #aaa !important;
   font-size: 16px !important;
@@ -285,17 +268,14 @@ body { font-family: "Inter", system-ui, sans-serif; background: #1a1a1a; }
   right: 4px !important;
 }
 .maplibregl-popup-close-button:hover { color: #fff !important; }
-/* Liens OSM/JOSM/iD dans le popup */
 .popup-row .value a {
   color: #7dd3fc;
   text-decoration: none;
 }
 .popup-row .value a:hover { text-decoration: underline; }
 
-/* ── Nav mode cursor ──────────────────────────────────────────────────────── */
 .nav-mode-cursor .maplibregl-canvas { cursor: crosshair !important; }
 
-/* ── Mobile responsive ────────────────────────────────────────────────────── */
 @media (max-width: 600px) {
   #header { max-width: 200px; }
   #header h1 { font-size: 12px; }
@@ -304,7 +284,6 @@ body { font-family: "Inter", system-ui, sans-serif; background: #1a1a1a; }
   #route-panel { bottom: 16px; right: 8px; min-width: 200px; max-width: 240px; }
 }
 
-/* ── Header nav ── */
 .header-nav {
   margin-top: 12px;
   display: flex;
