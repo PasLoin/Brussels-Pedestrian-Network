@@ -86,7 +86,7 @@
   </p>
 
   <div class="qa-box">
-    La simulation de flux aide à repérer les zones où le mapping a le plus d'effet sur la marchabilité. Les couches QA permettent, quant à elles, de cibler des erreurs de topologie ou des tags manquants sur des segments précis.
+    La simulation de flux aide à repérer les zones où le mapping a le plus d'effet sur la marchabilité. Les couches QA servent à cibler des erreurs de topologie ou des tags manquants sur des segments précis.
   </div>
 
   <h2>1. Coûts de routage et tags OSM</h2>
@@ -110,7 +110,7 @@
   <ul>
     <li><code>sidewalk=both</code> ou <code>separate</code> : coefficient proche de 1.0.</li>
     <li><code>sidewalk=no</code> : pénalité forte (coefficient 0.3).</li>
-    <li>Tag absent : pénalité intermédiaire (coefficient 0.5) — c'est le cas le plus fréquent, et la principale marge de progression pour la documentation du réseau.</li>
+    <li>Tag absent : pénalité intermédiaire (coefficient 0.5). C'est le cas le plus fréquent, et donc celui où la documentation du réseau peut le plus progresser.</li>
   </ul>
 
   <h2>2. Couches de contrôle qualité</h2>
@@ -130,7 +130,7 @@
 
   <h3>Traversées manquantes</h3>
   <p>
-    Cette couche ne signale pas toutes les traversées absentes, mais uniquement les nœuds <code>highway=crossing</code> situés sur une route où un trottoir (<code>footway=sidewalk</code>) parallèle est déjà mappé des deux côtés, et dont le passage piéton n'est pas correctement relié à ce réseau via un way <code>footway=crossing</code>. Deux cas sont distingués : l'absence totale de way de traversée connecté (<code>missing_way</code>), et la présence d'un footway connecté au nœud sans le tag <code>footway=crossing</code> (<code>missing_tag</code>). Dans les deux cas, l'infrastructure piétonne environnante est déjà documentée, mais le graphe de routage présente une rupture de connectivité à cet endroit. Un nœud sans trottoir adjacent détecté n'est pas signalé par cette couche.
+    Cette couche signale uniquement les nœuds <code>highway=crossing</code> situés sur une route où un trottoir (<code>footway=sidewalk</code>) parallèle est déjà mappé des deux côtés, et dont le passage piéton n'est pas correctement relié à ce réseau via un way <code>footway=crossing</code>. Deux cas sont distingués : l'absence totale de way de traversée connecté (<code>missing_way</code>), et la présence d'un footway connecté au nœud sans le tag <code>footway=crossing</code> (<code>missing_tag</code>). Dans les deux cas, les trottoirs autour sont mappés mais le graphe de routage est coupé à cet endroit.
   </p>
 
   <h2>3. Indicateurs de complétude</h2>
@@ -138,19 +138,19 @@
     La page Statistiques agrège plusieurs indicateurs de complétude du mapping :
   </p>
   <ul>
-    <li><strong>Documentation des routes</strong> — proportion des segments routiers (residential à primary) portant un tag <code>sidewalk</code> explicite.</li>
-    <li><strong>Connectivité des traversées</strong> — proportion de nœuds <code>highway=crossing</code> reliés à un way <code>footway=crossing</code>.</li>
-    <li><strong>Précision du mapping des trottoirs</strong> — part des trottoirs mappés comme objets géométriques distincts (<code>sidewalk=separate</code>), plus précise pour le guidage des personnes à mobilité réduite.</li>
-    <li><strong>Attributs d'accessibilité</strong> — présence des tags <code>surface</code>, <code>tactile_paving</code> et <code>smoothness</code>.</li>
+    <li>Documentation des routes : proportion des segments routiers (residential à primary) portant un tag <code>sidewalk</code> explicite.</li>
+    <li>Connectivité des traversées : proportion de nœuds <code>highway=crossing</code> reliés à un way <code>footway=crossing</code>.</li>
+    <li>Précision du mapping des trottoirs : part des trottoirs mappés comme objets géométriques distincts (<code>sidewalk=separate</code>). Ce mode de mapping est plus utile pour guider les personnes à mobilité réduite.</li>
+    <li>Attributs d'accessibilité : présence des tags <code>surface</code>, <code>tactile_paving</code> et <code>smoothness</code>.</li>
   </ul>
 
   <h2>Contribuer</h2>
   <p>
-    Les données sont rafraîchies chaque lundi à partir d'un extrait OpenStreetMap. Workflow de contribution suggéré :
+    Les données sont rafraîchies toutes les nuits à partir d'un extrait OpenStreetMap. Workflow de contribution suggéré :
   </p>
   <ol>
     <li>Repérer sur la carte un segment en rouge (flux sur route) ou un trottoir signalé comme lacune.</li>
-    <li>Ouvrir l'éditeur OSM via le bouton <strong>Éditer dans OSM</strong> (disponible à partir du zoom 16).</li>
+    <li>Ouvrir l'éditeur OSM via le bouton « Éditer dans OSM » (disponible à partir du zoom 16).</li>
     <li>Compléter les tags ou la géométrie manquante dans iD ou JOSM.</li>
     <li>Les modifications sont prises en compte lors de la mise à jour hebdomadaire suivante.</li>
   </ol>
