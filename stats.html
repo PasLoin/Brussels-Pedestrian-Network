@@ -99,7 +99,6 @@
       margin-top: -4px;
     }
 
-    /* ── Completeness gauge (the mapper-oriented headline) ─────────── */
     .completeness {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -336,22 +335,6 @@ fetch('./stats.json')
   .catch(e => { document.getElementById('loading').textContent = 'Erreur : ' + e; });
 
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Completeness scoring
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Compute the mapper-oriented completeness score (0–100).
- *
- * Five sub-scores, each independently meaningful, averaged with equal
- * weight.  The choice of equal weighting is intentional — overweighting
- * any one would steer mappers toward gaming a single metric rather than
- * improving the dataset as a whole.
- *
- * Each sub-score is clamped to [0, 100] before averaging so a single
- * outlier (e.g. crossing_tagged_pct > 100 when crossing_nodes is small)
- * can't pull the global score out of bounds.
- */
 function computeCompleteness(s) {
   const swRoad = s.sidewalk_roads || {};
   const swPct  = swRoad.pct_by_status || {};
@@ -359,36 +342,25 @@ function computeCompleteness(s) {
   const mc     = s.missing_crossings || {};
   const net    = s.network || {};
 
-  // 1. Sidewalk documented = (separate + yes + documented + partial) / total
-  //    partial counts as half — one side documented is partial credit.
   const sidewalkDocPct = clamp(
     (swPct.separate || 0) + (swPct.yes || 0) + (swPct.documented || 0) + (swPct.partial || 0) * 0.5,
     0, 100,
   );
 
-  // 2. Sidewalk separately mapped (the "ideal" tagging form).
   const sidewalkSepPct = clamp((swPct.separate || 0) + (swPct.documented || 0), 0, 100);
 
-  // 3. Crossing connectivity = (total - missing_way) / total.
-  //    missing_way means the node has no connected footway → routing gap.
   const nNodes = mc.crossing_nodes_found || 0;
   const nMissingWay = mc.missing_crossing_way || 0;
   const crossingConnPct = nNodes > 0
     ? clamp((1 - nMissingWay / nNodes) * 100, 0, 100)
     : 100;
 
-  // 4. Crossing fully tagged = nodes whose connected footway also has
-  //    footway=crossing.  missing_tag means the way exists but lacks
-  //    the sub-tag.
   const nMissingTag = mc.missing_crossing_tag || 0;
   const nWrongTag = mc.wrong_crossing_tag || 0;
   const crossingTagPct = nNodes > 0
     ? clamp((1 - (nMissingWay + nMissingTag + nWrongTag) / nNodes) * 100, 0, 100)
     : 100;
 
-  // 5. Sidewalk continuity = both_length / (both + gap).  Excludes the
-  //    "neither side" roads since those are honestly handled by the
-  //    sidewalk_documented sub-score.
   const bothKm = gaps.both_length_km || 0;
   const gapKm  = gaps.gap_length_km || 0;
   const continuityPct = (bothKm + gapKm) > 0
@@ -419,10 +391,6 @@ function barClass(pct) {
 }
 
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Render
-// ─────────────────────────────────────────────────────────────────────────────
-
 function render(s) {
   const el = document.getElementById('main');
   el.innerHTML = '';
@@ -437,7 +405,6 @@ function render(s) {
   const mc = s.missing_crossings || {};
   const catD = net.km_by_category || {};
 
-  // ── 0. Completeness — mapper headline ────────────────────────────────
   const comp = computeCompleteness(s);
   const r = 60, circ = 2 * Math.PI * r;
   const filled = (comp.global / 100) * circ;
@@ -461,9 +428,6 @@ function render(s) {
       </div>
     </div>`;
 
-  // ── 1. Crossings (new layer) ─────────────────────────────────────────
-  // Surfaced near the top because it's the freshest mapper-actionable
-  // QA layer.  Falls back gracefully when stats are missing (older runs).
   if (mc.crossing_nodes_found != null) {
     const total = mc.crossing_nodes_found || 0;
     const taggedOk = total - (mc.missing_crossing_way || 0) - (mc.missing_crossing_tag || 0) - (mc.wrong_crossing_tag || 0);
@@ -517,7 +481,6 @@ function render(s) {
       </div>`;
   }
 
-  // ── 2. Réseau ───────────────────────────────────────────────────────
   el.innerHTML += `
     <div class="section">
       <div class="section-title">Réseau</div>
@@ -565,7 +528,6 @@ function render(s) {
       </div>
     </div>`;
 
-  // ── 3. Tags sidewalk ────────────────────────────────────────────────
   const byS = swRoad.by_status || {};
   const pctS = swRoad.pct_by_status || {};
   const docPct = (pctS.separate || 0) + (pctS.yes || 0) + (pctS.documented || 0);
@@ -604,10 +566,9 @@ function render(s) {
       </div>
     </div>`;
 
-  // ── 4. Analyse spatiale ─────────────────────────────────────────────
   el.innerHTML += `
     <div class="section">
-      <div class="section-title">Analyse spatiale — trottoirs</div>
+      <div class="section-title">Analyse spatiale des trottoirs</div>
       <div class="kpi-grid">
         <div class="kpi">
           <div class="kpi-label">Routes analysées</div>
@@ -640,13 +601,12 @@ function render(s) {
           <div class="chart-wrap"><canvas id="c-fw-filter"></canvas></div>
         </div>
         <div class="chart-card">
-          <h3>Marchabilité — distribution des scores</h3>
+          <h3>Distribution des scores de marchabilité</h3>
           <div class="chart-wrap"><canvas id="c-walk"></canvas></div>
         </div>
       </div>
     </div>`;
 
-  // ── 5. Marchabilité ──────────────────────────────────────────────────
   el.innerHTML += `
     <div class="section">
       <div class="section-title">Marchabilité</div>
@@ -670,7 +630,6 @@ function render(s) {
       </div>
     </div>`;
 
-  // ── 6. Simulation ───────────────────────────────────────────────────
   el.innerHTML += `
     <div class="section">
       <div class="section-title">Simulation</div>
@@ -694,7 +653,6 @@ function render(s) {
       </div>
     </div>`;
 
-  // ── Fill the completeness sub-scores after DOM is in place ──────────
   const subEl = document.getElementById('sub-scores');
   for (const sub of comp.subs) {
     subEl.insertAdjacentHTML('beforeend', `
@@ -731,7 +689,6 @@ function renderCharts(s) {
     },
   });
 
-  // missing-crossings doughnut
   if (mc.crossing_nodes_found != null) {
     const total = mc.crossing_nodes_found || 0;
     const tagOk = total - (mc.missing_crossing_way || 0) - (mc.missing_crossing_tag || 0) - (mc.wrong_crossing_tag || 0);
@@ -752,7 +709,6 @@ function renderCharts(s) {
     }
   }
 
-  // category doughnut
   const catD = net.km_by_category || {};
   const ck = Object.keys(catD);
   if (ck.length) {
@@ -766,7 +722,6 @@ function renderCharts(s) {
     });
   }
 
-  // highway bar
   const hwD = net.km_by_highway || {};
   const hk = Object.keys(hwD).slice(0, 12);
   if (hk.length) {
@@ -781,7 +736,6 @@ function renderCharts(s) {
     });
   }
 
-  // sidewalk status
   const swK = ['separate', 'yes', 'documented', 'partial', 'unknown'];
   const byS = swRoad.by_status || {};
   new Chart(document.getElementById('c-sw-n'), {
@@ -803,7 +757,6 @@ function renderCharts(s) {
     options: bOpts('km'),
   });
 
-  // gap doughnut
   if (gaps.both_sides != null) {
     new Chart(document.getElementById('c-gap'), {
       type: 'doughnut',
@@ -815,7 +768,6 @@ function renderCharts(s) {
     });
   }
 
-  // footway composition (what feeds the gap-detection coverage check)
   const fwF = gaps.footway_filter || {};
   if (fwF.kept != null) {
     new Chart(document.getElementById('c-fw-filter'), {
@@ -838,7 +790,6 @@ function renderCharts(s) {
     });
   }
 
-  // walkability distribution
   const sd = walk.score_distribution || {};
   const bk = ['0_20', '20_40', '40_60', '60_80', '80_100'];
   const bl = ['0–20 %', '20–40 %', '40–60 %', '60–80 %', '80–100 %'];
