@@ -151,7 +151,6 @@
     .delta.neg .delta-val { color: var(--red); }
     .delta.neutral .delta-val { color: var(--text); }
 
-    /* ── Period / zoom controls ─────────────────────────────────────── */
     .period-controls {
       display: flex;
       flex-wrap: wrap;
@@ -238,7 +237,6 @@
 </main>
 
 <script>
-// ── Chart defaults ─────────────────────────────────────────────────────────
 Chart.defaults.color = '#888';
 Chart.defaults.borderColor = '#ddd';
 Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
@@ -260,10 +258,6 @@ const fmt  = v => v != null ? v.toLocaleString('fr-BE') : '—';
 const fkm  = v => v != null ? v.toLocaleString('fr-BE', { maximumFractionDigits: 1 }) : '—';
 const fpct = v => v != null ? v.toFixed(1) + ' %' : '—';
 
-// "2024-04-01" → "avr 24". Daily snapshots get a "*" suffix AND the exact
-// day (e.g. "05 aoû 26 *") instead of just the month, so the orange "today"
-// marker always shows the real extraction date at a glance rather than
-// silently rounding to the current month.
 const fmonth = (iso, isDaily = false) => {
   const [y, m, d] = iso.split('-');
   const months = ['jan','fév','mar','avr','mai','jun','jul','aoû','sep','oct','nov','déc'];
@@ -273,8 +267,6 @@ const fmonth = (iso, isDaily = false) => {
   return months[parseInt(m,10)-1] + ' ' + y.slice(2);
 };
 
-// ISO date exactly `n` calendar months before `iso`. Used to default the
-// "Période d'analyse" range to the last 6 months instead of full history.
 const monthsBefore = (iso, n) => {
   const d = new Date(iso + 'T00:00:00Z');
   d.setUTCMonth(d.getUTCMonth() - n);
@@ -291,24 +283,14 @@ function escapeHTML(str) {
     .replace(/'/g, "&#039;");
 }
 
-// Holds the live Chart.js instances for the charts that respond to the
-// period (zoom) controls, keyed by canvas id, so they can be destroyed
-// and recreated whenever the selected period changes.
 const chartInstances = {};
 
-// history.json is regenerated periodically by the history workflow.
-// Without cache-busting, browsers (and GitHub Pages' CDN) can keep
-// serving a stale cached copy for a while after a new version is
-// pushed — which used to show phantom stale "daily" points long after
-// the underlying data had already been fixed. The timestamp query
-// param forces a fresh fetch every page load.
 fetch('./history.json?t=' + Date.now(), { cache: 'no-store' })
   .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
   .then(data => {
     if (!Array.isArray(data) || data.length === 0) {
       throw new Error('Historique vide. Lancez le workflow "Compute History".');
     }
-    // Ensure date-sorted ascending.
     data.sort((a, b) => a.date.localeCompare(b.date));
     render(data);
   })
@@ -317,7 +299,6 @@ fetch('./history.json?t=' + Date.now(), { cache: 'no-store' })
       'Erreur : ' + escapeHTML(String(e.message || e));
   });
 
-// ── Rendering ──────────────────────────────────────────────────────────────
 
 function render(data) {
   const el = document.getElementById('main');
@@ -326,14 +307,11 @@ function render(data) {
   const first = data[0];
   const last  = data[data.length - 1];
 
-  // Daily entry (if present) is appended last by generate_history_list.py
-  // and carries today's date, so it naturally sorts to the end.
   const dailyEntry   = last && last.type === 'daily' ? last : null;
   const snapshots    = data.filter(d => d.type !== 'daily');
   const lastSnapshot = snapshots[snapshots.length - 1];
   const showComparison = !!(dailyEntry && lastSnapshot && dailyEntry.date !== lastSnapshot.date);
 
-  // ── Intro card with timespan + headline numbers ──────────────────────
   const months = data.length;
   const yearsCovered = ((new Date(last.date) - new Date(first.date)) / (1000 * 60 * 60 * 24 * 365.25)).toFixed(1);
 
@@ -351,10 +329,6 @@ function render(data) {
       </div>
     </div>`;
 
-  // ── Section: period / zoom controls ──────────────────────────────────
-  // Shown first, right after the intro card, since every section below
-  // reacts to this range. Defaults to the last 6 months (not full history)
-  // so the page opens zoomed on recent activity.
   const defaultStart = (() => {
     const sixMonthsAgo = monthsBefore(last.date, 6);
     return sixMonthsAgo > first.date ? sixMonthsAgo : first.date;
@@ -377,33 +351,28 @@ function render(data) {
       </div>
     </div>`;
 
-  // ── Section: deltas over the selected period ─────────────────────────
   el.innerHTML += `
     <div class="section">
       <div class="section-title" id="deltas-title">Évolution</div>
       <div class="delta-grid" id="deltas"></div>
     </div>`;
 
-  // ── Section: comparison vs latest daily extract ─────────────────────
-  // Focused on dedicated pedestrian infrastructure only (footway,
-  // pedestrian, path, living_street, steps, elevator): road types like
-  // primary/secondary barely move day to day and aren't the point here.
   if (showComparison) {
     el.innerHTML += `
       <div class="section" id="compare-section">
         <div class="section-title">Depuis le dernier snapshot mensuel</div>
         <div class="chart-card">
-          <h3>Km par type d'infrastructure piétonne — snapshot vs aujourd'hui</h3>
+          <h3>Km par type d'infrastructure piétonne : snapshot vs aujourd'hui</h3>
           <div class="subtitle">
             Comparaison entre le dernier snapshot mensuel (${escapeHTML(lastSnapshot.date)})
             et l'extrait quotidien le plus récent (${escapeHTML(dailyEntry.date)}).
-            Uniquement l'infrastructure piétonne dédiée — les routes (primary, etc.)
-            varient très peu d'un jour à l'autre et sont déjà couvertes plus bas.
+            Seule l'infrastructure piétonne dédiée est comparée : les routes (primary, etc.)
+            varient très peu d'un jour à l'autre et sont couvertes plus bas.
           </div>
           <div class="chart-wrap"><canvas id="c-compare-hw"></canvas></div>
         </div>
         <div class="chart-card">
-          <h3>Sous-types de footway — snapshot vs aujourd'hui</h3>
+          <h3>Sous-types de footway : snapshot vs aujourd'hui</h3>
           <div class="subtitle">
             Détail des ways highway=footway par sous-tag footway=*, mêmes deux dates.
           </div>
@@ -413,7 +382,6 @@ function render(data) {
       </div>`;
   }
 
-  // ── Section 2: network length evolution ─────────────────────────────
   el.innerHTML += `
     <div class="section">
       <div class="section-title">Longueur du réseau (km)</div>
@@ -437,7 +405,6 @@ function render(data) {
       </div>
     </div>`;
 
-  // ── Section 3: pedestrian network quality ────────────────────────────
   el.innerHTML += `
     <div class="section">
       <div class="section-title">Qualité de mapping piéton</div>
@@ -461,10 +428,9 @@ function render(data) {
       </div>
     </div>`;
 
-  // ── Section 4: footway breakdown ────────────────────────────────────
   el.innerHTML += `
     <div class="section">
-      <div class="section-title">Footways — Composition</div>
+      <div class="section-title">Composition des footways</div>
 
       <div class="chart-card">
         <h3>Stacké : sidewalk / crossing / link / traffic_island / autre / sans tag</h3>
@@ -477,10 +443,9 @@ function render(data) {
       </div>
     </div>`;
 
-  // ── Section 5: tags sidewalk on roads (composition) ─────────────────
   el.innerHTML += `
     <div class="section">
-      <div class="section-title">Tags sidewalk sur routes — Composition</div>
+      <div class="section-title">Composition des tags sidewalk sur les routes</div>
 
       <div class="chart-card">
         <h3>Stacké : separate / yes / partial / no / sans tag</h3>
@@ -505,16 +470,8 @@ function render(data) {
   });
 }
 
-// Dedicated pedestrian infrastructure types (mirrors _PED_HIGHWAY_TYPES in
-// scripts/compute_history.py). Road types (primary, secondary…) are
-// deliberately excluded from the "since last snapshot" comparison: they
-// barely change day to day and aren't what this page is about.
 const PED_TYPES = ['footway', 'pedestrian', 'path', 'living_street', 'steps', 'elevator'];
 
-// Footway sub-type breakdown for one history.json entry, with a graceful
-// fallback for entries computed before the footway_other / footway_no_subtag
-// split existed: everything not individually tracked is attributed to
-// "sans tag" so older snapshots still render sensibly.
 function footwaySubtypeCounts(entry) {
   const total    = entry.footway_ways || 0;
   const sidewalk = entry.footway_sidewalk || 0;
@@ -529,7 +486,6 @@ function footwaySubtypeCounts(entry) {
   return { sidewalk, crossing, link, island, other, noTag };
 }
 
-// ── Comparison: last monthly snapshot vs latest daily extract ──────────────
 function renderComparison(lastSnapshot, dailyEntry) {
   const kmA = lastSnapshot.km_by_highway || {};
   const kmB = dailyEntry.km_by_highway || {};
@@ -578,7 +534,6 @@ function renderComparison(lastSnapshot, dailyEntry) {
     },
   });
 
-  // ── Footway sub-type detail: sidewalk / crossing / link / traffic_island / autre / sans tag
   const fwA = footwaySubtypeCounts(lastSnapshot);
   const fwB = footwaySubtypeCounts(dailyEntry);
   const fwLabels = ['sidewalk', 'crossing', 'link', 'traffic_island', 'autre', 'sans tag'];
@@ -648,14 +603,6 @@ function renderComparison(lastSnapshot, dailyEntry) {
   }
 }
 
-// ── Period / zoom controls ──────────────────────────────────────────────────
-//
-// The "Évolution" delta grid and all charts in sections 2-5 are driven by
-// the currently selected [start, end] date range. Narrowing the range lets
-// mappers zoom in on a recent stretch of time: the line charts drop
-// `beginAtZero` and auto-scale their y-axis to that window, which makes
-// small fluctuations visible that would be invisible on the full-history
-// scale.
 function setupPeriodControls(data) {
   const startInput = document.getElementById('period-start');
   const endInput   = document.getElementById('period-end');
@@ -693,7 +640,6 @@ function applyPeriod(data, minDate, maxDate) {
   let start = startInput.value || minDate;
   let end   = endInput.value   || maxDate;
 
-  // Keep the inputs sane if the user picks an end date before the start date.
   if (start > end) {
     [start, end] = [end, start];
     startInput.value = start;
@@ -702,8 +648,6 @@ function applyPeriod(data, minDate, maxDate) {
 
   let filtered = data.filter(d => d.date >= start && d.date <= end);
   if (filtered.length === 0) {
-    // Selected range falls entirely between two data points — fall back to
-    // the single closest point so the page never goes blank.
     filtered = [data[data.length - 1]];
   }
 
@@ -722,9 +666,6 @@ function applyPeriod(data, minDate, maxDate) {
   renderSidewalkByType(filtered[filtered.length - 1]);
 }
 
-// Creates (or recreates) a Chart.js chart on the canvas with the given id,
-// destroying any previous instance so the chart can be redrawn whenever the
-// selected period changes.
 function makeChart(id, config) {
   const ctx = document.getElementById(id);
   if (!ctx) return;
@@ -738,7 +679,7 @@ function renderDeltas(first, last) {
   const titleEl = document.getElementById('deltas-title');
   if (titleEl) {
     titleEl.textContent = first.date === last.date
-      ? `Évolution — ${first.date}`
+      ? `Évolution au ${first.date}`
       : `Évolution du ${first.date} au ${last.date}`;
   }
 
@@ -780,8 +721,6 @@ function renderDeltas(first, last) {
   }
 }
 
-// Per-point styling: highlight the daily entry (if present) with a larger,
-// orange marker so it's clearly distinguishable from monthly snapshots.
 function pointStyles(data, color) {
   return {
     pointBackgroundColor: data.map(d => d.type === 'daily' ? C.orange : color),
@@ -791,13 +730,6 @@ function pointStyles(data, color) {
   };
 }
 
-// Common base options factories.
-//
-// `zoomed` is true whenever the user has narrowed the period selector to
-// less than the full history range. For non-percent charts this drops
-// `beginAtZero` so Chart.js auto-scales the y-axis to the visible data —
-// effectively a "vertical zoom" that surfaces small fluctuations that would
-// be flattened against a 0-based axis spanning the whole history.
 function lineOpts({ yTitle, percent, zoomed }) {
   return {
     responsive: true,
@@ -845,7 +777,6 @@ function renderCharts(data, labels, zoomed = false) {
   const series = (key) => data.map(d => d[key] ?? 0);
   const seriesFromKm = (k) => data.map(d => (d.km_by_highway || {})[k] ?? 0);
 
-  // ── 1. Pedestrian km ─────────────────────────────────────────────────
   makeChart('c-ped-km', {
     type: 'line',
     data: {
@@ -862,7 +793,6 @@ function renderCharts(data, labels, zoomed = false) {
     options: lineOpts({ yTitle: 'km', zoomed }),
   });
 
-  // ── 2. All categories ────────────────────────────────────────────────
   makeChart('c-all-km', {
     type: 'line',
     data: {
@@ -876,7 +806,6 @@ function renderCharts(data, labels, zoomed = false) {
     options: lineOpts({ yTitle: 'km', zoomed }),
   });
 
-  // ── 3. Per highway type ──────────────────────────────────────────────
   const HW_TYPES = ['footway', 'cycleway', 'residential', 'secondary', 'tertiary', 'primary'];
   const HW_COLORS = [C.green, C.blue, C.red, C.orange, C.cyan, C.purple];
   makeChart('c-hw-km', {
@@ -895,11 +824,6 @@ function renderCharts(data, labels, zoomed = false) {
     options: lineOpts({ yTitle: 'km', zoomed }),
   });
 
-  // ── 4. Sidewalk documented % ─────────────────────────────────────────
-  // sidewalk_documented_pct already covers separate + yes/both + no
-  // (explicit). The remainder — roads with no sidewalk tag at all — is
-  // shown as its own "Non documenté" series so the chart always reads as
-  // a full breakdown rather than two independent ratios.
   const notDocumented = data.map(d => d.sidewalk_documented_pct != null
     ? Math.max(0, 100 - d.sidewalk_documented_pct)
     : null);
@@ -917,7 +841,6 @@ function renderCharts(data, labels, zoomed = false) {
     options: lineOpts({ percent: true, zoomed }),
   });
 
-  // ── 5. Crossing nodes vs ways ────────────────────────────────────────
   makeChart('c-xing', {
     type: 'line',
     data: {
@@ -931,7 +854,6 @@ function renderCharts(data, labels, zoomed = false) {
     options: lineOpts({ zoomed }),
   });
 
-  // ── 6. Accessibility tags ────────────────────────────────────────────
   makeChart('c-acc', {
     type: 'line',
     data: {
@@ -945,11 +867,6 @@ function renderCharts(data, labels, zoomed = false) {
     options: lineOpts({ percent: true, zoomed }),
   });
 
-  // ── 7. Footway composition stacked ───────────────────────────────────
-  // "Autre" (a real but uncommon footway=* value) is now dissociated from
-  // "sans tag" (no footway=* value at all) — see footwaySubtypeCounts().
-  // Snapshots computed before that split existed fall back to putting the
-  // whole leftover into "sans tag" (see the helper's docstring above).
   const fwCountsSeries = data.map(footwaySubtypeCounts);
   const fwOtherArr = fwCountsSeries.map(c => c.other);
   const fwNoTagArr = fwCountsSeries.map(c => c.noTag);
@@ -969,7 +886,6 @@ function renderCharts(data, labels, zoomed = false) {
     options: stackedOpts(),
   });
 
-  // ── 8. Sidewalk tag mix stacked ──────────────────────────────────────
   const swSepArr  = series('road_sidewalk_separate');
   const swYesArr  = series('road_sidewalk_yes_or_both');
   const swPartArr = series('road_sidewalk_partial');
@@ -996,18 +912,6 @@ function renderCharts(data, labels, zoomed = false) {
   });
 }
 
-// ── Sidewalk tag composition, broken down by road type ─────────────────────
-//
-// Uses `road_sidewalk_by_type` on a single history.json entry (the most
-// recent point in the currently selected period) rather than a full time
-// series: 4 road groups × 5 statuses would be 20 stacked series, which
-// isn't readable as a line chart. A single snapshot bar chart answers the
-// actual question ("which road types are worst documented right now?").
-//
-// `road_sidewalk_by_type` is only present on entries computed after this
-// field was added to scripts/compute_history.py — older snapshots (and any
-// snapshot until the next pipeline run) simply don't have it yet, so this
-// degrades to an explanatory note instead of a broken/empty chart.
 const ROAD_TYPE_GROUPS = [
   { label: 'Résidentiel', keys: ['residential', 'unclassified'] },
   { label: 'Tertiaire',   keys: ['tertiary', 'tertiary_link'] },
@@ -1031,7 +935,7 @@ function renderSidewalkByType(point) {
     wrap.style.display = 'none';
     note.style.display = 'block';
     note.textContent = point
-      ? `Détail par type de route pas encore disponible pour le ${point.date} — sera présent à partir de la prochaine extraction traitée avec le pipeline mis à jour.`
+      ? `Détail par type de route pas encore disponible pour le ${point.date}. Il apparaîtra après la prochaine extraction.`
       : 'Détail par type de route pas encore disponible.';
     return;
   }
