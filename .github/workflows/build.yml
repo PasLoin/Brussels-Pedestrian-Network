@@ -353,8 +353,9 @@ jobs:
       - name: Update sitemap lastmod dates
         run: |
           TODAY=$(date -u +%Y-%m-%d)
-          sed -i "s#<lastmod>[0-9-]*</lastmod>#<lastmod>${TODAY}</lastmod>#g" sitemap.xml
+          sed -i "s#__LASTMOD__#${TODAY}#g" sitemap.xml
           echo "sitemap.xml lastmod set to ${TODAY}"
+          
 
       - name: Prepare site
         run: |
