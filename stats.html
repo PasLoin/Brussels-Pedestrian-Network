@@ -773,7 +773,7 @@ function renderCharts(s) {
     new Chart(document.getElementById('c-fw-filter'), {
       type: 'doughnut',
       data: {
-        labels: ['sidewalk', 'link', 'crossing', 'traffic_island', 'pedestrian'],
+        labels: ['sidewalk', 'link', 'crossing', 'traffic_island', 'pedestrian', 'cycleway (foot)'],
         datasets: [{
           data: [
             fwF.kept_sidewalk || 0,
@@ -781,8 +781,9 @@ function renderCharts(s) {
             fwF.kept_crossing || 0,
             fwF.kept_traffic_island || 0,
             fwF.kept_pedestrian || 0,
+            fwF.kept_cycleway_foot || 0,
           ],
-          backgroundColor: [C.green, C.purple, C.cyan, C.orange, C.blue],
+          backgroundColor: [C.green, C.purple, C.cyan, C.orange, C.blue, C.yellow],
           borderWidth: 0,
         }],
       },

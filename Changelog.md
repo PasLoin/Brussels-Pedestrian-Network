@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-26
+ 
+### Trottoir d'un seul côté : `highway=cycleway` + `foot=yes` accepté comme trottoir (#54)
+ 
+- **Détection** : les ways `highway=cycleway` avec `foot=yes|designated|permissive` (issues de `cycleways_raw.geojson`) sont désormais indexées avec les footways. Une piste cyclable accessible aux piétons longeant la route couvre donc ce côté, et la rue n'est plus signalée comme lacune. (une autre méthode aurait été d'utiliser is_sidepaht=yes pour confirmer, mais le tag n'étant pas encore utilisé à Bruxelles c'est le choix méthodo retenu).
+- **Inchangé** : les cycleways sans accès piéton explicite ne comptent pas comme trottoir.
+- **Stats** : nouvelle part `cycleway (foot)` dans « Footways retenus (composition) » (`footway_filter.kept_cycleway_foot`).
+
 ## 2026-10-23
  
 ### Traversée manquante : ways de traversée taguées `footway=sidewalk` (#52)

@@ -6,7 +6,7 @@ import os
 import geopandas as gpd
 from shapely.strtree import STRtree
 
-from config import ROAD_TYPES_SIDEWALK_EXPECTED
+from config import FOOT_ALLOWED, ROAD_TYPES_SIDEWALK_EXPECTED
 from timing import step
 
 _GAP_ROAD_TYPES = ROAD_TYPES_SIDEWALK_EXPECTED - {"service"}
@@ -116,6 +116,33 @@ def _should_skip_road(sw: str, sw_left: str, sw_right: str, sw_both: str) -> boo
     return left in _SIDEWALK_ABSENT or right in _SIDEWALK_ABSENT
 
 
+def _foot_cycleway_mask(gdf):
+    for col in ("highway", "foot"):
+        if col not in gdf.columns:
+            gdf[col] = ""
+    highway = gdf["highway"].apply(_safe_str)
+    foot = gdf["foot"].apply(_safe_str)
+    return (highway == "cycleway") & foot.isin(FOOT_ALLOWED)
+
+
+def _load_foot_cycleways(cycleways_geojson_path: str | None) -> tuple[list, dict]:
+    if not cycleways_geojson_path or not os.path.exists(cycleways_geojson_path):
+        if cycleways_geojson_path:
+            print(f"  Cycleways file not found, skipped: {cycleways_geojson_path}")
+        return [], {"raw": 0, "kept": 0}
+    print(f"  Reading raw cycleways from: {cycleways_geojson_path}")
+    cw_gdf = gpd.read_file(cycleways_geojson_path)
+    cw_gdf = cw_gdf[cw_gdf.geometry.geom_type == "LineString"].copy()
+    n_raw = len(cw_gdf)
+    if n_raw == 0:
+        return [], {"raw": 0, "kept": 0}
+    cw_gdf = cw_gdf.to_crs("EPSG:31370")
+    cw_gdf = cw_gdf[_foot_cycleway_mask(cw_gdf)]
+    n_kept = len(cw_gdf)
+    print(f"  Cycleways with foot access kept: {n_kept} / {n_raw}")
+    return list(cw_gdf.geometry), {"raw": n_raw, "kept": n_kept}
+
+
 def _load_sidewalk_footways(footways_geojson_path: str) -> tuple[list, dict]:
     print(f"  Reading raw footways from: {footways_geojson_path}")
     fw_gdf = gpd.read_file(footways_geojson_path)
@@ -180,6 +207,7 @@ def _load_sidewalk_footways(footways_geojson_path: str) -> tuple[list, dict]:
 def detect_sidewalk_gaps(
     roads_geojson_path: str,
     footways_geojson_path: str,
+    cycleways_geojson_path: str | None = None,
 ) -> dict:
     print("Detecting sidewalk gaps (footway on one side only)...")
     print(f"  Offset: {SIDEWALK_GAP_OFFSET_M}m | "
@@ -191,8 +219,14 @@ def detect_sidewalk_gaps(
         footway_geoms, footway_filter_stats = _load_sidewalk_footways(
             footways_geojson_path,
         )
+        cycleway_geoms, cycleway_filter_stats = _load_foot_cycleways(
+            cycleways_geojson_path,
+        )
+        footway_geoms = footway_geoms + cycleway_geoms
+        footway_filter_stats["kept_cycleway_foot"] = cycleway_filter_stats["kept"]
         footway_tree = STRtree(footway_geoms) if footway_geoms else None
-    print(f"  Footway segments indexed: {len(footway_geoms)}")
+    print(f"  Footway segments indexed: {len(footway_geoms)} "
+          f"(incl. {len(cycleway_geoms)} cycleways with foot access)")
 
     with step("load + filter roads"):
         print(f"  Reading raw roads from: {roads_geojson_path}")

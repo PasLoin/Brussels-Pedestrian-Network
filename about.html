@@ -120,7 +120,7 @@
 
   <h3>Trottoirs unilatéraux (Sidewalk Gaps)</h3>
   <p>
-    Pour chaque segment routier, l'algorithme recherche des ways <code>highway=footway</code> parallèles de part et d'autre de la chaussée. Lorsqu'un trottoir séparé n'est détecté que d'un seul côté, le segment est signalé. Cette couche permet de repérer les rues où le micro-mapping des trottoirs reste incomplet.
+    Pour chaque segment routier, l'algorithme recherche des ways <code>highway=footway</code> parallèles de part et d'autre de la chaussée (les pistes <code>highway=cycleway</code> ouvertes aux piétons via <code>foot=yes</code>, <code>designated</code> ou <code>permissive</code> comptent aussi comme trottoir). Lorsqu'un trottoir séparé n'est détecté que d'un seul côté, le segment est signalé. Cette couche permet de repérer les rues où le micro-mapping des trottoirs reste incomplet.
   </p>
 
   <h3>Flux sur route (Forced Segments)</h3>
@@ -152,7 +152,7 @@
     <li>Repérer sur la carte un segment en rouge (flux sur route) ou un trottoir signalé comme lacune.</li>
     <li>Ouvrir l'éditeur OSM via le bouton « Éditer dans OSM » (disponible à partir du zoom 16).</li>
     <li>Compléter les tags ou la géométrie manquante dans iD ou JOSM.</li>
-    <li>Les modifications sont prises en compte lors de la mise à jour hebdomadaire suivante.</li>
+    <li>Les modifications sont prises en compte lors de la mise à jour nocturne suivante.</li>
   </ol>
 </div>
 

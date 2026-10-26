@@ -159,6 +159,7 @@ def main() -> None:
         sidewalk_gap_stats = detect_sidewalk_gaps(
             "sidewalk_roads_raw.geojson",
             "sidewalk_footways_raw.geojson",
+            "cycleways_raw.geojson",
         )
 
     with step("export_sidewalk_roads"):
