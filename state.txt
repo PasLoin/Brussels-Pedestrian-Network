@@ -1,12 +1,12 @@
 {
-  "uuid": "ea11602f-d7c6-47eb-be77-7b1fa66c8b9c",
-  "timestamp": "2026-05-12T00:15:07Z",
-  "size_bytes": 45660294,
-  "elapsed": 17.462662131,
+  "uuid": "__OSM_UUID__",
+  "timestamp": "__OSM_TIMESTAMP__",
+  "size_bytes": 0,
+  "elapsed": 0,
   "bbox": [
-    50.749369,
-    4.202947,
-    50.94491,
-    4.512645
+    0,
+    0,
+    0,
+    0
   ]
-}build_timestamp=2026-05-12T01:15:23Z
+}build_timestamp=__BUILD_TIMESTAMP__
