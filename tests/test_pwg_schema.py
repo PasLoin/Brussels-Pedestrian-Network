@@ -18,7 +18,7 @@ from pwg_schema_fetch import (
 )
 
 FIXTURE = Path(__file__).parent / "fixtures" / "pwg_schema.html"
-PAGE = "Foundation/Local_Chapters/United_States/Pedestrian_Working_Group/Schema"
+PAGE = "Foundation/Local Chapters/United States/Pedestrian Working Group/Schema"
 
 
 @pytest.fixture(scope="module")
@@ -35,7 +35,17 @@ def _criterion(schema, crit_id):
 
 
 def test_only_guideline_sections_are_features(schema):
-    assert list(schema["features"]) == ["sidewalks", "crossings", "curbs", "islands", "roadways"]
+    assert list(schema["features"]) == [
+        "sidewalks", "crossings", "curbs", "islands", "access_aisles", "roadways",
+    ]
+
+
+def test_criteria_count(schema):
+    counts = {slug: len(f["criteria"]) for slug, f in schema["features"].items()}
+    assert counts == {
+        "sidewalks": 7, "crossings": 15, "curbs": 4,
+        "islands": 7, "access_aisles": 8, "roadways": 2,
+    }
 
 
 def test_source_metadata(schema):
@@ -50,6 +60,14 @@ def test_version_from_versioned_page_title():
     html = FIXTURE.read_text(encoding="utf-8")
     doc = parse_schema_html(html, title=PAGE + "/1.0.0")
     assert doc["source"]["pwg_version"] == "1.0.0"
+
+
+def test_draft_page_is_not_labelled_as_a_release():
+    html = FIXTURE.read_text(encoding="utf-8")
+    src = parse_schema_html(html, title="Draft:" + PAGE)["source"]
+    assert src["pwg_version"] is None
+    assert src["draft"] is True
+    assert src["latest_release"] == "1.0.1"
 
 
 def test_selectors(schema):
@@ -74,7 +92,18 @@ def test_wildcard_only_table_uses_first_row_as_selector(schema):
 def test_tier_is_lowest_filled_column(schema):
     assert _criterion(schema, "sidewalks.surface")["tier"] == "silver"
     assert _criterion(schema, "sidewalks.incline")["tier"] == "gold"
-    assert _criterion(schema, "roadways.maxspeed")["tier"] == "diamond"
+    assert _criterion(schema, "sidewalks.lit")["tier"] == "gold"
+    assert _criterion(schema, "crossings.width")["tier"] == "gold"
+    assert _criterion(schema, "roadways.maxspeed")["tier"] == "gold"
+    assert _criterion(schema, "crossings.traffic_signals:minimap")["tier"] == "diamond"
+
+
+def test_merged_cell_is_recorded_once(schema):
+    assert list(_criterion(schema, "sidewalks.surface")["levels"]) == ["silver"]
+    assert list(_criterion(schema, "sidewalks.incline")["levels"]) == ["gold", "diamond"]
+    signals = _criterion(schema, "crossings.crossing:signals")["levels"]
+    assert signals["bronze"]["values"] == ["yes", "no"]
+    assert signals["diamond"]["values"] == ["shared", "dedicated"]
 
 
 def test_levels_keep_values_per_tier(schema):
@@ -97,14 +126,32 @@ def test_duplicate_keys_get_element_suffix(schema):
     assert "crossings.tactile_paving" not in ids
 
 
+def test_short_rows_are_reported(schema):
+    assert len(schema["warnings"]) == 2
+    assert all(w.startswith("Islands:") and "5 colonnes sur 6" in w for w in schema["warnings"])
+    assert _criterion(schema, "islands.surface")["tier"] == "bronze"
+
+
 def test_edit_links_are_ignored(schema):
     assert all("edit" not in f["title"] for f in schema["features"].values())
 
 
 def test_descriptions_keep_line_breaks(schema):
     desc = _criterion(schema, "curbs.kerb")["levels"]["silver"]["description"]
-    assert desc.splitlines()[0] == "Specify the curb type:"
-    assert "lowered - Curb ramp" in desc.splitlines()
+    assert desc.splitlines() == [
+        "Specify the curb type:",
+        "raised - Raised curb",
+        "lowered - Curb ramp",
+        "flush - Flush curb",
+        "rolled - Rolled curb",
+        "no - There is no curb",
+    ]
+
+
+def test_tag_codes_inside_descriptions_are_not_values(schema):
+    tactile = _criterion(schema, "sidewalks.tactile_paving")["levels"]["diamond"]
+    assert tactile["values"] == ["yes", "no"]
+    assert "tactile_paving=*" in tactile["description"]
 
 
 def test_yaml_roundtrip_keeps_yes_no_as_strings(schema):
@@ -126,6 +173,7 @@ def test_colspan_and_rowspan_are_expanded():
     doc = parse_schema_html(html)
     feature = doc["features"]["ramps"]
     assert feature["selectors"][0]["tier"] == "bronze"
+    assert doc["warnings"] == []
     crit = feature["criteria"][0]
     assert crit["elements"] == ["way"]
     assert crit["tier"] == "silver"
@@ -239,6 +287,7 @@ def test_up_to_tier(schema):
     bronze = {c.id for c in up_to_tier(criteria, "bronze")}
     assert bronze == {
         "crossings.crossing:markings",
+        "crossings.crossing:signals",
         "islands.surface",
         "roadways.sidewalk:(left|right|both)",
     }
