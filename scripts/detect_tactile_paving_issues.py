@@ -1,170 +1,11 @@
-"""
-Detect ``highway=crossing`` nodes whose ``tactile_paving`` tag is
-inconsistent with the ``tactile_paving`` tags carried by the
-``barrier=kerb`` nodes at each end of the attached ``footway=crossing``
-way.
-
-Background
-----------
-A crossing is usually mapped as a short ``footway=crossing`` way running
-from one kerb to the other. The kerb at each end is its own node,
-tagged ``barrier=kerb`` (+ ``kerb=lowered/flush/...``), and can carry its
-own ``tactile_paving=yes/no`` — independent of whatever
-``tactile_paving`` value sits on the ``highway=crossing`` node itself
-(the crossing node is usually a shared vertex on the same way, roughly
-midway between the two kerbs).
-
-Three ``tactile_paving`` values on the crossing node are in scope here:
-
-``yes``
-    Tactile paving present on **both** sides. Every kerb at the way's
-    extremities is expected to also carry ``tactile_paving=yes``.
-
-``no``
-    Tactile paving absent on **both** sides. Every kerb is expected to
-    carry ``tactile_paving=no``.
-
-``incorrect``
-    Tactile paving present on **one side only**. Exactly one kerb is
-    expected to carry ``tactile_paving=yes`` and the other
-    ``tactile_paving=no`` (a mixed pair) — a pair that's explicitly
-    tagged otherwise (both yes, both no) means the ``incorrect`` tag
-    doesn't actually describe a one-sided situation and is flagged.
-
-Any other ``tactile_paving`` value on the crossing node (``contrasted``,
-``primitive``, etc.) is out of scope for this specific coherence check
-and is skipped.
-
-Missing data is explicitly OUT OF SCOPE for the coherence check itself
-------------------------------------------------------------------------
-This check only *flags* (in ``tactile_paving_issues.geojson``) a genuine
-*contradiction* between two explicitly tagged values. If a kerb node
-can't be matched at one (or both) extremities, or a matched kerb simply
-has no ``tactile_paving`` tag, that's a data-completeness gap, not an
-incoherence — there's nothing to contradict, so it's never counted
-towards ``flagged`` and never written to ``tactile_paving_issues.geojson``.
-
-Those gaps are still surfaced, just separately and at lower confidence:
-each deficient extremity (crossing-side, not way-side) is written as its
-own point to ``kerb_issues.geojson``, tagged ``type=kerb_missing`` (no
-kerb node matched at all) or ``type=kerb_untagged`` (a kerb was matched
-but carries no ``tactile_paving`` value). Crossing-level counts
-(``kerb_missing`` / ``kerb_untagged``) and point-level counts
-(``kerb_missing_points`` / ``kerb_untagged_points``) are both returned
-in stats — the latter can exceed the former since a fully-mapped
-crossing (both extremities checked, see below) can have both affected;
-a half-mapped one never contributes more than one point, since only one
-extremity is ever checked for it.
-
-Matching crossing ↔ way ↔ kerb is purely geometric (osmium's GeoJSON
-export doesn't preserve node/way membership ids), following the same
-approach as ``detect_missing_crossings.py`` and
-``detect_footway_connectivity.py``.
-
-Crossing node → footway=crossing way is matched by VERTEX coincidence
-with a TIGHT tolerance (0.5 m by default), not by point-to-line
-distance and not by "nearby". A genuinely shared OSM node sits at ~0 m
-from the way regardless of which export reads it — a loose tolerance
-(anything in the metre-plus range) risks matching a *different*,
-separately-mapped crossing a metre or two away instead (e.g. the node
-actually sits on a plain sidewalk/service-road, with no dedicated
-crossing way of its own, while a real crossing way for a *different*
-nearby crossing has a vertex just within a loose tolerance) — this
-produced real false positives. Requiring near-exact vertex coincidence
-rules that out. If more than one way qualifies (e.g. a refuge-island
-node genuinely shared by two crossing segments), the match is treated
-as ambiguous and skipped rather than guessed — see
-``ambiguous_way_match`` in the returned stats.
-
-The candidate pool itself is restricted to ``highway=footway`` +
-``footway=crossing`` ways at load time (``_load_crossing_ways``), and
-that tag is re-checked a second time right before a matched way is
-used. A ``footway=sidewalk`` (or any other non-crossing footway) that
-happens to share a node with the real crossing way — perfectly normal,
-legitimate OSM topology where a sidewalk meets a crossing — must never
-be treated as if it were the crossing itself.
-
-Way endpoint → kerb node stays a plain nearest-point-within-tolerance
-search (also tightened to 0.5 m for the same reason): kerb nodes are
-standalone points, so there's no line/vertex distinction to exploit
-there, and a genuinely shared node sits at ~0 m regardless.
-
-Some footway=crossing ways only span HALF the physical crossing — kerb
-→ crossing node — instead of continuing to a second kerb on the far
-side. When this happens, one of the way's own endpoints (``coords[0]``
-or ``coords[-1]``) IS the crossing node's own position, not a kerb, so
-searching for one there and calling it "missing" would be wrong.
-
-Guarded against with a check that's purely internal to the matched
-way's own two endpoints and the crossing node — no cross-referencing
-against other ways: if ``coords[0]`` or ``coords[-1]`` sits within
-``TACTILE_PAVING_WAY_MATCH_M`` of the crossing node itself, that
-endpoint is excluded from the kerb search and only the OTHER endpoint
-is checked. ``incorrect`` can't be evaluated from a single side, since
-it specifically describes a yes/no PAIR, so a half-mapped ``incorrect``
-crossing is skipped entirely rather than guessed (see
-``half_mapped_incorrect_skipped``).
-
-Inputs
-------
-* ``highways.geojson``              — slimmed osmium export; used for
-  ``highway=crossing`` points (needs a ``tactile_paving`` property).
-* ``sidewalk_footways_raw.geojson`` — raw osmium footway export (needs
-  ``footway`` + ``@id``); used for ``footway=crossing`` ways.
-* ``kerbs_raw.geojson``             — raw osmium export of
-  ``barrier=kerb`` nodes (needs ``tactile_paving`` + ``@id``).
-
-Output
-------
-``tactile_paving_issues.geojson`` — point layer (at the crossing node's
-location) with one feature per **flagged** (genuinely contradictory)
-crossing — see "Missing data is explicitly OUT OF SCOPE" above.
-Properties:
-  ``osm_id``      OSM node id of the flagged crossing node
-  ``way_osm_id``  OSM way id of the associated footway=crossing (0 if
-                  none could be matched)
-  ``crossing_tp`` tactile_paving value on the crossing node
-  ``sides_checked`` 1 or 2 — how many of the way's extremities were
-                  genuine kerb positions and therefore actually checked
-                  (see "Some footway=crossing ways only span HALF the
-                  physical crossing" above). When 1, ``kerb2_tp``/
-                  ``kerb2_osm_id`` are blank/0 — the other endpoint was
-                  the crossing node's own position, not a kerb that
-                  could be missing.
-  ``kerb1_tp``    tactile_paving value found at the way's first checked
-                  extremity
-  ``kerb1_osm_id`` OSM node id of that kerb
-  ``kerb2_tp``    tactile_paving value found at the way's second
-                  extremity (blank if ``sides_checked`` == 1)
-  ``kerb2_osm_id`` OSM node id of that kerb (0 if ``sides_checked`` == 1)
-  ``reason``      machine-readable reason code, one of:
-                    "value_mismatch"      — a matched kerb's value
-                                             disagrees with the crossing
-                    "incorrect_not_mixed" — tactile_paving=incorrect but
-                                             the two kerbs aren't a
-                                             yes/no pair
-
-``kerb_issues.geojson`` — point layer, lower confidence, one feature per
-**deficient extremity** (not per crossing — a crossing with both sides
-affected produces two points). Located at the footway=crossing way's
-endpoint (the matched kerb's own position for ``kerb_untagged``, the
-expected-but-absent position for ``kerb_missing`` — within
-``TACTILE_PAVING_KERB_MATCH_M`` of each other in practice). Properties:
-  ``type``             "kerb_missing" (no barrier=kerb node matched at
-                        this extremity) or "kerb_untagged" (a kerb was
-                        matched but has no tactile_paving tag)
-  ``crossing_osm_id``  OSM node id of the associated crossing
-  ``way_osm_id``       OSM way id of the associated footway=crossing
-  ``kerb_osm_id``      OSM node id of the matched kerb (0 for
-                        kerb_missing, since none was matched)
-"""
-
 from __future__ import annotations
 
 import math
 import os
 
 import geopandas as gpd
+import numpy as np
+import shapely
 from shapely.geometry import Point
 from shapely.strtree import STRtree
 
@@ -173,23 +14,11 @@ from timing import step
 # ── Module-level config ─────────────────────────────────────────────────────
 
 # tactile_paving values on the crossing node this check applies to.
-# Anything else (contrasted, primitive, ...) is out of scope and skipped.
+# Anything else (contrasted, primitive, ...) is out of scope and skipped. ##todo include on scope after checking bxl data
 _IN_SCOPE_VALUES = frozenset({"yes", "no", "incorrect"})
 
-# Tolerance (m) for "this footway=crossing way is the one attached to
-# the crossing node" — a genuinely shared OSM node sits at ~0 m from the
-# way (same node, same coordinates, whichever export reads it), so this
-# only needs to absorb reprojection float noise, not real distance.
-# Kept deliberately tight: a *different*, separately-mapped crossing a
-# metre or two away (e.g. across a side street a few metres from the
-# crossing over the main road) must never be treated as coincident just
-# because it happens to be nearby — that produced real false positives
-# with a looser value.
+# Tolerances (m)
 TACTILE_PAVING_WAY_MATCH_M = float(os.environ.get("TACTILE_PAVING_WAY_MATCH_M", 0.5))
-
-# Tolerance (m) for "this barrier=kerb node sits at this way extremity"
-# — same reasoning: a genuinely shared node is ~0 m away, so this stays
-# tight rather than merely "nearby".
 TACTILE_PAVING_KERB_MATCH_M = float(os.environ.get("TACTILE_PAVING_KERB_MATCH_M", 0.5))
 
 
@@ -234,18 +63,7 @@ def _load_crossing_nodes(highways_path: str) -> gpd.GeoDataFrame:
 def _load_crossing_ways(
     footways_path: str,
 ) -> tuple[gpd.GeoDataFrame, STRtree | None, list, list]:
-    """footway=crossing ways, plus a VERTEX-level spatial index (every
-    individual coordinate of every way, not the lines themselves).
 
-    Matching a crossing node against this vertex index — instead of
-    against the lines' overall geometry — is what lets
-    ``_match_crossing_way`` require literal vertex coincidence. Two
-    footway=crossing ways can legitimately run within a metre or two of
-    each other at a busy/complex intersection; a plain point-to-line
-    distance check would happily "match" the wrong one just because it
-    happens to pass close by, even though the node isn't actually one of
-    its vertices.
-    """
     gdf = gpd.read_file(footways_path)
     gdf = gdf[gdf.geometry.geom_type == "LineString"].copy().to_crs("EPSG:31370")
     for col in ("highway", "footway"):
@@ -268,6 +86,135 @@ def _load_crossing_ways(
 
     vertex_tree = STRtree(vertex_points) if vertex_points else None
     return gdf, vertex_tree, vertex_points, vertex_way_idx
+
+
+def _crossing_points_from(gdf: gpd.GeoDataFrame) -> tuple[list, list, STRtree | None]:
+    gdf = gdf[gdf.geometry.geom_type == "Point"].copy()
+    for col in ("highway", "tactile_paving"):
+        if col not in gdf.columns:
+            gdf[col] = ""
+    gdf = gdf[gdf["highway"].apply(_safe_str) == "crossing"]
+    if gdf.empty:
+        return [], [], None
+    gdf = gdf.to_crs("EPSG:31370")
+    geoms = list(gdf.geometry)
+    tps = list(gdf["tactile_paving"].apply(_safe_str))
+    return geoms, tps, STRtree(geoms)
+
+
+def _other_way_vertices_near(
+    sources, crossing_way_ids: set, targets: list, tol_m: float,
+) -> tuple[list, STRtree | None]:
+    if not targets:
+        return [], None
+    target_tree = STRtree(targets)
+    kept: list[Point] = []
+    for src in sources:
+        if isinstance(src, str):
+            if not src or not os.path.exists(src):
+                continue
+            gdf = gpd.read_file(src)
+        else:
+            gdf = src
+        gdf = gdf[gdf.geometry.geom_type == "LineString"].copy()
+        if gdf.empty:
+            continue
+        for col in ("highway", "footway"):
+            if col not in gdf.columns:
+                gdf[col] = ""
+        if "@id" not in gdf.columns:
+            gdf["@id"] = 0
+        is_crossing = (
+            (gdf["highway"].apply(_safe_str) == "footway") &
+            (gdf["footway"].apply(_safe_str) == "crossing")
+        )
+        known = gdf["@id"].apply(_safe_id).isin(crossing_way_ids)
+        gdf = gdf[~is_crossing & ~known].to_crs("EPSG:31370")
+        if gdf.empty:
+            continue
+        pts = shapely.points(shapely.get_coordinates(gdf.geometry.values))
+        hit_idx, _ = target_tree.query(pts, predicate="dwithin", distance=tol_m)
+        kept.extend(pts[np.unique(hit_idx)])
+    return kept, (STRtree(kept) if kept else None)
+
+
+def _any_within(pt: Point, tree: STRtree | None, geoms: list, tol_m: float) -> bool:
+    if tree is None:
+        return False
+    return any(geoms[i].distance(pt) <= tol_m for i in tree.query(pt.buffer(tol_m)))
+
+
+class _ContiguousPairs:
+
+    def __init__(
+        self, way_gdf, vertex_tree, vertex_points, vertex_way_idx,
+        kerb_tree, kerb_geoms, xing_tree, xing_geoms, xing_tps,
+        other_tree, other_geoms,
+    ):
+        self.way_gdf = way_gdf
+        self.vertex_tree = vertex_tree
+        self.vertex_points = vertex_points
+        self.vertex_way_idx = vertex_way_idx
+        self.kerb_tree = kerb_tree
+        self.kerb_geoms = kerb_geoms
+        self.xing_tree = xing_tree
+        self.xing_geoms = xing_geoms
+        self.xing_tps = xing_tps
+        self.other_tree = other_tree
+        self.other_geoms = other_geoms
+        self.tol = TACTILE_PAVING_WAY_MATCH_M
+
+    def _ends(self, w_idx: int) -> tuple[Point, Point]:
+        coords = self.way_gdf.geometry.iloc[w_idx].coords
+        return Point(coords[0]), Point(coords[-1])
+
+    def partner(self, w_idx: int, end_pt: Point) -> int | None:
+        if self.vertex_tree is None:
+            return None
+        if _any_within(end_pt, self.kerb_tree, self.kerb_geoms, TACTILE_PAVING_KERB_MATCH_M):
+            return None
+        if _any_within(end_pt, self.xing_tree, self.xing_geoms, self.tol):
+            return None
+        if _any_within(end_pt, self.other_tree, self.other_geoms, self.tol):
+            return None
+        ways_here = {
+            self.vertex_way_idx[i]
+            for i in self.vertex_tree.query(end_pt.buffer(self.tol))
+            if self.vertex_points[i].distance(end_pt) <= self.tol
+        }
+        others = ways_here - {w_idx}
+        if len(others) != 1:
+            return None
+        w2 = next(iter(others))
+        a, b = self._ends(w2)
+        if a.distance(end_pt) > self.tol and b.distance(end_pt) > self.tol:
+            return None
+        if a.distance(end_pt) <= self.tol and b.distance(end_pt) <= self.tol:
+            return None
+        return w2
+
+    def resolve(self, w_idx: int, end_pt: Point) -> tuple[Point, int | None]:
+        w2 = self.partner(w_idx, end_pt)
+        if w2 is None:
+            return end_pt, None
+        a, b = self._ends(w2)
+        far = b if a.distance(end_pt) <= self.tol else a
+        if _any_within(far, self.xing_tree, self.xing_geoms, self.tol):
+            return end_pt, None
+        if self.partner(w2, far) is not None:
+            return end_pt, None
+        return far, w2
+
+    def partner_crossing_tps(self, w2: int) -> set:
+        if self.xing_tree is None:
+            return set()
+        tps = set()
+        for coord in self.way_gdf.geometry.iloc[w2].coords[1:-1]:
+            pt = Point(coord)
+            for i in self.xing_tree.query(pt.buffer(self.tol)):
+                if self.xing_geoms[i].distance(pt) <= self.tol and self.xing_tps[i]:
+                    tps.add(self.xing_tps[i])
+        return tps
 
 
 def _load_kerb_nodes(
@@ -295,12 +242,6 @@ def _load_kerb_nodes(
 
 
 # ── Matching helpers ─────────────────────────────────────────────────────────
-#
-# Mirrors the ``min(cands, key=lambda i: geoms[i].distance(pt))`` pattern
-# used throughout detect_missing_crossings.py / detect_footway_connectivity.py
-# rather than relying on STRtree internals, so index *i* always refers to
-# the position in the *geoms* list (and, since every GeoDataFrame here is
-# reset_index(drop=True)-ed right after being built, also to gdf.iloc[i]).
 
 def _nearest_within(pt: Point, tree: STRtree | None, geoms: list, tol_m: float):
     """Index into *geoms* of the nearest candidate to *pt* within *tol_m*,
@@ -321,24 +262,7 @@ def _match_crossing_way(
     vertex_way_idx: list,
     tol_m: float,
 ) -> tuple[int | None, bool]:
-    """Return (way_idx, ambiguous).
 
-    *way_idx* is the index (into way_gdf) of the footway=crossing way
-    that genuinely has *node_pt* as one of its OWN vertices within
-    *tol_m* — i.e. the crossing node is a real, shared OSM node on that
-    way — or None if no way qualifies.
-
-    This is deliberately a vertex-coincidence check, not a
-    point-to-line distance check: a different way that merely runs
-    close to the node without the node actually being one of its
-    vertices must never be picked up (see the module docstring for the
-    real-world case that motivated this).
-
-    *ambiguous* is True when more than one distinct way has a
-    qualifying vertex (e.g. a refuge-island node shared by two crossing
-    segments). The caller treats this conservatively — it means "can't
-    be sure which way owns this node", not "pick the nearest anyway".
-    """
     if vertex_tree is None:
         return None, False
     zone = node_pt.buffer(tol_m)
@@ -364,11 +288,7 @@ def _kerb_tp_at(
 
 
 def _is_footway_crossing(way_row) -> bool:
-    """True if *way_row* is genuinely tagged highway=footway +
-    footway=crossing. Used as a defense-in-depth re-check right before a
-    matched way is actually used — see the module docstring ("The
-    candidate pool itself...") for why this matters even though
-    way_gdf is already filtered to this at load time."""
+
     return (
         _safe_str(way_row.get("highway")) == "footway" and
         _safe_str(way_row.get("footway")) == "crossing"
@@ -376,8 +296,7 @@ def _is_footway_crossing(way_row) -> bool:
 
 
 def _classify(crossing_tp: str, tp1: str | None, tp2: str | None) -> str | None:
-    """Return a reason code if the pair (tp1, tp2) is inconsistent with
-    *crossing_tp*, or None if it's coherent."""
+
     if tp1 is None or tp2 is None:
         return "kerb_missing"
     if tp1 == "" or tp2 == "":
@@ -393,13 +312,7 @@ def _classify(crossing_tp: str, tp1: str | None, tp2: str | None) -> str | None:
 
 
 def _classify_single(crossing_tp: str, tp: str | None) -> str | None:
-    """Same idea as ``_classify``, but for a half-mapped crossing (see
-    module docstring) where only ONE of the way's endpoints is a
-    genuine kerb position — the other IS the crossing node's own
-    position, not a second kerb. Callers must never pass
-    ``crossing_tp == "incorrect"`` here — that value specifically
-    describes a yes/no PAIR across both sides, which a single side
-    can't confirm or contradict either way."""
+
     assert crossing_tp in ("yes", "no"), (
         "incorrect_not_mixed can't be evaluated from a single side"
     )
@@ -418,6 +331,7 @@ def detect_tactile_paving_issues(
     highways_geojson_path: str = "highways.geojson",
     footways_geojson_path: str = "sidewalk_footways_raw.geojson",
     kerbs_geojson_path:    str = "kerbs_raw.geojson",
+    other_ways_geojson_paths: tuple = (),
 ) -> dict:
     """Detect tactile_paving incoherences between crossing nodes and the
     kerb nodes at each end of their attached footway=crossing way.
@@ -449,6 +363,27 @@ def detect_tactile_paving_issues(
         kerb_gdf, kerb_geoms, kerb_tree = _load_kerb_nodes(kerbs_geojson_path)
     print(f"  barrier=kerb nodes: {len(kerb_gdf)}")
 
+    with step("index contiguous footway=crossing pairs"):
+        highways_gdf = gpd.read_file(highways_geojson_path)
+        xing_geoms, xing_tps, xing_tree = _crossing_points_from(highways_gdf)
+        crossing_way_ids = {i for i in way_gdf["@id"].apply(_safe_id) if i}
+        way_ends = [
+            Point(c)
+            for geom in way_gdf.geometry
+            for c in (geom.coords[0], geom.coords[-1])
+        ]
+        other_geoms, other_tree = _other_way_vertices_near(
+            (highways_gdf, footways_geojson_path, *other_ways_geojson_paths),
+            crossing_way_ids, way_ends, TACTILE_PAVING_WAY_MATCH_M,
+        )
+        del highways_gdf
+        pairs = _ContiguousPairs(
+            way_gdf, vertex_tree, vertex_points, vertex_way_idx,
+            kerb_tree, kerb_geoms, xing_tree, xing_geoms, xing_tps,
+            other_tree, other_geoms,
+        )
+    print(f"  Other-way vertices indexed for junction test: {len(other_geoms)}")
+
     rows: list[dict] = []
     kerb_issue_rows: list[dict] = []
     n_no_way          = 0
@@ -463,6 +398,18 @@ def detect_tactile_paving_issues(
     n_value_mismatch   = 0
     n_incorrect_mixed  = 0
     n_ok               = 0
+    n_contiguous_sides = 0
+    n_contiguous_conflict = 0
+    emitted_pair_points: set = set()
+
+    def _pair_point_seen(kind, pt, way_a, way_b):
+        if not way_b:
+            return False
+        key = (kind, frozenset((way_a, way_b)), round(pt.x, 1), round(pt.y, 1))
+        if key in emitted_pair_points:
+            return True
+        emitted_pair_points.add(key)
+        return False
 
     with step("crossing/kerb coherence loop"):
         for _, node_row in crossing_gdf.iterrows():
@@ -486,13 +433,6 @@ def detect_tactile_paving_issues(
 
             way_row = way_gdf.iloc[way_idx]
 
-            # Defense in depth: way_gdf is already filtered to
-            # highway=footway + footway=crossing when it's loaded (see
-            # _load_crossing_ways), so this should always hold. Re-check
-            # it here anyway, right before the way is actually used, so
-            # a footway=sidewalk (or any other non-crossing way) can
-            # never silently slip through — e.g. if that upstream filter
-            # is ever loosened, or on malformed/unexpected input data.
             if not _is_footway_crossing(way_row):
                 n_no_way += 1
                 continue
@@ -501,13 +441,8 @@ def detect_tactile_paving_issues(
             p1 = Point(way_geom.coords[0])
             p2 = Point(way_geom.coords[-1])
             own_wid = _safe_id(way_row.get("@id"))
+            partner_wid = 0
 
-            # Half-mapped crossing check: purely internal to this way's
-            # own two endpoints and its own crossing node — no
-            # cross-referencing against other ways (see module
-            # docstring for why that matters). If an endpoint IS the
-            # crossing node's own position, it was never a kerb to
-            # begin with.
             p1_is_crossing_node = p1.distance(node_pt) <= TACTILE_PAVING_WAY_MATCH_M
             p2_is_crossing_node = p2.distance(node_pt) <= TACTILE_PAVING_WAY_MATCH_M
 
@@ -525,9 +460,16 @@ def detect_tactile_paving_issues(
                 if crossing_tp == "incorrect":
                     n_half_mapped_incorrect_skipped += 1
                     continue
+                pt = p2 if p1_is_crossing_node else p1
+                pt, partner_idx = pairs.resolve(way_idx, pt)
+                if partner_idx is not None:
+                    if pairs.partner_crossing_tps(partner_idx) - {crossing_tp}:
+                        n_contiguous_conflict += 1
+                        continue
+                    partner_wid = _safe_id(way_gdf.iloc[partner_idx].get("@id"))
+                    n_contiguous_sides += 1
                 n_half_mapped_sides += 1
 
-                pt = p2 if p1_is_crossing_node else p1
                 tp, kerb_id = _kerb_tp_at(pt, kerb_gdf, kerb_tree, kerb_geoms)
 
                 reason = _classify_single(crossing_tp, tp)
@@ -537,25 +479,29 @@ def detect_tactile_paving_issues(
 
                 if reason == "kerb_missing":
                     n_kerb_missing += 1
-                    n_kerb_missing_points += 1
-                    kerb_issue_rows.append({
-                        "geometry":        pt,
-                        "type":            "kerb_missing",
-                        "crossing_osm_id": int(node_row["osm_id"]),
-                        "way_osm_id":       own_wid,
-                        "kerb_osm_id":      0,
-                    })
+                    if not _pair_point_seen("kerb_missing", pt, own_wid, partner_wid):
+                        n_kerb_missing_points += 1
+                        kerb_issue_rows.append({
+                            "geometry":           pt,
+                            "type":               "kerb_missing",
+                            "crossing_osm_id":    int(node_row["osm_id"]),
+                            "way_osm_id":         own_wid,
+                            "partner_way_osm_id": partner_wid,
+                            "kerb_osm_id":        0,
+                        })
                     continue
                 elif reason == "kerb_untagged":
                     n_kerb_untagged += 1
-                    n_kerb_untagged_points += 1
-                    kerb_issue_rows.append({
-                        "geometry":        pt,
-                        "type":            "kerb_untagged",
-                        "crossing_osm_id": int(node_row["osm_id"]),
-                        "way_osm_id":       own_wid,
-                        "kerb_osm_id":      kerb_id,
-                    })
+                    if not _pair_point_seen("kerb_untagged", pt, own_wid, partner_wid):
+                        n_kerb_untagged_points += 1
+                        kerb_issue_rows.append({
+                            "geometry":           pt,
+                            "type":               "kerb_untagged",
+                            "crossing_osm_id":    int(node_row["osm_id"]),
+                            "way_osm_id":         own_wid,
+                            "partner_way_osm_id": partner_wid,
+                            "kerb_osm_id":        kerb_id,
+                        })
                     continue
                 else:
                     # value_mismatch — incorrect_not_mixed can never
@@ -566,6 +512,7 @@ def detect_tactile_paving_issues(
                     "geometry":      node_pt,
                     "osm_id":        int(node_row["osm_id"]),
                     "way_osm_id":    own_wid,
+                    "partner_way_osm_id": partner_wid,
                     "crossing_tp":   crossing_tp,
                     "sides_checked": 1,
                     "kerb1_tp":      tp or "",
@@ -578,6 +525,23 @@ def detect_tactile_paving_issues(
 
             # Normal case (unchanged): the crossing node is a genuine
             # middle vertex, both endpoints are real kerb positions.
+            q1, partner1 = p1, None
+            q2, partner2 = p2, None
+            junction1 = pairs.partner(way_idx, p1) is not None
+            junction2 = pairs.partner(way_idx, p2) is not None
+            if junction1 and not junction2:
+                q1, partner1 = pairs.resolve(way_idx, p1)
+            elif junction2 and not junction1:
+                q2, partner2 = pairs.resolve(way_idx, p2)
+            partner_idx = partner1 if partner1 is not None else partner2
+            if partner_idx is not None:
+                if pairs.partner_crossing_tps(partner_idx) - {crossing_tp}:
+                    n_contiguous_conflict += 1
+                    continue
+                partner_wid = _safe_id(way_gdf.iloc[partner_idx].get("@id"))
+                n_contiguous_sides += 1
+            p1, p2 = q1, q2
+
             tp1, kerb1_id = _kerb_tp_at(p1, kerb_gdf, kerb_tree, kerb_geoms)
             tp2, kerb2_id = _kerb_tp_at(p2, kerb_gdf, kerb_tree, kerb_geoms)
 
@@ -592,14 +556,15 @@ def detect_tactile_paving_issues(
                 # at all — located at the way's endpoint (the "expected"
                 # kerb position), since there's no real kerb to point to.
                 for pt, tp in ((p1, tp1), (p2, tp2)):
-                    if tp is None:
+                    if tp is None and not _pair_point_seen("kerb_missing", pt, own_wid, partner_wid):
                         n_kerb_missing_points += 1
                         kerb_issue_rows.append({
-                            "geometry":        pt,
-                            "type":            "kerb_missing",
-                            "crossing_osm_id": int(node_row["osm_id"]),
-                            "way_osm_id":       own_wid,
-                            "kerb_osm_id":      0,
+                            "geometry":           pt,
+                            "type":               "kerb_missing",
+                            "crossing_osm_id":    int(node_row["osm_id"]),
+                            "way_osm_id":         own_wid,
+                            "partner_way_osm_id": partner_wid,
+                            "kerb_osm_id":        0,
                         })
                 continue
             elif reason == "kerb_untagged":
@@ -607,14 +572,15 @@ def detect_tactile_paving_issues(
                 # One point per extremity whose matched kerb node has no
                 # tactile_paving value at all.
                 for pt, tp, kid in ((p1, tp1, kerb1_id), (p2, tp2, kerb2_id)):
-                    if tp == "":
+                    if tp == "" and not _pair_point_seen("kerb_untagged", pt, own_wid, partner_wid):
                         n_kerb_untagged_points += 1
                         kerb_issue_rows.append({
-                            "geometry":        pt,
-                            "type":            "kerb_untagged",
-                            "crossing_osm_id": int(node_row["osm_id"]),
-                            "way_osm_id":       own_wid,
-                            "kerb_osm_id":      kid,
+                            "geometry":           pt,
+                            "type":               "kerb_untagged",
+                            "crossing_osm_id":    int(node_row["osm_id"]),
+                            "way_osm_id":         own_wid,
+                            "partner_way_osm_id": partner_wid,
+                            "kerb_osm_id":        kid,
                         })
                 continue
             elif reason == "value_mismatch":
@@ -626,6 +592,7 @@ def detect_tactile_paving_issues(
                 "geometry":      node_pt,
                 "osm_id":        int(node_row["osm_id"]),
                 "way_osm_id":    own_wid,
+                "partner_way_osm_id": partner_wid,
                 "crossing_tp":   crossing_tp,
                 "sides_checked": 2,
                 "kerb1_tp":      tp1 or "",
@@ -657,6 +624,8 @@ def detect_tactile_paving_issues(
     print(f"  Skipped — degenerate way:                  {n_degenerate_way} (both endpoints == crossing node)")
     print(f"  Half-mapped — one side only checked:       {n_half_mapped_sides}")
     print(f"  Skipped — half-mapped incorrect crossing:  {n_half_mapped_incorrect_skipped} (needs both sides)")
+    print(f"  Contiguous crossing pairs — merged sides:  {n_contiguous_sides}")
+    print(f"  Skipped — contiguous pair tp conflict:     {n_contiguous_conflict}")
     print(f"  Coherent (not flagged):                    {n_ok}")
     print(f"  Skipped — kerb missing at an extremity:    {n_kerb_missing} (data gap, not flagged — see kerb_issues.geojson)")
     print(f"  Skipped — kerb without tactile_paving:     {n_kerb_untagged} (data gap, not flagged — see kerb_issues.geojson)")
@@ -673,6 +642,8 @@ def detect_tactile_paving_issues(
         "degenerate_way":                  n_degenerate_way,
         "half_mapped_sides":               n_half_mapped_sides,
         "half_mapped_incorrect_skipped":   n_half_mapped_incorrect_skipped,
+        "contiguous_pair_merged":          n_contiguous_sides,
+        "contiguous_pair_tp_conflict":     n_contiguous_conflict,
         "coherent":                        n_ok,
         "kerb_missing":                    n_kerb_missing,
         "kerb_untagged":                   n_kerb_untagged,
@@ -687,6 +658,7 @@ def detect_tactile_paving_issues(
 def _empty_gdf() -> gpd.GeoDataFrame:
     return gpd.GeoDataFrame(
         [{"geometry": None, "osm_id": 0, "way_osm_id": 0,
+          "partner_way_osm_id": 0,
           "crossing_tp": "", "sides_checked": 0,
           "kerb1_tp": "", "kerb1_osm_id": 0,
           "kerb2_tp": "", "kerb2_osm_id": 0, "reason": ""}],
@@ -701,7 +673,7 @@ def _write_empty_output() -> None:
 def _empty_kerb_issues_gdf() -> gpd.GeoDataFrame:
     return gpd.GeoDataFrame(
         [{"geometry": None, "type": "", "crossing_osm_id": 0,
-          "way_osm_id": 0, "kerb_osm_id": 0}],
+          "way_osm_id": 0, "partner_way_osm_id": 0, "kerb_osm_id": 0}],
         crs="EPSG:4326",
     )
 
