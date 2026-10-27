@@ -367,6 +367,14 @@ def parse_schema_html(html: str, *, title: str = "", revision: int | None = None
     collector = _WikiCollector()
     collector.feed(html)
     collector.close()
+    if collector._stack:
+        open_table = collector._stack[-1]
+        where = open_table["h3"] or open_table["h2"] or "début de page"
+        raise PwgStructureError(
+            f"HTML incomplet : {len(collector._stack)} tableau(x) non fermé(s), "
+            f"dernier ouvert dans la section {where!r}. "
+            "Le fichier est probablement tronqué."
+        )
 
     features: dict[str, dict] = {}
     warnings: list[str] = []
