@@ -186,6 +186,20 @@ def test_expand_key():
     assert _expand_key("a:(x|y):(1|2)") == ["a:x:1", "a:x:2", "a:y:1", "a:y:2"]
 
 
+def test_fixture_is_complete():
+    html = FIXTURE.read_text(encoding="utf-8")
+    assert html.rstrip().endswith("</div>")
+    assert 'id="Roadways"' in html
+    assert "PWG Schema Releases" in html
+
+
+def test_truncated_html_is_an_error():
+    html = FIXTURE.read_text(encoding="utf-8")
+    cut = html.index('id="Islands"') + 2000
+    with pytest.raises(PwgStructureError, match="tronqué"):
+        parse_schema_html(html[:cut])
+
+
 def test_structure_change_is_an_error():
     with pytest.raises(PwgStructureError):
         parse_schema_html("<h2>Something else</h2><table><tr><th>Tag</th></tr></table>")
