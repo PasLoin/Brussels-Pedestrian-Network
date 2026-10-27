@@ -1,1 +1,790 @@
-
+format_version: 1
+source:
+  wiki: https://wiki.openstreetmap.org
+  page: Foundation/Local Chapters/United States/Pedestrian Working Group/Schema
+  revision: 2971851
+  url: https://wiki.openstreetmap.org/w/index.php?oldid=2971851
+  pwg_version: 1.0.1
+tiers:
+- bronze
+- silver
+- gold
+- diamond
+warnings:
+- 'Islands: la ligne highway=footway + footway=traffic_island couvre 5 colonnes sur 6, le tier déduit peut être décalé'
+- 'Islands: la ligne surface=* couvre 5 colonnes sur 6, le tier déduit peut être décalé'
+features:
+  sidewalks:
+    title: Sidewalks
+    selectors:
+    - tags:
+        highway: footway
+        footway: sidewalk
+      elements:
+      - way
+      tier: bronze
+      description: Indicates a sidewalk location.
+    criteria:
+    - id: sidewalks.surface
+      tag: surface=*
+      keys:
+      - surface
+      value: '*'
+      elements:
+      - way
+      tier: silver
+      levels:
+        silver:
+          description: |-
+            Required in the Silver tier. Example values include:
+            concrete
+            asphalt
+          values:
+          - concrete
+          - asphalt
+    - id: sidewalks.lit
+      tag: lit=*
+      keys:
+      - lit
+      value: '*'
+      elements:
+      - way
+      tier: gold
+      levels:
+        gold:
+          description: |-
+            Indicate whether the way is lit, examples include:
+            yes, or
+            no, or
+            any other valid value
+          values:
+          - 'yes'
+          - 'no'
+    - id: sidewalks.width
+      tag: width=*
+      keys:
+      - width
+      value: '*'
+      elements:
+      - way
+      tier: gold
+      levels:
+        gold:
+          description: Specify the width of the sidewalk
+          values: []
+    - id: sidewalks.incline
+      tag: incline=*
+      keys:
+      - incline
+      value: '*'
+      elements:
+      - way
+      tier: gold
+      levels:
+        gold:
+          description: 'Incline along the way (for hilly areas), specified as: up or down'
+          values:
+          - up
+          - down
+        diamond:
+          description: 'Incline along the way (for hilly areas), specified as a value, example: 15%'
+          values:
+          - 15%
+    - id: sidewalks.incline:across
+      tag: incline:across=*
+      keys:
+      - incline:across
+      value: '*'
+      elements:
+      - way
+      tier: diamond
+      levels:
+        diamond:
+          description: Incline across the way
+          values: []
+    - id: sidewalks.tactile_paving
+      tag: tactile_paving=*
+      keys:
+      - tactile_paving
+      value: '*'
+      elements:
+      - way
+      tier: diamond
+      levels:
+        diamond:
+          description: |-
+            Is tactile paving present?:
+            yes - Tactile paving is present along the entire way
+            ⚠️ NOTE: This is exceedingly rare in the United States. Please review this section of the tactile_paving=* page if you are unsure.
+            no - Tactile paving is not present along the entire way
+          values:
+          - 'yes'
+          - 'no'
+    - id: sidewalks.tactile_paving:colour
+      tag: tactile_paving:colour=*
+      keys:
+      - tactile_paving:colour
+      value: '*'
+      elements:
+      - way
+      tier: diamond
+      levels:
+        diamond:
+          description: Specify the tactile paving color.
+          values: []
+  crossings:
+    title: Crossings
+    selectors:
+    - tags:
+        highway: footway
+        footway: crossing
+      elements:
+      - way
+      tier: bronze
+      description: Indicates a crossing mapped as a way.
+    - tags:
+        highway: crossing
+      elements:
+      - node
+      tier: bronze
+      description: |-
+        Indicates a crossing mapped as a node.
+        ⛔️ NOTE: The footway=* tag is not used on crossings mapped as nodes.
+    criteria:
+    - id: crossings.crossing:markings
+      tag: crossing:markings=*
+      keys:
+      - crossing:markings
+      value: '*'
+      elements:
+      - way
+      - node
+      tier: bronze
+      levels:
+        bronze:
+          description: |-
+            Are markings present?:
+            yes, or
+            no
+          values:
+          - 'yes'
+          - 'no'
+        silver:
+          description: |-
+            In the Silver tier, this tag becomes more specific, ex:
+            zebra, or
+            lines, or
+            any other valid value
+          values:
+          - zebra
+          - lines
+    - id: crossings.crossing:signals
+      tag: crossing:signals=*
+      keys:
+      - crossing:signals
+      value: '*'
+      elements:
+      - way
+      - node
+      tier: bronze
+      levels:
+        bronze:
+          description: |-
+            Are signals present?:
+            yes, or
+            no
+          values:
+          - 'yes'
+          - 'no'
+        diamond:
+          description: |-
+            In the Diamond tier, this tag becomes more specific, ex:
+            shared, or
+            dedicated
+          values:
+          - shared
+          - dedicated
+    - id: crossings.tactile_paving@node
+      tag: tactile_paving=*
+      keys:
+      - tactile_paving
+      value: '*'
+      elements:
+      - node
+      tier: silver
+      levels:
+        silver:
+          description: |-
+            Is tactile paving present at the curb nodes?:
+            yes - Tactile paving is present at both curbs
+            no - Tactile paving is NOT present at either curb
+            partial - Tactile paving is present at only one curb
+          values:
+          - 'yes'
+          - 'no'
+          - partial
+    - id: crossings.surface
+      tag: surface=*
+      keys:
+      - surface
+      value: '*'
+      elements:
+      - way
+      tier: silver
+      levels:
+        silver:
+          description: |-
+            Required in the Silver tier. Example values include:
+            concrete
+            asphalt
+          values:
+          - concrete
+          - asphalt
+    - id: crossings.crossing:island
+      tag: crossing:island=*
+      keys:
+      - crossing:island
+      value: '*'
+      elements:
+      - way
+      - node
+      tier: silver
+      levels:
+        silver:
+          description: 'Indicate presence: yes or no'
+          values:
+          - 'yes'
+          - 'no'
+    - id: crossings.crossing:signed
+      tag: crossing:signed=*
+      keys:
+      - crossing:signed
+      value: '*'
+      elements:
+      - way
+      - node
+      tier: gold
+      levels:
+        gold:
+          description: 'Indicate presence: yes or no'
+          values:
+          - 'yes'
+          - 'no'
+    - id: crossings.width
+      tag: width=*
+      keys:
+      - width
+      value: '*'
+      elements:
+      - way
+      tier: gold
+      levels:
+        gold:
+          description: Required in the Gold tier.
+          values: []
+    - id: crossings.button_operated
+      tag: button_operated=*
+      keys:
+      - button_operated
+      value: '*'
+      elements:
+      - way
+      - node
+      tier: gold
+      levels:
+        gold:
+          description: 'Indicate button operation: yes or no'
+          values:
+          - 'yes'
+          - 'no'
+    - id: crossings.traffic_signals:arrow
+      tag: traffic_signals:arrow=*
+      keys:
+      - traffic_signals:arrow
+      value: '*'
+      elements:
+      - way
+      - node
+      tier: gold
+      levels:
+        gold:
+          description: 'Indicate presence: yes or no'
+          values:
+          - 'yes'
+          - 'no'
+    - id: crossings.traffic_signals:vibration
+      tag: traffic_signals:vibration=*
+      keys:
+      - traffic_signals:vibration
+      value: '*'
+      elements:
+      - way
+      - node
+      tier: gold
+      levels:
+        gold:
+          description: 'Indicate presence: yes or no'
+          values:
+          - 'yes'
+          - 'no'
+    - id: crossings.traffic_signals:sound
+      tag: traffic_signals:sound=*
+      keys:
+      - traffic_signals:sound
+      value: '*'
+      elements:
+      - way
+      - node
+      tier: gold
+      levels:
+        gold:
+          description: |-
+            Are acoustic signals present?
+            yes - when there are signals helping to cross.
+            no - when there are no acoustic signals.
+          values:
+          - 'yes'
+          - 'no'
+        diamond:
+          description: |-
+            When there are partial sound signals:
+            locate - Acoustic signals are present for finding the button only
+            walk - Acoustic signals are present for walk permission only
+          values:
+          - locate
+          - walk
+    - id: crossings.traffic_signals:minimap
+      tag: traffic_signals:minimap=*
+      keys:
+      - traffic_signals:minimap
+      value: '*'
+      elements:
+      - way
+      - node
+      tier: diamond
+      levels:
+        diamond:
+          description: 'Indicate presence: yes or no'
+          values:
+          - 'yes'
+          - 'no'
+    - id: crossings.crossing:flags
+      tag: crossing:flags=*
+      keys:
+      - crossing:flags
+      value: '*'
+      elements:
+      - way
+      - node
+      tier: diamond
+      levels:
+        diamond:
+          description: |-
+            Are pedestrian crossing flags present?
+            yes - Flags are (usually) present
+            no - Flags are (usually) not present
+          values:
+          - 'yes'
+          - 'no'
+    - id: crossings.tactile_paving@way
+      tag: tactile_paving=*
+      keys:
+      - tactile_paving
+      value: '*'
+      elements:
+      - way
+      tier: diamond
+      levels:
+        diamond:
+          description: |-
+            Is tactile paving present along the entire way?:
+            yes - Tactile paving is present along the entire way
+            ⚠️ NOTE: This is exceedingly rare in the United States. Please review this section of the tactile_paving=* page if you are unsure.
+            no - Tactile paving is not present along the entire way
+          values:
+          - 'yes'
+          - 'no'
+    - id: crossings.tactile_paving:colour
+      tag: tactile_paving:colour=*
+      keys:
+      - tactile_paving:colour
+      value: '*'
+      elements:
+      - way
+      - node
+      tier: diamond
+      levels:
+        diamond:
+          description: Specify the tactile paving color.
+          values: []
+  curbs:
+    title: Curbs
+    selectors:
+    - tags:
+        barrier: kerb
+      elements:
+      - node
+      tier: silver
+      description: Indicates a curb location.
+    criteria:
+    - id: curbs.kerb
+      tag: kerb=*
+      keys:
+      - kerb
+      value: '*'
+      elements:
+      - node
+      tier: silver
+      levels:
+        silver:
+          description: |-
+            Specify the curb type:
+            raised - Raised curb
+            lowered - Curb ramp
+            flush - Flush curb
+            rolled - Rolled curb
+            no - There is no curb
+          values:
+          - raised
+          - lowered
+          - flush
+          - rolled
+          - 'no'
+    - id: curbs.tactile_paving
+      tag: tactile_paving=*
+      keys:
+      - tactile_paving
+      value: '*'
+      elements:
+      - node
+      tier: silver
+      levels:
+        silver:
+          description: 'Indicate tactile paving presence: yes or no'
+          values:
+          - 'yes'
+          - 'no'
+    - id: curbs.kerb:height
+      tag: kerb:height=*
+      keys:
+      - kerb:height
+      value: '*'
+      elements:
+      - node
+      tier: gold
+      levels:
+        gold:
+          description: Specify the (raised) curb height
+          values: []
+    - id: curbs.tactile_paving:colour
+      tag: tactile_paving:colour=*
+      keys:
+      - tactile_paving:colour
+      value: '*'
+      elements:
+      - node
+      tier: diamond
+      levels:
+        diamond:
+          description: Specify the tactile paving color.
+          values: []
+  islands:
+    title: Islands
+    selectors:
+    - tags:
+        highway: footway
+        footway: traffic_island
+      elements:
+      - way
+      tier: bronze
+      description: Indicate a traffic island mapped as a way
+    criteria:
+    - id: islands.surface
+      tag: surface=*
+      keys:
+      - surface
+      value: '*'
+      elements:
+      - way
+      tier: bronze
+      levels:
+        bronze:
+          description: |-
+            Required in the Silver tier. Example values include:
+            concrete
+            asphalt
+          values:
+          - concrete
+          - asphalt
+    - id: islands.lit
+      tag: lit=*
+      keys:
+      - lit
+      value: '*'
+      elements:
+      - way
+      tier: gold
+      levels:
+        gold:
+          description: |-
+            Indicate whether the way is lit. Examples values include:
+            yes, or
+            no, or
+            any other valid value
+          values:
+          - 'yes'
+          - 'no'
+    - id: islands.width
+      tag: width=*
+      keys:
+      - width
+      value: '*'
+      elements:
+      - way
+      tier: gold
+      levels:
+        gold:
+          description: Specify the width of the traffic island footway
+          values: []
+    - id: islands.incline
+      tag: incline=*
+      keys:
+      - incline
+      value: '*'
+      elements:
+      - way
+      tier: gold
+      levels:
+        gold:
+          description: 'Incline along the way (for hilly areas), specified as: up or down'
+          values:
+          - up
+          - down
+        diamond:
+          description: 'Incline along the way (for hilly areas), specified as a value, example: 15%'
+          values:
+          - 15%
+    - id: islands.incline:across
+      tag: incline:across=*
+      keys:
+      - incline:across
+      value: '*'
+      elements:
+      - way
+      tier: diamond
+      levels:
+        diamond:
+          description: Incline across the way
+          values: []
+    - id: islands.tactile_paving
+      tag: tactile_paving=*
+      keys:
+      - tactile_paving
+      value: '*'
+      elements:
+      - way
+      tier: diamond
+      levels:
+        diamond:
+          description: |-
+            Is tactile paving present?:
+            yes - Tactile paving is present along the entire way
+            ⚠️ NOTE: This is exceedingly rare in the United States. Please review this section of the tactile_paving=* page if you are unsure.
+            no - Tactile paving is not present along the entire way
+          values:
+          - 'yes'
+          - 'no'
+    - id: islands.tactile_paving:colour
+      tag: tactile_paving:colour=*
+      keys:
+      - tactile_paving:colour
+      value: '*'
+      elements:
+      - way
+      tier: diamond
+      levels:
+        diamond:
+          description: Specify the tactile paving color.
+          values: []
+  access_aisles:
+    title: Access Aisles
+    selectors:
+    - tags:
+        highway: footway
+        footway: access_aisle
+      elements:
+      - way
+      tier: silver
+      description: Indicate an access aisle location
+    criteria:
+    - id: access_aisles.access_aisle:markings
+      tag: access_aisle:markings=*
+      keys:
+      - access_aisle:markings
+      value: '*'
+      elements:
+      - way
+      tier: silver
+      levels:
+        silver:
+          description: |-
+            Specify the presence and type of markings:
+            no - No markings
+            yes - Markings present, type unspecified
+            zebra - Zebra markings
+            ladder:skewed - Skewed ladder markings
+            Any other applicable value
+          values:
+          - 'no'
+          - 'yes'
+          - zebra
+          - ladder:skewed
+    - id: access_aisles.surface
+      tag: surface=*
+      keys:
+      - surface
+      value: '*'
+      elements:
+      - way
+      tier: silver
+      levels:
+        silver:
+          description: |-
+            Required in the Silver tier. Example values include:
+            concrete
+            asphalt
+          values:
+          - concrete
+          - asphalt
+    - id: access_aisles.lit
+      tag: lit=*
+      keys:
+      - lit
+      value: '*'
+      elements:
+      - way
+      tier: gold
+      levels:
+        gold:
+          description: |-
+            Indicate whether the way is lit. Example values include:
+            yes, or
+            no, or
+            any other valid value
+          values:
+          - 'yes'
+          - 'no'
+    - id: access_aisles.width
+      tag: width=*
+      keys:
+      - width
+      value: '*'
+      elements:
+      - way
+      tier: gold
+      levels:
+        gold:
+          description: Specify the width of the access aisle
+          values: []
+    - id: access_aisles.incline
+      tag: incline=*
+      keys:
+      - incline
+      value: '*'
+      elements:
+      - way
+      tier: gold
+      levels:
+        gold:
+          description: 'Incline along the way (for hilly areas), specified as: up or down'
+          values:
+          - up
+          - down
+        diamond:
+          description: 'Incline along the way (for hilly areas), specified as a value, example: 15%'
+          values:
+          - 15%
+    - id: access_aisles.incline:across
+      tag: incline:across=*
+      keys:
+      - incline:across
+      value: '*'
+      elements:
+      - way
+      tier: diamond
+      levels:
+        diamond:
+          description: Incline across the way
+          values: []
+    - id: access_aisles.tactile_paving
+      tag: tactile_paving=*
+      keys:
+      - tactile_paving
+      value: '*'
+      elements:
+      - way
+      tier: diamond
+      levels:
+        diamond:
+          description: |-
+            Is tactile paving present?:
+            yes - Tactile paving is present along the entire way
+            ⚠️ NOTE: This is exceedingly rare in the United States. Please review this section of the tactile_paving=* page if you are unsure.
+            no - Tactile paving is not present along the entire way
+          values:
+          - 'yes'
+          - 'no'
+    - id: access_aisles.tactile_paving:colour
+      tag: tactile_paving:colour=*
+      keys:
+      - tactile_paving:colour
+      value: '*'
+      elements:
+      - way
+      tier: diamond
+      levels:
+        diamond:
+          description: Specify the tactile paving color.
+          values: []
+  roadways:
+    title: Roadways
+    selectors:
+    - tags:
+        highway: '*'
+      elements:
+      - way
+      tier: bronze
+      description: Indicate a roadway location
+    criteria:
+    - id: roadways.sidewalk:(left|right|both)
+      tag: sidewalk:(left|right|both)=*
+      keys:
+      - sidewalk:left
+      - sidewalk:right
+      - sidewalk:both
+      value: '*'
+      elements:
+      - way
+      tier: bronze
+      levels:
+        bronze:
+          description: |-
+            To support consistency and clarity in pedestrian infrastructure data, the PWG recommends avoiding new use of the older sidewalk=* key.
+            Instead, because we start with separately mapped sidewalks at the Bronze Tier, we use the newer approach, sidewalk:(left|right|both)=no|separate, to indicate the presence and relative position of sidewalks along a street:
+            no - No associated sidewalk present
+            separate - Associated sidewalk is present and mapped as separate geometry
+          values:
+          - 'no'
+          - separate
+    - id: roadways.maxspeed
+      tag: maxspeed=*
+      keys:
+      - maxspeed
+      value: '*'
+      elements:
+      - way
+      tier: gold
+      levels:
+        gold:
+          description: Indicate the highway speed limit
+          values: []
