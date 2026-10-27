@@ -85,11 +85,6 @@ env:
   ISLAND_UNJOINED_GAP_M: 2
   ISLAND_PLATFORM_TOLERANCE_M: 1
 
-  WALK_SCORE_RADIUS_M: 1000
-  SIDEWALK_PENALTY_NONE: 0.3
-  SIDEWALK_PENALTY_PARTIAL: 0.6
-  SIDEWALK_PENALTY_UNKNOWN: 0.5
-
   SIDEWALK_GAP_OFFSET_M: 7
   SIDEWALK_GAP_SEARCH_M: 8
   SIDEWALK_GAP_MAX_ANGLE: 65
@@ -272,7 +267,6 @@ jobs:
             flow_edges.geojson
             forced_segments.geojson
             forced_cycleway.geojson
-            street_scores.geojson
             sidewalk_gaps.geojson
             sidewalk_separate_candidates.geojson
             sidewalk_roads.geojson
@@ -306,7 +300,6 @@ jobs:
             --drop-densest-as-needed \
             --named-layer=highways:highways.geojson \
             --named-layer=flow_edges:flow_edges.geojson \
-            --named-layer=street_scores:street_scores.geojson \
             --named-layer=sidewalk_gaps:sidewalk_gaps.geojson \
             --named-layer=sidewalk_separate_candidates:sidewalk_separate_candidates.geojson \
             --named-layer=sidewalk_roads:sidewalk_roads.geojson \
