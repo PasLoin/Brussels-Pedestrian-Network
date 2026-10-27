@@ -200,3 +200,66 @@ def test_chain_of_three_crossings_is_not_merged(pair, tmp_path):
     stats = detect_tactile_paving_issues()
     assert stats["contiguous_pair_merged"] == 0
     assert stats["kerb_missing"] == 2
+
+
+@pytest.fixture
+def half_pair(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+
+    def build(tp1="no", tp2="no", kerb="no"):
+        _write(tmp_path / "highways.geojson", [
+            _crossing(-3, 0, tp1, 1),
+            _crossing(3, 0, tp2, 2),
+        ])
+        _write(tmp_path / "sidewalk_footways_raw.geojson", [
+            _cw([(-6, 0), (-3, 0), (0, 0)], 101),
+            _cw([(0, 0), (3, 0)], 102),
+        ])
+        _write(tmp_path / "kerbs_raw.geojson", [] if kerb is False else [_kerb(-6, 0, kerb, 201)])
+        return tmp_path
+
+    return build
+
+
+def test_partner_ending_on_crossing_node_is_checked_on_own_kerb_only(half_pair):
+    path = half_pair()
+    stats = detect_tactile_paving_issues()
+    assert stats["coherent"] == 2
+    assert stats["kerb_missing"] == 0
+    assert stats["contiguous_pair_merged"] == 2
+    assert stats["half_mapped_sides"] == 2
+    assert _kerb_issues(path) == []
+
+
+def test_partner_ending_on_crossing_node_still_flags_mismatch(half_pair):
+    path = half_pair(kerb="yes")
+    stats = detect_tactile_paving_issues()
+    assert stats["value_mismatch"] == 2
+    flagged = {p["osm_id"]: p for p in _tactile_issues(path)}
+    assert flagged[1]["sides_checked"] == 1
+    assert flagged[1]["partner_way_osm_id"] == 102
+    assert flagged[1]["kerb1_osm_id"] == 201
+
+
+def test_partner_ending_on_crossing_node_missing_kerb_reported_once(half_pair):
+    path = half_pair(kerb=False)
+    stats = detect_tactile_paving_issues()
+    assert stats["kerb_missing"] == 2
+    assert stats["kerb_missing_points"] == 1
+    issues = _kerb_issues(path)
+    assert len(issues) == 1
+    assert issues[0]["type"] == "kerb_missing"
+
+
+def test_partner_ending_on_crossing_node_incorrect_is_skipped(half_pair):
+    half_pair(tp1="incorrect", tp2="incorrect")
+    stats = detect_tactile_paving_issues()
+    assert stats["half_mapped_incorrect_skipped"] == 2
+    assert stats["flagged"] == 0
+
+
+def test_partner_ending_on_crossing_node_conflict_is_skipped(half_pair):
+    half_pair(tp1="no", tp2="yes")
+    stats = detect_tactile_paving_issues()
+    assert stats["contiguous_pair_tp_conflict"] == 2
+    assert stats["flagged"] == 0
