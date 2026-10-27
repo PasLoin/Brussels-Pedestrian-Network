@@ -1,0 +1,13 @@
+criteria:
+  islands.surface:
+    tier: silver
+    reason: >-
+      Dans le tableau « Islands » du wiki, la ligne surface=* n'a que cinq
+      colonnes au lieu de six : la case Bronze vide présente dans les autres
+      sections manque, ce qui décale la cellule en Bronze. Le texte indique
+      « Required in the Silver tier », comme pour Sidewalks, Crossings et
+      Access Aisles.
+
+features: {}
+
+add: []

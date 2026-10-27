@@ -10,11 +10,7 @@ from config import (
     MIN_OD_DISTANCE_M,
     OD_SAMPLE_INTERVAL_M,
     POINTS_PER_SIDE,
-    SIDEWALK_PENALTY_NONE,
-    SIDEWALK_PENALTY_PARTIAL,
-    SIDEWALK_PENALTY_UNKNOWN,
     TOP_RANK_PCT,
-    WALK_SCORE_RADIUS_M,
 )
 from clean_osm import clean_osm
 from build_graph import build_graph
@@ -24,7 +20,6 @@ from export import (
     compute_network_stats,
     export_flow_layers,
     export_routing_graph,
-    export_walkability_scores,
     save_stats,
     undirected_edge_groups,
 )
@@ -46,10 +41,6 @@ def main() -> None:
           f"TOP_PCT={TOP_RANK_PCT} "
           f"OD_INTERVAL={OD_SAMPLE_INTERVAL_M}m "
           f"(legacy POINTS_PER_SIDE={POINTS_PER_SIDE})")
-    print(f"Walkability: radius={WALK_SCORE_RADIUS_M}m "
-          f"penalties: none={SIDEWALK_PENALTY_NONE} "
-          f"partial={SIDEWALK_PENALTY_PARTIAL} "
-          f"unknown={SIDEWALK_PENALTY_UNKNOWN}")
 
     with step("clean_osm"):
         clean_osm("routing_raw.osm", "routing_clean.osm")
@@ -102,7 +93,7 @@ def main() -> None:
     )
 
     with step("sample_od_points"):
-        od_points, od_streets, od_sides, addr_gdf = sample_od_points("addresses.geojson")
+        od_points, od_streets, od_sides, _ = sample_od_points("addresses.geojson")
 
     with step("snap_to_graph"):
         snapped, snap_stats = snap_to_graph(
@@ -128,13 +119,12 @@ def main() -> None:
 
     with step("generate_od_pairs"):
         od_pairs, rejected_near, rejected_far = generate_od_pairs(
-            od_points, snapped, od_streets,
+            od_points, snapped,
         )
 
     with step("route_pairs"):
         result = route_pairs(
-            gb.graph, od_pairs,
-            gb.edge_lengths, gb.edge_highways, gb.edge_cycleway_nf,
+            gb.graph, od_pairs, gb.edge_lengths,
         )
 
     with step("export_flow_layers"):
@@ -144,15 +134,6 @@ def main() -> None:
             gb.edge_highways, gb.edge_geoms,
             gb.edge_lengths, gb.edge_cycleway_nf,
             gb.edge_foot_tags,
-        )
-
-    with step("export_walkability_scores"):
-        walkability_stats = export_walkability_scores(
-            result.street_ped_m, result.street_cyc_nf_m, result.street_total_m,
-            gb.street_sidewalk_status,
-            addr_gdf,
-            gb.edge_tuples, gb.edge_geoms, gb.edge_highways,
-            gb.edge_surfaces, gb.edge_lits,
         )
 
     with step("detect_sidewalk_gaps"):
@@ -196,7 +177,6 @@ def main() -> None:
         routing_time_s=result.routing_time_s,
         graph_stats=graph_stats,
         flow_stats=flow_stats,
-        walkability_stats=walkability_stats,
         sidewalk_gap_stats=sidewalk_gap_stats,
         sidewalk_road_stats=sidewalk_road_stats,
         missing_crossing_stats=missing_crossing_stats,

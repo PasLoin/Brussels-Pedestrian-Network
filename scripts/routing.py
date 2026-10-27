@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 from collections import defaultdict
-from typing import Iterable, NamedTuple
+from typing import NamedTuple
 
 import numpy as np
 import shapely
@@ -12,8 +12,6 @@ from config import (
     MAX_OD_DISTANCE_M,
     MAX_OD_PAIRS,
     MIN_OD_DISTANCE_M,
-    PED_HIGHWAY_TYPES,
-    WALK_SCORE_RADIUS_M,
 )
 from timing import record
 
@@ -23,9 +21,6 @@ _OD_QUERY_CHUNK = 2000
 
 class RoutingResult(NamedTuple):
     flow_arr: np.ndarray
-    street_ped_m: dict[str, float]
-    street_cyc_nf_m: dict[str, float]
-    street_total_m: dict[str, float]
     routed: int
     total_routed_distance: float
     routing_time_s: float
@@ -73,8 +68,7 @@ def _enumerate_valid_pairs(
 def generate_od_pairs(
     od_points: list[tuple[float, float]],
     snapped: list[int],
-    od_streets: list[str],
-) -> tuple[list[tuple[int, int, str, str]], int, int]:
+) -> tuple[list[tuple[int, int]], int, int]:
     print("Generating OD pairs (exhaustive enumeration + random sample)...")
     n_pts = len(od_points)
     if n_pts < 2:
@@ -100,7 +94,7 @@ def generate_od_pairs(
     tgt_idx = np.where(flip, pair_i, pair_j)
 
     od_pairs = [
-        (int(snapped_arr[a]), int(snapped_arr[b]), od_streets[a], od_streets[b])
+        (int(snapped_arr[a]), int(snapped_arr[b]))
         for a, b in zip(src_idx.tolist(), tgt_idx.tolist())
     ]
 
@@ -111,35 +105,10 @@ def generate_od_pairs(
     return od_pairs, rejected_near, rejected_far
 
 
-def _accumulate_capped(
-    eids: Iterable[int],
-    cap_m: float,
-    edge_lengths: list[float],
-    is_ped_mask: np.ndarray,
-    is_cyc_nf_mask: np.ndarray,
-) -> tuple[float, float, float]:
-    ped = cyc = total = 0.0
-    remaining = cap_m
-    for eid in eids:
-        if remaining <= 0:
-            break
-        full_len = edge_lengths[eid]
-        used_len = min(full_len, remaining)
-        total += used_len
-        if is_cyc_nf_mask[eid]:
-            cyc += used_len
-        elif is_ped_mask[eid]:
-            ped += used_len
-        remaining -= full_len
-    return ped, cyc, total
-
-
 def route_pairs(
     graph,
-    od_pairs: list[tuple[int, int, str, str]],
+    od_pairs: list[tuple[int, int]],
     edge_lengths: list[float],
-    edge_highways: list[str],
-    edge_cycleway_nf: list[bool],
 ) -> RoutingResult:
     print("Routing pairs with igraph (grouped by source)...")
     t_route = time.time()
@@ -148,19 +117,10 @@ def route_pairs(
     flow_arr = np.zeros(n_edges, dtype=np.int32)
     chunk_traversed_eids: list[int] = []
 
-    is_cyc_nf_mask = np.array(edge_cycleway_nf, dtype=bool)
-    is_ped_mask = np.array([
-        (hw in PED_HIGHWAY_TYPES or hw == "cycleway")
-        for hw in edge_highways
-    ], dtype=bool)
+    pairs_by_src: dict[int, list[int]] = defaultdict(list)
+    for src, tgt in od_pairs:
+        pairs_by_src[src].append(tgt)
 
-    pairs_by_src: dict[int, list[tuple[int, str, str]]] = defaultdict(list)
-    for src, tgt, st_src, st_tgt in od_pairs:
-        pairs_by_src[src].append((tgt, st_src, st_tgt))
-
-    street_ped_m: dict[str, float] = defaultdict(float)
-    street_cyc_nf_m: dict[str, float] = defaultdict(float)
-    street_total_m: dict[str, float] = defaultdict(float)
     routed = 0
     n_sources = len(pairs_by_src)
 
@@ -168,13 +128,12 @@ def route_pairs(
     t_accum = 0.0
     t_bincount = 0.0
 
-    for done, (src, targets_info) in enumerate(pairs_by_src.items()):
+    for done, (src, targets) in enumerate(pairs_by_src.items()):
         if done % 2000 == 0:
             elapsed = time.time() - t_route
             print(f"  Sources: {done}/{n_sources} | "
                   f"Pairs routed: {routed} | {elapsed:.0f}s")
 
-        targets = [t for t, _, _ in targets_info]
         _td0 = time.time()
         all_paths = graph.get_shortest_paths(
             src, to=targets, weights="weight", output="epath",
@@ -182,29 +141,11 @@ def route_pairs(
         t_dijkstra += time.time() - _td0
 
         _ta0 = time.time()
-        for (tgt, st_src, st_tgt), eids in zip(targets_info, all_paths):
+        for eids in all_paths:
             if not eids:
                 continue
             routed += 1
-
             chunk_traversed_eids.extend(eids)
-
-            src_ped, src_cyc, src_total = _accumulate_capped(
-                eids, WALK_SCORE_RADIUS_M,
-                edge_lengths, is_ped_mask, is_cyc_nf_mask,
-            )
-            tgt_ped, tgt_cyc, tgt_total = _accumulate_capped(
-                reversed(eids), WALK_SCORE_RADIUS_M,
-                edge_lengths, is_ped_mask, is_cyc_nf_mask,
-            )
-
-            street_ped_m[st_src] += src_ped
-            street_cyc_nf_m[st_src] += src_cyc
-            street_total_m[st_src] += src_total
-
-            street_ped_m[st_tgt] += tgt_ped
-            street_cyc_nf_m[st_tgt] += tgt_cyc
-            street_total_m[st_tgt] += tgt_total
         t_accum += time.time() - _ta0
 
         if len(chunk_traversed_eids) > 1000000:
@@ -224,7 +165,7 @@ def route_pairs(
     routing_time = time.time() - t_route
 
     record("dijkstra get_shortest_paths", t_dijkstra)
-    record("walkability + flow accumulation", t_accum)
+    record("flow accumulation", t_accum)
     record("np.bincount flushes", t_bincount)
     avg_dist = total_routed_distance / routed if routed else 0
     print(f"  Routed {routed} pairs in {routing_time:.1f}s")
@@ -232,9 +173,6 @@ def route_pairs(
 
     return RoutingResult(
         flow_arr=flow_arr,
-        street_ped_m=dict(street_ped_m),
-        street_cyc_nf_m=dict(street_cyc_nf_m),
-        street_total_m=dict(street_total_m),
         routed=routed,
         total_routed_distance=total_routed_distance,
         routing_time_s=round(routing_time, 1),

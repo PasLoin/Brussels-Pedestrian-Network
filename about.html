@@ -86,7 +86,7 @@
   </p>
 
   <div class="qa-box">
-    La simulation de flux aide à repérer les zones où le mapping a le plus d'effet sur la marchabilité. Les couches QA servent à cibler des erreurs de topologie ou des tags manquants sur des segments précis.
+    La simulation de flux aide à repérer les zones où le mapping a le plus d'effet sur les trajets piétons simulés. Les couches QA servent à cibler des erreurs de topologie ou des tags manquants sur des segments précis.
   </div>
 
   <h2>1. Coûts de routage et tags OSM</h2>
@@ -102,16 +102,6 @@
     <tr><td><code>tertiary</code></td><td>3.5</td><td>Trafic plus dense.</td></tr>
     <tr><td><code>primary</code></td><td>8.0</td><td>Axe à fort trafic, peu adapté à la marche en l'absence de trottoir séparé.</td></tr>
   </table>
-
-  <h3>Influence du tag <code>sidewalk</code></h3>
-  <p>
-    Sur les routes de type residential à primary, la présence d'un trottoir documenté modifie le score de marchabilité du segment :
-  </p>
-  <ul>
-    <li><code>sidewalk=both</code> ou <code>separate</code> : coefficient proche de 1.0.</li>
-    <li><code>sidewalk=no</code> : pénalité forte (coefficient 0.3).</li>
-    <li>Tag absent : pénalité intermédiaire (coefficient 0.5). C'est le cas le plus fréquent, et donc celui où la documentation du réseau peut le plus progresser.</li>
-  </ul>
 
   <h2>2. Couches de contrôle qualité</h2>
   <p>

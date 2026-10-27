@@ -8,11 +8,13 @@ on:
     paths:
       - "scripts/**"
       - "tests/**"
+      - "pwg/**"
       - ".github/workflows/tests.yml"
   pull_request:
     paths:
       - "scripts/**"
       - "tests/**"
+      - "pwg/**"
       - ".github/workflows/tests.yml"
   workflow_dispatch:
 
@@ -30,7 +32,7 @@ jobs:
 
       # Same dependency set as build.yml, plus pytest.
       - name: Install Python dependencies
-        run: pip install "shapely>=2" osmnx geopandas igraph numpy pyproj pytest
+        run: pip install "shapely>=2" osmnx geopandas igraph numpy pyproj pyyaml pytest
 
       - name: Run unit tests
         run: python -m pytest tests/ -v

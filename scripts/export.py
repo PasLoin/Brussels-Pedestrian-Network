@@ -8,20 +8,14 @@ import geopandas as gpd
 import numpy as np
 import shapely
 from pyproj import Transformer
-from shapely import STRtree
-from shapely.geometry import Point
 
 from config import (
     FOOT_ALLOWED,
-    LIT_PENALTY_MAX,
     MAX_OD_DISTANCE_M,
     MIN_FLOW_THRESHOLD,
     MIN_OD_DISTANCE_M,
     PED_HIGHWAY_TYPES,
-    PED_INFRA_RADIUS_M,
-    SURFACE_PENALTY_MAX,
     TOP_RANK_PCT,
-    WALK_SCORE_RADIUS_M,
 )
 from timing import step
 
@@ -197,184 +191,6 @@ def export_flow_layers(
     }
 
 
-def _attr_quality_penalty(surface_share: float, lit_share: float) -> float:
-    return (
-        (1.0 - SURFACE_PENALTY_MAX * (1.0 - surface_share))
-        * (1.0 - LIT_PENALTY_MAX * (1.0 - lit_share))
-    )
-
-
-class _PedInfraIndex:
-
-    def __init__(self, edge_tuples, edge_geoms, edge_highways,
-                 edge_surfaces, edge_lits):
-        geoms, surf, lit = [], [], []
-        seen: set[tuple] = set()
-        for i, hw in enumerate(edge_highways):
-            if hw not in PED_HIGHWAY_TYPES:
-                continue
-            u, v = edge_tuples[i]
-            geom = edge_geoms[i]
-            key = (min(u, v), max(u, v), round(geom.length, 1))
-            if key in seen:
-                continue
-            seen.add(key)
-            geoms.append(geom)
-            surf.append(bool(edge_surfaces[i]))
-            lit.append(bool(edge_lits[i]))
-        self._geoms = np.array(geoms, dtype=object)
-        self._surf = np.array(surf, dtype=bool)
-        self._lit = np.array(lit, dtype=bool)
-        self._tree = STRtree(geoms) if geoms else None
-
-    def local_stats(self, x: float, y: float) -> tuple[float, float, float]:
-        if self._tree is None:
-            return 0.0, 0.0, 0.0
-        disc = Point(x, y).buffer(PED_INFRA_RADIUS_M)
-        idx = self._tree.query(disc)
-        if len(idx) == 0:
-            return 0.0, 0.0, 0.0
-        clipped = shapely.intersection(self._geoms[idx], disc)
-        lengths = shapely.length(clipped)
-        total = float(lengths.sum())
-        if total <= 0:
-            return 0.0, 0.0, 0.0
-        surf_m = float(lengths[self._surf[idx]].sum())
-        lit_m = float(lengths[self._lit[idx]].sum())
-        return total, surf_m / total, lit_m / total
-
-
-def export_walkability_scores(
-    street_ped_m: dict[str, float],
-    street_cyc_nf_m: dict[str, float],
-    street_total_m: dict[str, float],
-    street_sidewalk_status: dict,
-    addr_gdf: gpd.GeoDataFrame,
-    edge_tuples: list,
-    edge_geoms: list,
-    edge_highways: list[str],
-    edge_surfaces: list[str],
-    edge_lits: list[str],
-) -> dict:
-    print("Computing walkability scores (first/last km + sidewalk "
-          "+ surface/lit penalties)...")
-
-    addr_wgs = addr_gdf.to_crs("EPSG:4326")
-    addr_wgs["_x"] = addr_wgs.geometry.x
-    addr_wgs["_y"] = addr_wgs.geometry.y
-
-    street_centroid_xy = (
-        addr_wgs.groupby("addr:street")[["_x", "_y"]].mean()
-    )
-    centroids_x = street_centroid_xy["_x"].to_dict()
-    centroids_y = street_centroid_xy["_y"].to_dict()
-
-    addr_prj = addr_gdf.copy()
-    addr_prj["_px"] = addr_prj.geometry.x
-    addr_prj["_py"] = addr_prj.geometry.y
-    street_centroid_prj = (
-        addr_prj.groupby("addr:street")[["_px", "_py"]].mean()
-    )
-    centroids_px = street_centroid_prj["_px"].to_dict()
-    centroids_py = street_centroid_prj["_py"].to_dict()
-
-    with step(f"ped-infra index (radius {PED_INFRA_RADIUS_M:.0f} m)"):
-        infra = _PedInfraIndex(
-            edge_tuples, edge_geoms, edge_highways, edge_surfaces, edge_lits,
-        )
-
-    pen_stats: dict[str, int] = defaultdict(int)
-    rows: list[dict] = []
-    scores: list[float] = []
-
-    for street, total_m in street_total_m.items():
-        if total_m < 1.0:
-            continue
-
-        ped_m = street_ped_m.get(street, 0.0)
-        cyc_m = street_cyc_nf_m.get(street, 0.0)
-        base_score = ped_m / total_m
-
-        info = street_sidewalk_status.get(street)
-        if info is None:
-            sw_status = "not_required"
-            penalty = 1.0
-            doc_pct = None
-        else:
-            sw_status = info.status
-            penalty = info.penalty
-            doc_pct = int(round(info.doc_share * 100))
-
-        if street not in centroids_x:
-            continue
-        centroid = Point(centroids_x[street], centroids_y[street])
-
-        infra_m, surface_share, lit_share = infra.local_stats(
-            centroids_px[street], centroids_py[street],
-        )
-        attr_penalty = _attr_quality_penalty(surface_share, lit_share)
-
-        score = round(min(base_score * penalty * attr_penalty, 1.0), 3)
-        pen_stats[sw_status] += 1
-
-        scores.append(score)
-
-        rows.append({
-            "geometry": centroid,
-            "street": street,
-            "walkability": score,
-            "walkability_raw": round(base_score, 3),
-            "sidewalk": sw_status,
-            "sidewalk_doc_pct": -1 if doc_pct is None else doc_pct,
-            "ped_infra_m": round(infra_m, 0),
-            "infra_radius": int(PED_INFRA_RADIUS_M),
-            "surface_pct": int(round(surface_share * 100)),
-            "lit_pct": int(round(lit_share * 100)),
-            "ped_meters": round(ped_m, 0),
-            "cycleway_meters": round(cyc_m, 0),
-            "total_meters": round(total_m, 0),
-        })
-
-    fb = {
-        "geometry": None, "street": "", "walkability": 0.0,
-        "walkability_raw": 0.0, "sidewalk": "", "sidewalk_doc_pct": -1,
-        "ped_infra_m": 0.0, "infra_radius": int(PED_INFRA_RADIUS_M),
-        "surface_pct": 0, "lit_pct": 0,
-        "ped_meters": 0.0, "cycleway_meters": 0.0, "total_meters": 0.0,
-    }
-    n_sc = _save_gdf(rows, fb, "EPSG:4326", "street_scores.geojson")
-    print(f"  Street scores: {n_sc}")
-    print(f"  Sidewalk penalties applied — both: {pen_stats['both']} | "
-          f"partial: {pen_stats['partial']} | none: {pen_stats['none']} | "
-          f"unknown: {pen_stats['unknown']} | not required: {pen_stats['not_required']}")
-
-    if scores:
-        scores_arr = np.array(scores)
-        hist, _ = np.histogram(scores_arr, bins=[0, 0.2, 0.4, 0.6, 0.8, 1.0])
-        score_buckets = {
-            "0_20":   int(hist[0]),
-            "20_40":  int(hist[1]),
-            "40_60":  int(hist[2]),
-            "60_80":  int(hist[3]),
-            "80_100": int(hist[4]),
-        }
-    else:
-        scores_arr = np.array([])
-        score_buckets = {
-            "0_20": 0, "20_40": 0, "40_60": 0, "60_80": 0, "80_100": 0,
-        }
-
-    return {
-        "streets_scored": n_sc,
-        "walkability_mean": round(float(scores_arr.mean()), 3) if len(scores_arr) > 0 else 0,
-        "walkability_median": round(float(np.median(scores_arr)), 3) if len(scores_arr) > 0 else 0,
-        "walkability_min": round(float(scores_arr.min()), 3) if len(scores_arr) > 0 else 0,
-        "walkability_max": round(float(scores_arr.max()), 3) if len(scores_arr) > 0 else 0,
-        "score_distribution": score_buckets,
-        "sidewalk_penalties": dict(pen_stats),
-    }
-
-
 def save_stats(
     routed: int,
     total_routed_distance: float,
@@ -386,7 +202,6 @@ def save_stats(
     *,
     graph_stats: dict | None = None,
     flow_stats: dict | None = None,
-    walkability_stats: dict | None = None,
     sidewalk_gap_stats: dict | None = None,
     sidewalk_road_stats: dict | None = None,
     missing_crossing_stats: dict | None = None,
@@ -410,7 +225,6 @@ def save_stats(
             "rejected_far": rejected_far,
             "min_dist_m": MIN_OD_DISTANCE_M,
             "max_dist_m": MAX_OD_DISTANCE_M,
-            "walk_score_radius_m": WALK_SCORE_RADIUS_M,
         },
         "routed_trips": routed,
         "avg_distance_m": round(avg_dist, 1),
@@ -424,8 +238,6 @@ def save_stats(
         stats["network"] = network_stats
     if flow_stats:
         stats["flow"] = flow_stats
-    if walkability_stats:
-        stats["walkability"] = walkability_stats
     if sidewalk_gap_stats:
         stats["sidewalk_gaps"] = sidewalk_gap_stats
     if sidewalk_road_stats:

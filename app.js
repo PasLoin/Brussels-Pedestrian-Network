@@ -553,15 +553,6 @@ const PEDESTRIAN_LAYERS = [
     }
   },
   {
-    id: "street-scores", type: "circle", source: "pedestrian", "source-layer": "street_scores",
-    minzoom: 13, layout: { visibility: "none" },
-    paint: {
-      "circle-color": ["interpolate", ["linear"], ["to-number", ["get", "walkability"], 0], 0, "#ef4444", 1, "#22c55e"],
-      "circle-radius": ["interpolate", ["linear"], ["zoom"], 13, 5, 16, 10],
-      "circle-stroke-color": "#fff", "circle-stroke-width": 1.5
-    }
-  },
-  {
     id: "sidewalk-gaps", type: "line", source: "pedestrian", "source-layer": "sidewalk_gaps",
     minzoom: 12, layout: { "line-cap": "round", "line-join": "round", visibility: "none" },
     paint: {
@@ -702,35 +693,6 @@ const HOVER_LAYERS = [
       <div class="popup-row"><span class="label">Highway</span><span class="value">${escapeHTML(p.highway || "—")}</span></div>
       <div class="popup-row"><span class="label">Flux relatif</span><span class="value">${escapeHTML(p.flow_pct) || 0} %</span></div>
     `
-  },
-  {
-    ids: ["street-scores"],
-    format: p => {
-      const swLabels = {
-        both: "✅ Deux côtés",
-        partial: "⚠️ Un seul côté",
-        none: "❌ Aucun",
-        unknown: "❓ Non renseigné",
-        not_required: "— Non requis (voie piétonne)"
-      };
-      const docPct = (typeof p.sidewalk_doc_pct === "number" && p.sidewalk_doc_pct >= 0)
-        ? p.sidewalk_doc_pct : null;
-      const radius = p.infra_radius || 500;
-      const hasInfra = typeof p.ped_infra_m === "number";
-      return `
-        <div class="popup-title">🏙 ${escapeHTML(p.street || "Rue inconnue")}</div>
-        <div class="popup-row"><span class="label">Marchabilité</span><span class="value">${((p.walkability || 0) * 100).toFixed(0)}%</span></div>
-        <div class="popup-row"><span class="label">Score brut</span><span class="value">${((p.walkability_raw || 0) * 100).toFixed(0)}%</span></div>
-        <div class="popup-row"><span class="label">Trottoir</span><span class="value">${escapeHTML(swLabels[p.sidewalk] || p.sidewalk || "?")}</span></div>
-        ${docPct !== null ? `<div class="popup-row"><span class="label">Tags trottoir</span><span class="value">${docPct}% de la longueur</span></div>` : ""}
-        ${hasInfra ? `
-        <div class="popup-row"><span class="label">Infra piétonne (${radius} m)</span><span class="value">${Math.round(p.ped_infra_m)} m</span></div>
-        <div class="popup-row"><span class="label">Tag surface</span><span class="value">${escapeHTML(p.surface_pct) || 0}% de l'infra</span></div>
-        <div class="popup-row"><span class="label">Tag lit (éclairage)</span><span class="value">${escapeHTML(p.lit_pct) || 0}% de l'infra</span></div>` : `
-        <div class="popup-row"><span class="label">Infra piétonne</span><span class="value">${Math.round(p.ped_meters || 0)} m</span></div>
-        <div class="popup-row"><span class="label">Total routé</span><span class="value">${Math.round(p.total_meters || 0)} m</span></div>`}
-      `;
-    }
   },
   {
     ids: HIGHWAY_LAYERS.map(l => `highway-${l.id}`).concat(["highway-crossing"]),
@@ -1154,7 +1116,6 @@ function initMap(style) {
     legendEl.appendChild(makeItem({ layerId: "flow-ped",      label: "Flux piéton",        color: "#bbf7d0", color2: "#14532d" }));
     legendEl.appendChild(makeItem({ layerId: "flow-cycleway",  label: "Flux cycleway",       color: "#bfdbfe", color2: "#3b0764" }));
     legendEl.appendChild(makeItem({ layerId: "flow-road",      label: "Flux sur route",      color: "#fdba74", color2: "#450a0a" }));
-    legendEl.appendChild(makeItem({ layerId: "street-scores",  label: "Score marchabilité",  color: "#ef4444", color2: "#22c55e", swatchType: "dot" }));
 
     addSection("Analyse spatiale et qualité");
     legendEl.appendChild(makeItem({ layerId: "sidewalk-gaps", label: "Trottoir un seul côté", color: "#f59e0b", dashed: true }));

@@ -24,20 +24,6 @@ ISLAND_PLATFORM_TOLERANCE_M = float(os.environ.get("ISLAND_PLATFORM_TOLERANCE_M"
 
 LEVEL_UNTAGGED_AS_GROUND = os.environ.get("LEVEL_UNTAGGED_AS_GROUND", "0").strip().lower() in ("1", "true", "yes")
 
-WALK_SCORE_RADIUS_M = float(os.environ.get("WALK_SCORE_RADIUS_M", 1000))
-
-SIDEWALK_PENALTY_NONE = float(os.environ.get("SIDEWALK_PENALTY_NONE", 0.3))
-
-SIDEWALK_PENALTY_PARTIAL = float(os.environ.get("SIDEWALK_PENALTY_PARTIAL", 0.6))
-
-SIDEWALK_PENALTY_UNKNOWN = float(os.environ.get("SIDEWALK_PENALTY_UNKNOWN", 0.5))
-
-PED_INFRA_RADIUS_M = float(os.environ.get("PED_INFRA_RADIUS_M", 500))
-
-SURFACE_PENALTY_MAX = float(os.environ.get("SURFACE_PENALTY_MAX", 0.15))
-
-LIT_PENALTY_MAX = float(os.environ.get("LIT_PENALTY_MAX", 0.10))
-
 
 PED_HIGHWAY_TYPES = frozenset({
     "footway", "pedestrian", "path",
