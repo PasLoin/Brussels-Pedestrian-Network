@@ -814,6 +814,7 @@ const CLICK_LAYERS = [
     format: p => {
       const nid = parseInt(p.osm_id, 10) || 0;
       const wid = parseInt(p.way_osm_id, 10) || 0;
+      const pwid = parseInt(p.partner_way_osm_id, 10) || 0;
       const sidesChecked = parseInt(p.sides_checked, 10) || 2;
       const reasonLabels = {
         value_mismatch:       "tactile_paving du kerb différent de celui du crossing",
@@ -835,7 +836,11 @@ const CLICK_LAYERS = [
         </span></div>` : ""}
         ${wid > 0 ? `<div class="popup-row"><span class="label">Way crossing</span><span class="value">
           <a href="https://www.openstreetmap.org/way/${wid}" target="_blank" rel="noopener">w${wid}</a>
-          · <a href="http://127.0.0.1:8111/load_object?objects=w${wid}" target="_blank" rel="noopener">JOSM</a>
+          · <a href="http://127.0.0.1:8111/load_object?objects=w${wid}${pwid > 0 ? `,w${pwid}` : ""}" target="_blank" rel="noopener">JOSM</a>
+        </span></div>` : ""}
+        ${pwid > 0 ? `<div class="popup-row"><span class="label">Way contiguë</span><span class="value">
+          <a href="https://www.openstreetmap.org/way/${pwid}" target="_blank" rel="noopener">w${pwid}</a>
+          <span style="opacity:.7">· traitée avec la précédente comme une seule traversée</span>
         </span></div>` : ""}
       `;
     }
@@ -894,6 +899,7 @@ const CLICK_LAYERS = [
       const cid = parseInt(p.crossing_osm_id, 10) || 0;
       const wid = parseInt(p.way_osm_id, 10) || 0;
       const kid = parseInt(p.kerb_osm_id, 10) || 0;
+      const pwid = parseInt(p.partner_way_osm_id, 10) || 0;
       return `
         <div class="popup-title">${isMissing ? "🔵 Kerb absent" : "🟤 Kerb sans tactile_paving"}</div>
         <div class="popup-row"><span class="label">Problème</span><span class="value">${isMissing
@@ -912,7 +918,11 @@ const CLICK_LAYERS = [
         </span></div>` : ""}
         ${wid > 0 ? `<div class="popup-row"><span class="label">Way crossing</span><span class="value">
           <a href="https://www.openstreetmap.org/way/${wid}" target="_blank" rel="noopener">w${wid}</a>
-          · <a href="http://127.0.0.1:8111/load_object?objects=w${wid}" target="_blank" rel="noopener">JOSM</a>
+          · <a href="http://127.0.0.1:8111/load_object?objects=w${wid}${pwid > 0 ? `,w${pwid}` : ""}" target="_blank" rel="noopener">JOSM</a>
+        </span></div>` : ""}
+        ${pwid > 0 ? `<div class="popup-row"><span class="label">Way contiguë</span><span class="value">
+          <a href="https://www.openstreetmap.org/way/${pwid}" target="_blank" rel="noopener">w${pwid}</a>
+          <span style="opacity:.7">· traitée avec la précédente comme une seule traversée</span>
         </span></div>` : ""}
       `;
     }

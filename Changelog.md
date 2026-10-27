@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-27
+ 
+### Bandes podotactiles : deux `footway=crossing` contigus traités comme une seule traversée (#55)
+ 
+- **Détection** : quand l'extrémité d'un `footway=crossing` touche uniquement l'extrémité d'un autre `footway=crossing` (pas de `barrier=kerb`, pas de nœud `highway=crossing`, aucun autre way à ce nœud), la jonction n'est plus considérée comme une position de bordure. La vérification se fait sur les bordures aux deux extrémités extérieures de la paire. Le cas typique est une traversée découpée entre la piste cyclable et la chaussée, ou pour un changement de revêtement.
+- **Limité aux paires** : les chaînes de trois tronçons ou plus ne sont pas fusionnées.
+
 ## 2026-10-26
  
 ### Trottoir d'un seul côté : `highway=cycleway` + `foot=yes` accepté comme trottoir (#54)

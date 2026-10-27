@@ -183,6 +183,7 @@ def main() -> None:
             "highways.geojson",
             "sidewalk_footways_raw.geojson",
             "kerbs_raw.geojson",
+            ("sidewalk_roads_raw.geojson", "service_roads_raw.geojson"),
         )
 
     save_stats(
