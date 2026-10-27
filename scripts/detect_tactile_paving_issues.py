@@ -193,23 +193,23 @@ class _ContiguousPairs:
             return None
         return w2
 
-    def resolve(self, w_idx: int, end_pt: Point) -> tuple[Point, int | None]:
+    def resolve(self, w_idx: int, end_pt: Point) -> tuple[Point | None, int | None]:
         w2 = self.partner(w_idx, end_pt)
         if w2 is None:
             return end_pt, None
         a, b = self._ends(w2)
         far = b if a.distance(end_pt) <= self.tol else a
-        if _any_within(far, self.xing_tree, self.xing_geoms, self.tol):
-            return end_pt, None
         if self.partner(w2, far) is not None:
             return end_pt, None
+        if _any_within(far, self.xing_tree, self.xing_geoms, self.tol):
+            return None, w2
         return far, w2
 
     def partner_crossing_tps(self, w2: int) -> set:
         if self.xing_tree is None:
             return set()
         tps = set()
-        for coord in self.way_gdf.geometry.iloc[w2].coords[1:-1]:
+        for coord in self.way_gdf.geometry.iloc[w2].coords:
             pt = Point(coord)
             for i in self.xing_tree.query(pt.buffer(self.tol)):
                 if self.xing_geoms[i].distance(pt) <= self.tol and self.xing_tps[i]:
@@ -452,23 +452,45 @@ def detect_tactile_paving_issues(
                 n_degenerate_way += 1
                 continue
 
+            partner_idx = None
+            single_pt = None
             if p1_is_crossing_node or p2_is_crossing_node:
+                single_pt = p2 if p1_is_crossing_node else p1
+                q, w2 = pairs.resolve(way_idx, single_pt)
+                if w2 is not None and q is not None:
+                    single_pt, partner_idx = q, w2
+            else:
+                junction1 = pairs.partner(way_idx, p1) is not None
+                junction2 = pairs.partner(way_idx, p2) is not None
+                if junction1 != junction2:
+                    q, w2 = pairs.resolve(way_idx, p1 if junction1 else p2)
+                    if w2 is not None:
+                        partner_idx = w2
+                        if q is None:
+                            single_pt = p2 if junction1 else p1
+                        elif junction1:
+                            p1 = q
+                        else:
+                            p2 = q
+
+            if single_pt is not None and crossing_tp == "incorrect":
                 # Half-mapped crossing: only the OTHER endpoint is a
                 # genuine kerb position. "incorrect" describes a yes/no
                 # PAIR and can't be evaluated from a single side, so
                 # skip it entirely rather than guess.
-                if crossing_tp == "incorrect":
-                    n_half_mapped_incorrect_skipped += 1
+                n_half_mapped_incorrect_skipped += 1
+                continue
+
+            if partner_idx is not None:
+                if pairs.partner_crossing_tps(partner_idx) - {crossing_tp}:
+                    n_contiguous_conflict += 1
                     continue
-                pt = p2 if p1_is_crossing_node else p1
-                pt, partner_idx = pairs.resolve(way_idx, pt)
-                if partner_idx is not None:
-                    if pairs.partner_crossing_tps(partner_idx) - {crossing_tp}:
-                        n_contiguous_conflict += 1
-                        continue
-                    partner_wid = _safe_id(way_gdf.iloc[partner_idx].get("@id"))
-                    n_contiguous_sides += 1
+                partner_wid = _safe_id(way_gdf.iloc[partner_idx].get("@id"))
+                n_contiguous_sides += 1
+
+            if single_pt is not None:
                 n_half_mapped_sides += 1
+                pt = single_pt
 
                 tp, kerb_id = _kerb_tp_at(pt, kerb_gdf, kerb_tree, kerb_geoms)
 
@@ -525,23 +547,6 @@ def detect_tactile_paving_issues(
 
             # Normal case (unchanged): the crossing node is a genuine
             # middle vertex, both endpoints are real kerb positions.
-            q1, partner1 = p1, None
-            q2, partner2 = p2, None
-            junction1 = pairs.partner(way_idx, p1) is not None
-            junction2 = pairs.partner(way_idx, p2) is not None
-            if junction1 and not junction2:
-                q1, partner1 = pairs.resolve(way_idx, p1)
-            elif junction2 and not junction1:
-                q2, partner2 = pairs.resolve(way_idx, p2)
-            partner_idx = partner1 if partner1 is not None else partner2
-            if partner_idx is not None:
-                if pairs.partner_crossing_tps(partner_idx) - {crossing_tp}:
-                    n_contiguous_conflict += 1
-                    continue
-                partner_wid = _safe_id(way_gdf.iloc[partner_idx].get("@id"))
-                n_contiguous_sides += 1
-            p1, p2 = q1, q2
-
             tp1, kerb1_id = _kerb_tp_at(p1, kerb_gdf, kerb_tree, kerb_geoms)
             tp2, kerb2_id = _kerb_tp_at(p2, kerb_gdf, kerb_tree, kerb_geoms)
 
