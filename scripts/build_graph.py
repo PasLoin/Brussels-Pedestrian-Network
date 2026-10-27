@@ -19,9 +19,6 @@ from config import (
     FOOT_FORBIDDEN,
     PED_HIGHWAY_TYPES,
     ROAD_TYPES_SIDEWALK_EXPECTED,
-    SIDEWALK_PENALTY_NONE,
-    SIDEWALK_PENALTY_PARTIAL,
-    SIDEWALK_PENALTY_UNKNOWN,
 )
 from timing import step
 
@@ -30,7 +27,6 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 class SidewalkInfo(NamedTuple):
     status: str
-    penalty: float
     doc_share: float
 
 
@@ -50,8 +46,6 @@ class GraphBundle(NamedTuple):
     edge_sidewalk_left: list[str]
     edge_sidewalk_right: list[str]
     edge_sidewalk_both: list[str]
-    edge_surfaces: list[str]
-    edge_lits: list[str]
     street_sidewalk_status: dict[str, SidewalkInfo]
     edge_osm_ids: list[tuple[int, ...]] = []
     edge_levels: list[str] = []
@@ -77,33 +71,21 @@ def _edge_sidewalk_status(
     return "unknown"
 
 
-_STATUS_PENALTY = {
-    "both": 1.0,
-    "partial": SIDEWALK_PENALTY_PARTIAL,
-    "none": SIDEWALK_PENALTY_NONE,
-    "unknown": SIDEWALK_PENALTY_UNKNOWN,
-}
-
 _STATUS_PESSIMISM = {"both": 0, "partial": 1, "none": 2, "unknown": 3}
 
 
 def _aggregate_sidewalk(length_by_status: dict[str, float]) -> SidewalkInfo:
     total = sum(length_by_status.values())
     if total <= 0:
-        return SidewalkInfo("unknown", SIDEWALK_PENALTY_UNKNOWN, 0.0)
+        return SidewalkInfo("unknown", 0.0)
 
     status = max(
         length_by_status.items(),
         key=lambda kv: (kv[1], _STATUS_PESSIMISM.get(kv[0], 3)),
     )[0]
 
-    penalty = sum(
-        length * _STATUS_PENALTY.get(st, SIDEWALK_PENALTY_UNKNOWN)
-        for st, length in length_by_status.items()
-    ) / total
-
     documented = total - length_by_status.get("unknown", 0.0)
-    return SidewalkInfo(status, round(penalty, 3), round(documented / total, 3))
+    return SidewalkInfo(status, round(documented / total, 3))
 
 
 def _first_str(val) -> str:
@@ -214,7 +196,7 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
 
     print("Building osmnx graph (simplified)...")
 
-    _extra_tags = {"foot", "route", "sidewalk", "sidewalk:left", "sidewalk:right", "sidewalk:both", "segregated", "surface", "lit", "level", "indoor", "tunnel", "location"}
+    _extra_tags = {"foot", "route", "sidewalk", "sidewalk:left", "sidewalk:right", "sidewalk:both", "segregated", "level", "indoor", "tunnel", "location"}
     if hasattr(ox, "settings"):
         existing = set(getattr(ox.settings, "useful_tags_way", []))
         if not _extra_tags.issubset(existing):
@@ -265,8 +247,6 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
     edge_sidewalk_left: list[str] = []
     edge_sidewalk_right: list[str] = []
     edge_sidewalk_both: list[str] = []
-    edge_surfaces: list[str] = []
-    edge_lits: list[str] = []
     edge_osm_ids: list[tuple[int, ...]] = []
     edge_levels: list[str] = []
 
@@ -321,8 +301,6 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
             edge_sidewalk_right.append(_unanimous_str(row.get("sidewalk:right", "")).lower())
             edge_sidewalk_both.append(_unanimous_str(row.get("sidewalk:both", "")).lower())
 
-            edge_surfaces.append(_unanimous_str(row.get("surface", "")).lower())
-            edge_lits.append(_unanimous_str(row.get("lit", "")).lower())
             edge_osm_ids.append(_osm_way_ids(row.get("osmid")))
             edge_levels.append(_edge_level(
                 row.get("level"), row.get("tunnel"),
@@ -398,8 +376,6 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
         edge_sidewalk_left=edge_sidewalk_left,
         edge_sidewalk_right=edge_sidewalk_right,
         edge_sidewalk_both=edge_sidewalk_both,
-        edge_surfaces=edge_surfaces,
-        edge_lits=edge_lits,
         street_sidewalk_status=street_sidewalk_status,
         edge_osm_ids=edge_osm_ids,
         edge_levels=edge_levels,
