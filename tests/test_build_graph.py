@@ -8,9 +8,8 @@ locks in behaviours fixed in July 2026:
   must count as documented sidewalks.
 * one-way streets must be traversable in both directions by the
   pedestrian router (``oneway=yes`` applies to vehicles only).
-* the per-street status/penalty is length-weighted: one tagged segment
-  can no longer flip a whole multi-segment street to "both" at 100%,
-  and untagged streets actually take SIDEWALK_PENALTY_UNKNOWN.
+* the per-street status is length-weighted: one tagged segment
+  can no longer flip a whole multi-segment street to "both" at 100%.
 * ``access=private`` roads are excluded from the pedestrian graph
   unless ``foot`` explicitly allows them.
 * OSMnx simplification must not merge ways whose name/access/sidewalk
@@ -28,11 +27,6 @@ from build_graph import (
     _first_str,
     _unanimous_str,
     build_graph,
-)
-from config import (
-    SIDEWALK_PENALTY_NONE,
-    SIDEWALK_PENALTY_PARTIAL,
-    SIDEWALK_PENALTY_UNKNOWN,
 )
 
 
@@ -80,50 +74,35 @@ def test_edge_sidewalk_status(sw, left, right, both, expected):
 def test_aggregate_fully_tagged_both():
     info = _aggregate_sidewalk({"both": 500.0})
     assert info.status == "both"
-    assert info.penalty == 1.0
     assert info.doc_share == 1.0
 
 
-def test_aggregate_fully_untagged_street_takes_unknown_penalty():
-    """Regression: untagged streets used to escape any penalty because
-    they never entered the index (dead SIDEWALK_PENALTY_UNKNOWN branch),
-    scoring 84–95% with zero sidewalk information."""
+def test_aggregate_fully_untagged_street():
     info = _aggregate_sidewalk({"unknown": 300.0})
     assert info.status == "unknown"
-    assert info.penalty == pytest.approx(SIDEWALK_PENALTY_UNKNOWN)
     assert info.doc_share == 0.0
 
 
 def test_aggregate_one_tagged_segment_does_not_flip_whole_street():
-    """Regression (user report): a street with one segment tagged
-    ``both`` and a longer untagged segment showed '✅ Deux côtés' at
-    ~100%.  Now the untagged length dominates the display status and
-    drags the penalty down."""
     info = _aggregate_sidewalk({"both": 50.0, "unknown": 200.0})
-    assert info.status == "unknown"          # dominant by length
-    expected = (50 * 1.0 + 200 * SIDEWALK_PENALTY_UNKNOWN) / 250
-    assert info.penalty == pytest.approx(expected, abs=1e-3)
+    assert info.status == "unknown"
     assert info.doc_share == pytest.approx(0.2)
 
 
 def test_aggregate_mixed_documented():
     info = _aggregate_sidewalk({"both": 300.0, "partial": 100.0})
     assert info.status == "both"
-    expected = (300 * 1.0 + 100 * SIDEWALK_PENALTY_PARTIAL) / 400
-    assert info.penalty == pytest.approx(expected, abs=1e-3)
     assert info.doc_share == 1.0
 
 
 def test_aggregate_tie_breaks_pessimistically():
     info = _aggregate_sidewalk({"both": 100.0, "none": 100.0})
     assert info.status == "none"
-    expected = (100 * 1.0 + 100 * SIDEWALK_PENALTY_NONE) / 200
-    assert info.penalty == pytest.approx(expected, abs=1e-3)
 
 
 def test_aggregate_empty():
     info = _aggregate_sidewalk({})
-    assert info == SidewalkInfo("unknown", SIDEWALK_PENALTY_UNKNOWN, 0.0)
+    assert info == SidewalkInfo("unknown", 0.0)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -262,7 +241,6 @@ def test_oneway_street_is_bidirectional_for_pedestrians(bundle):
 def test_sidewalk_separate_scores_as_both(bundle):
     info = bundle.street_sidewalk_status["Rue Sens Unique"]
     assert info.status == "both"
-    assert info.penalty == 1.0
 
 
 def test_sidewalk_left_right_schema_is_used(bundle):
@@ -270,18 +248,11 @@ def test_sidewalk_left_right_schema_is_used(bundle):
     ``sidewalk`` tag) must classify as partial — it used to be ignored."""
     info = bundle.street_sidewalk_status["Rue Moderne"]
     assert info.status == "partial"
-    assert info.penalty == pytest.approx(SIDEWALK_PENALTY_PARTIAL)
 
 
 def test_multi_segment_street_is_length_weighted(bundle):
-    """Regression (user report): 'Rue Mixte' has one SHORT segment
-    tagged sidewalk=both and one LONGER untagged segment.  The old
-    set-based rule showed '✅ Deux côtés'; the length-weighted rule
-    must report 'unknown' (dominant) with a penalty strictly between
-    SIDEWALK_PENALTY_UNKNOWN and 1.0, and a partial doc_share."""
     info = bundle.street_sidewalk_status["Rue Mixte"]
     assert info.status == "unknown"
-    assert SIDEWALK_PENALTY_UNKNOWN < info.penalty < 1.0
     assert 0.0 < info.doc_share < 1.0
 
 
@@ -306,15 +277,6 @@ def test_simplification_does_not_merge_different_streets(bundle):
     assert "Petit Square" in bundle.street_sidewalk_status
     assert bundle.street_sidewalk_status["Petit Square"].status == "unknown"
     assert bundle.street_sidewalk_status["Rue Amont"].status == "both"
-
-
-def test_surface_and_lit_tags_are_collected(bundle):
-    """surface=* / lit=* on pedestrian infra feed the tag-completeness
-    penalty — they must survive import and simplification."""
-    fw = [i for i, h in enumerate(bundle.edge_highways) if h == "footway"]
-    assert fw, "footway missing from test graph"
-    assert any(bundle.edge_surfaces[i] == "paving_stones" for i in fw)
-    assert any(bundle.edge_lits[i] == "yes" for i in fw)
 
 
 def test_graph_weights_positive(bundle):
