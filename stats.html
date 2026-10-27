@@ -6,9 +6,9 @@
   <meta name="Referrer-Policy" content="strict-origin-when-cross-origin" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Brussels Pedestrian Network — Statistiques</title>
-  <meta name="description" content="Statistiques de complétude du réseau piéton bruxellois sur OpenStreetMap : trottoirs documentés, traversées connectées et score de marchabilité." />
+  <meta name="description" content="Statistiques de complétude du réseau piéton bruxellois sur OpenStreetMap : trottoirs documentés et traversées connectées." />
   <meta property="og:title" content="Brussels Pedestrian Network — Statistiques" />
-  <meta property="og:description" content="Statistiques de complétude du réseau piéton bruxellois sur OpenStreetMap : trottoirs documentés, traversées connectées et score de marchabilité." />
+  <meta property="og:description" content="Statistiques de complétude du réseau piéton bruxellois sur OpenStreetMap : trottoirs documentés et traversées connectées." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://pasloin.github.io/Brussels-Pedestrian-Network/stats.html" />
   <meta name="twitter:card" content="summary_large_image" />
@@ -399,7 +399,6 @@ function render(s) {
   const graph = s.graph || {};
   const swRoad = s.sidewalk_roads || {};
   const gaps = s.sidewalk_gaps || {};
-  const walk = s.walkability || {};
   const routing = s.routing || {};
   const od = s.od_sampling || {};
   const mc = s.missing_crossings || {};
@@ -600,33 +599,6 @@ function render(s) {
           <h3>Footways retenus (composition)</h3>
           <div class="chart-wrap"><canvas id="c-fw-filter"></canvas></div>
         </div>
-        <div class="chart-card">
-          <h3>Distribution des scores de marchabilité</h3>
-          <div class="chart-wrap"><canvas id="c-walk"></canvas></div>
-        </div>
-      </div>
-    </div>`;
-
-  el.innerHTML += `
-    <div class="section">
-      <div class="section-title">Marchabilité</div>
-      <div class="kpi-grid">
-        <div class="kpi">
-          <div class="kpi-label">Rues évaluées</div>
-          <div class="kpi-val">${escapeHTML(fmt(walk.streets_scored))}</div>
-        </div>
-        <div class="kpi">
-          <div class="kpi-label">Score moyen</div>
-          <div class="kpi-val">${escapeHTML(walk.walkability_mean != null ? (walk.walkability_mean * 100).toFixed(0) : '—')} <span class="kpi-unit">%</span></div>
-        </div>
-        <div class="kpi">
-          <div class="kpi-label">Médian</div>
-          <div class="kpi-val">${escapeHTML(walk.walkability_median != null ? (walk.walkability_median * 100).toFixed(0) : '—')} <span class="kpi-unit">%</span></div>
-        </div>
-        <div class="kpi">
-          <div class="kpi-label">Plage</div>
-          <div class="kpi-val">${escapeHTML(walk.walkability_min != null ? (walk.walkability_min * 100).toFixed(0) : '—')}–${escapeHTML(walk.walkability_max != null ? (walk.walkability_max * 100).toFixed(0) : '—')} <span class="kpi-unit">%</span></div>
-        </div>
       </div>
     </div>`;
 
@@ -673,7 +645,6 @@ function renderCharts(s) {
   const net = s.network || {};
   const swRoad = s.sidewalk_roads || {};
   const gaps = s.sidewalk_gaps || {};
-  const walk = s.walkability || {};
   const mc = s.missing_crossings || {};
 
   const dOpts = {
@@ -790,19 +761,6 @@ function renderCharts(s) {
       options: { ...dOpts, plugins: { ...dOpts.plugins, tooltip: { callbacks: { label: c => c.label + ' : ' + fmt(c.raw) } } } },
     });
   }
-
-  const sd = walk.score_distribution || {};
-  const bk = ['0_20', '20_40', '40_60', '60_80', '80_100'];
-  const bl = ['0–20 %', '20–40 %', '40–60 %', '60–80 %', '80–100 %'];
-  const bc = [C.red, C.orange, '#b8860b', C.cyan, C.green];
-  new Chart(document.getElementById('c-walk'), {
-    type: 'bar',
-    data: {
-      labels: bl,
-      datasets: [{ data: bk.map(k => sd[k] || 0), backgroundColor: bc, borderRadius: 3, borderSkipped: false }],
-    },
-    options: bOpts('rues'),
-  });
 }
 </script>
 </body>
