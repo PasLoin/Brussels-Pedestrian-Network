@@ -1,0 +1,494 @@
+<div class="mw-content-ltr mw-parser-output" lang="en" dir="ltr"><p><br />
+</p>
+<table class="ltr plainlinks" style="margin:2px 10%; border:1px solid #AAA; background:light-dark(#FBFBFB,#FBFBFB22); border-left:10px solid #1E90FF;margin-top:0em;"><tbody><tr><td style="border:none; padding:2px 0; padding-left:0.25em; text-align:center;"><div style="width:52px;"><span typeof="mw:File"><span title="Notice"><img alt="Notice" src="https://upload.wikimedia.org/wikipedia/commons/1/1d/Information_icon4.svg?utm_source=commons.wikimedia.org&amp;utm_campaign=imageinfo&amp;utm_content=original" decoding="async" width="40" height="40" class="mw-file-element" /></span></span></div></td><td style="width:100%; border:none; padding:0.25em;">
+<b><a href="/wiki/PWG" class="mw-redirect" title="PWG">PWG</a> Main Page</b>: Latest release - <b>do not edit</b>! Direct comments to the Draft Talk <i>(<a href="/wiki/Talk:Draft:Foundation/Local_Chapters/United_States/Pedestrian_Working_Group/Guide" title="Talk:Draft:Foundation/Local Chapters/United States/Pedestrian Working Group/Guide">Guide</a>, <a href="/wiki/Talk:Draft:Foundation/Local_Chapters/United_States/Pedestrian_Working_Group/Schema" title="Talk:Draft:Foundation/Local Chapters/United States/Pedestrian Working Group/Schema">Schema</a>)</i> pages!</td></tr></tbody></table>
+<p><br />
+This is a tagging schema for pedestrian infrastructure mapping developed by the <a href="/wiki/Foundation/Local_Chapters/United_States/Pedestrian_Working_Group" title="Foundation/Local Chapters/United States/Pedestrian Working Group">Pedestrian Working Group</a>.
+</p><p>A quick-start guide for pedestrian infrastructure mapping is available <a href="/wiki/Foundation/Local_Chapters/United_States/Pedestrian_Working_Group/Guide" title="Foundation/Local Chapters/United States/Pedestrian Working Group/Guide">here</a>.
+</p><p>Questions? Email <a rel="nofollow" class="external text" href="mailto:pedestrian@openstreetmap.us">pedestrian@openstreetmap.us</a>!
+</p>
+<hr />
+
+<div class="mw-heading mw-heading2"><h2 id="Tiers">Tiers</h2></div>
+<p>A tier-based system is used to communicate which features and tags are possible with various resources and necessary for which use cases, as follows, with further details below:
+</p>
+<table class="wikitable">
+<tbody><tr>
+<th>Icon</th>
+<th>Name</th>
+<th>Description</th>
+<th>Use Cases</th>
+<th>Required Resources
+</th></tr>
+<tr>
+<td><figure class="mw-halign-none" typeof="mw:File/Frameless"><a href="/wiki/File:PWG_-_Bronze.svg" class="mw-file-description"><img alt="Circular icon containing a pedestrian symbol with a bronze-colored background." src="https://upload.wikimedia.org/wikipedia/commons/b/b7/PWG_-_Bronze.svg?utm_source=commons.wikimedia.org&amp;utm_campaign=imageinfo&amp;utm_content=original" decoding="async" width="32" height="32" class="mw-file-element" /></a><figcaption></figcaption></figure></td>
+<td>Bronze</td>
+<td>Basic geometry and essential tags</td>
+<td>Basic everyday pedestrian navigation</td>
+<td>(Older) Low-quality aerial imagery
+</td></tr>
+<tr>
+<td><figure class="mw-halign-none" typeof="mw:File/Frameless"><a href="/wiki/File:PWG_-_Silver.svg" class="mw-file-description"><img alt="Circular icon containing a pedestrian symbol with a silver-colored background." src="https://upload.wikimedia.org/wikipedia/commons/9/9d/PWG_-_Silver.svg?utm_source=commons.wikimedia.org&amp;utm_campaign=imageinfo&amp;utm_content=original" decoding="async" width="32" height="32" class="mw-file-element" /></a><figcaption></figcaption></figure></td>
+<td>Silver</td>
+<td>Detailed geometry and tagging</td>
+<td>Accessibility-focused applications</td>
+<td>(Somewhat recent) Medium-quality aerial imagery and/or low-quality street-level imagery
+</td></tr>
+<tr>
+<td><figure class="mw-halign-none" typeof="mw:File/Frameless"><a href="/wiki/File:PWG_-_Gold.svg" class="mw-file-description"><img alt="Circular icon containing a pedestrian symbol with a gold-colored background." src="https://upload.wikimedia.org/wikipedia/commons/2/27/PWG_-_Gold.svg?utm_source=commons.wikimedia.org&amp;utm_campaign=imageinfo&amp;utm_content=original" decoding="async" width="32" height="32" class="mw-file-element" /></a><figcaption></figcaption></figure></td>
+<td>Gold</td>
+<td>Micromapping and advanced tagging</td>
+<td>Advanced routers and visualizations</td>
+<td>(Recent) High-quality aerial and/or street-level imagery or in-person survey
+</td></tr></tbody></table>
+<p>If, for example, you want to map pedestrian infrastructure so that it can be used for basic everyday routing and only have low-quality aerial imagery available, you would include only the features and tags marked with a <span class="mw-valign-text-bottom" typeof="mw:File/Frameless"><a href="/wiki/File:PWG_-_Bronze.svg" class="mw-file-description"><img src="https://upload.wikimedia.org/wikipedia/commons/b/b7/PWG_-_Bronze.svg?utm_source=commons.wikimedia.org&amp;utm_campaign=imageinfo&amp;utm_content=original" decoding="async" width="16" height="16" class="mw-file-element" /></a></span> Bronze Tier symbol.
+</p><p>If you have access to high-quality imagery and want to map pedestrian infrastructure so that it can be used by accessibility-focused routers, you would include all features and tags marked with a <span class="mw-valign-text-bottom" typeof="mw:File/Frameless"><a href="/wiki/File:PWG_-_Bronze.svg" class="mw-file-description"><img src="https://upload.wikimedia.org/wikipedia/commons/b/b7/PWG_-_Bronze.svg?utm_source=commons.wikimedia.org&amp;utm_campaign=imageinfo&amp;utm_content=original" decoding="async" width="16" height="16" class="mw-file-element" /></a></span> Bronze Tier symbol or a <span class="mw-valign-text-bottom" typeof="mw:File/Frameless"><a href="/wiki/File:PWG_-_Silver.svg" class="mw-file-description"><img src="https://upload.wikimedia.org/wikipedia/commons/9/9d/PWG_-_Silver.svg?utm_source=commons.wikimedia.org&amp;utm_campaign=imageinfo&amp;utm_content=original" decoding="async" width="16" height="16" class="mw-file-element" /></a></span> Silver Tier symbol.
+</p>
+<div class="mw-heading mw-heading3"><h3 id="Bronze">Bronze</h3></div>
+<p><span typeof="mw:File/Frameless"><a href="/wiki/File:PWG_-_Bronze.svg" class="mw-file-description"><img alt="Circular icon containing a pedestrian symbol with a bronze-colored background." src="https://upload.wikimedia.org/wikipedia/commons/b/b7/PWG_-_Bronze.svg?utm_source=commons.wikimedia.org&amp;utm_campaign=imageinfo&amp;utm_content=original" decoding="async" width="64" height="64" class="mw-file-element" /></a></span>
+</p><p><b>Description:</b> Basic geometry and essential tags are present to form an independent navigable pedestrian network consisting of sidewalks and crossings.
+</p><p><b>Implementation:</b>
+</p>
+<ul><li>Sidewalks and crossings are mapped as separate ways.</li>
+<li>Essential information about crossings is tagged, such as whether or not markings and signals are present.</li>
+<li>Sidewalk presence tags on roadways are updated to use <style data-mw-deduplicate="TemplateStyles:r3103348"></style><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap">sidewalk:<var style="border-left:4px solid; border-top:1px dashed; border-color: darkseagreen; padding: 0 2px;">side</var></bdi>=<bdi><code dir="ltr">no</code>/<code dir="ltr">separate</code></bdi></code>.
+<ul><li><code dir="ltr">no</code> is particularly important because it helps mappers and data consumers understand where it has been confirmed that sidewalks are not present.</li>
+<li>Any existing properties of the sidewalks which were previously mapped on the roadway, such as <link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:sidewalk:left:surface" title="Key:sidewalk:left:surface">sidewalk:left:surface</a></bdi>=<bdi>concrete</bdi></code>, should be moved from the roadway to the sidewalks.</li></ul></li></ul>
+<div class="mw-heading mw-heading3"><h3 id="Silver">Silver</h3></div>
+<p><span typeof="mw:File/Frameless"><a href="/wiki/File:PWG_-_Silver.svg" class="mw-file-description"><img alt="Circular icon containing a pedestrian symbol with a silver-colored background." src="https://upload.wikimedia.org/wikipedia/commons/9/9d/PWG_-_Silver.svg?utm_source=commons.wikimedia.org&amp;utm_campaign=imageinfo&amp;utm_content=original" decoding="async" width="64" height="64" class="mw-file-element" /></a></span>
+</p><p><b>Description:</b> Detailed geometry and tagging is present to enable accessibility-focused applications and basic visualizations.
+</p><p><b>Implementation:</b>
+</p>
+<ul><li>Sidewalk geometry at intersections is well-represented with ways added where necessary between curbs and sidewalk centerlines</li>
+<li>Detailed information about features is tagged, such as curb types and surface materials.</li></ul>
+<div class="mw-heading mw-heading3"><h3 id="Gold">Gold</h3></div>
+<p><span typeof="mw:File/Frameless"><a href="/wiki/File:PWG_-_Gold.svg" class="mw-file-description"><img alt="Circular icon containing a pedestrian symbol with a gold-colored background." src="https://upload.wikimedia.org/wikipedia/commons/2/27/PWG_-_Gold.svg?utm_source=commons.wikimedia.org&amp;utm_campaign=imageinfo&amp;utm_content=original" decoding="async" width="64" height="64" class="mw-file-element" /></a></span>
+</p><p><b>Description:</b> Micromapping and highly detailed tagging is present, which enables router customization for various types of mobility-impaired users and for detailed representation of the environment for institutional use.
+</p><p><b>Implementation:</b>
+</p>
+<ul><li><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:area:highway" title="Key:area:highway">area:highway</a></bdi>=<a href="/wiki/Tag:area:highway%3Dfootway" title="Tag:area:highway=footway"><bdi>footway</bdi></a></code> - area representations of pedestrian features are mapped.
+<ul><li>Note: Requires fallback representation of paths of travel as ways at centerlines!</li></ul></li>
+<li>Highly detailed tags may be present to enable use cases outside of routing for everyday users, such as informing policy-making decisions</li>
+<li>Small features, such as call buttons and pedestrian signal lights may be mapped separately.</li></ul>
+<div class="mw-heading mw-heading3"><h3 id="Diamond">Diamond</h3></div>
+<p><span typeof="mw:File/Frameless"><a href="/wiki/File:PWG_-_Diamond.svg" class="mw-file-description"><img alt="Circular icon containing a pedestrian symbol with a diamond-colored background." src="https://upload.wikimedia.org/wikipedia/commons/9/92/PWG_-_Diamond.svg?utm_source=commons.wikimedia.org&amp;utm_campaign=imageinfo&amp;utm_content=original" decoding="async" width="64" height="64" class="mw-file-element" /></a></span>
+</p><p><b>Description:</b> Tags and mapping methods that are on the line or just outside of the PWG Schema's scope but still recognized. These tags may require specialized tools or expertise to survey or calculate, or are only regionally specific, extremely uncommon, or still in a proposed state and without widespread usage.
+</p><p><b>Implementation:</b>
+</p>
+<div class="mw-heading mw-heading2"><h2 id="Tagging_Guidelines">Tagging Guidelines</h2></div>
+<div class="mw-heading mw-heading3"><h3 id="Sidewalks">Sidewalks</h3></div>
+<table class="wikitable sortable" style="width: 100%; margin: auto;">
+<tbody><tr>
+<th style="width: 20%;">Tag
+</th>
+<th>Element
+</th>
+<th style="width: 20%;"><span typeof="mw:File/Frameless"><a href="/wiki/File:PWG_-_Bronze.svg" class="mw-file-description"><img alt="Circular icon containing a pedestrian symbol with a bronze-colored background." src="https://upload.wikimedia.org/wikipedia/commons/b/b7/PWG_-_Bronze.svg?utm_source=commons.wikimedia.org&amp;utm_campaign=imageinfo&amp;utm_content=original" decoding="async" width="32" height="32" class="mw-file-element" /></a></span> Bronze
+</th>
+<th style="width: 20%;"><span typeof="mw:File/Frameless"><a href="/wiki/File:PWG_-_Silver.svg" class="mw-file-description"><img alt="Circular icon containing a pedestrian symbol with a silver-colored background." src="https://upload.wikimedia.org/wikipedia/commons/9/9d/PWG_-_Silver.svg?utm_source=commons.wikimedia.org&amp;utm_campaign=imageinfo&amp;utm_content=original" decoding="async" width="32" height="32" class="mw-file-element" /></a></span> Silver
+</th>
+<th style="width: 20%;"><span typeof="mw:File/Frameless"><a href="/wiki/File:PWG_-_Gold.svg" class="mw-file-description"><img alt="Circular icon containing a pedestrian symbol with a gold-colored background." src="https://upload.wikimedia.org/wikipedia/commons/2/27/PWG_-_Gold.svg?utm_source=commons.wikimedia.org&amp;utm_campaign=imageinfo&amp;utm_content=original" decoding="async" width="32" height="32" class="mw-file-element" /></a></span> Gold
+</th>
+<th style="width: 20%;"><span typeof="mw:File/Frameless"><a href="/wiki/File:PWG_-_Diamond.svg" class="mw-file-description"><img alt="Circular icon containing a pedestrian symbol with a diamond-colored background." src="https://upload.wikimedia.org/wikipedia/commons/9/92/PWG_-_Diamond.svg?utm_source=commons.wikimedia.org&amp;utm_campaign=imageinfo&amp;utm_content=original" decoding="async" width="32" height="32" class="mw-file-element" /></a></span> Diamond
+</th></tr>
+<tr>
+<td><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:highway" title="Key:highway">highway</a></bdi>=<a href="/wiki/Tag:highway%3Dfootway" title="Tag:highway=footway"><bdi>footway</bdi></a></code> + <link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:footway" title="Key:footway">footway</a></bdi>=<a href="/wiki/Tag:footway%3Dsidewalk" title="Tag:footway=sidewalk"><bdi>sidewalk</bdi></a></code>
+</td>
+<td><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Way" title="way"><img alt="way" src="/w/images/e/ee/Osm_element_way.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span></td>
+<td colspan="4">Indicates a sidewalk location.
+</td></tr>
+<tr>
+<td><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:surface" title="Key:surface">surface</a></bdi>=&#42;</code>
+</td>
+<td><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Way" title="way"><img alt="way" src="/w/images/e/ee/Osm_element_way.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span></td>
+<td>
+</td>
+<td colspan="3">Required in the Silver tier. Example values include:
+<ul><li><code dir="ltr">concrete</code></li>
+<li><code dir="ltr">asphalt</code></li></ul>
+</td></tr>
+<tr>
+<td><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:lit" title="Key:lit">lit</a></bdi>=&#42;</code>
+</td>
+<td><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Way" title="way"><img alt="way" src="/w/images/e/ee/Osm_element_way.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span>
+</td>
+<td colspan="2">
+</td>
+<td colspan="2">Indicate whether the way is lit, examples include:
+<ul><li><code dir="ltr">yes</code>, or</li>
+<li><code dir="ltr">no</code>, or</li>
+<li>any other valid value</li></ul>
+</td></tr>
+<tr>
+<td><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:width" title="Key:width">width</a></bdi>=&#42;</code>
+</td>
+<td><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Way" title="way"><img alt="way" src="/w/images/e/ee/Osm_element_way.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span>
+</td>
+<td colspan="2">
+</td>
+<td colspan="2">Specify the width of the sidewalk
+</td></tr>
+<tr>
+<td><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:incline" title="Key:incline">incline</a></bdi>=&#42;</code>
+</td>
+<td><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Way" title="way"><img alt="way" src="/w/images/e/ee/Osm_element_way.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span>
+</td>
+<td colspan="2">
+</td>
+<td>Incline <b>along the way</b> (for hilly areas), specified as: <code dir="ltr">up</code> or <code dir="ltr">down</code>
+</td>
+<td>Incline <b>along the way</b> (for hilly areas), specified as a value, example: <code dir="ltr">15%</code>
+</td></tr>
+<tr>
+<td><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:incline:across" title="Key:incline:across">incline:across</a></bdi>=&#42;</code>
+</td>
+<td><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Way" title="way"><img alt="way" src="/w/images/e/ee/Osm_element_way.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span>
+</td>
+<td colspan="3">
+</td>
+<td>Incline <b>across the way</b>
+</td></tr>
+<tr>
+<td><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:tactile_paving" title="Key:tactile paving">tactile_paving</a></bdi>=&#42;</code>
+</td>
+<td><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Way" title="way"><img alt="way" src="/w/images/e/ee/Osm_element_way.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span>
+</td>
+<td colspan="3">
+</td>
+<td>Is <i>tactile paving</i> present?:
+<ul><li><code dir="ltr">yes</code> - Tactile paving is present <b>along the entire way</b><br />⚠️ <i><b>NOTE</b>: This is exceedingly rare in the United States. Please review <a href="/wiki/Key:tactile_paving#Use_on_ways" title="Key:tactile paving">this section</a> of the <link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:tactile_paving" title="Key:tactile paving">tactile_paving</a></bdi>=&#42;</code> page if you are unsure.</i></li>
+<li><code dir="ltr">no</code> - Tactile paving is not present <b>along the entire way</b></li></ul>
+</td></tr>
+<tr>
+<td><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:tactile_paving:colour" title="Key:tactile paving:colour">tactile_paving:colour</a></bdi>=&#42;</code>
+</td>
+<td><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Way" title="way"><img alt="way" src="/w/images/e/ee/Osm_element_way.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span>
+</td>
+<td colspan="3">
+</td>
+<td>Specify the tactile paving color.
+</td></tr></tbody></table>
+<div class="mw-heading mw-heading3"><h3 id="Crossings">Crossings</h3></div>
+<table class="wikitable sortable" style="width: 100%; margin: auto;">
+<tbody><tr>
+<th style="width: 20%;">Tag
+</th>
+<th>Element
+</th>
+<th style="width: 20%;"><span typeof="mw:File/Frameless"><a href="/wiki/File:PWG_-_Bronze.svg" class="mw-file-description"><img alt="Circular icon containing a pedestrian symbol with a bronze-colored background." src="https://upload.wikimedia.org/wikipedia/commons/b/b7/PWG_-_Bronze.svg?utm_source=commons.wikimedia.org&amp;utm_campaign=imageinfo&amp;utm_content=original" decoding="async" width="32" height="32" class="mw-file-element" /></a></span> Bronze
+</th>
+<th style="width: 20%;"><span typeof="mw:File/Frameless"><a href="/wiki/File:PWG_-_Silver.svg" class="mw-file-description"><img alt="Circular icon containing a pedestrian symbol with a silver-colored background." src="https://upload.wikimedia.org/wikipedia/commons/9/9d/PWG_-_Silver.svg?utm_source=commons.wikimedia.org&amp;utm_campaign=imageinfo&amp;utm_content=original" decoding="async" width="32" height="32" class="mw-file-element" /></a></span> Silver
+</th>
+<th style="width: 20%;"><span typeof="mw:File/Frameless"><a href="/wiki/File:PWG_-_Gold.svg" class="mw-file-description"><img alt="Circular icon containing a pedestrian symbol with a gold-colored background." src="https://upload.wikimedia.org/wikipedia/commons/2/27/PWG_-_Gold.svg?utm_source=commons.wikimedia.org&amp;utm_campaign=imageinfo&amp;utm_content=original" decoding="async" width="32" height="32" class="mw-file-element" /></a></span> Gold
+</th>
+<th style="width: 20%;"><span typeof="mw:File/Frameless"><a href="/wiki/File:PWG_-_Diamond.svg" class="mw-file-description"><img alt="Circular icon containing a pedestrian symbol with a diamond-colored background." src="https://upload.wikimedia.org/wikipedia/commons/9/92/PWG_-_Diamond.svg?utm_source=commons.wikimedia.org&amp;utm_campaign=imageinfo&amp;utm_content=original" decoding="async" width="32" height="32" class="mw-file-element" /></a></span> Diamond
+</th></tr>
+<tr>
+<td><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:highway" title="Key:highway">highway</a></bdi>=<a href="/wiki/Tag:highway%3Dfootway" title="Tag:highway=footway"><bdi>footway</bdi></a></code> + <link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:footway" title="Key:footway">footway</a></bdi>=<a href="/wiki/Tag:footway%3Dcrossing" title="Tag:footway=crossing"><bdi>crossing</bdi></a></code>
+</td>
+<td><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Way" title="way"><img alt="way" src="/w/images/e/ee/Osm_element_way.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span></td>
+<td colspan="4">Indicates a crossing <b>mapped as a way.</b>
+</td></tr>
+<tr>
+<td><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:highway" title="Key:highway">highway</a></bdi>=<a href="/wiki/Tag:highway%3Dcrossing" title="Tag:highway=crossing"><bdi>crossing</bdi></a></code>
+</td>
+<td><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Node" title="node"><img alt="node" src="/w/images/7/76/Osm_element_node.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span>
+</td>
+<td colspan="4">Indicates a crossing <b>mapped as a node.<br />⛔️ <i>NOTE: The <link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:footway" title="Key:footway">footway</a></bdi>=&#42;</code> tag is not used on crossings mapped as nodes.</i></b>
+</td></tr>
+<tr>
+<td><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:crossing:markings" title="Key:crossing:markings">crossing:markings</a></bdi>=&#42;</code>
+</td>
+<td><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Way" title="way"><img alt="way" src="/w/images/e/ee/Osm_element_way.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Node" title="node"><img alt="node" src="/w/images/7/76/Osm_element_node.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span></td>
+<td>Are <i>markings</i> present?:
+<ul><li><code dir="ltr">yes</code>, or</li>
+<li><code dir="ltr">no</code></li></ul>
+</td>
+<td colspan="3">In the Silver tier, this tag becomes more specific, ex:
+<ul><li><code dir="ltr">zebra</code>, or</li>
+<li><code dir="ltr">lines</code>, or</li>
+<li>any other valid value</li></ul>
+</td></tr>
+<tr>
+<td><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:crossing:signals" title="Key:crossing:signals">crossing:signals</a></bdi>=&#42;</code>
+</td>
+<td><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Way" title="way"><img alt="way" src="/w/images/e/ee/Osm_element_way.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Node" title="node"><img alt="node" src="/w/images/7/76/Osm_element_node.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span>
+</td>
+<td colspan="3">Are <i>signals</i> present?:
+<ul><li><code dir="ltr">yes</code>, or</li>
+<li><code dir="ltr">no</code></li></ul>
+</td>
+<td>In the Diamond tier, this tag becomes more specific, ex:
+<ul><li><code dir="ltr">shared</code>, or</li>
+<li><code dir="ltr">dedicated</code></li></ul>
+</td></tr>
+<tr>
+<td><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:tactile_paving" title="Key:tactile paving">tactile_paving</a></bdi>=&#42;</code>
+</td>
+<td><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Node" title="node"><img alt="node" src="/w/images/7/76/Osm_element_node.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span>
+</td>
+<td>
+</td>
+<td colspan="3">Is <i>tactile paving</i> present <b>at the curb nodes?</b>:
+<ul><li><code dir="ltr">yes</code> - Tactile paving is present <b>at both curbs</b></li>
+<li><code dir="ltr">no</code> - Tactile paving is <u>NOT</u> present <b>at either curb</b></li>
+<li><code dir="ltr">partial</code> - Tactile paving is present <b>at only one curb</b></li></ul>
+</td></tr>
+<tr>
+<td><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:surface" title="Key:surface">surface</a></bdi>=&#42;</code>
+</td>
+<td><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Way" title="way"><img alt="way" src="/w/images/e/ee/Osm_element_way.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span>
+</td>
+<td>
+</td>
+<td colspan="3">Required in the Silver tier. Example values include:
+<ul><li><code dir="ltr">concrete</code></li>
+<li><code dir="ltr">asphalt</code></li></ul>
+</td></tr>
+<tr>
+<td><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:crossing:island" title="Key:crossing:island">crossing:island</a></bdi>=&#42;</code>
+</td>
+<td><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Way" title="way"><img alt="way" src="/w/images/e/ee/Osm_element_way.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Node" title="node"><img alt="node" src="/w/images/7/76/Osm_element_node.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span>
+</td>
+<td>
+</td>
+<td colspan="3">Indicate presence: <code dir="ltr">yes</code> or <code dir="ltr">no</code>
+</td></tr>
+<tr>
+<td><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:crossing:signed" title="Key:crossing:signed">crossing:signed</a></bdi>=&#42;</code>
+</td>
+<td><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Way" title="way"><img alt="way" src="/w/images/e/ee/Osm_element_way.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Node" title="node"><img alt="node" src="/w/images/7/76/Osm_element_node.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span>
+</td>
+<td colspan="2">
+</td>
+<td colspan="2">Indicate presence: <code dir="ltr">yes</code> or <code dir="ltr">no</code>
+</td></tr>
+<tr>
+<td><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:width" title="Key:width">width</a></bdi>=&#42;</code>
+</td>
+<td><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Way" title="way"><img alt="way" src="/w/images/e/ee/Osm_element_way.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span>
+</td>
+<td colspan="2">
+</td>
+<td colspan="2">Required in the Gold tier.
+</td></tr>
+<tr>
+<td><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:button_operated" title="Key:button operated">button_operated</a></bdi>=&#42;</code>
+</td>
+<td><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Way" title="way"><img alt="way" src="/w/images/e/ee/Osm_element_way.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Node" title="node"><img alt="node" src="/w/images/7/76/Osm_element_node.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span>
+</td>
+<td colspan="2">
+</td>
+<td colspan="2">Indicate button operation: <code dir="ltr">yes</code> or <code dir="ltr">no</code>
+</td></tr>
+<tr>
+<td><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:traffic_signals:arrow" title="Key:traffic signals:arrow">traffic_signals:arrow</a></bdi>=&#42;</code>
+</td>
+<td><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Way" title="way"><img alt="way" src="/w/images/e/ee/Osm_element_way.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Node" title="node"><img alt="node" src="/w/images/7/76/Osm_element_node.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span>
+</td>
+<td colspan="2">
+</td>
+<td colspan="2">Indicate presence: <code dir="ltr">yes</code> or <code dir="ltr">no</code>
+</td></tr>
+<tr>
+<td><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:traffic_signals:vibration" title="Key:traffic signals:vibration">traffic_signals:vibration</a></bdi>=&#42;</code>
+</td>
+<td><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Way" title="way"><img alt="way" src="/w/images/e/ee/Osm_element_way.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Node" title="node"><img alt="node" src="/w/images/7/76/Osm_element_node.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span>
+</td>
+<td colspan="2">
+</td>
+<td colspan="2">Indicate presence: <code dir="ltr">yes</code> or <code dir="ltr">no</code>
+</td></tr>
+<tr>
+<td><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:traffic_signals:sound" title="Key:traffic signals:sound">traffic_signals:sound</a></bdi>=&#42;</code>
+</td>
+<td><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Way" title="way"><img alt="way" src="/w/images/e/ee/Osm_element_way.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Node" title="node"><img alt="node" src="/w/images/7/76/Osm_element_node.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span>
+</td>
+<td colspan="2">
+</td>
+<td>Are <i>acoustic signals</i> present?
+<ul><li><code dir="ltr">yes</code> - when there are signals helping to cross.</li>
+<li><code dir="ltr">no</code> - when there are no acoustic signals.</li></ul>
+</td>
+<td>When there are <i>partial</i> sound signals:
+<ul><li><code dir="ltr">locate</code> - Acoustic signals are <b>present for finding the button only</b></li>
+<li><code dir="ltr">walk</code> - Acoustic signals are <b>present for walk permission only</b></li></ul>
+</td></tr>
+<tr>
+<td><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:traffic_signals:minimap" title="Key:traffic signals:minimap">traffic_signals:minimap</a></bdi>=&#42;</code>
+</td>
+<td><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Way" title="way"><img alt="way" src="/w/images/e/ee/Osm_element_way.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Node" title="node"><img alt="node" src="/w/images/7/76/Osm_element_node.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span>
+</td>
+<td colspan="3">
+</td>
+<td>Indicate presence: <code dir="ltr">yes</code> or <code dir="ltr">no</code>
+</td></tr>
+<tr>
+<td><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:crossing:flags" title="Key:crossing:flags">crossing:flags</a></bdi>=&#42;</code>
+</td>
+<td><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Way" title="way"><img alt="way" src="/w/images/e/ee/Osm_element_way.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Node" title="node"><img alt="node" src="/w/images/7/76/Osm_element_node.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span>
+</td>
+<td colspan="3">
+</td>
+<td>Are <i>pedestrian crossing flags</i> present?
+<ul><li><code dir="ltr">yes</code> - Flags are (usually) present</li>
+<li><code dir="ltr">no</code> - Flags are (usually) not present</li></ul>
+</td></tr>
+<tr>
+<td><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:tactile_paving" title="Key:tactile paving">tactile_paving</a></bdi>=&#42;</code>
+</td>
+<td><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Way" title="way"><img alt="way" src="/w/images/e/ee/Osm_element_way.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span>
+</td>
+<td colspan="3">
+</td>
+<td>Is <i>tactile paving</i> present <b>along the entire way</b>?:
+<ul><li><code dir="ltr">yes</code> - Tactile paving is present <b>along the entire way</b><br />⚠️ <i><b>NOTE</b>: This is exceedingly rare in the United States. Please review <a href="/wiki/Key:tactile_paving#Use_on_ways" title="Key:tactile paving">this section</a> of the <link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:tactile_paving" title="Key:tactile paving">tactile_paving</a></bdi>=&#42;</code> page if you are unsure.</i></li>
+<li><code dir="ltr">no</code> - Tactile paving is not present <b>along the entire way</b></li></ul>
+</td></tr>
+<tr>
+<td><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:tactile_paving" title="Key:tactile paving">tactile_paving&#58;colour</a></bdi>=&#42;</code>
+</td>
+<td><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Way" title="way"><img alt="way" src="/w/images/e/ee/Osm_element_way.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Node" title="node"><img alt="node" src="/w/images/7/76/Osm_element_node.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span>
+</td>
+<td colspan="3">
+</td>
+<td>Specify the tactile paving color.
+</td></tr></tbody></table>
+<div class="mw-heading mw-heading3"><h3 id="Curbs">Curbs</h3></div>
+<table class="wikitable sortable" style="width: 100%; margin: auto;">
+<tbody><tr>
+<th style="width: 20%;">Tag
+</th>
+<th>Element
+</th>
+<th style="width: 20%;"><span typeof="mw:File/Frameless"><a href="/wiki/File:PWG_-_Bronze.svg" class="mw-file-description"><img alt="Circular icon containing a pedestrian symbol with a bronze-colored background." src="https://upload.wikimedia.org/wikipedia/commons/b/b7/PWG_-_Bronze.svg?utm_source=commons.wikimedia.org&amp;utm_campaign=imageinfo&amp;utm_content=original" decoding="async" width="32" height="32" class="mw-file-element" /></a></span> Bronze
+</th>
+<th style="width: 20%;"><span typeof="mw:File/Frameless"><a href="/wiki/File:PWG_-_Silver.svg" class="mw-file-description"><img alt="Circular icon containing a pedestrian symbol with a silver-colored background." src="https://upload.wikimedia.org/wikipedia/commons/9/9d/PWG_-_Silver.svg?utm_source=commons.wikimedia.org&amp;utm_campaign=imageinfo&amp;utm_content=original" decoding="async" width="32" height="32" class="mw-file-element" /></a></span> Silver
+</th>
+<th style="width: 20%;"><span typeof="mw:File/Frameless"><a href="/wiki/File:PWG_-_Gold.svg" class="mw-file-description"><img alt="Circular icon containing a pedestrian symbol with a gold-colored background." src="https://upload.wikimedia.org/wikipedia/commons/2/27/PWG_-_Gold.svg?utm_source=commons.wikimedia.org&amp;utm_campaign=imageinfo&amp;utm_content=original" decoding="async" width="32" height="32" class="mw-file-element" /></a></span> Gold
+</th>
+<th style="width: 20%;"><span typeof="mw:File/Frameless"><a href="/wiki/File:PWG_-_Diamond.svg" class="mw-file-description"><img alt="Circular icon containing a pedestrian symbol with a diamond-colored background." src="https://upload.wikimedia.org/wikipedia/commons/9/92/PWG_-_Diamond.svg?utm_source=commons.wikimedia.org&amp;utm_campaign=imageinfo&amp;utm_content=original" decoding="async" width="32" height="32" class="mw-file-element" /></a></span> Diamond
+</th></tr>
+<tr>
+<td><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:barrier" title="Key:barrier">barrier</a></bdi>=<a href="/wiki/Tag:barrier%3Dkerb" title="Tag:barrier=kerb"><bdi>kerb</bdi></a></code>
+</td>
+<td><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Node" title="node"><img alt="node" src="/w/images/7/76/Osm_element_node.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span></td>
+<td>
+</td>
+<td colspan="3">Indicates a curb location.
+</td></tr>
+<tr>
+<td><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:kerb" title="Key:kerb">kerb</a></bdi>=&#42;</code>
+</td>
+<td><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Node" title="node"><img alt="node" src="/w/images/7/76/Osm_element_node.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span>
+</td>
+<td>
+</td>
+<td colspan="3">Specify the curb type:
+<ul><li><code dir="ltr">raised</code> - Raised curb</li>
+<li><code dir="ltr">lowered</code> - Curb ramp</li>
+<li><code dir="ltr">flush</code> - Flush curb</li>
+<li><code dir="ltr">rolled</code> - Rolled curb</li>
+<li><code dir="ltr">no</code> - There is no curb</li></ul>
+</td></tr>
+<tr>
+<td><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:tactile_paving" title="Key:tactile paving">tactile_paving</a></bdi>=&#42;</code>
+</td>
+<td><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Node" title="node"><img alt="node" src="/w/images/7/76/Osm_element_node.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span>
+</td>
+<td>
+</td>
+<td colspan="3">Indicate <i>tactile paving</i> presence: <code dir="ltr">yes</code> or <code dir="ltr">no</code>
+</td></tr>
+<tr>
+<td><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:kerb:height" class="mw-redirect" title="Key:kerb:height">kerb:height</a></bdi>=&#42;</code>
+</td>
+<td><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Node" title="node"><img alt="node" src="/w/images/7/76/Osm_element_node.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span>
+</td>
+<td colspan="2">
+</td>
+<td colspan="2">Specify the (raised) curb height
+</td></tr>
+<tr>
+<td><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:tactile_paving:colour" title="Key:tactile paving:colour">tactile_paving:colour</a></bdi>=&#42;</code>
+</td>
+<td><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Node" title="node"><img alt="node" src="/w/images/7/76/Osm_element_node.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span>
+</td>
+<td colspan="3">
+</td>
+<td>Specify the tactile paving color.
+</td></tr></tbody></table>
+<div class="mw-heading mw-heading3"><h3 id="Islands">Islands</h3></div>
+<table class="wikitable sortable" style="width: 100%; margin: auto;">
+<tbody><tr>
+<th style="width: 20%;">Tag
+</th>
+<th>Element
+</th>
+<th style="width: 20%;"><span typeof="mw:File/Frameless"><a href="/wiki/File:PWG_-_Bronze.svg" class="mw-file-description"><img alt="Circular icon containing a pedestrian symbol with a bronze-colored background." src="https://upload.wikimedia.org/wikipedia/commons/b/b7/PWG_-_Bronze.svg?utm_source=commons.wikimedia.org&amp;utm_campaign=imageinfo&amp;utm_content=original" decoding="async" width="32" height="32" class="mw-file-element" /></a></span> Bronze
+</th>
+<th style="width: 20%;"><span typeof="mw:File/Frameless"><a href="/wiki/File:PWG_-_Silver.svg" class="mw-file-description"><img alt="Circular icon containing a pedestrian symbol with a silver-colored background." src="https://upload.wikimedia.org/wikipedia/commons/9/9d/PWG_-_Silver.svg?utm_source=commons.wikimedia.org&amp;utm_campaign=imageinfo&amp;utm_content=original" decoding="async" width="32" height="32" class="mw-file-element" /></a></span> Silver
+</th>
+<th style="width: 20%;"><span typeof="mw:File/Frameless"><a href="/wiki/File:PWG_-_Gold.svg" class="mw-file-description"><img alt="Circular icon containing a pedestrian symbol with a gold-colored background." src="https://upload.wikimedia.org/wikipedia/commons/2/27/PWG_-_Gold.svg?utm_source=commons.wikimedia.org&amp;utm_campaign=imageinfo&amp;utm_content=original" decoding="async" width="32" height="32" class="mw-file-element" /></a></span> Gold
+</th>
+<th style="width: 20%;"><span typeof="mw:File/Frameless"><a href="/wiki/File:PWG_-_Diamond.svg" class="mw-file-description"><img alt="Circular icon containing a pedestrian symbol with a diamond-colored background." src="https://upload.wikimedia.org/wikipedia/commons/9/92/PWG_-_Diamond.svg?utm_source=commons.wikimedia.org&amp;utm_campaign=imageinfo&amp;utm_content=original" decoding="async" width="32" height="32" class="mw-file-element" /></a></span> Diamond
+</th></tr>
+<tr>
+<td><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:highway" title="Key:highway">highway</a></bdi>=<a href="/wiki/Tag:highway%3Dfootway" title="Tag:highway=footway"><bdi>footway</bdi></a></code> + <link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:footway" title="Key:footway">footway</a></bdi>=<a href="/wiki/Tag:footway%3Dtraffic_island" title="Tag:footway=traffic island"><bdi>traffic_island</bdi></a></code>
+</td>
+<td><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Way" title="way"><img alt="way" src="/w/images/e/ee/Osm_element_way.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span>
+</td>
+<td colspan="3">Indicate a traffic island <b>mapped as a way</b>
+</td></tr>
+<tr>
+<td><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:surface" title="Key:surface">surface</a></bdi>=&#42;</code>
+</td>
+<td><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Way" title="way"><img alt="way" src="/w/images/e/ee/Osm_element_way.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span>
+</td>
+<td colspan="3">Required in the Silver tier. Example values include:
+<ul><li><code dir="ltr">concrete</code></li>
+<li><code dir="ltr">asphalt</code></li></ul>
+</td></tr>
+<tr>
+<td><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:lit" title="Key:lit">lit</a></bdi>=&#42;</code>
+</td>
+<td><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Way" title="way"><img alt="way" src="/w/images/e/ee/Osm_element_way.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span>
+</td>
+<td colspan="2">
+</td>
+<td colspan="2">Indicate whether the way is lit. Examples values include:
+<ul><li><code dir="ltr">yes</code>, or</li>
+<li><code dir="ltr">no</code>, or</li>
+<li>any other valid value</li></ul>
+</td></tr>
+<tr>
+<td><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:width" title="Key:width">width</a></bdi>=&#42;</code>
+</td>
+<td><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Way" title="way"><img alt="way" src="/w/images/e/ee/Osm_element_way.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span>
+</td>
+<td colspan="2">
+</td>
+<td colspan="2">Specify the width of the traffic island footway
+</td></tr>
+<tr>
+<td><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:incline" title="Key:incline">incline</a></bdi>=&#42;</code>
+</td>
+<td><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Way" title="way"><img alt="way" src="/w/images/e/ee/Osm_element_way.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span>
+</td>
+<td colspan="2">
+</td>
+<td>Incline <b>along the way</b> (for hilly areas), specified as: <code dir="ltr">up</code> or <code dir="ltr">down</code>
+</td>
+<td>Incline <b>along the way</b> (for hilly areas), specified as a value, example: <code dir="ltr">15%</code>
+</td></tr>
+<tr>
+<td><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:incline:across" title="Key:incline:across">incline:across</a></bdi>=&#42;</code>
+</td>
+<td><span class="mw-valign-text-bottom" typeof="mw:File"><a href="/wiki/Way" title="way"><img alt="way" src="/w/images/e/ee/Osm_element_way.svg" decoding="async" width="20" height="20" class="mw-file-element" /></a></span>
+</td>
+<td colspan="3">
+</td>
+<td>Incline <b>across the way</b>
+</td></tr>
+<tr>
+<td><link rel="mw-deduplicated-inline-style" href="mw-data:TemplateStyles:r3103348" /><code dir="ltr" class="mw-content-ltr wraplink"><bdi style="white-space:nowrap"><a href="/wiki/Key:tactile_paving" title="K
