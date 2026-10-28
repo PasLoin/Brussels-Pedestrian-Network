@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-28
+ 
+### Kerbs absents : détectés sur toutes les traversées, quel que soit le `tactile_paving` du crossing (#60)
+ 
+- **Correction** : la recherche de `barrier=kerb` absent était faite dans la boucle de cohérence `tactile_paving`, limitée aux nœuds `highway=crossing` tagués `yes`, `no` ou `incorrect`. Un crossing sans `tactile_paving` (ou avec une autre valeur) n'était jamais examiné. La présence des kerbs est désormais vérifiée dans une boucle séparée, sur tous les nœuds `highway=crossing` rattachés à un `footway=crossing`.
+- **Inchangé** : Les points « kerb sans `tactile_paving` » restent limités aux crossings tagués `yes`, `no` ou `incorrect`.
+
 ## 2026-10-27
  
 ### Bandes podotactiles : deux `footway=crossing` contigus traités comme une seule traversée (#55)
