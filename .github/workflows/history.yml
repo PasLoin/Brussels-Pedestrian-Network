@@ -1,4 +1,4 @@
-name: Compute History — Monthly Snapshots
+name: Compute history (monthly snapshots)
 
 on:
   workflow_dispatch:
@@ -47,16 +47,16 @@ jobs:
       - name: Load or initialise history.json
         run: |
           if [[ "${{ inputs.mode }}" == "full" ]]; then
-            echo "Full rebuild requested — starting from empty ${HISTORY_JSON_PATH}"
+            echo "Full rebuild requested, starting from empty ${HISTORY_JSON_PATH}"
             echo "[]" > "${HISTORY_JSON_PATH}"
           elif [[ -f "${HISTORY_JSON_PATH}" ]]; then
             echo "Found existing ${HISTORY_JSON_PATH} in repo, using it as base."
             if ! jq empty "${HISTORY_JSON_PATH}" 2>/dev/null; then
-              echo "Existing ${HISTORY_JSON_PATH} invalid — restarting from empty."
+              echo "Existing ${HISTORY_JSON_PATH} invalid, restarting from empty."
               echo "[]" > "${HISTORY_JSON_PATH}"
             fi
           else
-            echo "No existing ${HISTORY_JSON_PATH} found — starting from empty."
+            echo "No existing ${HISTORY_JSON_PATH} found, starting from empty."
             echo "[]" > "${HISTORY_JSON_PATH}"
           fi
 
@@ -118,7 +118,7 @@ jobs:
             fi
           done
 
-          echo "── Final ${HISTORY_JSON_PATH} summary ──"
+          echo "Final ${HISTORY_JSON_PATH} summary:"
           jq 'length' "${HISTORY_JSON_PATH}"
           jq -c '.[] | {date, type}' "${HISTORY_JSON_PATH}"
 
