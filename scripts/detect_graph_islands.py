@@ -54,7 +54,7 @@ def _write_output(rows: list[dict], path: str) -> None:
 
 def _load_platforms(path: str) -> list:
     if not os.path.exists(path):
-        print(f"  ⚠ {path} not found — platform exclusion disabled")
+        print(f"  {path} not found, platform exclusion disabled")
         return []
     with open(path) as f:
         data = json.load(f)
