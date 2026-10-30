@@ -456,7 +456,7 @@ def detect_tactile_paving_issues(
           f"(yes/no/incorrect): {len(crossing_gdf)}")
 
     if all_crossing_gdf.empty:
-        print("  Nothing to analyse — skipping.")
+        print("  Nothing to analyse, skipping.")
         _write_empty_output()
         _write_empty_kerb_issues_output()
         return {"crossings_in_scope": 0, "flagged": 0}
@@ -663,25 +663,25 @@ def detect_tactile_paving_issues(
 
     n_total = len(crossing_gdf)
     n_flagged = len(rows)
-    print(f"  Kerb presence — crossings checked (all):    {presence_stats['kerb_check_resolved']}"
+    print(f"  Kerb presence, crossings checked (all):    {presence_stats['kerb_check_resolved']}"
           f" / {presence_stats['kerb_check_crossings']}"
           f" ({presence_stats['kerb_check_skipped']} without usable footway=crossing way)")
-    print(f"  Kerb presence — crossings with a gap:       {presence_stats['kerb_missing_crossings']}")
+    print(f"  Kerb presence, crossings with a gap:       {presence_stats['kerb_missing_crossings']}")
     print(f"  Crossings in scope (yes/no/incorrect):     {n_total}")
-    print(f"  Skipped — no footway=crossing way found:   {n_no_way}")
-    print(f"  Skipped — ambiguous way match (≥2 ways):   {n_ambiguous_way}")
-    print(f"  Skipped — degenerate way:                  {n_degenerate_way} (both endpoints == crossing node)")
-    print(f"  Half-mapped — one side only checked:       {n_half_mapped_sides}")
-    print(f"  Skipped — half-mapped incorrect crossing:  {n_half_mapped_incorrect_skipped} (needs both sides)")
-    print(f"  Contiguous crossing pairs — merged sides:  {n_contiguous_sides}")
-    print(f"  Skipped — contiguous pair tp conflict:     {n_contiguous_conflict}")
+    print(f"  Skipped, no footway=crossing way found:   {n_no_way}")
+    print(f"  Skipped, ambiguous way match (≥2 ways):   {n_ambiguous_way}")
+    print(f"  Skipped, degenerate way:                  {n_degenerate_way} (both endpoints == crossing node)")
+    print(f"  Half-mapped, one side only checked:       {n_half_mapped_sides}")
+    print(f"  Skipped, half-mapped incorrect crossing:  {n_half_mapped_incorrect_skipped} (needs both sides)")
+    print(f"  Contiguous crossing pairs, merged sides:  {n_contiguous_sides}")
+    print(f"  Skipped, contiguous pair tp conflict:     {n_contiguous_conflict}")
     print(f"  Coherent (not flagged):                    {n_ok}")
-    print(f"  Skipped — kerb missing at an extremity:    {n_kerb_missing} (data gap, not flagged — see kerb_issues.geojson)")
-    print(f"  Skipped — kerb without tactile_paving:     {n_kerb_untagged} (data gap, not flagged — see kerb_issues.geojson)")
-    print(f"  Kerb-issue points — kerb absent:            {presence_stats['kerb_missing_points']} (all crossings)")
-    print(f"  Kerb-issue points — kerb sans tactile_paving:{n_kerb_untagged_points}")
-    print(f"  Flagged — kerb value mismatch:              {n_value_mismatch}")
-    print(f"  Flagged — incorrect not a yes/no pair:       {n_incorrect_mixed}")
+    print(f"  Skipped, kerb missing at an extremity:    {n_kerb_missing} (data gap, not flagged, see kerb_issues.geojson)")
+    print(f"  Skipped, kerb without tactile_paving:     {n_kerb_untagged} (data gap, not flagged, see kerb_issues.geojson)")
+    print(f"  Kerb-issue points, kerb absent:            {presence_stats['kerb_missing_points']} (all crossings)")
+    print(f"  Kerb-issue points, kerb sans tactile_paving:{n_kerb_untagged_points}")
+    print(f"  Flagged, kerb value mismatch:              {n_value_mismatch}")
+    print(f"  Flagged, incorrect not a yes/no pair:       {n_incorrect_mixed}")
     print(f"  Total flagged:                              {n_flagged}")
 
     return {
