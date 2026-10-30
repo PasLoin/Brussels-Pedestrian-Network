@@ -1,4 +1,4 @@
-name: PWG Schema — Refresh
+name: Refresh PWG schema
 
 on:
   workflow_dispatch:
