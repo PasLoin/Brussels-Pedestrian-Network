@@ -1,5 +1,3 @@
-"""Tests for scripts/clean_osm.py — barrier splitting and dangling ways."""
-
 import xml.etree.ElementTree as ET
 
 import pytest
@@ -45,9 +43,7 @@ def test_way_is_split_at_blocked_gate(cleaned_root):
     segments = sorted(
         [nd.get("ref") for nd in way.findall("nd")] for way in ways
     )
-    # dangling way 11 removed; way 10 split around the gate node 3
     assert segments == [["1", "2"], ["4", "5"]]
-    # the blocked node itself never appears in a segment
     for seg in segments:
         assert "3" not in seg
 
