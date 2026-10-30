@@ -26,6 +26,11 @@ function toggleLegend() {
   }
 })();
 
+function popupTitle(color, text) {
+  const sw = color ? `<span class="popup-swatch" style="--c:${color}"></span>` : "";
+  return `<div class="popup-title">${sw}${text}</div>`;
+}
+
 function escapeHTML(str) {
   if (!str) return str;
   return String(str)
@@ -296,8 +301,8 @@ function toggleNavMode() {
   btn.setAttribute("aria-pressed", navMode);
   if (navMode) {
     btn.classList.add("active");
-    document.getElementById("nav-btn-label").textContent = "Navigation (actif)";
-    hint.textContent = "Cliquez sur la carte pour le départ";
+    document.getElementById("nav-btn-label").textContent = "Quitter la navigation";
+    hint.textContent = "Cliquez sur la carte pour placer le départ";
     navStep = 0;
     document.getElementById("map").classList.add("nav-mode-cursor");
   } else {
@@ -318,7 +323,7 @@ function clearRoute() {
     const src = mapRef.getSource("nav-route");
     if (src) src.setData({ type: "FeatureCollection", features: [] });
   }
-  if (navMode) document.getElementById("nav-hint").textContent = "Cliquez sur la carte pour le départ";
+  if (navMode) document.getElementById("nav-hint").textContent = "Cliquez sur la carte pour placer le départ";
 }
 
 function handleNavClick(e) {
@@ -330,7 +335,7 @@ function handleNavClick(e) {
     if (startMarker) startMarker.remove();
     startMarker = new maplibregl.Marker({ color: "#22c55e" }).setLngLat([sn[1], sn[0]]).addTo(mapRef);
     navStep = 1;
-    document.getElementById("nav-hint").textContent = "Cliquez pour la destination";
+    document.getElementById("nav-hint").textContent = "Cliquez pour placer l'arrivée";
   } else if (navStep === 1) {
     endNode = nearestNode(lat, lng);
     const en = graphData.n[endNode];
@@ -349,7 +354,7 @@ function handleNavClick(e) {
       const src = mapRef.getSource("nav-route");
       if (src) src.setData(route.geojson);
       document.getElementById("route-dist").textContent = route.totalM >= 1000
-        ? `${(route.totalM / 1000).toFixed(2)} km` : `${route.totalM} m`;
+        ? `${(route.totalM / 1000).toLocaleString("fr-BE", { maximumFractionDigits: 2 })} km` : `${route.totalM} m`;
       document.getElementById("route-time").textContent = `≈ ${route.walkMin} min à pied`;
       document.getElementById("bar-ped").style.width  = route.pedPct  + "%";
       document.getElementById("bar-road").style.width = route.roadPct + "%";
@@ -380,17 +385,17 @@ fetch("./state.txt")
         const state = JSON.parse(jsonMatch[0]);
         if (state.timestamp) {
           document.getElementById("osm-date").textContent =
-            `OSM : ${new Date(state.timestamp).toLocaleString("fr-BE", fmtOpts)}`;
+            `Données OSM : ${new Date(state.timestamp).toLocaleString("fr-BE", fmtOpts)}`;
         }
       } catch (e) { console.warn("state.txt JSON parse error:", e); }
     }
     const buildMatch = txt.match(/build_timestamp=(.+)/);
     if (buildMatch) {
       document.getElementById("build-date").textContent =
-        `MAJ : ${new Date(buildMatch[1].trim()).toLocaleString("fr-BE", fmtOpts)}`;
+        `Calcul : ${new Date(buildMatch[1].trim()).toLocaleString("fr-BE", fmtOpts)}`;
     }
   })
-  .catch(() => { document.getElementById("osm-date").textContent = "OSM : inconnue"; });
+  .catch(() => { document.getElementById("osm-date").textContent = "Données OSM : date inconnue"; });
 
 fetch("./stats.json")
   .then(r => r.json())
@@ -399,13 +404,13 @@ fetch("./stats.json")
     const trips = s.routed_trips.toLocaleString("fr-BE");
     document.getElementById("routing-stats").innerHTML =
       `Trajets simulés : <span>${escapeHTML(trips)}</span><br>` +
-      `Distance moy. : <span>${escapeHTML(avgKm)} km</span>`;
+      `Distance moyenne : <span>${escapeHTML(avgKm)} km</span>`;
   })
   .catch(() => { });
 
 const protocol = new pmtiles.Protocol();
 maplibregl.addProtocol("pmtiles", protocol.tile.bind(protocol));
-const PMTILES_URL = new URL("./pedestrian.pmtiles.gz", window.location.href).href;
+const PMTILES_URL = new URL("./pedestrian.pmtiles", window.location.href).href;
 const EDIT_MIN_ZOOM = 16;
 
 const ROAD_GRAY   = "#d5d5d5";
@@ -473,6 +478,13 @@ const HIGHWAY_LAYERS = [
 ];
 
 const FLOW_PCT = ["to-number", ["get", "flow_pct"], 0];
+
+const FLOW_COLORS = {
+  pedestrian: "#16a34a",
+  road: "#ef4444",
+  cycleway_foot_yes: "#2563eb",
+  cycleway_no_foot: "#7c3aed",
+};
 
 const PEDESTRIAN_LAYERS = [
   ...HIGHWAY_LAYERS.map(({ id, color, width, dash, hidden }) => ({
@@ -656,14 +668,14 @@ const HOVER_LAYERS = [
   {
     ids: ["sidewalk-gaps"],
     format: p => `
-      <div class="popup-title">🚧 Trottoir un seul côté</div>
+      ${popupTitle("#f59e0b", "Trottoir d'un seul côté")}
       <div class="popup-row"><span class="label">Rue</span><span class="value">${escapeHTML(p.name || "—")}</span></div>
     `
   },
   {
     ids: ["footway-crossing-candidates"],
     format: p => `
-      <div class="popup-title">🔴 Candidat crossing (à vérifier)</div>
+      ${popupTitle("#7f1d1d", "Traversée sans footway=crossing ?")}
       <div class="popup-row"><span class="label">Rue traversée</span><span class="value">${escapeHTML(p.name || "—")}</span></div>
       <div class="popup-row"><span class="label">Longueur</span><span class="value">${escapeHTML(p.length_m)} m</span></div>
     `
@@ -672,14 +684,14 @@ const HOVER_LAYERS = [
     ids: ["sidewalk-roads"],
     format: p => {
       const swLabels = {
-        separate:   "✅ sidewalk:both=separate",
-        yes:        "✅ sidewalk=yes — mappable en separate",
-        documented: "✅ Deux côtés documentés",
-        partial:    "⚠️ Un seul côté documenté",
-        unknown:    "— Aucun tag sidewalk"
+        separate:   "sidewalk:both=separate",
+        yes:        "sidewalk=yes, à mapper en separate",
+        documented: "Deux côtés documentés",
+        partial:    "Un seul côté documenté",
+        unknown:    "Aucun tag sidewalk"
       };
       return `
-        <div class="popup-title">🏷 Tags trottoir</div>
+        ${popupTitle((SIDEWALK_STATUSES.find(s => s.value === p.sw) || {}).color, "Tags sidewalk")}
         <div class="popup-row"><span class="label">Rue</span><span class="value">${escapeHTML(p.name || "—")}</span></div>
         <div class="popup-row"><span class="label">Statut</span><span class="value">${escapeHTML(swLabels[p.sw] || p.sw || "?")}</span></div>
       `;
@@ -688,9 +700,9 @@ const HOVER_LAYERS = [
   {
     ids: ["flow-ped", "flow-cycleway", "flow-road"],
     format: p => `
-      <div class="popup-title">📊 Flux simulé</div>
-      <div class="popup-row"><span class="label">Infra</span><span class="value">${escapeHTML((p.infra_type || "—").replace(/_/g, " "))}</span></div>
-      <div class="popup-row"><span class="label">Highway</span><span class="value">${escapeHTML(p.highway || "—")}</span></div>
+      ${popupTitle(FLOW_COLORS[p.infra_type], "Flux simulé")}
+      <div class="popup-row"><span class="label">Infrastructure</span><span class="value">${escapeHTML((p.infra_type || "—").replace(/_/g, " "))}</span></div>
+      <div class="popup-row"><span class="label">highway</span><span class="value">${escapeHTML(p.highway || "—")}</span></div>
       <div class="popup-row"><span class="label">Flux relatif</span><span class="value">${escapeHTML(p.flow_pct) || 0} %</span></div>
     `
   },
@@ -699,7 +711,7 @@ const HOVER_LAYERS = [
     format: p => {
       const entries = Object.entries(p).filter(([k]) => !k.startsWith("@") && k !== "tippecanoe");
       return `
-        <div class="popup-title">🛤 Infrastructure</div>
+        ${popupTitle((HIGHWAY_LAYERS.find(l => l.id === p.highway) || {}).color || "#15803d", escapeHTML(p.highway || "Infrastructure"))}
         ${entries.map(([k, v]) => `<div class="popup-row"><span class="label">${escapeHTML(k)}</span><span class="value">${escapeHTML(v)}</span></div>`).join("")}
       `;
     }
@@ -712,7 +724,7 @@ function formatWrongTagCrossing(p) {
   const val = p.footway_value || "sidewalk";
   const objs = [nid > 0 ? `n${nid}` : "", wid > 0 ? `w${wid}` : ""].filter(Boolean).join(",");
   return `
-    <div class="popup-title">🔴 Traversée taguée footway=${escapeHTML(val)}</div>
+    ${popupTitle("#dc2626", `Traversée taguée footway=${escapeHTML(val)}`)}
     <div class="popup-row"><span class="label">Rue</span><span class="value">${escapeHTML(p.name || "—")}</span></div>
     <div class="popup-row"><span class="label">Problème</span><span class="value">Le way qui traverse la route au nœud crossing porte footway=${escapeHTML(val)} au lieu de footway=crossing</span></div>
     ${nid > 0 ? `<div class="popup-row"><span class="label">Nœud</span><span class="value">
@@ -739,13 +751,13 @@ const CLICK_LAYERS = [
       const radius = p.detect_radius || 20;
       const nid = parseInt(p.osm_id, 10) || 0;
       return `
-        <div class="popup-title">${isMissingWay ? "🟠 Traversée non mappée" : "🟡 Tag footway=crossing absent"}</div>
+        ${isMissingWay ? popupTitle("#f97316", "Traversée non mappée") : popupTitle("#eab308", "Tag footway=crossing absent")}
         <div class="popup-row"><span class="label">Rue</span><span class="value">${escapeHTML(p.name || "—")}</span></div>
         <div class="popup-row"><span class="label">Problème</span><span class="value">${isMissingWay
           ? "Aucune footway connectée au nœud"
           : "Footway connectée mais sans tag footway=crossing"
         }</span></div>
-        ${nearM !== null && !isMissingWay ? `<div class="popup-row"><span class="label">footway=crossing le + proche</span><span class="value">${nearM} m <span style="opacity:.7">(rayon ${radius} m)</span></span></div>` : ""}
+        ${nearM !== null && !isMissingWay ? `<div class="popup-row"><span class="label">footway=crossing le plus proche</span><span class="value">${nearM} m <span class="popup-note">(rayon ${radius} m)</span></span></div>` : ""}
         ${nid > 0 ? `<div class="popup-row"><span class="label">Nœud</span><span class="value">
           <a href="https://www.openstreetmap.org/node/${nid}" target="_blank" rel="noopener">n${nid}</a>
           · <a href="http://127.0.0.1:8111/load_object?objects=n${nid}" target="_blank" rel="noopener">JOSM</a>
@@ -759,7 +771,7 @@ const CLICK_LAYERS = [
     format: p => {
       const wid = parseInt(p.osm_id, 10) || 0;
       return `
-        <div class="popup-title">🔴 Candidat crossing (à vérifier)</div>
+        ${popupTitle("#7f1d1d", "Traversée sans footway=crossing ?")}
         <div class="popup-row"><span class="label">Rue traversée</span><span class="value">${escapeHTML(p.name || "—")}</span></div>
         <div class="popup-row"><span class="label">Longueur</span><span class="value">${escapeHTML(p.length_m)} m</span></div>
         <div class="popup-row"><span class="label">Problème</span><span class="value">Relie un trottoir de chaque côté d'une route mais n'a pas le tag footway=crossing</span></div>
@@ -783,12 +795,12 @@ const CLICK_LAYERS = [
         incorrect_not_mixed:  "incorrect attendu : un kerb yes + un kerb no",
       };
       return `
-        <div class="popup-title">🟣 Bande podotactile incohérente</div>
+        ${popupTitle("#a855f7", "Bande podotactile incohérente")}
         <div class="popup-row"><span class="label">Crossing</span><span class="value">tactile_paving=${escapeHTML(p.crossing_tp || "?")}</span></div>
         <div class="popup-row"><span class="label">Kerb côté 1</span><span class="value">${escapeHTML(p.kerb1_tp) || "absent"}</span></div>
         ${sidesChecked === 2
           ? `<div class="popup-row"><span class="label">Kerb côté 2</span><span class="value">${escapeHTML(p.kerb2_tp) || "absent"}</span></div>`
-          : `<div class="popup-row"><span class="label">Kerb côté 2</span><span class="value" style="opacity:.7">— way à moitié dessinée (kerb → nœud crossing seulement), côté non vérifié</span></div>`
+          : `<div class="popup-row"><span class="label">Kerb côté 2</span><span class="value popup-note">non vérifié : la way s'arrête au nœud crossing</span></div>`
         }
         <div class="popup-row"><span class="label">Problème</span><span class="value">${escapeHTML(reasonLabels[p.reason] || p.reason || "?")}</span></div>
         ${nid > 0 ? `<div class="popup-row"><span class="label">Nœud crossing</span><span class="value">
@@ -802,7 +814,7 @@ const CLICK_LAYERS = [
         </span></div>` : ""}
         ${pwid > 0 ? `<div class="popup-row"><span class="label">Way contiguë</span><span class="value">
           <a href="https://www.openstreetmap.org/way/${pwid}" target="_blank" rel="noopener">w${pwid}</a>
-          <span style="opacity:.7">· traitée avec la précédente comme une seule traversée</span>
+          <span class="popup-note">(même traversée que la précédente)</span>
         </span></div>` : ""}
       `;
     }
@@ -828,9 +840,9 @@ const CLICK_LAYERS = [
         ? `https://www.openstreetmap.org/edit?way=${ways[0]}`
         : (hasBbox ? `https://www.openstreetmap.org/edit#map=19/${((s + n) / 2).toFixed(6)}/${((w + e) / 2).toFixed(6)}` : null);
       return `
-        <div class="popup-title">${isLevel ? "🟠 Discontinuité de niveau" : isUnjoined ? "🩷 Jonction manquante" : "🟢 Îlot isolé du réseau"}</div>
+        ${isLevel ? popupTitle("#ea580c", "Discontinuité de niveau") : isUnjoined ? popupTitle("#db2777", "Jonction manquante") : popupTitle("#0d9488", "Îlot isolé du réseau")}
         <div class="popup-row"><span class="label">Problème</span><span class="value">${isLevel
-          ? "Escalier (steps) dont le level=* ne recouvre pas celui d'un chemin directement raccordé : liaison théoriquement non praticable"                                                                                        
+          ? "Escalier (steps) dont le level=* ne recouvre pas celui d'un chemin directement raccordé : liaison théoriquement non praticable"
           : isUnjoined
             ? "Touche presque le réseau principal mais ne partage aucun nœud avec lui"
             : "Groupe de chemins sans aucune liaison avec le réseau principal"
@@ -863,7 +875,7 @@ const CLICK_LAYERS = [
       const kid = parseInt(p.kerb_osm_id, 10) || 0;
       const pwid = parseInt(p.partner_way_osm_id, 10) || 0;
       return `
-        <div class="popup-title">${isMissing ? "🔵 Kerb absent" : "🟤 Kerb sans tactile_paving"}</div>
+        ${isMissing ? popupTitle("#1e3a8a", "Kerb absent") : popupTitle("#7c2d12", "Kerb sans tactile_paving")}
         <div class="popup-row"><span class="label">Problème</span><span class="value">${isMissing
           ? "Aucun nœud barrier=kerb trouvé à cette extrémité"
           : "Kerb présent mais sans tag tactile_paving"
@@ -884,7 +896,7 @@ const CLICK_LAYERS = [
         </span></div>` : ""}
         ${pwid > 0 ? `<div class="popup-row"><span class="label">Way contiguë</span><span class="value">
           <a href="https://www.openstreetmap.org/way/${pwid}" target="_blank" rel="noopener">w${pwid}</a>
-          <span style="opacity:.7">· traitée avec la précédente comme une seule traversée</span>
+          <span class="popup-note">(même traversée que la précédente)</span>
         </span></div>` : ""}
       `;
     }
@@ -1114,12 +1126,12 @@ function initMap(style) {
 
     addSection("Routage simulé");
     legendEl.appendChild(makeItem({ layerId: "flow-ped",      label: "Flux piéton",        color: "#bbf7d0", color2: "#14532d" }));
-    legendEl.appendChild(makeItem({ layerId: "flow-cycleway",  label: "Flux cycleway",       color: "#bfdbfe", color2: "#3b0764" }));
+    legendEl.appendChild(makeItem({ layerId: "flow-cycleway",  label: "Flux sur piste cyclable",     color: "#bfdbfe", color2: "#3b0764" }));
     legendEl.appendChild(makeItem({ layerId: "flow-road",      label: "Flux sur route",      color: "#fdba74", color2: "#450a0a" }));
 
     addSection("Analyse spatiale et qualité");
-    legendEl.appendChild(makeItem({ layerId: "sidewalk-gaps", label: "Trottoir un seul côté", color: "#f59e0b", dashed: true }));
-    legendEl.appendChild(makeItem({ layerId: "footway-crossing-candidates", label: "Candidat crossing (à vérifier)", color: "#7f1d1d", dashed: true }));
+    legendEl.appendChild(makeItem({ layerId: "sidewalk-gaps", label: "Trottoir d'un seul côté", color: "#f59e0b", dashed: true }));
+    legendEl.appendChild(makeItem({ layerId: "footway-crossing-candidates", label: "Traversée sans footway=crossing ?", color: "#7f1d1d", dashed: true }));
     legendEl.appendChild(makeItem({ layerId: "tactile-paving-issues", label: "Bande podotactile incohérente", color: "#a855f7", swatchType: "dot" }));
 
     KERB_ISSUE_TYPES.forEach(t => {
@@ -1263,7 +1275,7 @@ function initMap(style) {
     });
   });
 
-  map.on("moveend", () => {
+  const syncZoomUi = () => {
     const z = map.getZoom();
     const c = map.getCenter();
     document.getElementById("zoom-val").textContent = z.toFixed(1);
@@ -1278,5 +1290,7 @@ function initMap(style) {
       btn.setAttribute("aria-disabled", "true");
       btn.setAttribute("tabindex", "-1");
     }
-  });
+  };
+  map.on("load", syncZoomUi);
+  map.on("moveend", syncZoomUi);
 }
