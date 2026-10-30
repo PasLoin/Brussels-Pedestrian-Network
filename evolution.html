@@ -5,9 +5,9 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' https://unpkg.com 'unsafe-inline'; img-src 'self' https://tiles.openfreemap.org https://www.openstreetmap.org data:; connect-src 'self' https://tiles.openfreemap.org https://unpkg.com; worker-src blob:; child-src blob:; font-src https://tiles.openfreemap.org; object-src 'none'; base-uri 'self'; upgrade-insecure-requests;" />
   <meta name="Referrer-Policy" content="strict-origin-when-cross-origin" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Brussels Pedestrian Network — Évolution</title>
+  <title>Évolution du Brussels Pedestrian Network</title>
   <meta name="description" content="Évolution mensuelle du mapping piéton à Bruxelles sur OpenStreetMap : réseau, trottoirs documentés et traversées au fil du temps." />
-  <meta property="og:title" content="Brussels Pedestrian Network — Évolution" />
+  <meta property="og:title" content="Évolution du Brussels Pedestrian Network" />
   <meta property="og:description" content="Évolution mensuelle du mapping piéton à Bruxelles sur OpenStreetMap : réseau, trottoirs documentés et traversées au fil du temps." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://pasloin.github.io/Brussels-Pedestrian-Network/evolution.html" />
@@ -19,12 +19,12 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg: #f5f3f0;
+      --bg: #f4f5f6;
       --surface: #fff;
-      --border: #ddd;
-      --text: #222;
-      --text-dim: #555;
-      --text-muted: #888;
+      --border: #d4d6d9;
+      --text: #22252a;
+      --text-dim: #4a4f55;
+      --text-muted: #6b7077;
       --green: #2d8a4e;
       --red: #c0392b;
       --orange: #c27d2a;
@@ -34,7 +34,7 @@
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       background: var(--bg);
       color: var(--text);
       line-height: 1.55;
@@ -51,11 +51,13 @@
       margin: 0 auto;
       padding: 0 20px;
       display: flex;
-      align-items: baseline;
+      align-items: flex-end;
       justify-content: space-between;
       gap: 12px;
     }
-    .page-header h1 { font-size: 14px; font-weight: 600; }
+    .page-header h1 { font-size: 18px; font-weight: 650; }
+    .page-header .home { font-size: 13px; color: var(--text-dim); text-decoration: none; display: block; }
+    .page-header .home:hover { text-decoration: underline; }
     .page-header-right {
       display: flex; align-items: baseline; gap: 16px;
       font-size: 11px; color: var(--text-muted);
@@ -63,6 +65,7 @@
     .page-header-right a { color: var(--text-dim); text-decoration: none; }
     .page-header-right a:hover { text-decoration: underline; }
 
+    main a { color: #1d5fa8; }
     .container { max-width: 1100px; margin: 0 auto; padding: 20px 20px 48px; }
 
     .intro {
@@ -84,11 +87,9 @@
 
     .section { margin-bottom: 28px; }
     .section-title {
-      font-size: 12px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-dim);
+      font-size: 15px;
+      font-weight: 650;
+      color: var(--text);
       margin-bottom: 10px;
       padding-bottom: 6px;
       border-bottom: 1px solid var(--border);
@@ -102,11 +103,9 @@
       margin-bottom: 12px;
     }
     .chart-card h3 {
-      font-size: 11px;
+      font-size: 13px;
       font-weight: 600;
       color: var(--text-dim);
-      text-transform: uppercase;
-      letter-spacing: 0.03em;
       margin-bottom: 4px;
     }
     .chart-card .subtitle {
@@ -130,9 +129,7 @@
       padding: 10px 12px;
     }
     .delta-label {
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
+      font-size: 12px;
       color: var(--text-muted);
       margin-bottom: 2px;
     }
@@ -218,16 +215,17 @@
       .period-controls .period-info { margin-left: 0; }
     }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
 </head>
 <body>
 
 <header class="page-header">
   <div class="page-header-inner">
-    <h1>Brussels Pedestrian Network — Évolution</h1>
+    <div><a class="home" href="./">Brussels Pedestrian Network</a><h1>Évolution</h1></div>
     <div class="page-header-right">
-      <a href="./stats.html">Stats actuelles</a>
       <a href="./">Carte</a>
+      <a href="./stats.html">Statistiques</a>
+      <a href="./about.html">Méthodologie</a>
     </div>
   </div>
 </header>
@@ -237,9 +235,9 @@
 </main>
 
 <script>
-Chart.defaults.color = '#888';
-Chart.defaults.borderColor = '#ddd';
-Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
+Chart.defaults.color = '#6b7077';
+Chart.defaults.borderColor = '#d4d6d9';
+Chart.defaults.font.family = "system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 Chart.defaults.font.size = 11;
 Chart.defaults.plugins.legend.labels.usePointStyle = true;
 Chart.defaults.plugins.legend.labels.pointStyleWidth = 8;
@@ -317,15 +315,14 @@ function render(data) {
 
   el.innerHTML += `
     <div class="intro">
-      <strong>${months} snapshots mensuels</strong> couvrant
-      <strong>${yearsCovered} année${yearsCovered > 1 ? 's' : ''}</strong>
-      d'évolution du réseau piéton bruxellois sur OpenStreetMap.
+      ${months} relevés couvrant ${yearsCovered} an${yearsCovered > 1 ? 's' : ''}
+      du réseau piéton bruxellois dans OpenStreetMap.
       <div class="meta">
         Du ${escapeHTML(first.date)} au ${escapeHTML(last.date)}
         · ${escapeHTML(fkm(last.ped_km))} km piéton actuellement
-        (vs ${escapeHTML(fkm(first.ped_km))} km au départ)
+        (${escapeHTML(fkm(first.ped_km))} km au premier relevé)
         ${dailyEntry ? `· * = dernière extraction quotidienne (${escapeHTML(dailyEntry.date)})` : ''}
-        · Zone d'analyse fixe : Région de Bruxelles-Capitale (limite OSM #54094)
+        · Zone : Région de Bruxelles-Capitale (relation OSM 54094)
       </div>
     </div>`;
 
@@ -344,9 +341,8 @@ function render(data) {
         <button type="button" id="period-reset">Période complète</button>
         <span class="period-info" id="period-info"></span>
         <div class="period-hint">
-          Resserrez la période pour zoomer sur les graphiques ci-dessous : l'échelle verticale
-          s'ajuste automatiquement pour faire ressortir les petites variations.
-          Par défaut, les 6 derniers mois sont affichés.
+          L'échelle verticale des graphiques s'ajuste à la période choisie, ce qui rend visibles
+          les petites variations. Par défaut : les 6 derniers mois.
         </div>
       </div>
     </div>`;
@@ -394,7 +390,7 @@ function render(data) {
 
       <div class="chart-card">
         <h3>Réseau global par catégorie</h3>
-        <div class="subtitle">Piéton vs route vs cycleway. Les routes incluent les voies où les piétons marchent (résidentielles à primaires).</div>
+        <div class="subtitle">Piéton, route, cycleway. « Route » regroupe les voies de residential à primary où les piétons marchent sur la chaussée.</div>
         <div class="chart-wrap"><canvas id="c-all-km"></canvas></div>
       </div>
 
@@ -417,7 +413,7 @@ function render(data) {
 
       <div class="chart-card">
         <h3>Traversées : nœuds et ways</h3>
-        <div class="subtitle">Un crossing est correctement mappé quand il a à la fois un nœud highway=crossing et un way footway=crossing. L'écart entre les deux courbes mesure le travail restant.</div>
+        <div class="subtitle">Un crossing est correctement mappé quand il a à la fois un nœud highway=crossing et un way footway=crossing. L'écart entre les deux courbes donne le nombre de traversées à compléter.</div>
         <div class="chart-wrap"><canvas id="c-xing"></canvas></div>
       </div>
 
@@ -433,11 +429,10 @@ function render(data) {
       <div class="section-title">Composition des footways</div>
 
       <div class="chart-card">
-        <h3>Stacké : sidewalk / crossing / link / traffic_island / autre / sans tag</h3>
+        <h3>Sous-tags footway=* (empilés)</h3>
         <div class="subtitle">
-          Décomposition des ways highway=footway par sous-tag footway=*.
-          "Autre" = un sous-tag existe mais n'est pas l'un des types ci-dessus ;
-          "sans tag" = aucun sous-tag footway=* du tout.
+          sidewalk / crossing / link / traffic_island / autre / sans tag.
+          « Autre » : un sous-tag footway=* hors de cette liste ; « sans tag » : aucun sous-tag.
         </div>
         <div class="chart-wrap"><canvas id="c-fw-mix"></canvas></div>
       </div>
@@ -448,8 +443,8 @@ function render(data) {
       <div class="section-title">Composition des tags sidewalk sur les routes</div>
 
       <div class="chart-card">
-        <h3>Stacké : separate / yes / partial / no / sans tag</h3>
-        <div class="subtitle">Le passage progressif de "yes" vers "separate" indique une montée en qualité du mapping.</div>
+        <h3>Tags sidewalk (empilés)</h3>
+        <div class="subtitle">separate / yes / partial / no / sans tag. Quand des routes passent de « yes » à « separate », leurs trottoirs ont été dessinés comme ways séparés.</div>
         <div class="chart-wrap"><canvas id="c-sw-mix"></canvas></div>
       </div>
 
