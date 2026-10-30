@@ -1,21 +1,3 @@
-"""Tests for scripts/build_graph.py.
-
-Covers the pure classification helpers and, at the end, a small
-end-to-end run of ``build_graph`` on a synthetic OSM XML file that
-locks in behaviours fixed in July 2026:
-
-* ``sidewalk=separate`` and the ``sidewalk:left/right/both`` schema
-  must count as documented sidewalks.
-* one-way streets must be traversable in both directions by the
-  pedestrian router (``oneway=yes`` applies to vehicles only).
-* the per-street status is length-weighted: one tagged segment
-  can no longer flip a whole multi-segment street to "both" at 100%.
-* ``access=private`` roads are excluded from the pedestrian graph
-  unless ``foot`` explicitly allows them.
-* OSMnx simplification must not merge ways whose name/access/sidewalk
-  tags differ (no more tag/name bleeding onto small connector ways).
-"""
-
 import math
 
 import pytest
@@ -30,46 +12,33 @@ from build_graph import (
 )
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# _edge_sidewalk_status
-# ─────────────────────────────────────────────────────────────────────────────
-
 @pytest.mark.parametrize(
     "sw, left, right, both, expected",
     [
-        # sidewalk=* alone
         ("both", "", "", "", "both"),
         ("yes", "", "", "", "both"),
-        ("separate", "", "", "", "both"),      # the July 2026 bug fix
+        ("separate", "", "", "", "both"),
         ("left", "", "", "", "partial"),
         ("right", "", "", "", "partial"),
         ("no", "", "", "", "none"),
         ("", "", "", "", "unknown"),
-        # sidewalk:both=*
         ("", "", "", "yes", "both"),
         ("", "", "", "separate", "both"),
         ("", "", "", "no", "none"),
-        # sidewalk:left / sidewalk:right combinations
         ("", "yes", "yes", "", "both"),
         ("", "separate", "separate", "", "both"),
         ("", "yes", "no", "", "partial"),
         ("", "separate", "no", "", "partial"),
         ("", "no", "yes", "", "partial"),
         ("", "no", "no", "", "none"),
-        # one side documented, the other unknown → inconclusive
         ("", "yes", "", "", "partial"),
         ("", "no", "", "", "unknown"),
-        # sidewalk=left + explicit right → both sides covered
         ("left", "", "yes", "", "both"),
     ],
 )
 def test_edge_sidewalk_status(sw, left, right, both, expected):
     assert _edge_sidewalk_status(sw, left, right, both) == expected
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# _aggregate_sidewalk (length-weighted street aggregation)
-# ─────────────────────────────────────────────────────────────────────────────
 
 def test_aggregate_fully_tagged_both():
     info = _aggregate_sidewalk({"both": 500.0})
@@ -105,10 +74,6 @@ def test_aggregate_empty():
     assert info == SidewalkInfo("unknown", 0.0)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# _first_str / _unanimous_str (OSMnx simplification quirks)
-# ─────────────────────────────────────────────────────────────────────────────
-
 def test_first_str():
     nan = float("nan")
     assert _first_str(None) == ""
@@ -122,28 +87,12 @@ def test_unanimous_str():
     nan = float("nan")
     assert _unanimous_str("yes") == "yes"
     assert _unanimous_str(["yes", "yes"]) == "yes"
-    # disagreement → not unanimous
     assert _unanimous_str(["yes", "no"]) == ""
-    # partially missing → not unanimous (anti tag-bleeding)
     assert _unanimous_str(["yes", nan]) == ""
     assert _unanimous_str(["yes", None]) == ""
     assert _unanimous_str([nan, nan]) == ""
     assert _unanimous_str(None) == ""
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# End-to-end: build_graph on a tiny synthetic network
-#
-# Layout (all residential unless noted):
-#   1──2   Rue Sens Unique     oneway=yes, sidewalk=separate
-#   3──4   Rue Moderne         sidewalk:left=yes, sidewalk:right=no
-#   5──6──7  Rue Mixte         5-6 sidewalk=both (short), 6-7 untagged (long)
-#   8──9   Chemin Privé        access=private (no foot tag) → excluded
-#   10─11  Allée Privée Foot   access=private + foot=yes → kept
-#   12─13─14  Rue Amont (12-13, sidewalk=both) then Petit Square (13-14,
-#            untagged) through a degree-2 node: simplification must NOT
-#            merge them, so Petit Square keeps status "unknown".
-# ─────────────────────────────────────────────────────────────────────────────
 
 _TEST_OSM = """<?xml version='1.0' encoding='UTF-8'?>
 <osm version="0.6" generator="test">
@@ -230,8 +179,6 @@ def bundle(tmp_path_factory):
 
 
 def test_oneway_street_is_bidirectional_for_pedestrians(bundle):
-    """Regression: with a directed OSMnx graph and no bidirectional=True,
-    the router could not walk against traffic on oneway streets."""
     osmid_to_idx = {osmid: i for i, osmid in enumerate(bundle.node_list)}
     n1, n2 = osmid_to_idx[1], osmid_to_idx[2]
     assert (n1, n2) in bundle.edge_tuples
@@ -244,8 +191,6 @@ def test_sidewalk_separate_scores_as_both(bundle):
 
 
 def test_sidewalk_left_right_schema_is_used(bundle):
-    """sidewalk:left=yes + sidewalk:right=no (modern schema, no plain
-    ``sidewalk`` tag) must classify as partial — it used to be ignored."""
     info = bundle.street_sidewalk_status["Rue Moderne"]
     assert info.status == "partial"
 
@@ -257,23 +202,15 @@ def test_multi_segment_street_is_length_weighted(bundle):
 
 
 def test_access_private_is_excluded(bundle):
-    """access=private without a foot tag bans pedestrians: the way must
-    not enter the routing graph nor the sidewalk index."""
     assert "Chemin Privé" not in bundle.edge_names
     assert "Chemin Privé" not in bundle.street_sidewalk_status
 
 
 def test_access_private_with_foot_yes_is_kept(bundle):
-    """Standard OSM access hierarchy: foot=yes overrides access=private."""
     assert "Allée Privée Foot" in bundle.edge_names
 
 
 def test_simplification_does_not_merge_different_streets(bundle):
-    """Regression (user report, Square de Biarritz): a short untagged
-    connector way sharing a degree-2 node with a tagged neighbour used
-    to be merged with it during simplification, inheriting its name or
-    tags.  With edge_attrs_differ, 'Petit Square' must survive as its
-    own street with status 'unknown', not 'both'."""
     assert "Petit Square" in bundle.street_sidewalk_status
     assert bundle.street_sidewalk_status["Petit Square"].status == "unknown"
     assert bundle.street_sidewalk_status["Rue Amont"].status == "both"
