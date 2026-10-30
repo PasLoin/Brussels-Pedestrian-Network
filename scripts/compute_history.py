@@ -1,13 +1,4 @@
 #!/usr/bin/env python3
-"""
-Compute lightweight historical statistics for one OSM PBF snapshot.
-
-Reads a single ``.pbf`` extract and emits a JSON record summarising
-pedestrian infrastructure statistics.
-
-This version uses ``osmium export`` via subprocess to avoid the ``pyosmium``
-dependency which can be problematic on newer Python versions.
-"""
 
 from __future__ import annotations
 
@@ -19,7 +10,6 @@ from collections import defaultdict
 
 from pyproj import Transformer
 
-# Highway types whose km we report individually in the evolution chart.
 _TRACKED_HIGHWAY_TYPES = frozenset({
     "footway", "pedestrian", "path", "living_street", "steps",
     "elevator", "cycleway",
@@ -30,12 +20,10 @@ _TRACKED_HIGHWAY_TYPES = frozenset({
     "track",
 })
 
-# Pedestrian infrastructure used for ratio metrics.
 _PED_HIGHWAY_TYPES = frozenset({
     "footway", "pedestrian", "path", "living_street", "steps", "elevator",
 })
 
-# Road types where we expect sidewalk documentation.
 _ROAD_TYPES_SIDEWALK_EXPECTED = frozenset({
     "residential", "unclassified",
     "tertiary", "tertiary_link",
@@ -46,7 +34,6 @@ _ROAD_TYPES_SIDEWALK_EXPECTED = frozenset({
 
 class _BrusselsStatsHandler:
     def __init__(self) -> None:
-        # Belgian Lambert 72 — metric and accurate for Brussels.
         self._proj = Transformer.from_crs("EPSG:4326", "EPSG:31370", always_xy=True)
 
         self.km_by_highway: dict[str, float] = defaultdict(float)
@@ -65,11 +52,6 @@ class _BrusselsStatsHandler:
         self.n_footway_crossing    = 0
         self.n_footway_link        = 0
         self.n_footway_traffic_island = 0
-        # "other" = footway=* carries a real (if uncommon) value we don't
-        # bucket individually (e.g. alley, conveyor, access_aisle…).
-        # "no_subtag" = no footway=* tag at all. Kept apart from "other" so
-        # the evolution chart can distinguish "documented but unusual" from
-        # "not documented yet" instead of lumping both into one bucket.
         self.n_footway_other        = 0
         self.n_footway_no_subtag    = 0
         self.n_footway_with_surface    = 0
@@ -82,9 +64,6 @@ class _BrusselsStatsHandler:
         self.n_road_sidewalk_no_explicit  = 0
         self.n_road_sidewalk_partial      = 0
 
-        # Same sidewalk-tag classification as above, but broken down per
-        # highway=* road type so the evolution page can chart sidewalk
-        # documentation quality per road class instead of one aggregate.
         self.road_sidewalk_by_type: dict[str, dict[str, int]] = defaultdict(
             lambda: defaultdict(int)
         )
@@ -274,7 +253,6 @@ def main() -> int:
     with subprocess.Popen(cmd, stdout=subprocess.PIPE, text=True, bufsize=1) as proc:
         if proc.stdout:
             for line in proc.stdout:
-                # geojsonseq uses RS (0x1e) as record separator
                 line = line.lstrip('\x1e').strip()
                 if not line:
                     continue
