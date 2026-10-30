@@ -99,9 +99,9 @@ def generate_od_pairs(
     ]
 
     print(f"  Valid pairs available ({MIN_OD_DISTANCE_M:.0f}–{MAX_OD_DISTANCE_M:.0f} m): {n_valid}")
-    print(f"  Excluded — same snapped node: {n_same_node}")
+    print(f"  Excluded, same snapped node: {n_same_node}")
     print(f"  OD pairs sampled: {len(od_pairs)} (cap {MAX_OD_PAIRS})")
-    print(f"  Out of range — near: {rejected_near} | far: {rejected_far}")
+    print(f"  Out of range, near: {rejected_near} | far: {rejected_far}")
     return od_pairs, rejected_near, rejected_far
 
 
