@@ -1,8 +1,3 @@
-"""Tests for scripts/detect_tactile_paving_issues.py — coherence check
-between a highway=crossing node's tactile_paving tag and the
-tactile_paving tags on the barrier=kerb nodes at each end of its
-attached footway=crossing way."""
-
 import json
 import math
 
@@ -24,7 +19,6 @@ _M_PER_DEG_LON = 111_320.0 * math.cos(math.radians(LAT0))
 
 
 def _xy(x_m: float, y_m: float) -> list[float]:
-    """Convert local ENU metre offsets (from LON0, LAT0) to [lon, lat]."""
     return [LON0 + x_m / _M_PER_DEG_LON, LAT0 + y_m / _M_PER_DEG_LAT]
 
 
@@ -41,8 +35,6 @@ def _crossing_feature(x_m, y_m, tactile_paving, fid):
 
 
 def _crossing_way_feature(x0, y0, xc, yc, x1, y1, fid):
-    """A footway=crossing way running kerb → crossing node → kerb, so the
-    crossing node is an exact vertex of the line (as in real OSM data)."""
     return {
         "type": "Feature",
         "geometry": {"type": "LineString",
@@ -52,8 +44,6 @@ def _crossing_way_feature(x0, y0, xc, yc, x1, y1, fid):
 
 
 def _crossing_way_2pt_feature(x0, y0, x1, y1, fid):
-    """A plain 2-vertex footway=crossing way (e.g. a boulevard split into
-    two segments meeting exactly at the crossing node)."""
     return {
         "type": "Feature",
         "geometry": {"type": "LineString", "coordinates": [_xy(x0, y0), _xy(x1, y1)]},
@@ -62,9 +52,6 @@ def _crossing_way_2pt_feature(x0, y0, x1, y1, fid):
 
 
 def _sidewalk_way_feature(x0, y0, x1, y1, fid):
-    """A footway=sidewalk way — NOT a crossing, even though it can
-    legitimately share a node with one (e.g. where a sidewalk meets a
-    crossing)."""
     return {
         "type": "Feature",
         "geometry": {"type": "LineString", "coordinates": [_xy(x0, y0), _xy(x1, y1)]},
@@ -82,8 +69,6 @@ def _kerb_feature(x_m, y_m, tactile_paving, fid):
         "properties": props,
     }
 
-
-# ── Pure classification logic ───────────────────────────────────────────────
 
 def test_classify_yes_coherent_when_both_kerbs_yes():
     assert _classify("yes", "yes", "yes") is None
@@ -108,10 +93,6 @@ def test_classify_incorrect_flagged_when_kerbs_not_mixed():
 
 
 def test_classify_missing_kerb_is_a_reason_code_but_not_flagged_by_caller():
-    """_classify itself still reports the pair as inconsistent (there's
-    nothing to compare) — it's detect_tactile_paving_issues() that
-    decides not to write it to the output layer, see the pipeline test
-    below."""
     assert _classify("yes", "yes", None) == "kerb_missing"
     assert _classify("incorrect", None, None) == "kerb_missing"
 
@@ -119,8 +100,6 @@ def test_classify_missing_kerb_is_a_reason_code_but_not_flagged_by_caller():
 def test_classify_untagged_kerb_is_a_reason_code_but_not_flagged_by_caller():
     assert _classify("no", "no", "") == "kerb_untagged"
 
-
-# ── Full pipeline (geometric matching + GeoJSON I/O) ───────────────────────
 
 def test_coherent_yes_crossing_is_not_flagged(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
@@ -151,7 +130,7 @@ def test_no_crossing_with_mismatched_kerb_is_flagged(tmp_path, monkeypatch):
     ])
     _write_geojson(tmp_path / "kerbs_raw.geojson", [
         _kerb_feature(-3, 0, "no",  fid=203),
-        _kerb_feature(3, 0, "yes", fid=204),  # should be "no" too
+        _kerb_feature(3, 0, "yes", fid=204),
     ])
 
     stats = detect_tactile_paving_issues()
@@ -203,8 +182,6 @@ def test_incorrect_crossing_with_both_kerbs_yes_is_flagged(tmp_path, monkeypatch
 
 
 def test_missing_kerb_at_one_extremity_is_not_flagged(tmp_path, monkeypatch):
-    """Out of scope for now: a missing kerb node is a data gap, not a
-    contradiction — don't flag it, but keep it visible in stats."""
     monkeypatch.chdir(tmp_path)
     _write_geojson(tmp_path / "highways.geojson", [
         _crossing_feature(0, 0, "yes", fid=5),
@@ -214,7 +191,6 @@ def test_missing_kerb_at_one_extremity_is_not_flagged(tmp_path, monkeypatch):
     ])
     _write_geojson(tmp_path / "kerbs_raw.geojson", [
         _kerb_feature(-3, 0, "yes", fid=209),
-        # no kerb node at the other extremity
     ])
 
     stats = detect_tactile_paving_issues()
@@ -222,14 +198,10 @@ def test_missing_kerb_at_one_extremity_is_not_flagged(tmp_path, monkeypatch):
     assert stats["kerb_missing"] == 1
 
     out = json.loads((tmp_path / "tactile_paving_issues.geojson").read_text())
-    # Empty-output placeholder feature only, no real flagged feature.
     assert all(f["properties"].get("osm_id", 0) != 5 for f in out["features"])
 
 
 def test_kerb_without_tactile_paving_tag_is_not_flagged(tmp_path, monkeypatch):
-    """Out of scope for now: a kerb with no tactile_paving tag at all is
-    a data gap, not a contradiction — don't flag it, but keep it visible
-    in stats."""
     monkeypatch.chdir(tmp_path)
     _write_geojson(tmp_path / "highways.geojson", [
         _crossing_feature(0, 0, "no", fid=6),
@@ -239,7 +211,7 @@ def test_kerb_without_tactile_paving_tag_is_not_flagged(tmp_path, monkeypatch):
     ])
     _write_geojson(tmp_path / "kerbs_raw.geojson", [
         _kerb_feature(-3, 0, "no", fid=210),
-        _kerb_feature(3, 0, None,  fid=211),  # kerb exists, no tactile_paving tag
+        _kerb_feature(3, 0, None,  fid=211),
     ])
 
     stats = detect_tactile_paving_issues()
@@ -248,8 +220,6 @@ def test_kerb_without_tactile_paving_tag_is_not_flagged(tmp_path, monkeypatch):
 
 
 def test_out_of_scope_tactile_paving_value_is_skipped(tmp_path, monkeypatch):
-    """tactile_paving=contrasted/primitive/etc. isn't yes/no/incorrect —
-    this check doesn't apply and the node is silently ignored."""
     monkeypatch.chdir(tmp_path)
     _write_geojson(tmp_path / "highways.geojson", [
         _crossing_feature(0, 0, "contrasted", fid=7),
@@ -273,7 +243,6 @@ def test_crossing_without_nearby_crossing_way_is_skipped(tmp_path, monkeypatch):
         _crossing_feature(0, 0, "yes", fid=8),
     ])
     _write_geojson(tmp_path / "sidewalk_footways_raw.geojson", [
-        # Way is far away (200 m) — not attached to this crossing node.
         _crossing_way_feature(197, 200, 200, 200, 203, 200, fid=108),
     ])
     _write_geojson(tmp_path / "kerbs_raw.geojson", [
@@ -287,20 +256,9 @@ def test_crossing_without_nearby_crossing_way_is_skipped(tmp_path, monkeypatch):
     assert stats["flagged"] == 0
 
 
-# ── Vertex-coincidence matching (not just spatial proximity) ───────────────
-#
-# Regression coverage for a real false positive: a footway=crossing that
-# runs very close (but not coincident) to an unrelated, separately-mapped
-# way must never be matched as "the" crossing way just because a plain
-# point-to-line distance check would have found it within tolerance.
-
 def test_match_crossing_way_ignores_a_nearby_but_unrelated_way():
-    """A distractor way passes 0.3 m from the node (well inside the old
-    line-distance tolerance) but the node isn't one of ITS vertices —
-    its own vertices are 10 m away. The real crossing way genuinely has
-    the node as a vertex. Only the real way must match."""
-    real_way    = [(-3, 0), (0, 0), (3, 0)]        # node (0,0) is a real vertex
-    distractor  = [(-10, 0.3), (10, 0.3)]           # passes close, but no vertex near (0,0)
+    real_way    = [(-3, 0), (0, 0), (3, 0)]
+    distractor  = [(-10, 0.3), (10, 0.3)]
 
     vertex_points, vertex_way_idx = [], []
     for w_idx, coords in enumerate([real_way, distractor]):
@@ -312,15 +270,11 @@ def test_match_crossing_way_ignores_a_nearby_but_unrelated_way():
     way_idx, ambiguous = _match_crossing_way(
         Point(0, 0), tree, vertex_points, vertex_way_idx, tol_m=1.5,
     )
-    assert way_idx == 0        # the real way, not the distractor
+    assert way_idx == 0
     assert ambiguous is False
 
 
 def test_match_crossing_way_finds_nothing_when_only_the_distractor_is_close():
-    """Same distractor, but this time there's no real crossing way at
-    all near this node — the old line-distance check would have wrongly
-    matched the distractor anyway (0.3 m < old tolerance); the
-    vertex-based check must correctly find no match."""
     distractor = [(-10, 0.3), (10, 0.3)]
 
     vertex_points = [Point(c) for c in distractor]
@@ -335,9 +289,6 @@ def test_match_crossing_way_finds_nothing_when_only_the_distractor_is_close():
 
 
 def test_match_crossing_way_flags_ambiguous_when_two_ways_share_the_vertex():
-    """A node genuinely shared by two footway=crossing ways (e.g. a
-    refuge-island node) — both matches are legitimate, so this must be
-    reported as ambiguous rather than silently picking one."""
     way_a = [(-3, 0), (0, 0)]
     way_b = [(0, 0), (3, 0)]
 
@@ -358,20 +309,11 @@ def test_match_crossing_way_flags_ambiguous_when_two_ways_share_the_vertex():
 def test_nearby_unrelated_way_does_not_produce_a_false_positive_end_to_end(
     tmp_path, monkeypatch,
 ):
-    """End-to-end regression: a crossing node with tactile_paving=no
-    sits right next to an unrelated footway=crossing way whose own
-    (far-away) kerbs are tagged "yes" — a value that would flag a false
-    mismatch if that unrelated way got matched. There's no real
-    footway=crossing way for this node at all, so it must be skipped,
-    not flagged."""
     monkeypatch.chdir(tmp_path)
     _write_geojson(tmp_path / "highways.geojson", [
         _crossing_feature(0, 0, "no", fid=9),
     ])
     _write_geojson(tmp_path / "sidewalk_footways_raw.geojson", [
-        # Passes ~0.3 m from the node — close enough to fool a plain
-        # line-distance check — but its own vertices (only at the two
-        # far ends) are nowhere near (0, 0).
         _crossing_way_2pt_feature(-10, 0.3, 10, 0.3, fid=109),
     ])
     _write_geojson(tmp_path / "kerbs_raw.geojson", [
@@ -390,7 +332,6 @@ def test_ambiguous_way_match_is_skipped_not_flagged_end_to_end(tmp_path, monkeyp
         _crossing_feature(0, 0, "yes", fid=10),
     ])
     _write_geojson(tmp_path / "sidewalk_footways_raw.geojson", [
-        # Two footway=crossing ways genuinely sharing the (0,0) vertex.
         _crossing_way_2pt_feature(-3, 0, 0, 0, fid=110),
         _crossing_way_2pt_feature(0, 0, 3, 0, fid=111),
     ])
@@ -404,12 +345,6 @@ def test_ambiguous_way_match_is_skipped_not_flagged_end_to_end(tmp_path, monkeyp
     assert stats["ambiguous_way_match"] == 1
 
 
-# ── Way must genuinely be footway=crossing, not just footway=sidewalk ──────
-#
-# Regression coverage for a real false positive spotted in JOSM: a node
-# that legitimately sits where a footway=sidewalk meets the crossing was
-# being treated as if the sidewalk itself were the crossing way.
-
 def test_is_footway_crossing():
     assert _is_footway_crossing({"highway": "footway", "footway": "crossing"}) is True
     assert _is_footway_crossing({"highway": "footway", "footway": "sidewalk"}) is False
@@ -421,18 +356,11 @@ def test_is_footway_crossing():
 def test_sidewalk_way_sharing_the_crossing_nodes_vertex_is_never_used(
     tmp_path, monkeypatch,
 ):
-    """A footway=sidewalk way has a vertex exactly at the crossing
-    node's location (normal topology: the sidewalk meets the crossing
-    there) — it must never be picked up as "the" crossing way, even
-    though it passes the vertex-coincidence check that a plain
-    footway=crossing way would."""
     monkeypatch.chdir(tmp_path)
     _write_geojson(tmp_path / "highways.geojson", [
         _crossing_feature(0, 0, "yes", fid=11),
     ])
     _write_geojson(tmp_path / "sidewalk_footways_raw.geojson", [
-        # Only a sidewalk here — no footway=crossing way at all for
-        # this node, mirroring the real-world case in JOSM.
         _sidewalk_way_feature(0, 0, 10, 5, fid=112),
     ])
     _write_geojson(tmp_path / "kerbs_raw.geojson", [
@@ -444,31 +372,14 @@ def test_sidewalk_way_sharing_the_crossing_nodes_vertex_is_never_used(
     assert stats["flagged"] == 0
     assert stats["no_crossing_way_found"] == 1
 
-# ── Tolerance must be tight (near-exact), not merely "nearby" ──────────────
-#
-# Regression coverage for a real false positive spotted in JOSM: a
-# highway=crossing node with no dedicated footway=crossing way of its
-# own (it just sits on a plain sidewalk/service-road) was matched to a
-# genuinely different, separately-mapped crossing ~1.2 m away, because
-# the old tolerance (1.5 m) was loose enough to treat "nearby" as if it
-# meant "the same shared node".
 
 def test_a_different_nearby_crossing_does_not_hijack_the_match(tmp_path, monkeypatch):
-    """No footway=crossing way actually touches this node (it's on a
-    plain sidewalk, matching the real-world case) — but a genuine
-    footway=crossing way for a DIFFERENT nearby crossing has a vertex
-    1.2 m away. That's a different physical node, not this one, and
-    must not be matched."""
     monkeypatch.chdir(tmp_path)
     _write_geojson(tmp_path / "highways.geojson", [
         _crossing_feature(0, 0, "yes", fid=12),
     ])
     _write_geojson(tmp_path / "sidewalk_footways_raw.geojson", [
-        # The node's own path: a sidewalk, not a crossing.
         _sidewalk_way_feature(0, 0, -8, 4, fid=113),
-        # A real footway=crossing way — but for a different crossing,
-        # 1.2 m away (well within the old 1.5 m tolerance, outside the
-        # new 0.5 m one).
         _crossing_way_2pt_feature(1.2, -3, 1.2, 3, fid=114),
     ])
     _write_geojson(tmp_path / "kerbs_raw.geojson", [
@@ -481,32 +392,13 @@ def test_a_different_nearby_crossing_does_not_hijack_the_match(tmp_path, monkeyp
     assert stats["no_crossing_way_found"] == 1
 
 
-# ── Regression guard: a properly-mapped crossing whose kerbs are ALSO
-# vertices of an attached sidewalk must never be treated differently
-# from one whose kerbs are standalone points ──────────────────────────
-#
-# This is the standard, correct OSM topology for the vast majority of
-# real crossings (a kerb node is precisely where the crossing meets the
-# sidewalk, so it's naturally a shared vertex) — NOT a special or rare
-# case. A since-reverted "dead end" experiment treated any endpoint
-# shared with another way as "not a real kerb, don't check it", which
-# broke ~69% of all crossings in production because this exact shape of
-# data is the norm, not the exception. Kept here permanently so any
-# future change reintroducing that assumption fails immediately,
-# instead of only showing up in a full production run.
-
 def test_kerb_shared_with_attached_sidewalk_is_still_checked_both_sides(tmp_path, monkeypatch):
-    """kerb1 (-3,0) and kerb2 (3,0) each also carry a sidewalk leading
-    away from them — completely normal topology. Must still be checked
-    on both sides exactly like a crossing with standalone kerb points."""
     monkeypatch.chdir(tmp_path)
     _write_geojson(tmp_path / "highways.geojson", [
         _crossing_feature(0, 0, "yes", fid=1),
     ])
     _write_geojson(tmp_path / "sidewalk_footways_raw.geojson", [
         _crossing_way_feature(-3, 0, 0, 0, 3, 0, fid=101),
-        # Attached sidewalks leading away from EACH kerb — the normal
-        # case, not an edge case.
         _sidewalk_way_feature(-3, 0, -3, -5, fid=102),
         _sidewalk_way_feature(3, 0, 3, 5, fid=103),
     ])
@@ -523,9 +415,6 @@ def test_kerb_shared_with_attached_sidewalk_is_still_checked_both_sides(tmp_path
 
 
 def test_kerb_shared_with_sidewalk_still_flags_a_real_mismatch(tmp_path, monkeypatch):
-    """Same attached-sidewalk topology, but one kerb genuinely
-    disagrees with the crossing — must still be flagged, not silently
-    dropped because the kerb happens to be a shared vertex."""
     monkeypatch.chdir(tmp_path)
     _write_geojson(tmp_path / "highways.geojson", [
         _crossing_feature(0, 0, "yes", fid=1),
@@ -546,8 +435,6 @@ def test_kerb_shared_with_sidewalk_still_flags_a_real_mismatch(tmp_path, monkeyp
 
 
 def test_kerb_shared_with_sidewalk_still_detects_missing_kerb(tmp_path, monkeypatch):
-    """Same attached-sidewalk topology, but one side has no kerb at
-    all — must still be counted in kerb_missing, not silently skipped."""
     monkeypatch.chdir(tmp_path)
     _write_geojson(tmp_path / "highways.geojson", [
         _crossing_feature(0, 0, "yes", fid=1),
@@ -567,26 +454,7 @@ def test_kerb_shared_with_sidewalk_still_detects_missing_kerb(tmp_path, monkeypa
     assert stats["flagged"] == 0
 
 
-# ── Half-mapped crossings: the way only spans kerb → crossing node ─────────
-#
-# Real production bug (confirmed with actual data, not a guess): way
-# 875635271 has exactly TWO vertices — [kerb_node_coords,
-# crossing_node_coords], both an exact coordinate match against the
-# real kerb (8150193317) and crossing node (4470463383). The way simply
-# never continues to a second kerb. Searching for a kerb at the way's
-# OTHER endpoint (which is the crossing node's own position) can only
-# ever fail, producing a false kerb_missing. Confirmed at production
-# scale: fixing this moved crossings_in_scope=16310 from
-# coherent=6590/kerb_missing=3829 to coherent=6923/kerb_missing=3381
-# (761 half-mapped crossings found, 448 previously-false kerb_missing
-# resolved, flagged went UP by 20 — real value_mismatches were hiding
-# in the kerb_missing noise).
-
 def test_half_mapped_crossing_real_production_case(tmp_path, monkeypatch):
-    """Exact reproduction of the real case (coordinates straight from
-    production data) that motivated this check: crossing n4470463383,
-    way w875635271 (2 vertices only), kerb n8150193317. crossing_tp and
-    kerb tactile_paving both "no" — must be coherent, not kerb_missing."""
     monkeypatch.chdir(tmp_path)
     _write_geojson(tmp_path / "highways.geojson", [{
         "type": "Feature",
@@ -614,14 +482,11 @@ def test_half_mapped_crossing_real_production_case(tmp_path, monkeypatch):
 
 
 def test_half_mapped_crossing_still_flags_a_real_mismatch(tmp_path, monkeypatch):
-    """Same 2-vertex topology, but the one real kerb disagrees with the
-    crossing node — must still be flagged."""
     monkeypatch.chdir(tmp_path)
     _write_geojson(tmp_path / "highways.geojson", [
         _crossing_feature(0, 0, "yes", fid=1),
     ])
     _write_geojson(tmp_path / "sidewalk_footways_raw.geojson", [
-        # 2-vertex way: kerb (-3,0) -> crossing node (0,0), no farther.
         _crossing_way_2pt_feature(-3, 0, 0, 0, fid=101),
     ])
     _write_geojson(tmp_path / "kerbs_raw.geojson", [
@@ -635,9 +500,6 @@ def test_half_mapped_crossing_still_flags_a_real_mismatch(tmp_path, monkeypatch)
 
 
 def test_half_mapped_crossing_still_detects_a_real_missing_kerb(tmp_path, monkeypatch):
-    """2-vertex topology, but there's genuinely no kerb at all on the
-    one checkable side — must still be counted in kerb_missing (a real
-    data gap), not silently treated as coherent."""
     monkeypatch.chdir(tmp_path)
     _write_geojson(tmp_path / "highways.geojson", [
         _crossing_feature(0, 0, "yes", fid=1),
@@ -655,9 +517,6 @@ def test_half_mapped_crossing_still_detects_a_real_missing_kerb(tmp_path, monkey
 
 
 def test_half_mapped_crossing_with_incorrect_tag_is_skipped_not_guessed(tmp_path, monkeypatch):
-    """tactile_paving=incorrect describes a yes/no PAIR — with only one
-    checkable side there's no pair to confirm or contradict, so this
-    must be skipped entirely, not flagged and not coherent either."""
     monkeypatch.chdir(tmp_path)
     _write_geojson(tmp_path / "highways.geojson", [
         _crossing_feature(0, 0, "incorrect", fid=1),
@@ -677,9 +536,6 @@ def test_half_mapped_crossing_with_incorrect_tag_is_skipped_not_guessed(tmp_path
 
 
 def test_fully_mapped_crossing_is_unaffected_by_the_half_mapped_check(tmp_path, monkeypatch):
-    """Sanity check: a normal, fully-mapped 3-vertex crossing (kerb1 —
-    crossing node — kerb2, crossing node as a genuine MIDDLE vertex)
-    must take the unchanged 2-sided path, not the half-mapped one."""
     monkeypatch.chdir(tmp_path)
     _write_geojson(tmp_path / "highways.geojson", [
         _crossing_feature(0, 0, "yes", fid=1),
