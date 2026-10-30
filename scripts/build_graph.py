@@ -307,13 +307,13 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
                 row.get("indoor"), row.get("location"),
             ))
 
-    print(f"  Edges skipped — ferry: {skipped_ferry}, foot=no: {skipped_foot}, "
+    print(f"  Edges skipped, ferry: {skipped_ferry}, foot=no: {skipped_foot}, "
           f"access=no/private: {skipped_access}, no highway tag: {skipped_no_highway}, "
           f"bridleway without foot=yes: {skipped_bridleway}")
 
     n_cyc_foot = sum(1 for h, c in zip(edge_highways, edge_cycleway_nf) if h == "cycleway" and not c)
     n_cyc_nf   = sum(1 for h, c in zip(edge_highways, edge_cycleway_nf) if h == "cycleway" and c)
-    print(f"  Cycleways — foot=yes: {n_cyc_foot} | no foot: {n_cyc_nf}")
+    print(f"  Cycleways, foot=yes: {n_cyc_foot} | no foot: {n_cyc_nf}")
 
     with step("ig.Graph assembly"):
         g = ig.Graph(directed=True, n=len(node_list))
@@ -354,7 +354,7 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
     n_documented = sum(
         1 for info in street_sidewalk_status.values() if info.doc_share > 0
     )
-    print(f"  Sidewalk status (dominant) — both: {counts['both']} | "
+    print(f"  Sidewalk status (dominant), both: {counts['both']} | "
           f"partial: {counts['partial']} | none: {counts['none']} | "
           f"unknown: {counts['unknown']}")
     print(f"  Streets with road edges: {len(street_sidewalk_status)} "
