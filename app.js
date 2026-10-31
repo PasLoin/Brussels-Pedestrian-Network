@@ -1209,21 +1209,22 @@ function initMap(style) {
       lbl.textContent = label;
       item.append(swatch, lbl);
 
-      const updateState = () => {
+      const updateState = (byUser = false, notify = true) => {
         const isHidden = map.getLayoutProperty(layerId, "visibility") === "none";
         item.classList.toggle("hidden", isHidden);
         item.setAttribute("aria-pressed", !isHidden);
-        if (onToggle) onToggle(!isHidden);
+        if (onToggle && notify) onToggle(!isHidden, byUser);
       };
       updateState();
 
       const toggle = () => {
         const v = map.getLayoutProperty(layerId, "visibility") === "none" ? "visible" : "none";
         map.setLayoutProperty(layerId, "visibility", v);
-        updateState();
+        updateState(true);
       };
       item.onclick = toggle;
       item.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } };
+      item.sync = () => updateState(false, false);
       return item;
     };
 
@@ -1264,7 +1265,7 @@ function initMap(style) {
       return item;
     };
 
-    const makeSubFilter = ({ items, activeSet, dataKey, updateFn, parentSub }) => {
+    const makeSubFilter = ({ items, activeSet, dataKey, updateFn, parentSub, layerId, parentItem }) => {
       const header = document.createElement("div");
       header.className = "legend-sub-header";
       header.innerHTML = `<span>Filtrer par type</span>`;
@@ -1273,21 +1274,35 @@ function initMap(style) {
       resetBtn.className = "legend-sub-reset";
       resetBtn.type = "button";
 
-      const updateResetLabel = () => {
-        resetBtn.textContent = activeSet.size === items.length
+      const isLayerVisible = () => map.getLayoutProperty(layerId, "visibility") !== "none";
+
+      const refresh = () => {
+        const shown = isLayerVisible();
+        parentSub.querySelectorAll(".legend-sub-item").forEach(el => {
+          const on = shown && activeSet.has(el.dataset[dataKey]);
+          el.classList.toggle("hidden", !on);
+          el.setAttribute("aria-pressed", on);
+        });
+        resetBtn.textContent = shown && activeSet.size === items.length
           ? "Tout désélectionner" : "Tout sélectionner";
+      };
+
+      const apply = () => {
+        const visible = activeSet.size > 0;
+        if (visible !== isLayerVisible()) {
+          map.setLayoutProperty(layerId, "visibility", visible ? "visible" : "none");
+          parentItem.sync();
+        }
+        updateFn();
+        refresh();
       };
 
       resetBtn.onclick = (e) => {
         e.stopPropagation();
-        const allOn = activeSet.size === items.length;
+        const allOn = isLayerVisible() && activeSet.size === items.length;
         activeSet.clear();
         if (!allOn) items.forEach(it => activeSet.add(it.value));
-        parentSub.querySelectorAll(".legend-sub-item").forEach(el => {
-          el.classList.toggle("hidden", !activeSet.has(el.dataset[dataKey]));
-        });
-        updateResetLabel();
-        updateFn();
+        apply();
       };
       header.appendChild(resetBtn);
       parentSub.appendChild(header);
@@ -1298,7 +1313,6 @@ function initMap(style) {
         item.dataset[dataKey] = it.value;
         item.setAttribute("role", "button");
         item.setAttribute("tabindex", "0");
-        item.setAttribute("aria-pressed", "true");
 
         const dot = document.createElement("div");
         dot.className = "legend-sub-dot";
@@ -1312,20 +1326,37 @@ function initMap(style) {
 
         const toggle = (e) => {
           e.stopPropagation();
-          const isActive = activeSet.has(it.value);
-          if (isActive) { activeSet.delete(it.value); item.classList.add("hidden"); }
-          else          { activeSet.add(it.value);    item.classList.remove("hidden"); }
-          item.setAttribute("aria-pressed", !isActive);
-          updateResetLabel();
-          updateFn();
+          if (!isLayerVisible()) activeSet.clear();
+          if (activeSet.has(it.value)) activeSet.delete(it.value);
+          else activeSet.add(it.value);
+          apply();
         };
         item.onclick = toggle;
         item.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(e); } };
         parentSub.appendChild(item);
       });
 
-      updateResetLabel();
-      return resetBtn;
+      refresh();
+      return { refresh };
+    };
+
+    const addFilteredLayer = ({ layerId, label, color, color2, swatchType, items, activeSet, dataKey, updateFn }) => {
+      const sub = document.createElement("div");
+      sub.className = "legend-sub";
+      let filter = null;
+      const parentItem = makeItem({
+        layerId, label, color, color2, swatchType,
+        onToggle: (isVisible, byUser) => {
+          if (isVisible && byUser) {
+            items.forEach(it => activeSet.add(it.value));
+            updateFn();
+          }
+          if (filter) filter.refresh();
+        }
+      });
+      legendEl.appendChild(parentItem);
+      filter = makeSubFilter({ items, activeSet, dataKey, updateFn, parentSub: sub, layerId, parentItem });
+      legendEl.appendChild(sub);
     };
 
     addSection("Routage simulé");
@@ -1342,86 +1373,38 @@ function initMap(style) {
       legendEl.appendChild(makeKerbTypeItem({ type: t.value, label: t.label, color: t.color }));
     });
 
-    const mcSub = document.createElement("div");
-    mcSub.className = "legend-sub";
-
-    legendEl.appendChild(makeItem({
-      layerId: "missing-crossings",
-      label: "Traversée manquante",
-      color: "#f97316",
+    addFilteredLayer({
+      layerId:   "missing-crossings",
+      label:     "Traversée manquante",
+      color:     "#f97316",
       swatchType: "dot",
-      onToggle: (isVisible) => {
-        mcSub.classList.toggle("parent-hidden", !isVisible);
-        if (isVisible) {
-          MISSING_CROSSING_TYPES.forEach(t => activeMissingTypes.add(t.value));
-          mcSub.querySelectorAll(".legend-sub-item").forEach(el => el.classList.remove("hidden"));
-          updateMissingCrossingsFilter();
-        }
-      }
-    }));
-
-    makeSubFilter({
       items:     MISSING_CROSSING_TYPES,
       activeSet: activeMissingTypes,
       dataKey:   "type",
       updateFn:  updateMissingCrossingsFilter,
-      parentSub: mcSub,
     });
-    legendEl.appendChild(mcSub);
 
-    const islSub = document.createElement("div");
-    islSub.className = "legend-sub";
-
-    legendEl.appendChild(makeItem({
-      layerId: "graph-islands",
-      label: "Îlot déconnecté du réseau",
-      color: "#db2777",
-      color2: "#0d9488",
-      onToggle: (isVisible) => {
-        islSub.classList.toggle("parent-hidden", !isVisible);
-        if (isVisible) {
-          ISLAND_TYPES.forEach(t => activeIslandTypes.add(t.value));
-          islSub.querySelectorAll(".legend-sub-item").forEach(el => el.classList.remove("hidden"));
-          updateIslandsFilter();
-        }
-      }
-    }));
-
-    makeSubFilter({
+    addFilteredLayer({
+      layerId:   "graph-islands",
+      label:     "Îlot déconnecté du réseau",
+      color:     "#db2777",
+      color2:    "#0d9488",
       items:     ISLAND_TYPES,
       activeSet: activeIslandTypes,
       dataKey:   "islandType",
       updateFn:  updateIslandsFilter,
-      parentSub: islSub,
     });
-    legendEl.appendChild(islSub);
 
-    const swSub = document.createElement("div");
-    swSub.className = "legend-sub";
-
-    legendEl.appendChild(makeItem({
-      layerId: "sidewalk-roads",
-      label: "Tags sidewalk",
-      color: "#9ca3af",
-      color2: "#15803d",
-      onToggle: (isVisible) => {
-        swSub.classList.toggle("parent-hidden", !isVisible);
-        if (isVisible) {
-          SIDEWALK_STATUSES.forEach(s => activeSidewalkStatuses.add(s.value));
-          swSub.querySelectorAll(".legend-sub-item").forEach(el => el.classList.remove("hidden"));
-          updateSidewalkFilter();
-        }
-      }
-    }));
-
-    makeSubFilter({
+    addFilteredLayer({
+      layerId:   "sidewalk-roads",
+      label:     "Tags sidewalk",
+      color:     "#9ca3af",
+      color2:    "#15803d",
       items:     SIDEWALK_STATUSES,
       activeSet: activeSidewalkStatuses,
       dataKey:   "status",
       updateFn:  updateSidewalkFilter,
-      parentSub: swSub,
     });
-    legendEl.appendChild(swSub);
 
     addSection("Réseau de base");
     HIGHWAY_LAYERS.forEach(l => legendEl.appendChild(makeItem({ layerId: `highway-${l.id}`, label: l.label, color: l.color, dashed: l.dash })));
