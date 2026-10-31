@@ -5,10 +5,10 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' https://unpkg.com 'unsafe-inline'; img-src 'self' https://tiles.openfreemap.org https://www.openstreetmap.org data:; connect-src 'self' https://tiles.openfreemap.org https://unpkg.com; worker-src blob:; child-src blob:; font-src https://tiles.openfreemap.org; object-src 'none'; base-uri 'self'; upgrade-insecure-requests;" />
   <meta name="Referrer-Policy" content="strict-origin-when-cross-origin" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Méthodologie — Brussels Pedestrian Network</title>
-  <meta name="description" content="Documentation technique : modèle de coûts de routage, couches de contrôle qualité et indicateurs de complétude utilisés par le Brussels Pedestrian Network." />
-  <meta property="og:title" content="Méthodologie — Brussels Pedestrian Network" />
-  <meta property="og:description" content="Documentation technique : modèle de coûts de routage, couches de contrôle qualité et indicateurs de complétude utilisés par le Brussels Pedestrian Network." />
+  <title>Méthodologie du Brussels Pedestrian Network</title>
+  <meta name="description" content="Coûts de routage, critères des couches de contrôle qualité et calcul des indicateurs du Brussels Pedestrian Network." />
+  <meta property="og:title" content="Méthodologie du Brussels Pedestrian Network" />
+  <meta property="og:description" content="Coûts de routage, critères des couches de contrôle qualité et calcul des indicateurs du Brussels Pedestrian Network." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://pasloin.github.io/Brussels-Pedestrian-Network/about.html" />
   <meta name="twitter:card" content="summary_large_image" />
@@ -18,141 +18,161 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --bg: #f5f3f0;
-      --surface: #fff;
-      --border: #ddd;
-      --text: #222;
-      --text-dim: #555;
-      --green: #2d8a4e;
-      --blue: #3498db;
+      --ink: #22252a;
+      --muted: #5f646b;
+      --rule: #d4d6d9;
+      --wash: #f2f3f4;
+      --focus: #1d5fa8;
     }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background: var(--bg);
-      color: var(--text);
+      font-family: system-ui, sans-serif;
+      background: #fff;
+      color: var(--ink);
       line-height: 1.6;
+      font-size: 16px;
     }
-    .page-header {
-      background: var(--surface);
-      padding: 40px 20px;
-      border-bottom: 1px solid var(--border);
-      text-align: center;
-    }
-    h1 { font-size: 28px; margin-bottom: 8px; }
-    .container {
-      max-width: 850px;
-      margin: 40px auto;
-      padding: 0 20px;
-      background: var(--surface);
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      padding: 40px;
-    }
-    .qa-box {
-      background: #f7f7f5;
-      border-left: 4px solid #aaa;
-      padding: 16px 20px;
-      margin-bottom: 30px;
-      color: var(--text-dim);
+    a { color: var(--focus); }
+    :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+    .site-nav {
+      display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 18px;
+      max-width: 46rem; margin: 0 auto; padding: 14px 20px;
+      border-bottom: 1px solid var(--rule);
       font-size: 14px;
     }
-    h2 { margin-top: 40px; margin-bottom: 20px; font-size: 22px; border-bottom: 2px solid var(--bg); padding-bottom: 10px; }
-    h3 { margin-top: 30px; margin-bottom: 15px; font-size: 18px; color: var(--green); }
-    code { background: #eee; padding: 2px 4px; border-radius: 3px; font-family: monospace; }
-    table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; }
-    th, td { border: 1px solid var(--border); padding: 10px; text-align: left; }
-    th { background: #f9f9f9; }
-    .footer { text-align: center; padding: 40px 0; color: #888; font-size: 14px; }
-    .nav-links { margin-top: 20px; }
-    .nav-links a { margin: 0 10px; color: var(--blue); text-decoration: none; font-weight: 500; }
+    .site-nav a { text-decoration: none; }
+    .site-nav a:hover { text-decoration: underline; }
+    .site-nav .home { font-weight: 650; color: var(--ink); margin-right: auto; }
+    .site-nav [aria-current] { color: var(--ink); }
+    main { max-width: 46rem; margin: 0 auto; padding: 32px 20px 56px; }
+    h1 { font-size: 30px; line-height: 1.2; margin-bottom: 14px; }
+    .lede { font-size: 18px; color: var(--muted); margin-bottom: 8px; }
+    h2 { font-size: 21px; margin: 40px 0 10px; }
+    h3 { font-size: 16px; margin: 26px 0 6px; }
+    p, ul, ol { margin-bottom: 12px; }
+    ul, ol { padding-left: 22px; }
+    li { margin-bottom: 4px; }
+    code { font-size: 0.88em; background: var(--wash); padding: 1px 4px; border-radius: 2px; }
+    .table-wrap { overflow-x: auto; margin: 14px 0 18px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { text-align: left; padding: 7px 10px 7px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+    th { font-weight: 650; border-bottom-color: var(--ink); }
+    td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+    footer {
+      max-width: 46rem; margin: 0 auto; padding: 18px 20px 32px;
+      border-top: 1px solid var(--rule);
+      font-size: 13px; color: var(--muted);
+    }
   </style>
 </head>
 <body>
 
-<header class="page-header">
-  <h1>Brussels Pedestrian Network</h1>
-  <div class="subtitle">Documentation technique pour les contributeurs OpenStreetMap</div>
-  <nav class="nav-links">
-    <a href="./">Carte</a>
-    <a href="./stats.html">Statistiques</a>
-    <a href="./evolution.html">Évolution</a>
-    <a href="./about.html" style="color: var(--text)">Méthodologie</a>
-  </nav>
-</header>
+<nav class="site-nav">
+  <a class="home" href="./">Brussels Pedestrian Network</a>
+  <a href="./">Carte</a>
+  <a href="./stats.html">Statistiques</a>
+  <a href="./evolution.html">Évolution</a>
+  <a href="./about.html" aria-current="page">Méthodologie</a>
+</nav>
 
-<div class="container">
+<main>
+  <h1>Méthodologie</h1>
+  <p class="lede">Comment les flux sont simulés, ce que signale chaque couche de contrôle qualité et comment sont calculés les indicateurs.</p>
+
   <p>
-    Brussels Pedestrian Network simule les déplacements piétons à Bruxelles à partir des données OpenStreetMap et produit plusieurs couches de contrôle qualité destinées aux contributeurs OSM. Cette page documente le modèle de coûts utilisé par le routeur, les critères de détection de chaque couche QA, et le calcul des indicateurs affichés sur la page Statistiques.
+    Le site simule des trajets à pied à Bruxelles sur les données OpenStreetMap. Les flux montrent où un mapping incomplet pèse le plus sur les trajets simulés. Les couches de contrôle qualité pointent des erreurs de topologie ou des tags manquants sur des objets précis, avec un lien vers l'éditeur.
   </p>
 
-  <div class="qa-box">
-    La simulation de flux aide à repérer les zones où le mapping a le plus d'effet sur les trajets piétons simulés. Les couches QA servent à cibler des erreurs de topologie ou des tags manquants sur des segments précis.
+  <h2>Coûts de routage</h2>
+  <p>
+    Le routeur (Dijkstra, igraph) cherche le chemin de poids minimal. Le poids d'un segment est sa longueur multipliée par un facteur qui dépend du type de voie : plus le facteur est élevé, plus le routeur cherche un détour.
+  </p>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Tag highway</th><th>Coût</th><th>Raison</th></tr>
+    <tr><td><code>pedestrian</code>, <code>footway</code></td><td class="num">1.0</td><td>Infrastructure piétonne.</td></tr>
+    <tr><td><code>cycleway</code> avec <code>foot=yes</code>, <code>designated</code> ou <code>permissive</code></td><td class="num">1.0</td><td>Ouverte aux piétons.</td></tr>
+    <tr><td><code>living_street</code>, <code>path</code>, <code>track</code>, <code>bridleway</code></td><td class="num">1.2</td><td>Usage mixte ou chemin non aménagé.</td></tr>
+    <tr><td><code>steps</code></td><td class="num">1.5</td><td>Difficile en poussette ou en fauteuil.</td></tr>
+    <tr><td><code>cycleway</code> sans accès piéton explicite</td><td class="num">1.8</td><td>Empruntée seulement faute de mieux.</td></tr>
+    <tr><td><code>residential</code>, <code>service</code></td><td class="num">2.0</td><td>Chaussée partagée avec les voitures.</td></tr>
+    <tr><td><code>unclassified</code></td><td class="num">2.2</td><td></td></tr>
+    <tr><td><code>tertiary</code></td><td class="num">3.5</td><td>Trafic plus dense.</td></tr>
+    <tr><td><code>secondary</code></td><td class="num">5.0</td><td></td></tr>
+    <tr><td><code>primary</code></td><td class="num">8.0</td><td>Axe chargé, peu adapté à la marche sans trottoir séparé.</td></tr>
+  </table>
   </div>
 
-  <h2>1. Coûts de routage et tags OSM</h2>
-  <p>
-    Le routeur (igraph, Dijkstra) calcule chaque trajet sur un graphe pondéré : le poids d'un segment correspond à sa longueur multipliée par un facteur de coût dépendant du type de voirie. Un facteur élevé rend le segment moins attractif ; le routeur privilégie une alternative si elle existe.
-  </p>
-  <table>
-    <tr><th>Tag highway</th><th>Coût</th><th>Note</th></tr>
-    <tr><td><code>pedestrian</code>, <code>footway</code></td><td>1.0</td><td>Infrastructure piétonne dédiée.</td></tr>
-    <tr><td><code>living_street</code>, <code>path</code></td><td>1.2</td><td>Usage mixte ou aménagement informel.</td></tr>
-    <tr><td><code>steps</code></td><td>1.5</td><td>Dénivelé, pénalisant pour les poussettes et les personnes à mobilité réduite.</td></tr>
-    <tr><td><code>residential</code>, <code>service</code></td><td>2.0</td><td>Chaussée partagée avec le trafic motorisé.</td></tr>
-    <tr><td><code>tertiary</code></td><td>3.5</td><td>Trafic plus dense.</td></tr>
-    <tr><td><code>primary</code></td><td>8.0</td><td>Axe à fort trafic, peu adapté à la marche en l'absence de trottoir séparé.</td></tr>
-  </table>
+  <h2>Couches de contrôle qualité</h2>
 
-  <h2>2. Couches de contrôle qualité</h2>
+  <h3>Flux sur route</h3>
   <p>
-    Plusieurs couches signalent des incohérences ou des lacunes pouvant être corrigées par les contributeurs.
+    Segments de chaussée où la simulation fait passer beaucoup de piétons alors qu'aucune infrastructure piétonne n'est renseignée (trottoir mappé ou tag <code>sidewalk</code>). Vérifiez sur le terrain ou sur l'imagerie si un trottoir existe, puis ajoutez le tag ou la géométrie.
   </p>
 
-  <h3>Trottoirs unilatéraux (Sidewalk Gaps)</h3>
+  <h3>Trottoir d'un seul côté</h3>
   <p>
-    Pour chaque segment routier, l'algorithme recherche des ways <code>highway=footway</code> parallèles de part et d'autre de la chaussée (les pistes <code>highway=cycleway</code> ouvertes aux piétons via <code>foot=yes</code>, <code>designated</code> ou <code>permissive</code> comptent aussi comme trottoir). Lorsqu'un trottoir séparé n'est détecté que d'un seul côté, le segment est signalé. Cette couche permet de repérer les rues où le micro-mapping des trottoirs reste incomplet.
+    Pour chaque segment de route, on cherche de part et d'autre des ways <code>highway=footway</code> à peu près parallèles. Une piste <code>highway=cycleway</code> avec <code>foot=yes</code>, <code>designated</code> ou <code>permissive</code> compte aussi comme trottoir. Le segment est signalé quand un trottoir séparé n'est trouvé que d'un côté.
   </p>
 
-  <h3>Flux sur route (Forced Segments)</h3>
+  <h3>Tags sidewalk</h3>
   <p>
-    Cette couche met en évidence les segments routiers pour lesquels la simulation prédit un flux piéton significatif, sans infrastructure dédiée renseignée (trottoir mappé ou tag <code>sidewalk</code>). Une vérification sur le terrain ou via imagerie permet de déterminer si un trottoir existe réellement, et de compléter le tag ou la géométrie correspondante.
+    Statut des tags <code>sidewalk</code>, <code>sidewalk:left</code>, <code>sidewalk:right</code> et <code>sidewalk:both</code> sur chaque route : <code>separate</code>, <code>yes</code>, documenté des deux côtés, d'un seul côté, ou aucun tag.
   </p>
 
   <h3>Traversées manquantes</h3>
   <p>
-    Cette couche signale uniquement les nœuds <code>highway=crossing</code> situés sur une route où un trottoir (<code>footway=sidewalk</code>) parallèle est déjà mappé des deux côtés, et dont le passage piéton n'est pas correctement relié à ce réseau via un way <code>footway=crossing</code>. Deux cas sont distingués : l'absence totale de way de traversée connecté (<code>missing_way</code>), et la présence d'un footway connecté au nœud sans le tag <code>footway=crossing</code> (<code>missing_tag</code>). Dans les deux cas, les trottoirs autour sont mappés mais le graphe de routage est coupé à cet endroit.
-  </p>
-
-  <h2>3. Indicateurs de complétude</h2>
-  <p>
-    La page Statistiques agrège plusieurs indicateurs de complétude du mapping :
+    Nœuds <code>highway=crossing</code> sur une route qui a un <code>footway=sidewalk</code> parallèle des deux côtés, mais qui ne sont pas reliés à ces trottoirs par un way <code>footway=crossing</code>. Trois cas :
   </p>
   <ul>
-    <li>Documentation des routes : proportion des segments routiers (residential à primary) portant un tag <code>sidewalk</code> explicite.</li>
-    <li>Connectivité des traversées : proportion de nœuds <code>highway=crossing</code> reliés à un way <code>footway=crossing</code>.</li>
-    <li>Précision du mapping des trottoirs : part des trottoirs mappés comme objets géométriques distincts (<code>sidewalk=separate</code>). Ce mode de mapping est plus utile pour guider les personnes à mobilité réduite.</li>
-    <li>Attributs d'accessibilité : présence des tags <code>surface</code>, <code>tactile_paving</code> et <code>smoothness</code>.</li>
+    <li><code>missing_way</code> : aucun footway ne touche le nœud ;</li>
+    <li><code>missing_tag</code> : un footway touche le nœud mais n'a pas <code>footway=crossing</code> ;</li>
+    <li><code>wrong_tag</code> : le way qui traverse est tagué <code>footway=sidewalk</code>.</li>
   </ul>
+  <p>
+    Dans les trois cas, les trottoirs sont mappés mais le graphe de routage est coupé à cet endroit. Les nœuds sur <code>service</code>, <code>cycleway</code> ou <code>track</code>, et les traversées <code>crossing:continuous=yes</code>, ne sont pas signalés comme <code>missing_tag</code>.
+  </p>
+
+  <h3>Traversée sans footway=crossing</h3>
+  <p>
+    Footways courts qui relient un trottoir de chaque côté d'une route sans porter <code>footway=crossing</code>. Ce sont des candidats : à vérifier avant de modifier.
+  </p>
+
+  <h3>Kerbs et bandes podotactiles</h3>
+  <p>
+    Sur chaque traversée, on regarde les nœuds <code>barrier=kerb</code> aux deux extrémités du way <code>footway=crossing</code>. Un point est placé quand le kerb manque ou n'a pas de <code>tactile_paving</code>. Une incohérence est signalée quand le <code>tactile_paving</code> du crossing contredit celui des kerbs : <code>yes</code> ou <code>no</code> attend la même valeur des deux côtés, <code>incorrect</code> attend un côté <code>yes</code> et l'autre <code>no</code>. Deux <code>footway=crossing</code> bout à bout sont traités comme une seule traversée.
+  </p>
+
+  <h3>Îlots déconnectés</h3>
+  <p>
+    Parties du réseau piéton sans lien avec le réseau principal. Une « jonction manquante » touche presque le réseau (2 m au plus) et il lui manque sans doute un nœud commun. Un « îlot isolé » n'a rien de proche, souvent à cause d'un accès privé, d'un portail ou d'une cartographie incomplète. La couche signale aussi les escaliers dont le <code>level</code> ne recouvre pas celui d'un chemin raccordé ; dans les stations à plusieurs niveaux, cela donne parfois des faux positifs.
+  </p>
+
+  <h2 id="indicateurs">Indicateurs</h2>
+  <p>
+    Le score de complétude de la page Statistiques est la moyenne de cinq parts, en pourcentage :
+  </p>
+  <ul>
+    <li>segments de route dont les trottoirs sont documentés par un tag (<code>separate</code>, <code>yes</code> ou les deux côtés ; un seul côté compte pour moitié) ;</li>
+    <li>segments de route dont les trottoirs sont mappés comme ways séparés ;</li>
+    <li>nœuds <code>highway=crossing</code> reliés à un footway ;</li>
+    <li>nœuds <code>highway=crossing</code> reliés à un way correctement tagué <code>footway=crossing</code> ;</li>
+    <li>longueur de route avec un trottoir détecté des deux côtés, parmi celles qui en ont au moins un.</li>
+  </ul>
+  <p>
+    La page Évolution suit en plus la présence de <code>surface</code> et <code>smoothness</code> sur les footways et de <code>tactile_paving</code> sur les crossings.
+  </p>
 
   <h2>Contribuer</h2>
-  <p>
-    Les données sont rafraîchies toutes les nuits à partir d'un extrait OpenStreetMap. Workflow de contribution suggéré :
-  </p>
   <ol>
-    <li>Repérer sur la carte un segment en rouge (flux sur route) ou un trottoir signalé comme lacune.</li>
-    <li>Ouvrir l'éditeur OSM via le bouton « Éditer dans OSM » (disponible à partir du zoom 16).</li>
-    <li>Compléter les tags ou la géométrie manquante dans iD ou JOSM.</li>
-    <li>Les modifications sont prises en compte lors de la mise à jour nocturne suivante.</li>
+    <li>Repérez un segment rouge (flux sur route) ou un point d'une couche de contrôle.</li>
+    <li>Cliquez dessus pour ouvrir l'objet dans iD ou JOSM, ou utilisez « Éditer dans OSM » à partir du zoom 16.</li>
+    <li>Corrigez les tags ou la géométrie.</li>
+    <li>La carte est recalculée chaque nuit à partir de l'extrait OSM du jour.</li>
   </ol>
-</div>
+</main>
 
-<footer class="footer">
-  <p>Maintenu par PasLoin · Données © OpenStreetMap</p>
-  <nav class="nav-links">
-    <a href="./">Carte</a> · 
-    <a href="./stats.html">Statistiques</a> · 
-    <a href="./evolution.html">Évolution</a>
-  </nav>
+<footer>
+  Maintenu par <a href="https://github.com/PasLoin/Brussels-Pedestrian-Network">PasLoin</a>. Données © contributeurs <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, licence ODbL.
 </footer>
 
 </body>

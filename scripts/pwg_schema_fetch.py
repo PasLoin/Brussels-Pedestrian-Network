@@ -492,7 +492,7 @@ def main(argv: list[str] | None = None) -> int:
     text = dump_yaml(document)
     src = document["source"]
     label = "brouillon" if src.get("draft") else (src["pwg_version"] or "?")
-    print(f"PWG {label} — {src['page']} (rev {src['revision']})")
+    print(f"PWG {label}: {src['page']} (rev {src['revision']})")
     print(_summary(document))
     for warning in document["warnings"]:
         print(f"  ⚠ {warning}")

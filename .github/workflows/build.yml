@@ -255,7 +255,6 @@ jobs:
       - name: List generated files (debug)
         if: always()
         run: |
-          echo "=== Files in workspace ==="
           ls -lh *.geojson stats.json graph.json 2>/dev/null || echo "No files found"
 
       - name: Upload GeoJSON artifacts
@@ -339,7 +338,7 @@ jobs:
           if [[ -f history.json ]] && jq empty history.json 2>/dev/null; then
             echo "Using history.json from current checkout ($(jq 'length' history.json) entries)"
           else
-            echo "No valid history.json in this checkout — using empty placeholder."
+            echo "No valid history.json in this checkout, using an empty list."
             echo '[]' > history.json
           fi
 
@@ -348,15 +347,13 @@ jobs:
           TODAY=$(date -u +%Y-%m-%d)
           sed -i "s#__LASTMOD__#${TODAY}#g" sitemap.xml
           echo "sitemap.xml lastmod set to ${TODAY}"
-          
 
       - name: Prepare site
         run: |
-          mv pedestrian.pmtiles pedestrian.pmtiles.gz
           mkdir -p _site
           cp index.html stats.html evolution.html about.html robots.txt favicon.svg app.js app.css \
              style.json state.txt sitemap.xml stats.json graph.json \
-             pedestrian.pmtiles.gz history.json \
+             pedestrian.pmtiles history.json \
              _site/
 
       - name: Deploy to GitHub Pages

@@ -1,7 +1,5 @@
 name: Tests
 
-# Fast unit-test job
-
 on:
   push:
     branches: [main]
@@ -30,7 +28,6 @@ jobs:
         with:
           python-version: "3.12"
 
-      # Same dependency set as build.yml, plus pytest.
       - name: Install Python dependencies
         run: pip install "shapely>=2" osmnx geopandas igraph numpy pyproj pyyaml pytest
 

@@ -1,10 +1,4 @@
 #!/usr/bin/env python3
-"""
-Diagnostic: show what each address on a given street snaps to.
-
-Usage (from repo root, after the pipeline has run the osmium steps):
-    python3 scripts/debug_snap.py "Avenue de Messidor - Messidorlaan"
-"""
 
 import sys
 import os
@@ -25,7 +19,6 @@ from sample_od import _extract_house_number
 STREET = sys.argv[1] if len(sys.argv) > 1 else "Avenue de Messidor - Messidorlaan"
 print(f"Diagnosing snapping for: {STREET}\n")
 
-# ── Build graph ───────────────────────────────────────────────────────────────
 gb = build_graph("routing_clean.osm")
 
 node_xy = np.array([
@@ -33,7 +26,6 @@ node_xy = np.array([
     for n in gb.node_list
 ])
 
-# ── Build edge index ──────────────────────────────────────────────────────────
 valid_eids = []
 valid_geoms = []
 for eid, geom in enumerate(gb.edge_geoms):
@@ -43,9 +35,7 @@ for eid, geom in enumerate(gb.edge_geoms):
 
 edge_tree = STRtree(valid_geoms)
 
-# ── Load addresses for this street ────────────────────────────────────────────
 addr = gpd.read_file("addresses.geojson").to_crs("EPSG:31370")
-# Convert polygon geometries (building outlines) to centroids
 addr["geometry"] = addr.geometry.apply(
     lambda g: g.centroid if g.geom_type != "Point" else g
 )
@@ -65,9 +55,8 @@ if street_addr.empty:
     print("No addresses found.")
     sys.exit(1)
 
-# ── Snap each address and report ──────────────────────────────────────────────
 print(f"{'Raw HN':>8}  {'#':>4}  {'Side':>4}  {'Dist':>7}  {'Highway':<16}  {'Edge name':<40}  {'Node'}")
-print("─" * 120)
+print("-" * 120)
 
 for _, row in street_addr.iterrows():
     raw_hn = row["_raw_hn"]
@@ -92,9 +81,8 @@ for _, row in street_addr.iterrows():
 
     print(f"{raw_hn:>8}  {hn:>4}  {side:>4}  {dist:>6.1f}m  {hw:<16}  {name:<40}  {node_idx}")
 
-# ── Top 5 edges for sample addresses ─────────────────────────────────────────
 print()
-print("── Top 5 closest edges for sample even and sample odd ──")
+print("Top 5 closest edges for sample even and sample odd:")
 for label, sub in [("Even (pair)", street_addr[street_addr["_num"] % 2 == 0]),
                    ("Odd (impair)", street_addr[street_addr["_num"] % 2 == 1])]:
     if sub.empty:

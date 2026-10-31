@@ -5,9 +5,9 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' https://unpkg.com 'unsafe-inline'; img-src 'self' https://tiles.openfreemap.org https://www.openstreetmap.org data:; connect-src 'self' https://tiles.openfreemap.org https://unpkg.com; worker-src blob:; child-src blob:; font-src https://tiles.openfreemap.org; object-src 'none'; base-uri 'self'; upgrade-insecure-requests;" />
   <meta name="Referrer-Policy" content="strict-origin-when-cross-origin" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Brussels Pedestrian Network — Statistiques</title>
+  <title>Statistiques du Brussels Pedestrian Network</title>
   <meta name="description" content="Statistiques de complétude du réseau piéton bruxellois sur OpenStreetMap : trottoirs documentés et traversées connectées." />
-  <meta property="og:title" content="Brussels Pedestrian Network — Statistiques" />
+  <meta property="og:title" content="Statistiques du Brussels Pedestrian Network" />
   <meta property="og:description" content="Statistiques de complétude du réseau piéton bruxellois sur OpenStreetMap : trottoirs documentés et traversées connectées." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://pasloin.github.io/Brussels-Pedestrian-Network/stats.html" />
@@ -15,18 +15,18 @@
 
   <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg: #f5f3f0;
+      --bg: #f4f5f6;
       --surface: #fff;
-      --border: #ddd;
-      --text: #222;
-      --text-dim: #555;
-      --text-muted: #888;
-      --green: #2d8a4e;
+      --border: #d4d6d9;
+      --text: #22252a;
+      --text-dim: #4a4f55;
+      --text-muted: #6b7077;
+      --green: #557d68;
       --red: #c0392b;
       --orange: #c27d2a;
       --yellow: #eab308;
@@ -36,7 +36,7 @@
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      font-family: system-ui, sans-serif;
       background: var(--bg);
       color: var(--text);
       line-height: 1.55;
@@ -53,15 +53,13 @@
       margin: 0 auto;
       padding: 0 20px;
       display: flex;
-      align-items: baseline;
+      align-items: flex-end;
       justify-content: space-between;
       gap: 12px;
     }
-    .page-header h1 {
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--text);
-    }
+    .page-header h1 { font-size: 18px; font-weight: 650; }
+    .page-header .home { font-size: 13px; color: var(--text-dim); text-decoration: none; display: block; }
+    .page-header .home:hover { text-decoration: underline; }
     .page-header-right {
       display: flex;
       align-items: baseline;
@@ -75,6 +73,7 @@
     }
     .page-header-right a:hover { text-decoration: underline; }
 
+    main a { color: #1d5fa8; }
     .container {
       max-width: 960px;
       margin: 0 auto;
@@ -83,11 +82,9 @@
 
     .section { margin-bottom: 28px; }
     .section-title {
-      font-size: 12px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-dim);
+      font-size: 15px;
+      font-weight: 650;
+      color: var(--text);
       margin-bottom: 10px;
       padding-bottom: 6px;
       border-bottom: 1px solid var(--border);
@@ -138,8 +135,6 @@
     .gauge-num .u {
       font-size: 11px;
       color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
     }
 
     .sub-scores { display: flex; flex-direction: column; gap: 10px; }
@@ -189,9 +184,7 @@
       padding: 10px 12px;
     }
     .kpi-label {
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
+      font-size: 12px;
       color: var(--text-muted);
       margin-bottom: 2px;
     }
@@ -229,11 +222,9 @@
       padding: 14px;
     }
     .chart-card h3 {
-      font-size: 11px;
+      font-size: 13px;
       font-weight: 600;
       color: var(--text-dim);
-      text-transform: uppercase;
-      letter-spacing: 0.03em;
       margin-bottom: 10px;
     }
     .chart-wrap { position: relative; max-height: 260px; }
@@ -268,11 +259,12 @@
 
 <header class="page-header">
   <div class="page-header-inner">
-    <h1>Brussels Pedestrian Network — Statistiques</h1>
+    <div><a class="home" href="./">Brussels Pedestrian Network</a><h1>Statistiques</h1></div>
     <div class="page-header-right">
       <span id="build-date"></span>
-      <a href="./evolution.html">Évolution</a>
       <a href="./">Carte</a>
+      <a href="./evolution.html">Évolution</a>
+      <a href="./about.html">Méthodologie</a>
     </div>
   </div>
 </header>
@@ -284,13 +276,13 @@
 <footer class="footer">
   Données : <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>
   · <a href="https://github.com/PasLoin/Brussels-Pedestrian-Network" target="_blank" rel="noopener">Source</a>
-  · <a href="./evolution.html">Évolution mensuelle</a>
+  · <a href="./evolution.html">Évolution</a>
 </footer>
 
 <script>
-Chart.defaults.color = '#888';
-Chart.defaults.borderColor = '#ddd';
-Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
+Chart.defaults.color = '#6b7077';
+Chart.defaults.borderColor = '#d4d6d9';
+Chart.defaults.font.family = "system-ui, sans-serif";
 Chart.defaults.font.size = 11;
 Chart.defaults.plugins.legend.labels.usePointStyle = true;
 Chart.defaults.plugins.legend.labels.pointStyleWidth = 8;
@@ -325,7 +317,7 @@ fetch('./state.txt').then(r => r.text()).then(txt => {
   if (m) {
     const d = new Date(m[1].trim());
     document.getElementById('build-date').textContent =
-      'MAJ ' + d.toLocaleString('fr-BE', { dateStyle: 'short', timeStyle: 'short' });
+      'Calcul : ' + d.toLocaleString('fr-BE', { dateStyle: 'short', timeStyle: 'short' });
   }
 }).catch(() => {});
 
@@ -376,7 +368,7 @@ function computeCompleteness(s) {
       { label: 'Trottoirs mappés séparément', pct: sidewalkSepPct,   hint: 'sidewalk:both=separate (forme idéale)' },
       { label: 'Traversées connectées',     pct: crossingConnPct,    hint: 'highway=crossing ayant une footway connectée' },
       { label: 'Traversées entièrement taguées', pct: crossingTagPct, hint: 'footway=crossing présent sur le way connecté' },
-      { label: 'Continuité des trottoirs',  pct: continuityPct,      hint: 'routes avec trottoirs des deux côtés (exclut absences)' },
+      { label: 'Continuité des trottoirs',  pct: continuityPct,      hint: 'routes avec trottoir des deux côtés, parmi celles qui en ont au moins un' },
     ],
   };
 }
@@ -410,7 +402,7 @@ function render(s) {
   el.innerHTML += `
     <div class="section">
       <div class="section-title">Complétude du réseau piéton</div>
-      <div class="section-intro">Score global agrégé sur cinq dimensions. Cible : maximiser chaque sous-score en éditant OSM.</div>
+      <div class="section-intro">Moyenne des cinq indicateurs ci-dessous. Le calcul est décrit dans la <a href="./about.html#indicateurs">méthodologie</a>.</div>
       <div class="completeness">
         <div class="gauge">
           <svg viewBox="0 0 140 140">
@@ -420,7 +412,7 @@ function render(s) {
           </svg>
           <div class="gauge-num">
             <div class="v">${escapeHTML(comp.global.toFixed(1))}</div>
-            <div class="u">/ 100</div>
+            <div class="u">sur 100</div>
           </div>
         </div>
         <div class="sub-scores" id="sub-scores"></div>

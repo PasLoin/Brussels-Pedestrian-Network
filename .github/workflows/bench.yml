@@ -1,11 +1,5 @@
-name: Bench — Dijkstra parallelisation
+name: Bench Dijkstra parallelisation
 
-# Manual-only.  This workflow never runs on push or schedule; the user
-# triggers it from the Actions tab to get a one-shot measurement of
-# whether igraph.Graph.get_shortest_paths parallelises on the runner.
-#
-# Runtime: ~5 minutes (1 min setup + 1.5 min OSM extraction + 1.5 min
-# graph build + 1-2 min benchmark itself, depending on n_sources).
 on:
   workflow_dispatch:
     inputs:
@@ -18,9 +12,6 @@ on:
         required: false
         default: "50"
 
-# Duplicates HIGHWAY_TYPES_ROUTING and OSM_PBF_URL from build.yml.
-# Acceptable cost — this workflow is self-contained and can be triggered
-# even if build.yml is mid-edit.
 env:
   HIGHWAY_TYPES_ROUTING: >-
     w/highway=footway
@@ -55,7 +46,6 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Install system dependencies
-        # Only osmium needed for the bench — no tippecanoe or jq.
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends osmium-tool
@@ -74,7 +64,6 @@ jobs:
           osmium cat routing_raw.osm.pbf -o routing_raw.osm --overwrite
 
       - name: Show runner CPU info
-        # Useful context for interpreting the speedup numbers.
         run: |
           echo "=== Runner CPU ==="
           nproc
