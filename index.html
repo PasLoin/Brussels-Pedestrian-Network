@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' https://unpkg.com 'unsafe-inline'; img-src 'self' https://tiles.openfreemap.org https://www.openstreetmap.org data:; connect-src 'self' https://tiles.openfreemap.org https://unpkg.com; worker-src blob:; child-src blob:; font-src https://tiles.openfreemap.org; object-src 'none'; base-uri 'self'; upgrade-insecure-requests;" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' https://unpkg.com 'unsafe-inline'; img-src 'self' https://tiles.openfreemap.org https://www.openstreetmap.org https://pasloin.github.io data: blob:; connect-src 'self' https://tiles.openfreemap.org https://unpkg.com https://pasloin.github.io https://protomaps.github.io; worker-src blob:; child-src blob:; font-src https://tiles.openfreemap.org; object-src 'none'; base-uri 'self'; upgrade-insecure-requests;" />
   <meta name="Referrer-Policy" content="strict-origin-when-cross-origin" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Flux piétons simulés et QA OpenStreetMap à Bruxelles</title>
@@ -25,15 +25,17 @@
 <div id="map"></div>
 
 <div id="header" class="open">
-  <h1 class="header-title">
-    <button id="header-toggle" onclick="toggleHeader()" aria-expanded="true" aria-controls="header-content">
-      Brussels Pedestrian Network
-      <svg aria-hidden="true" class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="6 9 12 15 18 9"/>
-      </svg>
-    </button>
-  </h1>
+  <button id="header-toggle" onclick="toggleHeader()" aria-expanded="true" aria-controls="header-content">
+    <span class="header-brand">
+      <img src="./favicon.svg" alt="" width="16" height="16" />
+      <span>Brussels Pedestrian</span>
+    </span>
+    <svg aria-hidden="true" class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="6 9 12 15 18 9"/>
+    </svg>
+  </button>
   <div id="header-content">
+    <h1>Brussels Pedestrian<br>Simulated Flows</h1>
     <p class="subtitle">Flux piétons simulés et contrôle qualité OpenStreetMap à Bruxelles</p>
 
     <div class="header-meta">
@@ -108,7 +110,7 @@
       <span class="rpct" id="stat-cyc-pct"></span>
     </div>
   </div>
-  <button id="route-clear" onclick="clearRoute()">Effacer l'itinéraire</button>
+  <button id="route-clear" onclick="clearRoute()">✕ Effacer l'itinéraire</button>
 </div>
 
 <div id="legend" class="open">
@@ -121,6 +123,17 @@
   <div id="legend-content"></div>
 </div>
 <div id="zoom-badge">zoom <span id="zoom-val"></span></div>
+
+<div id="basemap-control">
+  <button id="basemap-toggle" type="button" title="Fond de carte" aria-label="Fond de carte" aria-expanded="false" aria-controls="basemap-menu">
+    <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round">
+      <path d="M12 3 2 8l10 5 10-5-10-5Z" fill="#fff"/>
+      <path d="m2 12 10 5 10-5"/>
+      <path d="m2 16 10 5 10-5"/>
+    </svg>
+  </button>
+  <div id="basemap-menu" role="radiogroup" aria-label="Fond de carte"></div>
+</div>
 
 <script src="./app.js"></script>
 </body>
