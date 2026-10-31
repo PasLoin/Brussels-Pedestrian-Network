@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' https://unpkg.com 'unsafe-inline'; img-src 'self' https://tiles.openfreemap.org https://www.openstreetmap.org https://pasloin.github.io data: blob:; connect-src 'self' https://tiles.openfreemap.org https://unpkg.com https://pasloin.github.io https://protomaps.github.io; worker-src blob:; child-src blob:; font-src https://tiles.openfreemap.org; object-src 'none'; base-uri 'self'; upgrade-insecure-requests;" />
+  <meta name="Referrer-Policy" content="strict-origin-when-cross-origin" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Flux piétons simulés et QA OpenStreetMap à Bruxelles</title>
+  <meta name="description" content="Carte des flux piétons simulés à Bruxelles à partir d'OpenStreetMap, avec des couches de contrôle qualité pour corriger trottoirs et traversées." />
+  <meta property="og:title" content="Flux piétons simulés et QA OpenStreetMap à Bruxelles" />
+  <meta property="og:description" content="Carte des flux piétons simulés à Bruxelles à partir d'OpenStreetMap, avec des couches de contrôle qualité pour corriger trottoirs et traversées." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://pasloin.github.io/Brussels-Pedestrian-Network/" />
+  <meta name="twitter:card" content="summary_large_image" />
+
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+
+  <link href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css" rel="stylesheet" />
+  <link href="./app.css" rel="stylesheet" />
+  <script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
+  <script src="https://unpkg.com/pmtiles@3/dist/pmtiles.js"></script>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div id="header" class="open">
+  <button id="header-toggle" onclick="toggleHeader()" aria-expanded="true" aria-controls="header-content">
+    <span class="header-brand">
+      <img src="./favicon.svg" alt="" width="16" height="16" />
+      <span>Brussels Pedestrian</span>
+    </span>
+    <svg aria-hidden="true" class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="6 9 12 15 18 9"/>
+    </svg>
+  </button>
+  <div id="header-content">
+    <h1>Brussels Pedestrian<br>Simulated Flows</h1>
+    <p class="subtitle">Flux piétons simulés et contrôle qualité OpenStreetMap à Bruxelles</p>
+
+    <div class="header-meta">
+      <div id="osm-date">Chargement…</div>
+      <div id="build-date"></div>
+      <div id="routing-stats"></div>
+    </div>
+
+    <nav class="header-nav">
+      <a href="./stats.html">Statistiques</a>
+      <a href="./evolution.html">Évolution</a>
+      <a href="./about.html">Méthodologie</a>
+    </nav>
+
+    <div class="flow-filter-wrap">
+      <div class="flow-filter-label" id="flow-threshold-label">
+        Flux sur route, minimum <span id="flow-threshold-val">0 %</span>
+      </div>
+      <input
+        id="flow-threshold-slider" aria-labelledby="flow-threshold-label"
+        type="range"
+        min="0" max="95" step="5" value="0"
+        oninput="updateFlowFilter(this.value)"
+      />
+    </div>
+
+    <button id="nav-btn" class="header-btn loading" onclick="toggleNavMode()" aria-busy="true" aria-live="polite">
+      <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="3 11 22 2 13 21 11 13 3 11"/>
+      </svg>
+      <span id="nav-btn-label">Chargement du graphe…</span>
+    </button>
+    <div id="nav-hint" aria-live="polite"></div>
+
+    <a id="edit-btn" class="header-btn disabled" aria-disabled="true" tabindex="-1" href="#" target="_blank" rel="noopener">
+      <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+      </svg>
+      Éditer dans OSM
+    </a>
+    <div id="edit-hint">Disponible à partir du zoom 16</div>
+  </div>
+</div>
+
+<div id="route-panel">
+  <h2>Itinéraire</h2>
+  <div class="route-summary" id="route-dist"></div>
+  <div class="route-time" id="route-time"></div>
+  <div class="route-bar">
+    <div class="route-bar-seg route-bar-ped" id="bar-ped"></div>
+    <div class="route-bar-seg route-bar-road" id="bar-road"></div>
+    <div class="route-bar-seg route-bar-cyc" id="bar-cyc"></div>
+  </div>
+  <div class="route-breakdown">
+    <div class="route-row">
+      <div class="route-dot route-bar-ped"></div>
+      <span class="rlabel">Piéton</span>
+      <span class="rvalue" id="stat-ped-m"></span>
+      <span class="rpct" id="stat-ped-pct"></span>
+    </div>
+    <div class="route-row">
+      <div class="route-dot route-bar-road"></div>
+      <span class="rlabel">Chaussée</span>
+      <span class="rvalue" id="stat-road-m"></span>
+      <span class="rpct" id="stat-road-pct"></span>
+    </div>
+    <div class="route-row">
+      <div class="route-dot route-bar-cyc"></div>
+      <span class="rlabel">Vélo sans foot=yes</span>
+      <span class="rvalue" id="stat-cyc-m"></span>
+      <span class="rpct" id="stat-cyc-pct"></span>
+    </div>
+  </div>
+  <button id="route-clear" onclick="clearRoute()">✕ Effacer l'itinéraire</button>
+</div>
+
+<div id="legend" class="open">
+  <button id="legend-toggle" onclick="toggleLegend()" aria-expanded="true" aria-controls="legend-content">
+    Légende
+    <svg aria-hidden="true" class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="6 9 12 15 18 9"/>
+    </svg>
+  </button>
+  <div id="legend-content"></div>
+</div>
+<div id="zoom-badge">zoom <span id="zoom-val"></span></div>
+
+<div id="basemap-control">
+  <button id="basemap-toggle" type="button" title="Fond de carte" aria-label="Fond de carte" aria-expanded="false" aria-controls="basemap-menu">
+    <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round">
+      <path d="M12 3 2 8l10 5 10-5-10-5Z" fill="#fff"/>
+      <path d="m2 12 10 5 10-5"/>
+      <path d="m2 16 10 5 10-5"/>
+    </svg>
+  </button>
+  <div id="basemap-menu" role="radiogroup" aria-label="Fond de carte"></div>
+</div>
+
+<script src="./app.js"></script>
+</body>
+</html>
