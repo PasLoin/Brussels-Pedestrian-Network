@@ -71,7 +71,7 @@ CYCLEWAY_NO_FOOT_COST = 1.8
 CORRIDOR_PERMISSIVE_COST = 1.2
 
 
-FOOT_FORBIDDEN = frozenset({"no"})
+FOOT_FORBIDDEN = frozenset({"no", "private"})
 
 ACCESS_EXCLUDED = frozenset({"no", "private"})
 
