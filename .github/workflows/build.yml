@@ -31,6 +31,8 @@ env:
     w/highway=cycleway
     w/highway=track
     w/highway=platform
+    w/railway=platform
+    w/public_transport=platform
     n/highway=elevator
     n/highway=crossing
     n/amenity=elevator
@@ -54,6 +56,8 @@ env:
     w/highway=primary_link
     w/highway=track
     w/highway=platform
+    w/railway=platform
+    w/public_transport=platform
     w/highway=corridor
     w/foot=yes
     w/foot=designated
@@ -147,13 +151,25 @@ jobs:
             --attributes=type,id \
             -o highways_areas.geojson --overwrite
           jq '
+            def is_platform:
+              .highway == "platform"
+              or (.highway == null and (.railway == "platform" or .public_transport == "platform"));
             .features |= map(
-              select(.properties.highway == "platform" and .properties.area == "yes")
+              select((.properties | is_platform) and .properties.area == "yes")
               | .geometry |= {type: "MultiLineString", coordinates: [.coordinates[][]]}
             )
           ' highways_areas.geojson > platform_outlines.geojson
-          jq -s '.[0].features += .[1].features | .[0]' \
-            highways_lines.geojson platform_outlines.geojson > highways.geojson
+          jq -s '
+            .[0].features += .[1].features
+            | .[0]
+            | .features |= map(
+                if .properties.highway == null
+                   and .geometry.type != "Point"
+                   and (.properties.railway == "platform" or .properties.public_transport == "platform")
+                then .properties.highway = "platform"
+                else . end
+              )
+          ' highways_lines.geojson platform_outlines.geojson > highways.geojson
 
       - name: Force elevators visible at low zoom
         run: |
