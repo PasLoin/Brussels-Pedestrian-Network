@@ -1,7 +1,15 @@
 import json
 import math
 
+import pytest
+
 from detect_footway_connectivity import detect_footway_connectivity_candidates
+
+
+@pytest.fixture(autouse=True)
+def _work_in_tmp(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+
 
 LAT0 = 50.85
 LON0 = 4.35
