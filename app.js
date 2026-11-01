@@ -74,7 +74,7 @@ function updateFlowFilter(rawValue) {
   const filter = minPct > 0
     ? ["all", baseFilter, [">=", ["to-number", ["get", "flow_pct"], 0], minPct]]
     : baseFilter;
-  try { mapRef.setFilter("flow-road", filter); } catch (_) { }
+  setFilterIfLayer(mapRef, "flow-road", filter);
 }
 
 const SIDEWALK_STATUSES = [
@@ -86,18 +86,7 @@ const SIDEWALK_STATUSES = [
 ];
 const activeSidewalkStatuses = new Set(SIDEWALK_STATUSES.map(s => s.value));
 
-function updateSidewalkFilter() {
-  if (!mapRef) return;
-  let filter;
-  if (activeSidewalkStatuses.size === 0) {
-    filter = ["==", ["get", "sw"], "__none__"];
-  } else if (activeSidewalkStatuses.size === SIDEWALK_STATUSES.length) {
-    filter = null;
-  } else {
-    filter = ["in", ["get", "sw"], ["literal", [...activeSidewalkStatuses]]];
-  }
-  try { mapRef.setFilter("sidewalk-roads", filter); } catch (_) { }
-}
+const updateSidewalkFilter = makeMembershipFilterUpdater(() => mapRef, "sidewalk-roads", "sw", activeSidewalkStatuses, SIDEWALK_STATUSES);
 
 const MISSING_CROSSING_TYPES = [
   { value: "missing_way", label: "Way non mappé",               color: "#f97316" },
@@ -106,18 +95,7 @@ const MISSING_CROSSING_TYPES = [
 ];
 const activeMissingTypes = new Set(MISSING_CROSSING_TYPES.map(t => t.value));
 
-function updateMissingCrossingsFilter() {
-  if (!mapRef) return;
-  let filter;
-  if (activeMissingTypes.size === 0) {
-    filter = ["==", ["get", "type"], "__none__"];
-  } else if (activeMissingTypes.size === MISSING_CROSSING_TYPES.length) {
-    filter = null;
-  } else {
-    filter = ["in", ["get", "type"], ["literal", [...activeMissingTypes]]];
-  }
-  try { mapRef.setFilter("missing-crossings", filter); } catch (_) { }
-}
+const updateMissingCrossingsFilter = makeMembershipFilterUpdater(() => mapRef, "missing-crossings", "type", activeMissingTypes, MISSING_CROSSING_TYPES);
 
 const KERB_ISSUE_TYPES = [
   { value: "kerb_missing",  label: "Kerb absent",             color: "#1e3a8a" },
@@ -125,18 +103,7 @@ const KERB_ISSUE_TYPES = [
 ];
 const activeKerbIssueTypes = new Set();
 
-function updateKerbIssuesFilter() {
-  if (!mapRef) return;
-  let filter;
-  if (activeKerbIssueTypes.size === 0) {
-    filter = ["==", ["get", "type"], "__none__"];
-  } else if (activeKerbIssueTypes.size === KERB_ISSUE_TYPES.length) {
-    filter = null;
-  } else {
-    filter = ["in", ["get", "type"], ["literal", [...activeKerbIssueTypes]]];
-  }
-  try { mapRef.setFilter("kerb-issues", filter); } catch (_) { }
-}
+const updateKerbIssuesFilter = makeMembershipFilterUpdater(() => mapRef, "kerb-issues", "type", activeKerbIssueTypes, KERB_ISSUE_TYPES);
 
 const ISLAND_TYPES = [
   { value: "unjoined", label: "Jonction manquante (≤ 2 m)", color: "#db2777" },
@@ -145,22 +112,12 @@ const ISLAND_TYPES = [
 ];
 const activeIslandTypes = new Set(ISLAND_TYPES.map(t => t.value));
 
-function updateIslandsFilter() {
-  if (!mapRef) return;
-  let filter;
-  if (activeIslandTypes.size === 0) {
-    filter = ["==", ["get", "type"], "__none__"];
-  } else if (activeIslandTypes.size === ISLAND_TYPES.length) {
-    filter = null;
-  } else {
-    filter = ["in", ["get", "type"], ["literal", [...activeIslandTypes]]];
-  }
-  try { mapRef.setFilter("graph-islands", filter); } catch (_) { }
-}
+const updateIslandsFilter = makeMembershipFilterUpdater(() => mapRef, "graph-islands", "type", activeIslandTypes, ISLAND_TYPES);
 
 let graphData = null;
 let adjList   = null;
 let mainComponent = null;
+let groundEdges = null;
 let graphReady = false;
 
 fetch("./graph.json")
@@ -168,6 +125,7 @@ fetch("./graph.json")
   .then(data => {
     graphData = data;
     adjList = buildAdjacency(data);
+    groundEdges = groundSnappable(data);
     mainComponent = computeMainComponent(data.n.length, data.e);
     graphReady = true;
     const btn = document.getElementById("nav-btn");
@@ -227,13 +185,13 @@ function handleNavClick(e) {
   if (!navMode || !graphReady) return;
   const { lat, lng } = e.lngLat;
   if (navStep === 0) {
-    startSnap = snapToNetwork(graphData, lat, lng, mainComponent);
+    startSnap = snapToNetwork(graphData, lat, lng, mainComponent, groundEdges);
     if (startMarker) startMarker.remove();
     startMarker = new maplibregl.Marker({ color: "#22c55e" }).setLngLat([lng, lat]).addTo(mapRef);
     navStep = 1;
     document.getElementById("nav-hint").textContent = "Cliquez pour placer l'arrivée";
   } else if (navStep === 1) {
-    endSnap = snapToNetwork(graphData, lat, lng, mainComponent);
+    endSnap = snapToNetwork(graphData, lat, lng, mainComponent, groundEdges);
     if (endMarker) endMarker.remove();
     endMarker = new maplibregl.Marker({ color: "#ef4444" }).setLngLat([lng, lat]).addTo(mapRef);
     document.getElementById("nav-hint").textContent = "Calcul…";
@@ -1178,10 +1136,7 @@ function initMap(style) {
         if (activeKerbIssueTypes.has(type)) activeKerbIssueTypes.delete(type);
         else activeKerbIssueTypes.add(type);
         updateState();
-        try {
-          map.setLayoutProperty("kerb-issues", "visibility",
-            activeKerbIssueTypes.size > 0 ? "visible" : "none");
-        } catch (_) { }
+        setVisibilityIfLayer(map, "kerb-issues", activeKerbIssueTypes.size > 0);
         updateKerbIssuesFilter();
       };
       item.onclick = toggle;
