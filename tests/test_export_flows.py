@@ -385,3 +385,29 @@ def test_routing_graph_platform_and_corridor_are_pedestrian(tmp_path, monkeypatc
     )
     data = json.loads((tmp_path / "graph.json").read_text())
     assert [e[5] for e in data["e"]] == [0, 0]
+
+
+def _ground_graph(tmp_path, monkeypatch, levels):
+    monkeypatch.chdir(tmp_path)
+    nodes_gdf = gpd.GeoDataFrame(
+        {"x": [_X0, _X0 + 50], "y": [_Y0, _Y0], "geometry": [Point(_X0, _Y0), Point(_X0 + 50, _Y0)]},
+        index=[1, 2], crs="EPSG:31370",
+    )
+    n = 6
+    export_routing_graph(
+        [1, 2], nodes_gdf,
+        [(0, 1)] * n, [50.0] * n, [50.0] * n, ["footway"] * n,
+        [_seg(0, 0, 50, 0)] * n, [False] * n, [""] * n,
+        **({} if levels is None else {"edge_levels": levels}),
+    )
+    return json.loads((tmp_path / "graph.json").read_text())
+
+
+def test_routing_graph_ground_flag_follows_levels(tmp_path, monkeypatch):
+    data = _ground_graph(tmp_path, monkeypatch, ["", "0", "-1", "1", "?", "0;-1"])
+    assert [e[7] for e in data["e"]] == [1, 1, 0, 0, 0, 0]
+
+
+def test_routing_graph_without_levels_marks_everything_as_ground(tmp_path, monkeypatch):
+    data = _ground_graph(tmp_path, monkeypatch, None)
+    assert [e[7] for e in data["e"]] == [1] * 6
