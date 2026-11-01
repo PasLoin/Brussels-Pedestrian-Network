@@ -66,6 +66,21 @@ def _split_way_at_barriers(
     return 1, 0
 
 
+_PLATFORM_TAGS = (("railway", "platform"), ("public_transport", "platform"))
+
+
+def _normalize_platforms(root: ET.Element) -> int:
+    added = 0
+    for way in root.findall("way"):
+        tags = {t.get("k"): t.get("v") for t in way.findall("tag")}
+        if "highway" in tags:
+            continue
+        if any(tags.get(k) == v for k, v in _PLATFORM_TAGS):
+            ET.SubElement(way, "tag", attrib={"k": "highway", "v": "platform"})
+            added += 1
+    return added
+
+
 def _remove_dangling_ways(root: ET.Element) -> int:
     node_ids = {n.get("id") for n in root.findall("node")}
     removed = 0
@@ -82,6 +97,9 @@ def clean_osm(input_path: str = "routing_raw.osm",
     print("Cleaning OSM XML...")
     tree = ET.parse(input_path)
     root = tree.getroot()
+
+    normalized = _normalize_platforms(root)
+    print(f"  Platforms tagged highway=platform: {normalized}")
 
     blocked = _find_blocked_nodes(root)
     print(f"  Blocked barrier nodes: {len(blocked)}")
