@@ -147,6 +147,12 @@ def _unanimous_str(val) -> str:
 
 LEVEL_UNKNOWN = "?"
 
+GROUND_LEVELS = frozenset({"", "0"})
+
+
+def is_ground_level(level: str) -> bool:
+    return level in GROUND_LEVELS
+
 _UNDERGROUND_TUNNEL_EXEMPT = frozenset({"", "no", "building_passage"})
 _INDOOR_EXEMPT = frozenset({"", "no"})
 _UNDERGROUND_LOCATIONS = frozenset({"underground", "indoor"})
