@@ -123,3 +123,63 @@ def test_no_pairs_gives_empty_result():
     assert result.od_pairs_count == 0
     assert int(result.flow_arr.sum()) == 0
     assert result.total_routed_distance == 0.0
+
+
+_FLUSH_PAIRS = [(0, 3), (0, 2), (3, 0), (1, 3), (2, 0), (3, 1), (1, 0)]
+
+
+def _route_with_flush(monkeypatch, flush_edges):
+    import routing
+    monkeypatch.setattr(routing, "_FLOW_FLUSH_EDGES", flush_edges)
+    g, lengths = _line_graph()
+    return g, route_pairs(g, _FLUSH_PAIRS, lengths)
+
+
+def test_flush_scenario_matches_hand_count(monkeypatch):
+    g, result = _route_with_flush(monkeypatch, 1_000_000)
+
+    assert _flows_by_edge(g, result.flow_arr) == {
+        (0, 1): 2,
+        (1, 2): 3,
+        (2, 3): 2,
+        (3, 2): 2,
+        (2, 1): 3,
+        (1, 0): 3,
+    }
+    assert result.routed == 7
+    assert result.total_routed_distance == pytest.approx(1500.0)
+
+
+@pytest.mark.parametrize("flush_edges", [0, 1, 2, 3, 5])
+def test_flushing_often_does_not_change_flows(monkeypatch, flush_edges):
+    g, reference = _route_with_flush(monkeypatch, 1_000_000)
+    _, flushed = _route_with_flush(monkeypatch, flush_edges)
+
+    assert np.array_equal(flushed.flow_arr, reference.flow_arr)
+    assert flushed.routed == reference.routed
+    assert flushed.total_routed_distance == pytest.approx(reference.total_routed_distance)
+
+
+def _count_bincount_calls(monkeypatch):
+    import routing
+    calls = []
+    original = routing.np.bincount
+
+    def counting(*args, **kwargs):
+        calls.append(1)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(routing.np, "bincount", counting)
+    return calls
+
+
+def test_default_threshold_accumulates_in_a_single_pass(monkeypatch):
+    calls = _count_bincount_calls(monkeypatch)
+    _route_with_flush(monkeypatch, 1_000_000)
+    assert len(calls) == 1
+
+
+def test_low_threshold_really_flushes_several_times(monkeypatch):
+    calls = _count_bincount_calls(monkeypatch)
+    _route_with_flush(monkeypatch, 0)
+    assert len(calls) == 4
