@@ -113,35 +113,6 @@ function updateKerbIssuesFilter() {
   try { mapRef.setFilter("kerb-issues", filter); } catch (_) { }
 }
 
-class MinHeap {
-  constructor() { this.d = []; }
-  get size() { return this.d.length; }
-  push(item) { this.d.push(item); this._up(this.d.length - 1); }
-  pop() {
-    const top = this.d[0], last = this.d.pop();
-    if (this.d.length > 0) { this.d[0] = last; this._down(0); }
-    return top;
-  }
-  _up(i) {
-    const d = this.d;
-    while (i > 0) {
-      const p = (i - 1) >> 1;
-      if (d[p][0] <= d[i][0]) break;
-      [d[p], d[i]] = [d[i], d[p]]; i = p;
-    }
-  }
-  _down(i) {
-    const d = this.d, n = d.length;
-    while (true) {
-      let m = i, l = 2 * i + 1, r = 2 * i + 2;
-      if (l < n && d[l][0] < d[m][0]) m = l;
-      if (r < n && d[r][0] < d[m][0]) m = r;
-      if (m === i) break;
-      [d[m], d[i]] = [d[i], d[m]]; i = m;
-    }
-  }
-}
-
 const ISLAND_TYPES = [
   { value: "unjoined", label: "Jonction manquante (≤ 2 m)", color: "#db2777" },
   { value: "isolated", label: "Îlot isolé",                 color: "#0d9488" },
@@ -167,38 +138,12 @@ let adjList   = null;
 let mainComponent = null;
 let graphReady = false;
 
-function computeMainComponent(nNodes, edges) {
-  const parent = new Int32Array(nNodes);
-  for (let i = 0; i < nNodes; i++) parent[i] = i;
-  const find = (x) => {
-    while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; }
-    return x;
-  };
-  for (const e of edges) {
-    const a = find(e[0]), b = find(e[1]);
-    if (a !== b) parent[a] = b;
-  }
-  const size = new Int32Array(nNodes);
-  let bestRoot = 0;
-  for (let i = 0; i < nNodes; i++) {
-    const r = find(i);
-    size[r]++;
-    if (size[r] > size[bestRoot]) bestRoot = r;
-  }
-  const mask = new Uint8Array(nNodes);
-  for (let i = 0; i < nNodes; i++) if (find(i) === bestRoot) mask[i] = 1;
-  return mask;
-}
-
 fetch("./graph.json")
   .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
   .then(data => {
     graphData = data;
-    const nNodes = data.n.length;
-    adjList = new Array(nNodes);
-    for (let i = 0; i < nNodes; i++) adjList[i] = [];
-    data.e.forEach((e, idx) => { adjList[e[0]].push([e[1], idx]); });
-    mainComponent = computeMainComponent(nNodes, data.e);
+    adjList = buildAdjacency(data);
+    mainComponent = computeMainComponent(data.n.length, data.e);
     graphReady = true;
     const btn = document.getElementById("nav-btn");
     btn.classList.remove("loading");
@@ -213,82 +158,9 @@ fetch("./graph.json")
     document.getElementById("nav-btn").setAttribute("aria-busy", "false");
   });
 
-function nearestNode(lat, lng) {
-  const nodes = graphData.n;
-  let minD = Infinity, minI = 0;
-  for (let i = 0; i < nodes.length; i++) {
-    if (mainComponent && !mainComponent[i]) continue;
-    const dlat = nodes[i][0] - lat, dlng = nodes[i][1] - lng;
-    const d = dlat * dlat + dlng * dlng;
-    if (d < minD) { minD = d; minI = i; }
-  }
-  return minI;
-}
-
-function dijkstra(src, tgt) {
-  const n = graphData.n.length;
-  const dist = new Float64Array(n).fill(Infinity);
-  const prev = new Int32Array(n).fill(-1);
-  const prevEdge = new Int32Array(n).fill(-1);
-  dist[src] = 0;
-  const heap = new MinHeap();
-  heap.push([0, src]);
-  while (heap.size > 0) {
-    const [d, u] = heap.pop();
-    if (d > dist[u]) continue;
-    if (u === tgt) break;
-    const neighbors = adjList[u];
-    for (let i = 0; i < neighbors.length; i++) {
-      const [v, eidx] = neighbors[i];
-      const nd = d + graphData.e[eidx][2];
-      if (nd < dist[v]) {
-        dist[v] = nd; prev[v] = u; prevEdge[v] = eidx;
-        heap.push([nd, v]);
-      }
-    }
-  }
-  if (dist[tgt] === Infinity) return null;
-  const path = [];
-  let cur = tgt;
-  while (cur !== src) { path.push(prevEdge[cur]); cur = prev[cur]; }
-  path.reverse();
-  return path;
-}
-
-function buildRoute(edgePath) {
-  let totalM = 0, pedM = 0, roadM = 0, cycM = 0;
-  const features = [];
-  for (const eidx of edgePath) {
-    const e = graphData.e[eidx];
-    const len = e[3], sc = e[5], coords = e[6];
-    const hw = graphData.hw[e[4]];
-    totalM += len;
-    if (sc === 0) pedM += len;
-    else if (sc === 1) roadM += len;
-    else if (sc === 2) cycM += len;
-    else pedM += len;
-    const color = sc === 0 ? "#22c55e" : sc === 3 ? "#2563eb" : sc === 2 ? "#7c3aed" : "#ef4444";
-    features.push({
-      type: "Feature",
-      properties: { infra_type: sc, highway: hw, length: len, color },
-      geometry: { type: "LineString", coordinates: coords.map(c => [c[1], c[0]]) }
-    });
-  }
-  const geojson = { type: "FeatureCollection", features };
-  const pedPct  = totalM > 0 ? pedM  / totalM * 100 : 0;
-  const roadPct = totalM > 0 ? roadM / totalM * 100 : 0;
-  const cycPct  = totalM > 0 ? cycM  / totalM * 100 : 0;
-  const walkMin = Math.round(totalM / 80);
-  return {
-    geojson, totalM: Math.round(totalM),
-    pedM: Math.round(pedM), roadM: Math.round(roadM), cycM: Math.round(cycM),
-    pedPct, roadPct, cycPct, walkMin
-  };
-}
-
 let navMode = false, navStep = 0;
 let startMarker = null, endMarker = null;
-let startNode = -1, endNode = -1;
+let startSnap = null, endSnap = null;
 let mapRef = null;
 
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && navMode) toggleNavMode(); });
@@ -330,27 +202,25 @@ function handleNavClick(e) {
   if (!navMode || !graphReady) return;
   const { lat, lng } = e.lngLat;
   if (navStep === 0) {
-    startNode = nearestNode(lat, lng);
-    const sn = graphData.n[startNode];
+    startSnap = snapToNetwork(graphData, lat, lng, mainComponent);
     if (startMarker) startMarker.remove();
-    startMarker = new maplibregl.Marker({ color: "#22c55e" }).setLngLat([sn[1], sn[0]]).addTo(mapRef);
+    startMarker = new maplibregl.Marker({ color: "#22c55e" }).setLngLat([lng, lat]).addTo(mapRef);
     navStep = 1;
     document.getElementById("nav-hint").textContent = "Cliquez pour placer l'arrivée";
   } else if (navStep === 1) {
-    endNode = nearestNode(lat, lng);
-    const en = graphData.n[endNode];
+    endSnap = snapToNetwork(graphData, lat, lng, mainComponent);
     if (endMarker) endMarker.remove();
-    endMarker = new maplibregl.Marker({ color: "#ef4444" }).setLngLat([en[1], en[0]]).addTo(mapRef);
+    endMarker = new maplibregl.Marker({ color: "#ef4444" }).setLngLat([lng, lat]).addTo(mapRef);
     document.getElementById("nav-hint").textContent = "Calcul…";
     requestAnimationFrame(() => {
       const t0 = performance.now();
-      const path = dijkstra(startNode, endNode);
+      const found = startSnap && endSnap ? routeBetween(graphData, adjList, startSnap, endSnap) : null;
       const dt = (performance.now() - t0).toFixed(0);
-      if (!path || path.length === 0) {
+      if (!found || found.legs.length === 0) {
         document.getElementById("nav-hint").textContent = "Aucun itinéraire trouvé";
         navStep = 2; return;
       }
-      const route = buildRoute(path);
+      const route = buildRoute(graphData, found.legs);
       const src = mapRef.getSource("nav-route");
       if (src) src.setData(route.geojson);
       document.getElementById("route-dist").textContent = route.totalM >= 1000
