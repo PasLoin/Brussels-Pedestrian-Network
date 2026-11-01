@@ -29,6 +29,7 @@ PED_HIGHWAY_TYPES = frozenset({
     "footway", "pedestrian", "path",
     "living_street", "steps", "elevator",
     "track", "bridleway",
+    "platform", "corridor",
 })
 
 ROAD_TYPES_SIDEWALK_EXPECTED = frozenset({
@@ -42,12 +43,15 @@ ROAD_TYPES_SIDEWALK_EXPECTED = frozenset({
 EDGE_COST = {
     "pedestrian":     1.0,
     "footway":        1.0,
+    "corridor":       1.0,
     "path":           1.2,
     "track":          1.2,
     "bridleway":      1.2,
     "living_street":  1.2,
     "cycleway":       1.7,
+    "elevator":       1.4,
     "steps":          1.5,
+    "platform":       1.6,
     "residential":    2.0,
     "service":        2.0,
     "unclassified":   2.2,
@@ -64,6 +68,8 @@ EDGE_COST_DEFAULT = 2.5
 CYCLEWAY_FOOT_ALLOWED_COST = 1.0
 
 CYCLEWAY_NO_FOOT_COST = 1.8
+
+CORRIDOR_PERMISSIVE_COST = 1.2
 
 
 FOOT_FORBIDDEN = frozenset({"no"})
