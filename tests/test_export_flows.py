@@ -322,3 +322,45 @@ def test_routing_graph_edge_geometry(tmp_path, monkeypatch):
     assert first[0] == data["n"][0]
     assert first[-1] == data["n"][1]
     assert data["e"][4][6] == [data["n"][1], data["n"][4]]
+
+
+def test_low_flow_road_is_never_forced(workdir, monkeypatch):
+    monkeypatch.setattr(export, "TOP_RANK_PCT", 100.0)
+    stats = _scenario().export()
+
+    roads = _features("forced_segments.geojson")
+    assert [f["properties"]["highway"] for f in roads] == ["primary"]
+    assert stats["forced_road_segments"] == 1
+    assert stats["forced_road_length_m"] == 200
+    assert stats["flow_edges_dropped_low"] == 1
+
+
+def test_low_flow_segments_still_count_in_infra_stats(workdir, monkeypatch):
+    monkeypatch.setattr(export, "TOP_RANK_PCT", 100.0)
+    stats = _scenario().export()
+
+    assert stats["flow_by_infra"]["road"] == 104
+    assert stats["edges_with_flow_by_infra"]["road"] == 2
+    assert stats["length_with_flow_by_infra_m"]["road"] == 280
+
+
+def test_min_flow_above_every_segment_forces_nothing(workdir, monkeypatch):
+    monkeypatch.setattr(export, "TOP_RANK_PCT", 100.0)
+    monkeypatch.setattr(export, "MIN_FLOW_THRESHOLD", 1000)
+    stats = _scenario().export()
+
+    assert stats["forced_road_segments"] == 0
+    assert stats["forced_cycleway_segments"] == 0
+    assert stats["flow_edges_exported"] == 0
+
+
+@pytest.mark.parametrize("top_pct", [5.0, 15.0, 50.0, 100.0])
+@pytest.mark.parametrize("min_flow", [1, 5, 50, 60])
+def test_forced_segments_are_always_displayed(workdir, monkeypatch, top_pct, min_flow):
+    monkeypatch.setattr(export, "TOP_RANK_PCT", top_pct)
+    monkeypatch.setattr(export, "MIN_FLOW_THRESHOLD", min_flow)
+    _scenario().export()
+
+    shown = {json.dumps(f["geometry"]["coordinates"]) for f in _features("flow_edges.geojson")}
+    forced = _features("forced_segments.geojson") + _features("forced_cycleway.geojson")
+    assert {json.dumps(f["geometry"]["coordinates"]) for f in forced} <= shown
