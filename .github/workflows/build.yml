@@ -30,6 +30,7 @@ env:
     w/highway=elevator
     w/highway=cycleway
     w/highway=track
+    w/highway=platform
     n/highway=elevator
     n/highway=crossing
     n/amenity=elevator
@@ -52,6 +53,8 @@ env:
     w/highway=primary
     w/highway=primary_link
     w/highway=track
+    w/highway=platform
+    w/highway=corridor
     w/foot=yes
     w/foot=designated
     n/highway=elevator
@@ -138,7 +141,19 @@ jobs:
           osmium export highways_ped.osm.pbf \
             --geometry-types=linestring,point \
             --attributes=type,id \
-            -o highways.geojson --overwrite
+            -o highways_lines.geojson --overwrite
+          osmium export highways_ped.osm.pbf \
+            --geometry-types=polygon \
+            --attributes=type,id \
+            -o highways_areas.geojson --overwrite
+          jq '
+            .features |= map(
+              select(.properties.highway == "platform" and .properties.area == "yes")
+              | .geometry |= {type: "MultiLineString", coordinates: [.coordinates[][]]}
+            )
+          ' highways_areas.geojson > platform_outlines.geojson
+          jq -s '.[0].features += .[1].features | .[0]' \
+            highways_lines.geojson platform_outlines.geojson > highways.geojson
 
       - name: Force elevators visible at low zoom
         run: |
