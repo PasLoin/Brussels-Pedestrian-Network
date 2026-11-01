@@ -13,7 +13,7 @@ from config import (
     TOP_RANK_PCT,
 )
 from clean_osm import clean_osm
-from build_graph import build_graph
+from build_graph import build_graph, is_ground_level
 from sample_od import sample_od_points, snap_to_graph
 from routing import generate_od_pairs, route_pairs
 from export import (
@@ -101,6 +101,7 @@ def main() -> None:
             gb.edge_tuples, gb.edge_geoms,
             vertex_mask=main_mask,
             max_snap_m=MAX_SNAP_DISTANCE_M,
+            edge_snappable=[is_ground_level(lv) for lv in gb.edge_levels],
         )
 
     keep = [i for i, s in enumerate(snapped) if s >= 0]
