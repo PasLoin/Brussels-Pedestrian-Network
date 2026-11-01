@@ -48,7 +48,6 @@ EDGE_COST = {
     "track":          1.2,
     "bridleway":      1.2,
     "living_street":  1.2,
-    "cycleway":       1.7,
     "elevator":       1.4,
     "steps":          1.5,
     "platform":       1.6,
