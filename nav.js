@@ -61,6 +61,10 @@ function buildAdjacency(graph) {
   return adj;
 }
 
+function groundSnappable(graph) {
+  return graph.e.map(e => e[7] !== 0);
+}
+
 function metresPerDegree(lat) {
   return { kx: NAV_M_PER_DEG_LAT * Math.cos(lat * Math.PI / 180), ky: NAV_M_PER_DEG_LAT };
 }
@@ -257,7 +261,7 @@ function buildRoute(graph, legs) {
 
 if (typeof module !== "undefined") {
   module.exports = {
-    MinHeap, computeMainComponent, buildAdjacency, metresPerDegree, snapToNetwork,
+    MinHeap, computeMainComponent, buildAdjacency, groundSnappable, metresPerDegree, snapToNetwork,
     reverseEdge, routeBetween, partialCoords, buildRoute,
   };
 }
