@@ -189,6 +189,9 @@ def test_all_zero_flows(workdir):
     ("elevator", False, "", "pedestrian"),
     ("track", False, "", "pedestrian"),
     ("bridleway", False, "yes", "pedestrian"),
+    ("platform", False, "", "pedestrian"),
+    ("corridor", False, "", "pedestrian"),
+    ("corridor", False, "permissive", "pedestrian"),
     ("residential", False, "", "road"),
     ("service", False, "", "road"),
     ("primary", False, "yes", "road"),
@@ -364,3 +367,21 @@ def test_forced_segments_are_always_displayed(workdir, monkeypatch, top_pct, min
     shown = {json.dumps(f["geometry"]["coordinates"]) for f in _features("flow_edges.geojson")}
     forced = _features("forced_segments.geojson") + _features("forced_cycleway.geojson")
     assert {json.dumps(f["geometry"]["coordinates"]) for f in forced} <= shown
+
+
+def test_routing_graph_platform_and_corridor_are_pedestrian(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    nodes_gdf = gpd.GeoDataFrame(
+        {"x": [_X0, _X0 + 50, _X0 + 100], "y": [_Y0, _Y0, _Y0],
+         "geometry": [Point(_X0, _Y0), Point(_X0 + 50, _Y0), Point(_X0 + 100, _Y0)]},
+        index=[1, 2, 3], crs="EPSG:31370",
+    )
+    export_routing_graph(
+        [1, 2, 3], nodes_gdf,
+        [(0, 1), (1, 2)], [80.0, 50.0], [50.0, 50.0],
+        ["platform", "corridor"],
+        [_seg(0, 0, 50, 0), _seg(50, 0, 100, 0)],
+        [False, False], ["", "permissive"],
+    )
+    data = json.loads((tmp_path / "graph.json").read_text())
+    assert [e[5] for e in data["e"]] == [0, 0]
