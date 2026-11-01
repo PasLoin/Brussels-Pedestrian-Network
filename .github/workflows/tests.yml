@@ -7,12 +7,18 @@ on:
       - "scripts/**"
       - "tests/**"
       - "pwg/**"
+      - "*.js"
+      - "*.css"
+      - "*.html"
       - ".github/workflows/tests.yml"
   pull_request:
     paths:
       - "scripts/**"
       - "tests/**"
       - "pwg/**"
+      - "*.js"
+      - "*.css"
+      - "*.html"
       - ".github/workflows/tests.yml"
   workflow_dispatch:
 
@@ -28,8 +34,21 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
       - name: Install Python dependencies
-        run: pip install "shapely>=2" osmnx geopandas igraph numpy pyproj pyyaml pytest
+        run: pip install "shapely>=2" osmnx geopandas igraph numpy pyproj pyyaml pytest playwright
+
+      - name: Install browser for layout tests
+        run: python -m playwright install --with-deps chromium
+
+      - name: Run JavaScript tests
+        run: node --test tests/js/*.test.js
 
       - name: Run unit tests
+        env:
+          REQUIRE_BROWSER_TESTS: "1"
         run: python -m pytest tests/ -v
