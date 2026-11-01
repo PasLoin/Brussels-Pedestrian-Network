@@ -1,3 +1,6 @@
+const SMALL_SCREEN_QUERY = "(max-width: 600px)";
+let legendAutoCollapsed = false;
+
 function toggleHeader() {
   const el = document.getElementById("header");
   const isOpen = el.classList.toggle("open");
@@ -5,11 +8,33 @@ function toggleHeader() {
   document.getElementById("header-toggle").setAttribute("aria-expanded", isOpen);
 }
 
-function toggleLegend() {
+function setLegendOpen(open) {
   const el = document.getElementById("legend");
-  const isOpen = el.classList.toggle("open");
-  el.classList.toggle("closed");
-  document.getElementById("legend-toggle").setAttribute("aria-expanded", isOpen);
+  el.classList.toggle("open", open);
+  el.classList.toggle("closed", !open);
+  document.getElementById("legend-toggle").setAttribute("aria-expanded", open);
+}
+
+function toggleLegend() {
+  legendAutoCollapsed = false;
+  setLegendOpen(!document.getElementById("legend").classList.contains("open"));
+}
+
+function showRoutePanel() {
+  document.getElementById("route-panel").classList.add("visible");
+  const legendOpen = document.getElementById("legend").classList.contains("open");
+  if (legendOpen && window.matchMedia(SMALL_SCREEN_QUERY).matches) {
+    setLegendOpen(false);
+    legendAutoCollapsed = true;
+  }
+}
+
+function hideRoutePanel() {
+  document.getElementById("route-panel").classList.remove("visible");
+  if (legendAutoCollapsed) {
+    legendAutoCollapsed = false;
+    setLegendOpen(true);
+  }
 }
 
 (function () {
@@ -49,7 +74,7 @@ function updateFlowFilter(rawValue) {
   const filter = minPct > 0
     ? ["all", baseFilter, [">=", ["to-number", ["get", "flow_pct"], 0], minPct]]
     : baseFilter;
-  try { mapRef.setFilter("flow-road", filter); } catch (_) { }
+  setFilterIfLayer(mapRef, "flow-road", filter);
 }
 
 const SIDEWALK_STATUSES = [
@@ -61,18 +86,7 @@ const SIDEWALK_STATUSES = [
 ];
 const activeSidewalkStatuses = new Set(SIDEWALK_STATUSES.map(s => s.value));
 
-function updateSidewalkFilter() {
-  if (!mapRef) return;
-  let filter;
-  if (activeSidewalkStatuses.size === 0) {
-    filter = ["==", ["get", "sw"], "__none__"];
-  } else if (activeSidewalkStatuses.size === SIDEWALK_STATUSES.length) {
-    filter = null;
-  } else {
-    filter = ["in", ["get", "sw"], ["literal", [...activeSidewalkStatuses]]];
-  }
-  try { mapRef.setFilter("sidewalk-roads", filter); } catch (_) { }
-}
+const updateSidewalkFilter = makeMembershipFilterUpdater(() => mapRef, "sidewalk-roads", "sw", activeSidewalkStatuses, SIDEWALK_STATUSES);
 
 const MISSING_CROSSING_TYPES = [
   { value: "missing_way", label: "Way non mappé",               color: "#f97316" },
@@ -81,18 +95,7 @@ const MISSING_CROSSING_TYPES = [
 ];
 const activeMissingTypes = new Set(MISSING_CROSSING_TYPES.map(t => t.value));
 
-function updateMissingCrossingsFilter() {
-  if (!mapRef) return;
-  let filter;
-  if (activeMissingTypes.size === 0) {
-    filter = ["==", ["get", "type"], "__none__"];
-  } else if (activeMissingTypes.size === MISSING_CROSSING_TYPES.length) {
-    filter = null;
-  } else {
-    filter = ["in", ["get", "type"], ["literal", [...activeMissingTypes]]];
-  }
-  try { mapRef.setFilter("missing-crossings", filter); } catch (_) { }
-}
+const updateMissingCrossingsFilter = makeMembershipFilterUpdater(() => mapRef, "missing-crossings", "type", activeMissingTypes, MISSING_CROSSING_TYPES);
 
 const KERB_ISSUE_TYPES = [
   { value: "kerb_missing",  label: "Kerb absent",             color: "#1e3a8a" },
@@ -100,47 +103,7 @@ const KERB_ISSUE_TYPES = [
 ];
 const activeKerbIssueTypes = new Set();
 
-function updateKerbIssuesFilter() {
-  if (!mapRef) return;
-  let filter;
-  if (activeKerbIssueTypes.size === 0) {
-    filter = ["==", ["get", "type"], "__none__"];
-  } else if (activeKerbIssueTypes.size === KERB_ISSUE_TYPES.length) {
-    filter = null;
-  } else {
-    filter = ["in", ["get", "type"], ["literal", [...activeKerbIssueTypes]]];
-  }
-  try { mapRef.setFilter("kerb-issues", filter); } catch (_) { }
-}
-
-class MinHeap {
-  constructor() { this.d = []; }
-  get size() { return this.d.length; }
-  push(item) { this.d.push(item); this._up(this.d.length - 1); }
-  pop() {
-    const top = this.d[0], last = this.d.pop();
-    if (this.d.length > 0) { this.d[0] = last; this._down(0); }
-    return top;
-  }
-  _up(i) {
-    const d = this.d;
-    while (i > 0) {
-      const p = (i - 1) >> 1;
-      if (d[p][0] <= d[i][0]) break;
-      [d[p], d[i]] = [d[i], d[p]]; i = p;
-    }
-  }
-  _down(i) {
-    const d = this.d, n = d.length;
-    while (true) {
-      let m = i, l = 2 * i + 1, r = 2 * i + 2;
-      if (l < n && d[l][0] < d[m][0]) m = l;
-      if (r < n && d[r][0] < d[m][0]) m = r;
-      if (m === i) break;
-      [d[m], d[i]] = [d[i], d[m]]; i = m;
-    }
-  }
-}
+const updateKerbIssuesFilter = makeMembershipFilterUpdater(() => mapRef, "kerb-issues", "type", activeKerbIssueTypes, KERB_ISSUE_TYPES);
 
 const ISLAND_TYPES = [
   { value: "unjoined", label: "Jonction manquante (≤ 2 m)", color: "#db2777" },
@@ -149,56 +112,21 @@ const ISLAND_TYPES = [
 ];
 const activeIslandTypes = new Set(ISLAND_TYPES.map(t => t.value));
 
-function updateIslandsFilter() {
-  if (!mapRef) return;
-  let filter;
-  if (activeIslandTypes.size === 0) {
-    filter = ["==", ["get", "type"], "__none__"];
-  } else if (activeIslandTypes.size === ISLAND_TYPES.length) {
-    filter = null;
-  } else {
-    filter = ["in", ["get", "type"], ["literal", [...activeIslandTypes]]];
-  }
-  try { mapRef.setFilter("graph-islands", filter); } catch (_) { }
-}
+const updateIslandsFilter = makeMembershipFilterUpdater(() => mapRef, "graph-islands", "type", activeIslandTypes, ISLAND_TYPES);
 
 let graphData = null;
 let adjList   = null;
 let mainComponent = null;
+let groundEdges = null;
 let graphReady = false;
-
-function computeMainComponent(nNodes, edges) {
-  const parent = new Int32Array(nNodes);
-  for (let i = 0; i < nNodes; i++) parent[i] = i;
-  const find = (x) => {
-    while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; }
-    return x;
-  };
-  for (const e of edges) {
-    const a = find(e[0]), b = find(e[1]);
-    if (a !== b) parent[a] = b;
-  }
-  const size = new Int32Array(nNodes);
-  let bestRoot = 0;
-  for (let i = 0; i < nNodes; i++) {
-    const r = find(i);
-    size[r]++;
-    if (size[r] > size[bestRoot]) bestRoot = r;
-  }
-  const mask = new Uint8Array(nNodes);
-  for (let i = 0; i < nNodes; i++) if (find(i) === bestRoot) mask[i] = 1;
-  return mask;
-}
 
 fetch("./graph.json")
   .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
   .then(data => {
     graphData = data;
-    const nNodes = data.n.length;
-    adjList = new Array(nNodes);
-    for (let i = 0; i < nNodes; i++) adjList[i] = [];
-    data.e.forEach((e, idx) => { adjList[e[0]].push([e[1], idx]); });
-    mainComponent = computeMainComponent(nNodes, data.e);
+    adjList = buildAdjacency(data);
+    groundEdges = groundSnappable(data);
+    mainComponent = computeMainComponent(data.n.length, data.e);
     graphReady = true;
     const btn = document.getElementById("nav-btn");
     btn.classList.remove("loading");
@@ -213,82 +141,9 @@ fetch("./graph.json")
     document.getElementById("nav-btn").setAttribute("aria-busy", "false");
   });
 
-function nearestNode(lat, lng) {
-  const nodes = graphData.n;
-  let minD = Infinity, minI = 0;
-  for (let i = 0; i < nodes.length; i++) {
-    if (mainComponent && !mainComponent[i]) continue;
-    const dlat = nodes[i][0] - lat, dlng = nodes[i][1] - lng;
-    const d = dlat * dlat + dlng * dlng;
-    if (d < minD) { minD = d; minI = i; }
-  }
-  return minI;
-}
-
-function dijkstra(src, tgt) {
-  const n = graphData.n.length;
-  const dist = new Float64Array(n).fill(Infinity);
-  const prev = new Int32Array(n).fill(-1);
-  const prevEdge = new Int32Array(n).fill(-1);
-  dist[src] = 0;
-  const heap = new MinHeap();
-  heap.push([0, src]);
-  while (heap.size > 0) {
-    const [d, u] = heap.pop();
-    if (d > dist[u]) continue;
-    if (u === tgt) break;
-    const neighbors = adjList[u];
-    for (let i = 0; i < neighbors.length; i++) {
-      const [v, eidx] = neighbors[i];
-      const nd = d + graphData.e[eidx][2];
-      if (nd < dist[v]) {
-        dist[v] = nd; prev[v] = u; prevEdge[v] = eidx;
-        heap.push([nd, v]);
-      }
-    }
-  }
-  if (dist[tgt] === Infinity) return null;
-  const path = [];
-  let cur = tgt;
-  while (cur !== src) { path.push(prevEdge[cur]); cur = prev[cur]; }
-  path.reverse();
-  return path;
-}
-
-function buildRoute(edgePath) {
-  let totalM = 0, pedM = 0, roadM = 0, cycM = 0;
-  const features = [];
-  for (const eidx of edgePath) {
-    const e = graphData.e[eidx];
-    const len = e[3], sc = e[5], coords = e[6];
-    const hw = graphData.hw[e[4]];
-    totalM += len;
-    if (sc === 0) pedM += len;
-    else if (sc === 1) roadM += len;
-    else if (sc === 2) cycM += len;
-    else pedM += len;
-    const color = sc === 0 ? "#22c55e" : sc === 3 ? "#2563eb" : sc === 2 ? "#7c3aed" : "#ef4444";
-    features.push({
-      type: "Feature",
-      properties: { infra_type: sc, highway: hw, length: len, color },
-      geometry: { type: "LineString", coordinates: coords.map(c => [c[1], c[0]]) }
-    });
-  }
-  const geojson = { type: "FeatureCollection", features };
-  const pedPct  = totalM > 0 ? pedM  / totalM * 100 : 0;
-  const roadPct = totalM > 0 ? roadM / totalM * 100 : 0;
-  const cycPct  = totalM > 0 ? cycM  / totalM * 100 : 0;
-  const walkMin = Math.round(totalM / 80);
-  return {
-    geojson, totalM: Math.round(totalM),
-    pedM: Math.round(pedM), roadM: Math.round(roadM), cycM: Math.round(cycM),
-    pedPct, roadPct, cycPct, walkMin
-  };
-}
-
 let navMode = false, navStep = 0;
 let startMarker = null, endMarker = null;
-let startNode = -1, endNode = -1;
+let startSnap = null, endSnap = null;
 let mapRef = null;
 
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && navMode) toggleNavMode(); });
@@ -318,7 +173,7 @@ function clearRoute() {
   navStep = 0;
   if (startMarker) { startMarker.remove(); startMarker = null; }
   if (endMarker)   { endMarker.remove();   endMarker   = null; }
-  document.getElementById("route-panel").classList.remove("visible");
+  hideRoutePanel();
   if (mapRef) {
     const src = mapRef.getSource("nav-route");
     if (src) src.setData({ type: "FeatureCollection", features: [] });
@@ -330,27 +185,25 @@ function handleNavClick(e) {
   if (!navMode || !graphReady) return;
   const { lat, lng } = e.lngLat;
   if (navStep === 0) {
-    startNode = nearestNode(lat, lng);
-    const sn = graphData.n[startNode];
+    startSnap = snapToNetwork(graphData, lat, lng, mainComponent, groundEdges);
     if (startMarker) startMarker.remove();
-    startMarker = new maplibregl.Marker({ color: "#22c55e" }).setLngLat([sn[1], sn[0]]).addTo(mapRef);
+    startMarker = new maplibregl.Marker({ color: "#22c55e" }).setLngLat([lng, lat]).addTo(mapRef);
     navStep = 1;
     document.getElementById("nav-hint").textContent = "Cliquez pour placer l'arrivée";
   } else if (navStep === 1) {
-    endNode = nearestNode(lat, lng);
-    const en = graphData.n[endNode];
+    endSnap = snapToNetwork(graphData, lat, lng, mainComponent, groundEdges);
     if (endMarker) endMarker.remove();
-    endMarker = new maplibregl.Marker({ color: "#ef4444" }).setLngLat([en[1], en[0]]).addTo(mapRef);
+    endMarker = new maplibregl.Marker({ color: "#ef4444" }).setLngLat([lng, lat]).addTo(mapRef);
     document.getElementById("nav-hint").textContent = "Calcul…";
     requestAnimationFrame(() => {
       const t0 = performance.now();
-      const path = dijkstra(startNode, endNode);
+      const found = startSnap && endSnap ? routeBetween(graphData, adjList, startSnap, endSnap) : null;
       const dt = (performance.now() - t0).toFixed(0);
-      if (!path || path.length === 0) {
+      if (!found || found.legs.length === 0) {
         document.getElementById("nav-hint").textContent = "Aucun itinéraire trouvé";
         navStep = 2; return;
       }
-      const route = buildRoute(path);
+      const route = buildRoute(graphData, found.legs);
       const src = mapRef.getSource("nav-route");
       if (src) src.setData(route.geojson);
       document.getElementById("route-dist").textContent = route.totalM >= 1000
@@ -365,7 +218,7 @@ function handleNavClick(e) {
       document.getElementById("stat-ped-pct").textContent  = `${route.pedPct.toFixed(0)}%`;
       document.getElementById("stat-road-pct").textContent = `${route.roadPct.toFixed(0)}%`;
       document.getElementById("stat-cyc-pct").textContent  = `${route.cycPct.toFixed(0)}%`;
-      document.getElementById("route-panel").classList.add("visible");
+      showRoutePanel();
       document.getElementById("nav-hint").textContent = `Calculé en ${dt} ms`;
       navStep = 2;
     });
@@ -475,7 +328,12 @@ const HIGHWAY_LAYERS = [
   { id: "path",          label: "Sentier",           color: "#86efac", width: 1.5, dash: true,  hidden: true },
   { id: "steps",         label: "Escaliers",         color: "#166534", width: 2,   dash: true,  hidden: true },
   { id: "track",         label: "Chemin rural / forestier", color: "#a16207", width: 1.5, dash: true, hidden: true },
+  { id: "platform",      label: "Quai d'arrêt",      color: "#64748b", width: 2.5, dash: false, hidden: true },
 ];
+
+const ELEVATOR_COLOR = "#4338ca";
+const ELEVATOR_LAYER_IDS = ["highway-elevator", "highway-elevator-line"];
+const IS_ELEVATOR = ["any", ["==", ["get", "highway"], "elevator"], ["==", ["get", "amenity"], "elevator"]];
 
 const FLOW_PCT = ["to-number", ["get", "flow_pct"], 0];
 
@@ -506,6 +364,27 @@ const PEDESTRIAN_LAYERS = [
       "circle-color": "#15803d",
       "circle-radius": ["interpolate", ["linear"], ["zoom"], 12, 1.5, 16, 4],
       "circle-stroke-color": "#15803d", "circle-stroke-width": 1
+    }
+  },
+  {
+    id: "highway-elevator-line", type: "line", source: "pedestrian", "source-layer": "highways",
+    filter: ["all", ["==", ["geometry-type"], "LineString"], IS_ELEVATOR],
+    layout: { "line-cap": "round", "line-join": "round", visibility: "none" },
+    paint: {
+      "line-color": ELEVATOR_COLOR,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 12, 1.5, 16, 4, 18, 7],
+      "line-opacity": 0.9
+    }
+  },
+  {
+    id: "highway-elevator", type: "circle", source: "pedestrian", "source-layer": "highways",
+    filter: ["all", ["==", ["geometry-type"], "Point"], IS_ELEVATOR],
+    layout: { visibility: "none" },
+    paint: {
+      "circle-color": ELEVATOR_COLOR,
+      "circle-radius": ["interpolate", ["linear"], ["zoom"], 9, 2, 14, 3.5, 18, 7],
+      "circle-stroke-color": "#ffffff",
+      "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], 9, 0.5, 16, 1.5]
     }
   },
   {
@@ -707,11 +586,13 @@ const HOVER_LAYERS = [
     `
   },
   {
-    ids: HIGHWAY_LAYERS.map(l => `highway-${l.id}`).concat(["highway-crossing"]),
+    ids: HIGHWAY_LAYERS.map(l => `highway-${l.id}`).concat(["highway-crossing"], ELEVATOR_LAYER_IDS),
     format: p => {
       const entries = Object.entries(p).filter(([k]) => !k.startsWith("@") && k !== "tippecanoe");
+      const isElevator = p.highway === "elevator" || p.amenity === "elevator";
+      const titleColor = isElevator ? ELEVATOR_COLOR : ((HIGHWAY_LAYERS.find(l => l.id === p.highway) || {}).color || "#15803d");
       return `
-        ${popupTitle((HIGHWAY_LAYERS.find(l => l.id === p.highway) || {}).color || "#15803d", escapeHTML(p.highway || "Infrastructure"))}
+        ${popupTitle(titleColor, escapeHTML(p.highway || (isElevator ? "elevator" : "Infrastructure")))}
         ${entries.map(([k, v]) => `<div class="popup-row"><span class="label">${escapeHTML(k)}</span><span class="value">${escapeHTML(v)}</span></div>`).join("")}
       `;
     }
@@ -1186,7 +1067,7 @@ function initMap(style) {
       legendEl.appendChild(s);
     };
 
-    const makeItem = ({ layerId, label, color, color2, swatchType = "line", dashed = false, onToggle = null }) => {
+    const makeItem = ({ layerId, label, color, color2, swatchType = "line", dashed = false, onToggle = null, linkedLayerIds = [] }) => {
       const item = document.createElement("div");
       item.className = "legend-item";
       item.setAttribute("role", "button");
@@ -1220,6 +1101,7 @@ function initMap(style) {
       const toggle = () => {
         const v = map.getLayoutProperty(layerId, "visibility") === "none" ? "visible" : "none";
         map.setLayoutProperty(layerId, "visibility", v);
+        linkedLayerIds.forEach(id => map.setLayoutProperty(id, "visibility", v));
         updateState(true);
       };
       item.onclick = toggle;
@@ -1254,10 +1136,7 @@ function initMap(style) {
         if (activeKerbIssueTypes.has(type)) activeKerbIssueTypes.delete(type);
         else activeKerbIssueTypes.add(type);
         updateState();
-        try {
-          map.setLayoutProperty("kerb-issues", "visibility",
-            activeKerbIssueTypes.size > 0 ? "visible" : "none");
-        } catch (_) { }
+        setVisibilityIfLayer(map, "kerb-issues", activeKerbIssueTypes.size > 0);
         updateKerbIssuesFilter();
       };
       item.onclick = toggle;
@@ -1408,6 +1287,10 @@ function initMap(style) {
 
     addSection("Réseau de base");
     HIGHWAY_LAYERS.forEach(l => legendEl.appendChild(makeItem({ layerId: `highway-${l.id}`, label: l.label, color: l.color, dashed: l.dash })));
+    legendEl.appendChild(makeItem({
+      layerId: ELEVATOR_LAYER_IDS[0], linkedLayerIds: ELEVATOR_LAYER_IDS.slice(1),
+      label: "Ascenseur", color: ELEVATOR_COLOR, swatchType: "dot",
+    }));
 
     const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, maxWidth: "280px" });
     const allHoverIds = HOVER_LAYERS.flatMap(h => h.ids);

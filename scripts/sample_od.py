@@ -206,6 +206,7 @@ def snap_to_graph(
     edge_geoms: list,
     vertex_mask: np.ndarray | None = None,
     max_snap_m: float | None = None,
+    edge_snappable: list[bool] | None = None,
 ) -> tuple[list[int], dict]:
     print("Snapping OD points to graph edges...")
 
@@ -219,17 +220,23 @@ def snap_to_graph(
         else np.asarray(vertex_mask, dtype=bool)
     )
 
-    with step("STRtree build (nodes + edges)"):
-        allowed_nodes = np.flatnonzero(allowed)
-        node_tree = STRtree([Point(node_xy[i]) for i in allowed_nodes])
+    snappable = (
+        np.ones(len(edge_geoms), dtype=bool) if edge_snappable is None
+        else np.asarray(edge_snappable, dtype=bool)
+    )
 
+    with step("STRtree build (nodes + edges)"):
         valid_edge_indices: list[int] = []
         valid_edge_geoms: list = []
         other_edge_geoms: list = []
+        n_off_ground = 0
         for eid, geom in enumerate(edge_geoms):
             if geom is None or geom.is_empty:
                 continue
             if geom.length < _MIN_EDGE_LENGTH:
+                continue
+            if not snappable[eid]:
+                n_off_ground += 1
                 continue
             u, v = edge_tuples[eid]
             if allowed[u] and allowed[v]:
@@ -238,11 +245,20 @@ def snap_to_graph(
             else:
                 other_edge_geoms.append(geom)
 
+        if not valid_edge_geoms:
+            raise ValueError("No edge available for snapping")
+
+        allowed_nodes = np.array(sorted(
+            {n for eid in valid_edge_indices for n in edge_tuples[eid]}
+        ), dtype=np.intp)
+        node_tree = STRtree([Point(node_xy[i]) for i in allowed_nodes])
+
         edge_tree = STRtree(valid_edge_geoms)
         other_tree = STRtree(other_edge_geoms) if other_edge_geoms else None
     print(f"  Valid edges for snapping: {len(valid_edge_indices)} "
           f"/ {len(edge_geoms)} total "
-          f"(outside main network: {len(other_edge_geoms)})")
+          f"(outside main network: {len(other_edge_geoms)}, "
+          f"not at ground level: {n_off_ground})")
 
     src_xy = np.array([
         node_xy[edge_tuples[eid][0]] for eid in valid_edge_indices
@@ -311,4 +327,5 @@ def snap_to_graph(
         "points_redirected_from_islands": n_redirected,
         "points_dropped_too_far": n_too_far,
         "points_fallback_nearest_node": n_fallback,
+        "edges_not_at_ground_level": n_off_ground,
     }

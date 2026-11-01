@@ -17,6 +17,7 @@ from config import (
     PED_HIGHWAY_TYPES,
     TOP_RANK_PCT,
 )
+from build_graph import is_ground_level
 from timing import step
 
 
@@ -140,6 +141,10 @@ def export_flow_layers(
         edges_by_infra[infra_type] += 1
         length_by_infra[infra_type] += lm
 
+        if flow < MIN_FLOW_THRESHOLD:
+            n_dropped_low_flow += 1
+            continue
+
         if flow >= threshold:
             forced_row = {
                 "geometry": geom,
@@ -153,10 +158,6 @@ def export_flow_layers(
                 rows_forced_cycleway.append(forced_row)
             elif infra_type == "road":
                 rows_forced_road.append(forced_row)
-
-        if flow < MIN_FLOW_THRESHOLD:
-            n_dropped_low_flow += 1
-            continue
 
         rows_flow.append({
             "geometry": geom,
@@ -294,6 +295,7 @@ def export_routing_graph(
     edge_geoms: list,
     edge_cycleway_nf: list[bool],
     edge_foot_tags: list[str],
+    edge_levels: list[str] | None = None,
 ) -> None:
     print("Exporting routing graph for client-side navigation...")
     transformer = Transformer.from_crs("EPSG:31370", "EPSG:4326", always_xy=True)
@@ -369,7 +371,9 @@ def export_routing_graph(
             else:
                 coords = [node_coords[src_i], node_coords[tgt_i]]
 
-            edges.append([src_i, tgt_i, w, lm, hw_i, sc, coords])
+            ground = 1 if edge_levels is None or is_ground_level(edge_levels[eid]) else 0
+
+            edges.append([src_i, tgt_i, w, lm, hw_i, sc, coords, ground])
 
     with step("json.dump graph.json"):
         graph_data = {"hw": hw_types, "n": node_coords, "e": edges}

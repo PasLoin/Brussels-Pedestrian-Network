@@ -76,3 +76,86 @@ def test_clean_osm_without_barriers_is_noop(tmp_path):
     ways = root.findall("way")
     assert len(ways) == 1
     assert [nd.get("ref") for nd in ways[0].findall("nd")] == ["1", "2"]
+
+
+def _clean(tmp_path, ways_xml):
+    osm = f"""<?xml version='1.0' encoding='UTF-8'?>
+<osm version="0.6" generator="test">
+  <node id="1" lat="50.850" lon="4.350"/>
+  <node id="2" lat="50.851" lon="4.351"/>
+  <node id="3" lat="50.852" lon="4.350"/>
+  {ways_xml}
+</osm>
+"""
+    src = tmp_path / "in.osm"
+    dst = tmp_path / "out.osm"
+    src.write_text(osm)
+    clean_osm(str(src), str(dst))
+    root = ET.parse(dst).getroot()
+    return {
+        way.get("id"): [(t.get("k"), t.get("v")) for t in way.findall("tag")]
+        for way in root.findall("way")
+    }
+
+
+def _highways(tags):
+    return [v for k, v in tags if k == "highway"]
+
+
+@pytest.mark.parametrize("tags", [
+    [("railway", "platform")],
+    [("public_transport", "platform")],
+    [("railway", "platform"), ("public_transport", "platform"), ("area", "yes")],
+])
+def test_platform_without_highway_gets_highway_platform(tmp_path, tags):
+    tag_xml = "".join(f'<tag k="{k}" v="{v}"/>' for k, v in tags)
+    ways = _clean(tmp_path, f'<way id="10"><nd ref="1"/><nd ref="2"/><nd ref="3"/><nd ref="1"/>{tag_xml}</way>')
+    assert _highways(ways["10"]) == ["platform"]
+    for tag in tags:
+        assert tag in ways["10"]
+
+
+@pytest.mark.parametrize("highway", ["platform", "footway", "pedestrian"])
+def test_platform_with_existing_highway_is_left_alone(tmp_path, highway):
+    ways = _clean(tmp_path, (
+        f'<way id="10"><nd ref="1"/><nd ref="2"/>'
+        f'<tag k="highway" v="{highway}"/><tag k="railway" v="platform"/></way>'
+    ))
+    assert _highways(ways["10"]) == [highway]
+
+
+@pytest.mark.parametrize("tags", [
+    [("railway", "rail")],
+    [("public_transport", "stop_position")],
+    [("railway", "platform_edge")],
+    [("building", "train_station")],
+])
+def test_other_ways_are_not_turned_into_platforms(tmp_path, tags):
+    tag_xml = "".join(f'<tag k="{k}" v="{v}"/>' for k, v in tags)
+    ways = _clean(tmp_path, f'<way id="10"><nd ref="1"/><nd ref="2"/>{tag_xml}</way>')
+    assert _highways(ways["10"]) == []
+
+
+def test_normalized_platform_keeps_its_tag_when_split_at_a_barrier(tmp_path):
+    osm = """<?xml version='1.0' encoding='UTF-8'?>
+<osm version="0.6" generator="test">
+  <node id="1" lat="50.850" lon="4.350"/>
+  <node id="2" lat="50.851" lon="4.351"/>
+  <node id="3" lat="50.852" lon="4.352"><tag k="barrier" v="gate"/><tag k="access" v="no"/></node>
+  <node id="4" lat="50.853" lon="4.353"/>
+  <node id="5" lat="50.854" lon="4.354"/>
+  <way id="10">
+    <nd ref="1"/><nd ref="2"/><nd ref="3"/><nd ref="4"/><nd ref="5"/>
+    <tag k="railway" v="platform"/>
+  </way>
+</osm>
+"""
+    src = tmp_path / "in.osm"
+    dst = tmp_path / "out.osm"
+    src.write_text(osm)
+    clean_osm(str(src), str(dst))
+    ways = ET.parse(dst).getroot().findall("way")
+    assert len(ways) == 2
+    for way in ways:
+        tags = {t.get("k"): t.get("v") for t in way.findall("tag")}
+        assert tags["highway"] == "platform"

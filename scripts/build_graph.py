@@ -11,6 +11,7 @@ import osmnx as ox
 
 from config import (
     ACCESS_EXCLUDED,
+    CORRIDOR_PERMISSIVE_COST,
     CYCLEWAY_FOOT_ALLOWED_COST,
     CYCLEWAY_NO_FOOT_COST,
     EDGE_COST,
@@ -145,6 +146,12 @@ def _unanimous_str(val) -> str:
 
 
 LEVEL_UNKNOWN = "?"
+
+GROUND_LEVELS = frozenset({"", "0"})
+
+
+def is_ground_level(level: str) -> bool:
+    return level in GROUND_LEVELS
 
 _UNDERGROUND_TUNNEL_EXEMPT = frozenset({"", "no", "building_passage"})
 _INDOOR_EXEMPT = frozenset({"", "no"})
@@ -284,6 +291,8 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
                 else:
                     base_cost = CYCLEWAY_NO_FOOT_COST
                     is_cycleway_no_foot = True
+            elif hw == "corridor" and foot_tag == "permissive":
+                base_cost = CORRIDOR_PERMISSIVE_COST
 
             length = float(row.get("length", 1.0))
 

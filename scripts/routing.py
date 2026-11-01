@@ -17,6 +17,7 @@ from timing import record
 
 _OD_RANDOM_SEED = 42
 _OD_QUERY_CHUNK = 2000
+_FLOW_FLUSH_EDGES = 1_000_000
 
 
 class RoutingResult(NamedTuple):
@@ -148,7 +149,7 @@ def route_pairs(
             chunk_traversed_eids.extend(eids)
         t_accum += time.time() - _ta0
 
-        if len(chunk_traversed_eids) > 1000000:
+        if len(chunk_traversed_eids) > _FLOW_FLUSH_EDGES:
             _tb0 = time.time()
             flow_arr += np.bincount(chunk_traversed_eids, minlength=n_edges).astype(np.int32)
             t_bincount += time.time() - _tb0
