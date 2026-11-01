@@ -13,12 +13,11 @@ from config import (
     TOP_RANK_PCT,
 )
 from clean_osm import clean_osm
-from build_graph import build_graph, is_ground_level
-from sample_od import sample_od_points, snap_to_graph
-from routing import generate_od_pairs, route_pairs
+from build_graph import build_graph
+from sample_od import sample_od_points
+from simulation import simulate_flows
 from export import (
     compute_network_stats,
-    export_flow_layers,
     export_routing_graph,
     save_stats,
     undirected_edge_groups,
@@ -95,47 +94,11 @@ def main() -> None:
     with step("sample_od_points"):
         od_points, od_streets, od_sides, _ = sample_od_points("addresses.geojson")
 
-    with step("snap_to_graph"):
-        snapped, snap_stats = snap_to_graph(
-            od_points, gb.node_list, gb.nodes_gdf,
-            gb.edge_tuples, gb.edge_geoms,
-            vertex_mask=main_mask,
-            max_snap_m=MAX_SNAP_DISTANCE_M,
-            edge_snappable=[is_ground_level(lv) for lv in gb.edge_levels],
-        )
-
-    keep = [i for i, s in enumerate(snapped) if s >= 0]
-    if len(keep) < len(snapped):
-        od_points = [od_points[i] for i in keep]
-        od_streets = [od_streets[i] for i in keep]
-        od_sides = [od_sides[i] for i in keep]
-        snapped = [snapped[i] for i in keep]
-
-    od_sampling_stats = {
-        **snap_stats,
-        "streets_sampled": len(set(od_streets)),
-        "points_even": sum(1 for s in od_sides if s == "even"),
-        "points_odd": sum(1 for s in od_sides if s == "odd"),
-    }
-
-    with step("generate_od_pairs"):
-        od_pairs, rejected_near, rejected_far = generate_od_pairs(
-            od_points, snapped,
-        )
-
-    with step("route_pairs"):
-        result = route_pairs(
-            gb.graph, od_pairs, gb.edge_lengths,
-        )
-
-    with step("export_flow_layers"):
-        flow_stats = export_flow_layers(
-            result.flow_arr,
-            edge_groups,
-            gb.edge_highways, gb.edge_geoms,
-            gb.edge_lengths, gb.edge_cycleway_nf,
-            gb.edge_foot_tags,
-        )
+    sim = simulate_flows(
+        gb, edge_groups, main_mask,
+        od_points, od_streets, od_sides,
+        max_snap_m=MAX_SNAP_DISTANCE_M,
+    )
 
     with step("detect_sidewalk_gaps"):
         sidewalk_gap_stats = detect_sidewalk_gaps(
@@ -169,22 +132,22 @@ def main() -> None:
         )
 
     save_stats(
-        routed=result.routed,
-        total_routed_distance=result.total_routed_distance,
-        n_od_points=len(od_points),
-        n_od_pairs=len(od_pairs),
-        rejected_near=rejected_near,
-        rejected_far=rejected_far,
-        routing_time_s=result.routing_time_s,
+        routed=sim.routing.routed,
+        total_routed_distance=sim.routing.total_routed_distance,
+        n_od_points=len(sim.od_points),
+        n_od_pairs=len(sim.od_pairs),
+        rejected_near=sim.rejected_near,
+        rejected_far=sim.rejected_far,
+        routing_time_s=sim.routing.routing_time_s,
         graph_stats=graph_stats,
-        flow_stats=flow_stats,
+        flow_stats=sim.flow_stats,
         sidewalk_gap_stats=sidewalk_gap_stats,
         sidewalk_road_stats=sidewalk_road_stats,
         missing_crossing_stats=missing_crossing_stats,
         footway_connectivity_stats=footway_connectivity_stats,
         tactile_paving_stats=tactile_paving_stats,
         network_stats=network_stats,
-        od_sampling_stats=od_sampling_stats,
+        od_sampling_stats=sim.od_sampling_stats,
     )
 
     with step("export_routing_graph"):
