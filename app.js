@@ -475,7 +475,12 @@ const HIGHWAY_LAYERS = [
   { id: "path",          label: "Sentier",           color: "#86efac", width: 1.5, dash: true,  hidden: true },
   { id: "steps",         label: "Escaliers",         color: "#166534", width: 2,   dash: true,  hidden: true },
   { id: "track",         label: "Chemin rural / forestier", color: "#a16207", width: 1.5, dash: true, hidden: true },
+  { id: "platform",      label: "Quai d'arrêt",      color: "#64748b", width: 2.5, dash: false, hidden: true },
 ];
+
+const ELEVATOR_COLOR = "#4338ca";
+const ELEVATOR_LAYER_IDS = ["highway-elevator", "highway-elevator-line"];
+const IS_ELEVATOR = ["any", ["==", ["get", "highway"], "elevator"], ["==", ["get", "amenity"], "elevator"]];
 
 const FLOW_PCT = ["to-number", ["get", "flow_pct"], 0];
 
@@ -506,6 +511,27 @@ const PEDESTRIAN_LAYERS = [
       "circle-color": "#15803d",
       "circle-radius": ["interpolate", ["linear"], ["zoom"], 12, 1.5, 16, 4],
       "circle-stroke-color": "#15803d", "circle-stroke-width": 1
+    }
+  },
+  {
+    id: "highway-elevator-line", type: "line", source: "pedestrian", "source-layer": "highways",
+    filter: ["all", ["==", ["geometry-type"], "LineString"], IS_ELEVATOR],
+    layout: { "line-cap": "round", "line-join": "round", visibility: "none" },
+    paint: {
+      "line-color": ELEVATOR_COLOR,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 12, 1.5, 16, 4, 18, 7],
+      "line-opacity": 0.9
+    }
+  },
+  {
+    id: "highway-elevator", type: "circle", source: "pedestrian", "source-layer": "highways",
+    filter: ["all", ["==", ["geometry-type"], "Point"], IS_ELEVATOR],
+    layout: { visibility: "none" },
+    paint: {
+      "circle-color": ELEVATOR_COLOR,
+      "circle-radius": ["interpolate", ["linear"], ["zoom"], 9, 2, 14, 3.5, 18, 7],
+      "circle-stroke-color": "#ffffff",
+      "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], 9, 0.5, 16, 1.5]
     }
   },
   {
@@ -707,11 +733,13 @@ const HOVER_LAYERS = [
     `
   },
   {
-    ids: HIGHWAY_LAYERS.map(l => `highway-${l.id}`).concat(["highway-crossing"]),
+    ids: HIGHWAY_LAYERS.map(l => `highway-${l.id}`).concat(["highway-crossing"], ELEVATOR_LAYER_IDS),
     format: p => {
       const entries = Object.entries(p).filter(([k]) => !k.startsWith("@") && k !== "tippecanoe");
+      const isElevator = p.highway === "elevator" || p.amenity === "elevator";
+      const titleColor = isElevator ? ELEVATOR_COLOR : ((HIGHWAY_LAYERS.find(l => l.id === p.highway) || {}).color || "#15803d");
       return `
-        ${popupTitle((HIGHWAY_LAYERS.find(l => l.id === p.highway) || {}).color || "#15803d", escapeHTML(p.highway || "Infrastructure"))}
+        ${popupTitle(titleColor, escapeHTML(p.highway || (isElevator ? "elevator" : "Infrastructure")))}
         ${entries.map(([k, v]) => `<div class="popup-row"><span class="label">${escapeHTML(k)}</span><span class="value">${escapeHTML(v)}</span></div>`).join("")}
       `;
     }
@@ -1186,7 +1214,7 @@ function initMap(style) {
       legendEl.appendChild(s);
     };
 
-    const makeItem = ({ layerId, label, color, color2, swatchType = "line", dashed = false, onToggle = null }) => {
+    const makeItem = ({ layerId, label, color, color2, swatchType = "line", dashed = false, onToggle = null, linkedLayerIds = [] }) => {
       const item = document.createElement("div");
       item.className = "legend-item";
       item.setAttribute("role", "button");
@@ -1220,6 +1248,7 @@ function initMap(style) {
       const toggle = () => {
         const v = map.getLayoutProperty(layerId, "visibility") === "none" ? "visible" : "none";
         map.setLayoutProperty(layerId, "visibility", v);
+        linkedLayerIds.forEach(id => map.setLayoutProperty(id, "visibility", v));
         updateState(true);
       };
       item.onclick = toggle;
@@ -1408,6 +1437,10 @@ function initMap(style) {
 
     addSection("Réseau de base");
     HIGHWAY_LAYERS.forEach(l => legendEl.appendChild(makeItem({ layerId: `highway-${l.id}`, label: l.label, color: l.color, dashed: l.dash })));
+    legendEl.appendChild(makeItem({
+      layerId: ELEVATOR_LAYER_IDS[0], linkedLayerIds: ELEVATOR_LAYER_IDS.slice(1),
+      label: "Ascenseur", color: ELEVATOR_COLOR, swatchType: "dot",
+    }));
 
     const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, maxWidth: "280px" });
     const allHoverIds = HOVER_LAYERS.flatMap(h => h.ids);
