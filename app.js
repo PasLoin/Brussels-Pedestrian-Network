@@ -1,3 +1,6 @@
+const SMALL_SCREEN_QUERY = "(max-width: 600px)";
+let legendAutoCollapsed = false;
+
 function toggleHeader() {
   const el = document.getElementById("header");
   const isOpen = el.classList.toggle("open");
@@ -5,11 +8,33 @@ function toggleHeader() {
   document.getElementById("header-toggle").setAttribute("aria-expanded", isOpen);
 }
 
-function toggleLegend() {
+function setLegendOpen(open) {
   const el = document.getElementById("legend");
-  const isOpen = el.classList.toggle("open");
-  el.classList.toggle("closed");
-  document.getElementById("legend-toggle").setAttribute("aria-expanded", isOpen);
+  el.classList.toggle("open", open);
+  el.classList.toggle("closed", !open);
+  document.getElementById("legend-toggle").setAttribute("aria-expanded", open);
+}
+
+function toggleLegend() {
+  legendAutoCollapsed = false;
+  setLegendOpen(!document.getElementById("legend").classList.contains("open"));
+}
+
+function showRoutePanel() {
+  document.getElementById("route-panel").classList.add("visible");
+  const legendOpen = document.getElementById("legend").classList.contains("open");
+  if (legendOpen && window.matchMedia(SMALL_SCREEN_QUERY).matches) {
+    setLegendOpen(false);
+    legendAutoCollapsed = true;
+  }
+}
+
+function hideRoutePanel() {
+  document.getElementById("route-panel").classList.remove("visible");
+  if (legendAutoCollapsed) {
+    legendAutoCollapsed = false;
+    setLegendOpen(true);
+  }
 }
 
 (function () {
@@ -190,7 +215,7 @@ function clearRoute() {
   navStep = 0;
   if (startMarker) { startMarker.remove(); startMarker = null; }
   if (endMarker)   { endMarker.remove();   endMarker   = null; }
-  document.getElementById("route-panel").classList.remove("visible");
+  hideRoutePanel();
   if (mapRef) {
     const src = mapRef.getSource("nav-route");
     if (src) src.setData({ type: "FeatureCollection", features: [] });
@@ -235,7 +260,7 @@ function handleNavClick(e) {
       document.getElementById("stat-ped-pct").textContent  = `${route.pedPct.toFixed(0)}%`;
       document.getElementById("stat-road-pct").textContent = `${route.roadPct.toFixed(0)}%`;
       document.getElementById("stat-cyc-pct").textContent  = `${route.cycPct.toFixed(0)}%`;
-      document.getElementById("route-panel").classList.add("visible");
+      showRoutePanel();
       document.getElementById("nav-hint").textContent = `Calculé en ${dt} ms`;
       navStep = 2;
     });
