@@ -218,3 +218,16 @@ test("buildRoute counts cycleway metres separately", () => {
   assert.equal(built.pedM, 200);
   assert.equal(built.geojson.features[0].properties.color, "#7c3aed");
 });
+
+test("groundSnappable reads the ground flag, missing flag counts as ground", () => {
+  const graph = { e: [[0, 1, 1, 1, 0, 0, [], 1], [1, 0, 1, 1, 0, 0, [], 0], [0, 1, 1, 1, 0, 0, []]] };
+  assert.deepEqual(nav.groundSnappable(graph), [true, false, true]);
+});
+
+test("a click above an underground edge snaps to the street", () => {
+  const { graph } = makeGraph([[0, 0], [200, 0], [0, 10], [200, 10]], [{ a: 0, b: 1 }, { a: 2, b: 3 }]);
+  graph.e.forEach(e => e.push(e[0] >= 2 ? 0 : 1));
+  const snap = nav.snapToNetwork(graph, ...ll(50, 9), null, nav.groundSnappable(graph));
+  assert.ok([0, 1].includes(graph.e[snap.edge][0]));
+  near(snap.distM, 9, 1e-6);
+});
