@@ -7,6 +7,7 @@ import geopandas as gpd
 from shapely.strtree import STRtree
 
 from config import FOOT_ALLOWED, ROAD_TYPES_SIDEWALK_EXPECTED
+from sidewalk_tags import has_absent_side
 from timing import step
 
 _GAP_ROAD_TYPES = ROAD_TYPES_SIDEWALK_EXPECTED - {"service"}
@@ -93,27 +94,8 @@ def _parallel_coverage(
     return total_length / road_length if road_length > 0 else 0.0
 
 
-_SIDEWALK_ABSENT = frozenset({"no", "none"})
-
-
-def _side_values(sw: str, sw_left: str, sw_right: str, sw_both: str) -> tuple[str, str]:
-    base_left = base_right = ""
-    if sw in _SIDEWALK_ABSENT:
-        base_left = base_right = "no"
-    elif sw == "left":
-        base_left, base_right = "yes", "no"
-    elif sw == "right":
-        base_left, base_right = "no", "yes"
-    elif sw:
-        base_left = base_right = sw
-    left = sw_left or sw_both or base_left
-    right = sw_right or sw_both or base_right
-    return left, right
-
-
 def _should_skip_road(sw: str, sw_left: str, sw_right: str, sw_both: str) -> bool:
-    left, right = _side_values(sw, sw_left, sw_right, sw_both)
-    return left in _SIDEWALK_ABSENT or right in _SIDEWALK_ABSENT
+    return has_absent_side(sw, sw_left, sw_right, sw_both)
 
 
 def _foot_cycleway_mask(gdf):
