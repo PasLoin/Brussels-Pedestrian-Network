@@ -1,287 +1,144 @@
-#!/usr/bin/env python3
-
 from __future__ import annotations
 
-import json
-import math
-import subprocess
-import sys
-from collections import defaultdict
+from collections import Counter
 
-from pyproj import Transformer
+import geopandas as gpd
 
-from sidewalk_tags import (
-    CATEGORY_NO,
-    CATEGORY_PARTIAL,
-    CATEGORY_SEPARATE,
-    CATEGORY_YES,
-    normalize,
-    stats_category,
-)
+from config import ROAD_TYPES_SIDEWALK_EXPECTED
+from sidewalk_tags import CATEGORY_SEPARATE, stats_category
 
-_TRACKED_HIGHWAY_TYPES = frozenset({
-    "footway", "pedestrian", "path", "living_street", "steps",
-    "elevator", "cycleway",
-    "residential", "service", "unclassified",
-    "tertiary", "tertiary_link",
-    "secondary", "secondary_link",
-    "primary", "primary_link",
-    "track",
-})
+_ROAD_TYPES = ROAD_TYPES_SIDEWALK_EXPECTED - {"service"}
 
-_PED_HIGHWAY_TYPES = frozenset({
-    "footway", "pedestrian", "path", "living_street", "steps", "elevator",
-})
-
-_ROAD_TYPES_SIDEWALK_EXPECTED = frozenset({
-    "residential", "unclassified",
-    "tertiary", "tertiary_link",
-    "secondary", "secondary_link",
-    "primary", "primary_link",
-})
+_MIN_LENGTH = 15.0
 
 
-class _BrusselsStatsHandler:
-    def __init__(self) -> None:
-        self._proj = Transformer.from_crs("EPSG:4326", "EPSG:31370", always_xy=True)
-
-        self.km_by_highway: dict[str, float] = defaultdict(float)
-        self.ways_by_highway: dict[str, int] = defaultdict(int)
-
-        self.n_crossing_nodes        = 0
-        self.n_crossing_continuous   = 0
-        self.n_crossing_marked       = 0
-        self.n_crossing_unmarked     = 0
-        self.n_crossing_signals      = 0
-        self.n_crossing_with_tactile = 0
-        self.n_elevator_nodes        = 0
-
-        self.n_footway_ways        = 0
-        self.n_footway_sidewalk    = 0
-        self.n_footway_crossing    = 0
-        self.n_footway_link        = 0
-        self.n_footway_traffic_island = 0
-        self.n_footway_other        = 0
-        self.n_footway_no_subtag    = 0
-        self.n_footway_with_surface    = 0
-        self.n_footway_with_smoothness = 0
-
-        self.n_road_ways                  = 0
-        self.n_road_sidewalk_any_tag      = 0
-        self.n_road_sidewalk_separate     = 0
-        self.n_road_sidewalk_yes_or_both  = 0
-        self.n_road_sidewalk_no_explicit  = 0
-        self.n_road_sidewalk_partial      = 0
-
-        self.road_sidewalk_by_type: dict[str, dict[str, int]] = defaultdict(
-            lambda: defaultdict(int)
-        )
-
-    def process_feature(self, feature: dict) -> None:
-        geom = feature.get("geometry")
-        if not geom:
-            return
-        
-        props = feature.get("properties", {})
-        gtype = geom.get("type")
-
-        if gtype == "Point":
-            self._handle_node(props)
-        elif gtype == "LineString":
-            self._handle_way(props, geom.get("coordinates", []))
-
-    def _handle_node(self, tags: dict) -> None:
-        if tags.get("highway") == "crossing":
-            self.n_crossing_nodes += 1
-            if tags.get("crossing:continuous") == "yes":
-                self.n_crossing_continuous += 1
-            xing = tags.get("crossing", "")
-            if xing == "marked":
-                self.n_crossing_marked += 1
-            elif xing == "unmarked":
-                self.n_crossing_unmarked += 1
-            elif xing == "traffic_signals":
-                self.n_crossing_signals += 1
-            if tags.get("tactile_paving") in ("yes", "contrasted", "primitive"):
-                self.n_crossing_with_tactile += 1
-        if tags.get("highway") == "elevator" or tags.get("amenity") == "elevator":
-            self.n_elevator_nodes += 1
-
-    def _handle_way(self, tags: dict, coords: list[list[float]]) -> None:
-        hw = tags.get("highway")
-        if not hw:
-            return
-
-        if hw in _TRACKED_HIGHWAY_TYPES:
-            length_m = self._way_length_m(coords)
-            self.km_by_highway[hw] += length_m / 1000.0
-            self.ways_by_highway[hw] += 1
-
-        if hw == "footway":
-            self.n_footway_ways += 1
-            sub = tags.get("footway", "")
-            if sub == "sidewalk":
-                self.n_footway_sidewalk += 1
-            elif sub == "crossing":
-                self.n_footway_crossing += 1
-            elif sub == "link":
-                self.n_footway_link += 1
-            elif sub == "traffic_island":
-                self.n_footway_traffic_island += 1
-            elif sub:
-                self.n_footway_other += 1
-            else:
-                self.n_footway_no_subtag += 1
-            if tags.get("surface"):
-                self.n_footway_with_surface += 1
-            if tags.get("smoothness"):
-                self.n_footway_with_smoothness += 1
-
-        if hw in _ROAD_TYPES_SIDEWALK_EXPECTED:
-            self.n_road_ways += 1
-            sw   = str(tags.get("sidewalk", "")).lower()
-            sw_b = str(tags.get("sidewalk:both", "")).lower()
-            sw_l = str(tags.get("sidewalk:left", "")).lower()
-            sw_r = str(tags.get("sidewalk:right", "")).lower()
-
-            has_any = any(normalize(sw, sw_l, sw_r, sw_b))
-            if has_any:
-                self.n_road_sidewalk_any_tag += 1
-
-            by_type = self.road_sidewalk_by_type[hw]
-            by_type["total"] += 1
-            if has_any:
-                by_type["any_tag"] += 1
-
-            category = stats_category(sw, sw_l, sw_r, sw_b)
-            if category == CATEGORY_SEPARATE:
-                self.n_road_sidewalk_separate += 1
-                by_type["separate"] += 1
-            elif category == CATEGORY_YES:
-                self.n_road_sidewalk_yes_or_both += 1
-                by_type["yes_or_both"] += 1
-            elif category == CATEGORY_NO:
-                self.n_road_sidewalk_no_explicit += 1
-                by_type["no_explicit"] += 1
-            elif category == CATEGORY_PARTIAL:
-                self.n_road_sidewalk_partial += 1
-                by_type["partial"] += 1
-
-    def _way_length_m(self, coords: list[list[float]]) -> float:
-        if len(coords) < 2:
-            return 0.0
-        lons, lats = zip(*coords)
-        xs, ys = self._proj.transform(lons, lats)
-        total = 0.0
-        for i in range(1, len(xs)):
-            dx = xs[i] - xs[i - 1]
-            dy = ys[i] - ys[i - 1]
-            total += math.hypot(dx, dy)
-        return total
+def _safe_str(val) -> str:
+    if val is None:
+        return ""
+    if isinstance(val, float):
+        import math
+        if math.isnan(val):
+            return ""
+    return str(val).strip().lower()
 
 
-def _build_record(date_iso: str, h: _BrusselsStatsHandler) -> dict:
-    km_by_hw = {k: round(v, 1) for k, v in h.km_by_highway.items()}
-    ped_km  = sum(v for k, v in km_by_hw.items() if k in _PED_HIGHWAY_TYPES)
-    road_km = sum(v for k, v in km_by_hw.items() if k in _ROAD_TYPES_SIDEWALK_EXPECTED)
-    cyc_km  = km_by_hw.get("cycleway", 0.0)
+def _classify_edge_sidewalk(
+    sw: str, sw_left: str, sw_right: str, sw_both: str,
+) -> str:
+    if sw_both:
+        if sw_both == "separate":
+            return "separate"
+        if sw_both in ("yes", "both"):
+            return "yes"
+        return "documented"
 
-    def _safe_div(num: float, den: float) -> float:
-        return round(num / den * 100, 2) if den > 0 else 0.0
+    if sw_left and sw_right:
+        if sw_left == "separate" and sw_right == "separate":
+            return "separate"
+        if sw_left == "separate" or sw_right == "separate":
+            return "documented"
+        return "documented"
 
-    sw_doc = (
-        h.n_road_sidewalk_separate
-        + h.n_road_sidewalk_yes_or_both
-        + h.n_road_sidewalk_no_explicit
-    )
+    if sw:
+        if sw == "separate":
+            return "separate"
+        if sw in ("both", "yes"):
+            return "yes"
+        if sw in ("left", "right"):
+            return "partial"
+        return "documented"
+
+    if sw_left or sw_right:
+        return "partial"
+
+    return "unknown"
+
+
+def export_sidewalk_roads(
+    raw_geojson_path: str = "sidewalk_roads_raw.geojson",
+) -> dict:
+    print("Exporting sidewalk tag status on roads (QA layer)...")
+    print(f"  Reading raw roads from: {raw_geojson_path}")
+
+    gdf = gpd.read_file(raw_geojson_path)
+
+    gdf = gdf[gdf.geometry.geom_type == "LineString"].copy()
+
+    gdf_proj = gdf.to_crs("EPSG:31370")
+
+    gdf_proj = gdf_proj[gdf_proj["highway"].isin(_ROAD_TYPES)]
+    gdf_proj = gdf_proj[gdf_proj.geometry.length >= _MIN_LENGTH]
+
+    print(f"  Road ways after filtering: {len(gdf_proj)}")
+
+    rows: list[dict] = []
+    length_by_status: dict[str, float] = {}
+    n_separate_all_sides = 0
+    separate_all_sides_m = 0.0
+    street_documented: dict[str, bool] = {}
+
+    for _, row in gdf_proj.iterrows():
+        sw = _safe_str(row.get("sidewalk"))
+        sw_l = _safe_str(row.get("sidewalk:left"))
+        sw_r = _safe_str(row.get("sidewalk:right"))
+        sw_b = _safe_str(row.get("sidewalk:both"))
+
+        status = _classify_edge_sidewalk(sw, sw_l, sw_r, sw_b)
+
+        road_length = row.geometry.length
+        length_by_status[status] = length_by_status.get(status, 0.0) + road_length
+
+        category = stats_category(sw, sw_l, sw_r, sw_b)
+        if category == CATEGORY_SEPARATE:
+            n_separate_all_sides += 1
+            separate_all_sides_m += road_length
+
+        name = _safe_str(row.get("name")) or ""
+        if name:
+            street_documented[name] = street_documented.get(name, False) or category is not None
+
+        rows.append({
+            "geometry": row.geometry,
+            "sw": status,
+            "name": name,
+        })
+
+    fb = {"geometry": None, "sw": "", "name": ""}
+    if rows:
+        out_gdf = gpd.GeoDataFrame(rows, crs="EPSG:31370").to_crs("EPSG:4326")
+    else:
+        out_gdf = gpd.GeoDataFrame([fb], crs="EPSG:4326")
+    out_gdf.to_file("sidewalk_roads.geojson", driver="GeoJSON")
+
+    print(f"  Road ways exported: {len(rows)}")
+
+    counts = Counter(r["sw"] for r in rows)
+    for st in ("separate", "yes", "documented", "partial", "unknown"):
+        print(f"    {st}: {counts.get(st, 0)}")
+    print(f"  All existing sidewalks mapped separately: {n_separate_all_sides}")
+    print(f"  Named streets: {len(street_documented)} "
+          f"(with ≥1 sidewalk tag: {sum(street_documented.values())})")
+
+    total_ways = len(rows)
 
     return {
-        "date": date_iso,
-        "km_by_highway":    km_by_hw,
-        "ways_by_highway":  dict(h.ways_by_highway),
-        "ped_km":           round(ped_km, 1),
-        "road_km":          round(road_km, 1),
-        "cycleway_km":      round(cyc_km, 1),
-        "crossing_nodes":         h.n_crossing_nodes,
-        "crossing_continuous":    h.n_crossing_continuous,
-        "crossing_marked":        h.n_crossing_marked,
-        "crossing_unmarked":      h.n_crossing_unmarked,
-        "crossing_signals":       h.n_crossing_signals,
-        "crossing_with_tactile":  h.n_crossing_with_tactile,
-        "elevator_nodes":         h.n_elevator_nodes,
-        "footway_ways":          h.n_footway_ways,
-        "footway_sidewalk":      h.n_footway_sidewalk,
-        "footway_crossing":      h.n_footway_crossing,
-        "footway_link":          h.n_footway_link,
-        "footway_traffic_island": h.n_footway_traffic_island,
-        "footway_other":          h.n_footway_other,
-        "footway_no_subtag":      h.n_footway_no_subtag,
-        "footway_with_surface":     h.n_footway_with_surface,
-        "footway_with_smoothness":  h.n_footway_with_smoothness,
-        "road_ways":                   h.n_road_ways,
-        "road_sidewalk_any_tag":       h.n_road_sidewalk_any_tag,
-        "road_sidewalk_separate":      h.n_road_sidewalk_separate,
-        "road_sidewalk_yes_or_both":   h.n_road_sidewalk_yes_or_both,
-        "road_sidewalk_no_explicit":   h.n_road_sidewalk_no_explicit,
-        "road_sidewalk_partial":       h.n_road_sidewalk_partial,
-        "road_sidewalk_by_type": {
-            hw: {
-                "total":       b.get("total", 0),
-                "any_tag":     b.get("any_tag", 0),
-                "separate":    b.get("separate", 0),
-                "yes_or_both": b.get("yes_or_both", 0),
-                "partial":     b.get("partial", 0),
-                "no_explicit": b.get("no_explicit", 0),
-            }
-            for hw, b in h.road_sidewalk_by_type.items()
+        "total_road_ways": total_ways,
+        "by_status": {
+            st: counts.get(st, 0) for st in ("separate", "yes", "documented", "partial", "unknown")
         },
-        "crossing_tagged_pct":      _safe_div(h.n_footway_crossing, h.n_crossing_nodes),
-        "sidewalk_documented_pct":  _safe_div(sw_doc, h.n_road_ways),
-        "sidewalk_separate_pct":    _safe_div(h.n_road_sidewalk_separate, h.n_road_ways),
-        "footway_surface_pct":      _safe_div(h.n_footway_with_surface, h.n_footway_ways),
-        "footway_smoothness_pct":   _safe_div(h.n_footway_with_smoothness, h.n_footway_ways),
-        "tactile_paving_pct":       _safe_div(h.n_crossing_with_tactile, h.n_crossing_nodes),
+        "pct_by_status": {
+            st: round(counts.get(st, 0) / total_ways * 100, 1) if total_ways > 0 else 0
+            for st in ("separate", "yes", "documented", "partial", "unknown")
+        },
+        "km_by_status": {
+            st: round(length_by_status.get(st, 0) / 1000, 2)
+            for st in ("separate", "yes", "documented", "partial", "unknown")
+        },
+        "separate_all_sides": {
+            "count": n_separate_all_sides,
+            "pct": round(n_separate_all_sides / total_ways * 100, 1) if total_ways > 0 else 0,
+            "km": round(separate_all_sides_m / 1000, 2),
+        },
+        "streets_total": len(street_documented),
+        "streets_with_sidewalk_tags": sum(street_documented.values()),
     }
-
-
-def main() -> int:
-    if len(sys.argv) != 3:
-        print("Usage: compute_history.py <pbf_path> <YYYY-MM-DD>", file=sys.stderr)
-        return 1
-
-    pbf_path = sys.argv[1]
-    date_iso = sys.argv[2]
-
-    handler = _BrusselsStatsHandler()
-
-    cmd = [
-        "osmium", "export", pbf_path,
-        "--output-format=geojsonseq",
-        "--geometry-types=point,linestring"
-    ]
-    
-    with subprocess.Popen(cmd, stdout=subprocess.PIPE, text=True, bufsize=1) as proc:
-        if proc.stdout:
-            for line in proc.stdout:
-                line = line.lstrip('\x1e').strip()
-                if not line:
-                    continue
-                try:
-                    feature = json.loads(line)
-                    handler.process_feature(feature)
-                except json.JSONDecodeError:
-                    continue
-        
-        exit_code = proc.wait()
-        if exit_code != 0:
-            print(f"osmium export failed with exit code {exit_code}", file=sys.stderr)
-            return exit_code
-
-    record = _build_record(date_iso, handler)
-    json.dump(record, sys.stdout, separators=(",", ":"))
-    sys.stdout.write("\n")
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())
