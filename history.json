@@ -965,14 +965,14 @@
     "road_sidewalk_separate": 1,
     "road_sidewalk_yes_or_both": 19,
     "road_sidewalk_no_explicit": 0,
-    "road_sidewalk_partial": 0,
+    "road_sidewalk_partial": 2,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 1460,
         "any_tag": 1,
         "separate": 0,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 0
       },
       "primary": {
@@ -1004,7 +1004,7 @@
         "any_tag": 1,
         "separate": 0,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 0
       },
       "primary_link": {
@@ -1105,14 +1105,14 @@
     "road_sidewalk_separate": 1,
     "road_sidewalk_yes_or_both": 28,
     "road_sidewalk_no_explicit": 0,
-    "road_sidewalk_partial": 0,
+    "road_sidewalk_partial": 10,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 2165,
         "any_tag": 6,
         "separate": 0,
         "yes_or_both": 3,
-        "partial": 0,
+        "partial": 3,
         "no_explicit": 0
       },
       "primary": {
@@ -1120,7 +1120,7 @@
         "any_tag": 3,
         "separate": 0,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 3,
         "no_explicit": 0
       },
       "secondary": {
@@ -1128,7 +1128,7 @@
         "any_tag": 8,
         "separate": 0,
         "yes_or_both": 6,
-        "partial": 0,
+        "partial": 2,
         "no_explicit": 0
       },
       "residential": {
@@ -1144,7 +1144,7 @@
         "any_tag": 2,
         "separate": 0,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 2,
         "no_explicit": 0
       },
       "primary_link": {
@@ -1245,14 +1245,14 @@
     "road_sidewalk_separate": 1,
     "road_sidewalk_yes_or_both": 27,
     "road_sidewalk_no_explicit": 1,
-    "road_sidewalk_partial": 0,
+    "road_sidewalk_partial": 10,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 2234,
         "any_tag": 4,
         "separate": 0,
         "yes_or_both": 1,
-        "partial": 0,
+        "partial": 3,
         "no_explicit": 0
       },
       "primary": {
@@ -1260,7 +1260,7 @@
         "any_tag": 4,
         "separate": 0,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 3,
         "no_explicit": 1
       },
       "secondary": {
@@ -1268,7 +1268,7 @@
         "any_tag": 6,
         "separate": 0,
         "yes_or_both": 4,
-        "partial": 0,
+        "partial": 2,
         "no_explicit": 0
       },
       "residential": {
@@ -1284,7 +1284,7 @@
         "any_tag": 2,
         "separate": 0,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 2,
         "no_explicit": 0
       },
       "primary_link": {
@@ -1383,14 +1383,14 @@
     "road_sidewalk_separate": 1,
     "road_sidewalk_yes_or_both": 35,
     "road_sidewalk_no_explicit": 1,
-    "road_sidewalk_partial": 0,
+    "road_sidewalk_partial": 17,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 2453,
         "any_tag": 4,
         "separate": 0,
         "yes_or_both": 1,
-        "partial": 0,
+        "partial": 3,
         "no_explicit": 0
       },
       "primary": {
@@ -1398,7 +1398,7 @@
         "any_tag": 8,
         "separate": 0,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 7,
         "no_explicit": 1
       },
       "secondary": {
@@ -1406,7 +1406,7 @@
         "any_tag": 15,
         "separate": 0,
         "yes_or_both": 10,
-        "partial": 0,
+        "partial": 5,
         "no_explicit": 0
       },
       "residential": {
@@ -1422,7 +1422,7 @@
         "any_tag": 2,
         "separate": 0,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 2,
         "no_explicit": 0
       },
       "primary_link": {
@@ -1521,14 +1521,14 @@
     "road_sidewalk_separate": 0,
     "road_sidewalk_yes_or_both": 83,
     "road_sidewalk_no_explicit": 2,
-    "road_sidewalk_partial": 0,
+    "road_sidewalk_partial": 42,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 2705,
         "any_tag": 5,
         "separate": 0,
         "yes_or_both": 2,
-        "partial": 0,
+        "partial": 3,
         "no_explicit": 0
       },
       "primary": {
@@ -1536,7 +1536,7 @@
         "any_tag": 9,
         "separate": 0,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 9,
         "no_explicit": 0
       },
       "secondary": {
@@ -1544,7 +1544,7 @@
         "any_tag": 67,
         "separate": 0,
         "yes_or_both": 44,
-        "partial": 0,
+        "partial": 21,
         "no_explicit": 2
       },
       "residential": {
@@ -1552,7 +1552,7 @@
         "any_tag": 44,
         "separate": 0,
         "yes_or_both": 37,
-        "partial": 0,
+        "partial": 7,
         "no_explicit": 0
       },
       "unclassified": {
@@ -1560,7 +1560,7 @@
         "any_tag": 2,
         "separate": 0,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 2,
         "no_explicit": 0
       },
       "primary_link": {
@@ -1659,14 +1659,14 @@
     "road_sidewalk_separate": 6,
     "road_sidewalk_yes_or_both": 97,
     "road_sidewalk_no_explicit": 1,
-    "road_sidewalk_partial": 0,
+    "road_sidewalk_partial": 48,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 2829,
         "any_tag": 16,
         "separate": 1,
         "yes_or_both": 5,
-        "partial": 0,
+        "partial": 10,
         "no_explicit": 0
       },
       "primary": {
@@ -1674,7 +1674,7 @@
         "any_tag": 8,
         "separate": 0,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 8,
         "no_explicit": 0
       },
       "secondary": {
@@ -1682,7 +1682,7 @@
         "any_tag": 66,
         "separate": 0,
         "yes_or_both": 44,
-        "partial": 0,
+        "partial": 21,
         "no_explicit": 1
       },
       "residential": {
@@ -1690,7 +1690,7 @@
         "any_tag": 60,
         "separate": 5,
         "yes_or_both": 48,
-        "partial": 0,
+        "partial": 7,
         "no_explicit": 0
       },
       "unclassified": {
@@ -1698,7 +1698,7 @@
         "any_tag": 2,
         "separate": 0,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 2,
         "no_explicit": 0
       },
       "primary_link": {
@@ -1795,42 +1795,42 @@
     "footway_with_surface": 2583,
     "footway_with_smoothness": 7,
     "road_ways": 15337,
-    "road_sidewalk_any_tag": 424,
+    "road_sidewalk_any_tag": 416,
     "road_sidewalk_separate": 8,
     "road_sidewalk_yes_or_both": 322,
     "road_sidewalk_no_explicit": 6,
-    "road_sidewalk_partial": 0,
+    "road_sidewalk_partial": 80,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 2951,
-        "any_tag": 34,
+        "any_tag": 33,
         "separate": 1,
         "yes_or_both": 18,
-        "partial": 0,
+        "partial": 14,
         "no_explicit": 0
       },
       "primary": {
         "total": 1440,
-        "any_tag": 29,
+        "any_tag": 28,
         "separate": 1,
         "yes_or_both": 9,
-        "partial": 0,
+        "partial": 16,
         "no_explicit": 2
       },
       "secondary": {
         "total": 1305,
-        "any_tag": 82,
+        "any_tag": 80,
         "separate": 1,
         "yes_or_both": 50,
-        "partial": 0,
+        "partial": 28,
         "no_explicit": 1
       },
       "residential": {
         "total": 9044,
-        "any_tag": 273,
+        "any_tag": 271,
         "separate": 5,
         "yes_or_both": 245,
-        "partial": 0,
+        "partial": 18,
         "no_explicit": 3
       },
       "unclassified": {
@@ -1838,7 +1838,7 @@
         "any_tag": 2,
         "separate": 0,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 2,
         "no_explicit": 0
       },
       "tertiary_link": {
@@ -1859,10 +1859,10 @@
       },
       "secondary_link": {
         "total": 32,
-        "any_tag": 4,
+        "any_tag": 2,
         "separate": 0,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 2,
         "no_explicit": 0
       }
     },
@@ -1935,34 +1935,34 @@
     "footway_with_surface": 5800,
     "footway_with_smoothness": 7,
     "road_ways": 15518,
-    "road_sidewalk_any_tag": 634,
+    "road_sidewalk_any_tag": 611,
     "road_sidewalk_separate": 32,
     "road_sidewalk_yes_or_both": 456,
     "road_sidewalk_no_explicit": 9,
-    "road_sidewalk_partial": 4,
+    "road_sidewalk_partial": 114,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3060,
-        "any_tag": 50,
+        "any_tag": 49,
         "separate": 3,
         "yes_or_both": 24,
-        "partial": 0,
+        "partial": 22,
         "no_explicit": 0
       },
       "primary": {
         "total": 1489,
-        "any_tag": 33,
+        "any_tag": 31,
         "separate": 1,
         "yes_or_both": 8,
-        "partial": 3,
+        "partial": 19,
         "no_explicit": 3
       },
       "secondary": {
         "total": 1366,
-        "any_tag": 92,
+        "any_tag": 90,
         "separate": 7,
         "yes_or_both": 52,
-        "partial": 0,
+        "partial": 30,
         "no_explicit": 1
       },
       "unclassified": {
@@ -1970,20 +1970,20 @@
         "any_tag": 10,
         "separate": 0,
         "yes_or_both": 2,
-        "partial": 0,
+        "partial": 8,
         "no_explicit": 0
       },
       "residential": {
         "total": 8952,
-        "any_tag": 444,
+        "any_tag": 429,
         "separate": 21,
         "yes_or_both": 370,
-        "partial": 1,
+        "partial": 33,
         "no_explicit": 5
       },
       "primary_link": {
         "total": 91,
-        "any_tag": 1,
+        "any_tag": 0,
         "separate": 0,
         "yes_or_both": 0,
         "partial": 0,
@@ -1999,10 +1999,10 @@
       },
       "secondary_link": {
         "total": 31,
-        "any_tag": 4,
+        "any_tag": 2,
         "separate": 0,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 2,
         "no_explicit": 0
       }
     },
@@ -2075,55 +2075,55 @@
     "footway_with_surface": 12465,
     "footway_with_smoothness": 19,
     "road_ways": 16102,
-    "road_sidewalk_any_tag": 2088,
-    "road_sidewalk_separate": 872,
-    "road_sidewalk_yes_or_both": 872,
+    "road_sidewalk_any_tag": 2020,
+    "road_sidewalk_separate": 874,
+    "road_sidewalk_yes_or_both": 873,
     "road_sidewalk_no_explicit": 35,
-    "road_sidewalk_partial": 17,
+    "road_sidewalk_partial": 238,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3164,
-        "any_tag": 458,
-        "separate": 270,
+        "any_tag": 454,
+        "separate": 272,
         "yes_or_both": 104,
-        "partial": 11,
+        "partial": 71,
         "no_explicit": 7
       },
       "primary": {
         "total": 1514,
-        "any_tag": 96,
+        "any_tag": 91,
         "separate": 38,
         "yes_or_both": 18,
-        "partial": 3,
+        "partial": 32,
         "no_explicit": 3
       },
       "secondary": {
         "total": 1444,
-        "any_tag": 241,
+        "any_tag": 231,
         "separate": 128,
         "yes_or_both": 62,
-        "partial": 0,
+        "partial": 39,
         "no_explicit": 2
       },
       "unclassified": {
         "total": 515,
-        "any_tag": 27,
+        "any_tag": 25,
         "separate": 4,
         "yes_or_both": 6,
-        "partial": 0,
+        "partial": 10,
         "no_explicit": 5
       },
       "residential": {
         "total": 9316,
-        "any_tag": 1253,
+        "any_tag": 1208,
         "separate": 423,
-        "yes_or_both": 682,
-        "partial": 3,
+        "yes_or_both": 683,
+        "partial": 86,
         "no_explicit": 16
       },
       "primary_link": {
         "total": 85,
-        "any_tag": 1,
+        "any_tag": 0,
         "separate": 0,
         "yes_or_both": 0,
         "partial": 0,
@@ -2139,7 +2139,7 @@
       },
       "secondary_link": {
         "total": 28,
-        "any_tag": 9,
+        "any_tag": 8,
         "separate": 8,
         "yes_or_both": 0,
         "partial": 0,
@@ -2147,8 +2147,8 @@
       }
     },
     "crossing_tagged_pct": 42.63,
-    "sidewalk_documented_pct": 11.05,
-    "sidewalk_separate_pct": 5.42,
+    "sidewalk_documented_pct": 11.07,
+    "sidewalk_separate_pct": 5.43,
     "footway_surface_pct": 39.57,
     "footway_smoothness_pct": 0.06,
     "tactile_paving_pct": 22.44,
@@ -2215,55 +2215,55 @@
     "footway_with_surface": 13288,
     "footway_with_smoothness": 57,
     "road_ways": 16115,
-    "road_sidewalk_any_tag": 2430,
-    "road_sidewalk_separate": 1082,
-    "road_sidewalk_yes_or_both": 951,
+    "road_sidewalk_any_tag": 2362,
+    "road_sidewalk_separate": 1084,
+    "road_sidewalk_yes_or_both": 952,
     "road_sidewalk_no_explicit": 39,
-    "road_sidewalk_partial": 17,
+    "road_sidewalk_partial": 287,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 2999,
-        "any_tag": 525,
-        "separate": 311,
+        "any_tag": 522,
+        "separate": 313,
         "yes_or_both": 119,
-        "partial": 11,
+        "partial": 81,
         "no_explicit": 9
       },
       "primary": {
         "total": 1506,
-        "any_tag": 109,
+        "any_tag": 105,
         "separate": 58,
         "yes_or_both": 12,
-        "partial": 3,
+        "partial": 32,
         "no_explicit": 3
       },
       "secondary": {
         "total": 1606,
-        "any_tag": 272,
+        "any_tag": 261,
         "separate": 154,
         "yes_or_both": 66,
-        "partial": 0,
+        "partial": 39,
         "no_explicit": 2
       },
       "unclassified": {
         "total": 519,
-        "any_tag": 40,
+        "any_tag": 38,
         "separate": 12,
         "yes_or_both": 10,
-        "partial": 0,
+        "partial": 10,
         "no_explicit": 6
       },
       "residential": {
         "total": 9331,
-        "any_tag": 1470,
+        "any_tag": 1424,
         "separate": 535,
-        "yes_or_both": 744,
-        "partial": 3,
+        "yes_or_both": 745,
+        "partial": 125,
         "no_explicit": 19
       },
       "primary_link": {
         "total": 85,
-        "any_tag": 2,
+        "any_tag": 1,
         "separate": 1,
         "yes_or_both": 0,
         "partial": 0,
@@ -2279,7 +2279,7 @@
       },
       "secondary_link": {
         "total": 33,
-        "any_tag": 9,
+        "any_tag": 8,
         "separate": 8,
         "yes_or_both": 0,
         "partial": 0,
@@ -2287,8 +2287,8 @@
       }
     },
     "crossing_tagged_pct": 43.21,
-    "sidewalk_documented_pct": 12.86,
-    "sidewalk_separate_pct": 6.71,
+    "sidewalk_documented_pct": 12.88,
+    "sidewalk_separate_pct": 6.73,
     "footway_surface_pct": 41.35,
     "footway_smoothness_pct": 0.18,
     "tactile_paving_pct": 22.86,
@@ -2355,55 +2355,55 @@
     "footway_with_surface": 13718,
     "footway_with_smoothness": 56,
     "road_ways": 16161,
-    "road_sidewalk_any_tag": 2595,
-    "road_sidewalk_separate": 1199,
-    "road_sidewalk_yes_or_both": 986,
+    "road_sidewalk_any_tag": 2526,
+    "road_sidewalk_separate": 1201,
+    "road_sidewalk_yes_or_both": 987,
     "road_sidewalk_no_explicit": 39,
-    "road_sidewalk_partial": 17,
+    "road_sidewalk_partial": 299,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3022,
-        "any_tag": 605,
-        "separate": 373,
+        "any_tag": 602,
+        "separate": 375,
         "yes_or_both": 133,
-        "partial": 11,
+        "partial": 85,
         "no_explicit": 9
       },
       "primary": {
         "total": 1506,
-        "any_tag": 127,
+        "any_tag": 123,
         "separate": 76,
         "yes_or_both": 12,
-        "partial": 3,
+        "partial": 32,
         "no_explicit": 3
       },
       "secondary": {
         "total": 1614,
-        "any_tag": 291,
+        "any_tag": 280,
         "separate": 172,
         "yes_or_both": 65,
-        "partial": 0,
+        "partial": 41,
         "no_explicit": 2
       },
       "unclassified": {
         "total": 519,
-        "any_tag": 41,
+        "any_tag": 38,
         "separate": 12,
         "yes_or_both": 10,
-        "partial": 0,
+        "partial": 10,
         "no_explicit": 6
       },
       "residential": {
         "total": 9346,
-        "any_tag": 1515,
+        "any_tag": 1469,
         "separate": 552,
-        "yes_or_both": 766,
-        "partial": 3,
+        "yes_or_both": 767,
+        "partial": 131,
         "no_explicit": 19
       },
       "primary_link": {
         "total": 85,
-        "any_tag": 2,
+        "any_tag": 1,
         "separate": 1,
         "yes_or_both": 0,
         "partial": 0,
@@ -2419,7 +2419,7 @@
       },
       "secondary_link": {
         "total": 33,
-        "any_tag": 9,
+        "any_tag": 8,
         "separate": 8,
         "yes_or_both": 0,
         "partial": 0,
@@ -2427,8 +2427,8 @@
       }
     },
     "crossing_tagged_pct": 43.57,
-    "sidewalk_documented_pct": 13.76,
-    "sidewalk_separate_pct": 7.42,
+    "sidewalk_documented_pct": 13.78,
+    "sidewalk_separate_pct": 7.43,
     "footway_surface_pct": 42.22,
     "footway_smoothness_pct": 0.17,
     "tactile_paving_pct": 23.31,
@@ -2495,55 +2495,55 @@
     "footway_with_surface": 14124,
     "footway_with_smoothness": 56,
     "road_ways": 16204,
-    "road_sidewalk_any_tag": 2674,
-    "road_sidewalk_separate": 1266,
-    "road_sidewalk_yes_or_both": 992,
+    "road_sidewalk_any_tag": 2605,
+    "road_sidewalk_separate": 1268,
+    "road_sidewalk_yes_or_both": 993,
     "road_sidewalk_no_explicit": 41,
-    "road_sidewalk_partial": 18,
+    "road_sidewalk_partial": 303,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3025,
-        "any_tag": 622,
-        "separate": 392,
+        "any_tag": 619,
+        "separate": 394,
         "yes_or_both": 130,
-        "partial": 11,
+        "partial": 86,
         "no_explicit": 9
       },
       "primary": {
         "total": 1512,
-        "any_tag": 136,
+        "any_tag": 132,
         "separate": 84,
         "yes_or_both": 12,
-        "partial": 4,
+        "partial": 33,
         "no_explicit": 3
       },
       "secondary": {
         "total": 1619,
-        "any_tag": 298,
+        "any_tag": 287,
         "separate": 179,
         "yes_or_both": 65,
-        "partial": 0,
+        "partial": 41,
         "no_explicit": 2
       },
       "unclassified": {
         "total": 521,
-        "any_tag": 43,
+        "any_tag": 40,
         "separate": 12,
         "yes_or_both": 10,
-        "partial": 0,
+        "partial": 11,
         "no_explicit": 7
       },
       "residential": {
         "total": 9372,
-        "any_tag": 1559,
+        "any_tag": 1513,
         "separate": 585,
-        "yes_or_both": 775,
-        "partial": 3,
+        "yes_or_both": 776,
+        "partial": 132,
         "no_explicit": 20
       },
       "primary_link": {
         "total": 86,
-        "any_tag": 2,
+        "any_tag": 1,
         "separate": 1,
         "yes_or_both": 0,
         "partial": 0,
@@ -2559,7 +2559,7 @@
       },
       "secondary_link": {
         "total": 33,
-        "any_tag": 9,
+        "any_tag": 8,
         "separate": 8,
         "yes_or_both": 0,
         "partial": 0,
@@ -2567,8 +2567,8 @@
       }
     },
     "crossing_tagged_pct": 43.95,
-    "sidewalk_documented_pct": 14.19,
-    "sidewalk_separate_pct": 7.81,
+    "sidewalk_documented_pct": 14.21,
+    "sidewalk_separate_pct": 7.83,
     "footway_surface_pct": 42.97,
     "footway_smoothness_pct": 0.17,
     "tactile_paving_pct": 23.53,
@@ -2635,55 +2635,55 @@
     "footway_with_surface": 14971,
     "footway_with_smoothness": 103,
     "road_ways": 16299,
-    "road_sidewalk_any_tag": 2811,
-    "road_sidewalk_separate": 1354,
-    "road_sidewalk_yes_or_both": 1034,
+    "road_sidewalk_any_tag": 2742,
+    "road_sidewalk_separate": 1356,
+    "road_sidewalk_yes_or_both": 1035,
     "road_sidewalk_no_explicit": 44,
-    "road_sidewalk_partial": 18,
+    "road_sidewalk_partial": 307,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3032,
-        "any_tag": 672,
-        "separate": 434,
+        "any_tag": 669,
+        "separate": 436,
         "yes_or_both": 138,
-        "partial": 11,
+        "partial": 85,
         "no_explicit": 10
       },
       "primary": {
         "total": 1517,
-        "any_tag": 143,
+        "any_tag": 139,
         "separate": 91,
         "yes_or_both": 12,
-        "partial": 4,
+        "partial": 32,
         "no_explicit": 4
       },
       "secondary": {
         "total": 1640,
-        "any_tag": 303,
+        "any_tag": 292,
         "separate": 184,
         "yes_or_both": 65,
-        "partial": 0,
+        "partial": 41,
         "no_explicit": 2
       },
       "unclassified": {
         "total": 535,
-        "any_tag": 50,
+        "any_tag": 47,
         "separate": 17,
         "yes_or_both": 10,
-        "partial": 0,
+        "partial": 12,
         "no_explicit": 8
       },
       "residential": {
         "total": 9419,
-        "any_tag": 1627,
+        "any_tag": 1581,
         "separate": 614,
-        "yes_or_both": 809,
-        "partial": 3,
+        "yes_or_both": 810,
+        "partial": 137,
         "no_explicit": 20
       },
       "primary_link": {
         "total": 86,
-        "any_tag": 2,
+        "any_tag": 1,
         "separate": 1,
         "yes_or_both": 0,
         "partial": 0,
@@ -2699,7 +2699,7 @@
       },
       "secondary_link": {
         "total": 33,
-        "any_tag": 9,
+        "any_tag": 8,
         "separate": 8,
         "yes_or_both": 0,
         "partial": 0,
@@ -2707,8 +2707,8 @@
       }
     },
     "crossing_tagged_pct": 44.74,
-    "sidewalk_documented_pct": 14.92,
-    "sidewalk_separate_pct": 8.31,
+    "sidewalk_documented_pct": 14.94,
+    "sidewalk_separate_pct": 8.32,
     "footway_surface_pct": 44.48,
     "footway_smoothness_pct": 0.31,
     "tactile_paving_pct": 23.96,
@@ -2775,55 +2775,55 @@
     "footway_with_surface": 15456,
     "footway_with_smoothness": 124,
     "road_ways": 16367,
-    "road_sidewalk_any_tag": 2911,
-    "road_sidewalk_separate": 1432,
-    "road_sidewalk_yes_or_both": 1029,
+    "road_sidewalk_any_tag": 2842,
+    "road_sidewalk_separate": 1436,
+    "road_sidewalk_yes_or_both": 1032,
     "road_sidewalk_no_explicit": 55,
-    "road_sidewalk_partial": 18,
+    "road_sidewalk_partial": 319,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3044,
-        "any_tag": 693,
-        "separate": 438,
-        "yes_or_both": 150,
-        "partial": 11,
+        "any_tag": 690,
+        "separate": 440,
+        "yes_or_both": 151,
+        "partial": 89,
         "no_explicit": 10
       },
       "primary": {
         "total": 1517,
-        "any_tag": 157,
-        "separate": 91,
+        "any_tag": 153,
+        "separate": 92,
         "yes_or_both": 12,
-        "partial": 4,
+        "partial": 42,
         "no_explicit": 7
       },
       "secondary": {
         "total": 1647,
-        "any_tag": 325,
-        "separate": 252,
+        "any_tag": 314,
+        "separate": 253,
         "yes_or_both": 25,
-        "partial": 0,
+        "partial": 33,
         "no_explicit": 3
       },
       "unclassified": {
         "total": 538,
-        "any_tag": 48,
+        "any_tag": 45,
         "separate": 14,
         "yes_or_both": 10,
-        "partial": 0,
+        "partial": 12,
         "no_explicit": 9
       },
       "residential": {
         "total": 9465,
-        "any_tag": 1672,
+        "any_tag": 1626,
         "separate": 623,
-        "yes_or_both": 832,
-        "partial": 3,
+        "yes_or_both": 834,
+        "partial": 143,
         "no_explicit": 26
       },
       "primary_link": {
         "total": 86,
-        "any_tag": 2,
+        "any_tag": 1,
         "separate": 1,
         "yes_or_both": 0,
         "partial": 0,
@@ -2839,7 +2839,7 @@
       },
       "secondary_link": {
         "total": 33,
-        "any_tag": 9,
+        "any_tag": 8,
         "separate": 8,
         "yes_or_both": 0,
         "partial": 0,
@@ -2847,8 +2847,8 @@
       }
     },
     "crossing_tagged_pct": 45.04,
-    "sidewalk_documented_pct": 15.37,
-    "sidewalk_separate_pct": 8.75,
+    "sidewalk_documented_pct": 15.42,
+    "sidewalk_separate_pct": 8.77,
     "footway_surface_pct": 45.35,
     "footway_smoothness_pct": 0.36,
     "tactile_paving_pct": 24.31,
@@ -2915,55 +2915,55 @@
     "footway_with_surface": 15928,
     "footway_with_smoothness": 147,
     "road_ways": 16389,
-    "road_sidewalk_any_tag": 3016,
-    "road_sidewalk_separate": 1483,
-    "road_sidewalk_yes_or_both": 1070,
+    "road_sidewalk_any_tag": 2947,
+    "road_sidewalk_separate": 1489,
+    "road_sidewalk_yes_or_both": 1075,
     "road_sidewalk_no_explicit": 58,
-    "road_sidewalk_partial": 18,
+    "road_sidewalk_partial": 325,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3048,
-        "any_tag": 705,
-        "separate": 444,
-        "yes_or_both": 154,
-        "partial": 11,
+        "any_tag": 702,
+        "separate": 448,
+        "yes_or_both": 155,
+        "partial": 89,
         "no_explicit": 10
       },
       "primary": {
         "total": 1521,
-        "any_tag": 170,
-        "separate": 101,
+        "any_tag": 166,
+        "separate": 102,
         "yes_or_both": 12,
-        "partial": 4,
+        "partial": 43,
         "no_explicit": 9
       },
       "secondary": {
         "total": 1656,
-        "any_tag": 354,
-        "separate": 280,
+        "any_tag": 343,
+        "separate": 281,
         "yes_or_both": 25,
-        "partial": 0,
+        "partial": 33,
         "no_explicit": 4
       },
       "unclassified": {
         "total": 540,
-        "any_tag": 50,
+        "any_tag": 47,
         "separate": 16,
         "yes_or_both": 10,
-        "partial": 0,
+        "partial": 12,
         "no_explicit": 9
       },
       "residential": {
         "total": 9468,
-        "any_tag": 1721,
+        "any_tag": 1675,
         "separate": 628,
-        "yes_or_both": 869,
-        "partial": 3,
+        "yes_or_both": 873,
+        "partial": 148,
         "no_explicit": 26
       },
       "primary_link": {
         "total": 86,
-        "any_tag": 2,
+        "any_tag": 1,
         "separate": 1,
         "yes_or_both": 0,
         "partial": 0,
@@ -2979,7 +2979,7 @@
       },
       "secondary_link": {
         "total": 33,
-        "any_tag": 9,
+        "any_tag": 8,
         "separate": 8,
         "yes_or_both": 0,
         "partial": 0,
@@ -2987,8 +2987,8 @@
       }
     },
     "crossing_tagged_pct": 45.49,
-    "sidewalk_documented_pct": 15.93,
-    "sidewalk_separate_pct": 9.05,
+    "sidewalk_documented_pct": 16.0,
+    "sidewalk_separate_pct": 9.09,
     "footway_surface_pct": 46.24,
     "footway_smoothness_pct": 0.43,
     "tactile_paving_pct": 24.65,
@@ -3055,55 +3055,55 @@
     "footway_with_surface": 16694,
     "footway_with_smoothness": 173,
     "road_ways": 16438,
-    "road_sidewalk_any_tag": 3250,
-    "road_sidewalk_separate": 1654,
-    "road_sidewalk_yes_or_both": 1117,
+    "road_sidewalk_any_tag": 3181,
+    "road_sidewalk_separate": 1660,
+    "road_sidewalk_yes_or_both": 1123,
     "road_sidewalk_no_explicit": 59,
-    "road_sidewalk_partial": 18,
+    "road_sidewalk_partial": 339,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3069,
-        "any_tag": 748,
-        "separate": 469,
-        "yes_or_both": 164,
-        "partial": 11,
+        "any_tag": 745,
+        "separate": 473,
+        "yes_or_both": 166,
+        "partial": 96,
         "no_explicit": 10
       },
       "primary": {
         "total": 1523,
-        "any_tag": 194,
-        "separate": 126,
+        "any_tag": 190,
+        "separate": 127,
         "yes_or_both": 12,
-        "partial": 4,
+        "partial": 44,
         "no_explicit": 7
       },
       "secondary": {
         "total": 1665,
-        "any_tag": 365,
-        "separate": 285,
+        "any_tag": 354,
+        "separate": 286,
         "yes_or_both": 28,
-        "partial": 0,
+        "partial": 35,
         "no_explicit": 5
       },
       "unclassified": {
         "total": 544,
-        "any_tag": 52,
+        "any_tag": 49,
         "separate": 16,
         "yes_or_both": 12,
-        "partial": 0,
+        "partial": 12,
         "no_explicit": 9
       },
       "residential": {
         "total": 9481,
-        "any_tag": 1875,
+        "any_tag": 1829,
         "separate": 744,
-        "yes_or_both": 901,
-        "partial": 3,
+        "yes_or_both": 905,
+        "partial": 152,
         "no_explicit": 28
       },
       "primary_link": {
         "total": 86,
-        "any_tag": 2,
+        "any_tag": 1,
         "separate": 1,
         "yes_or_both": 0,
         "partial": 0,
@@ -3119,7 +3119,7 @@
       },
       "secondary_link": {
         "total": 33,
-        "any_tag": 9,
+        "any_tag": 8,
         "separate": 8,
         "yes_or_both": 0,
         "partial": 0,
@@ -3127,8 +3127,8 @@
       }
     },
     "crossing_tagged_pct": 46.19,
-    "sidewalk_documented_pct": 17.22,
-    "sidewalk_separate_pct": 10.06,
+    "sidewalk_documented_pct": 17.29,
+    "sidewalk_separate_pct": 10.1,
     "footway_surface_pct": 47.54,
     "footway_smoothness_pct": 0.49,
     "tactile_paving_pct": 25.22,
@@ -3195,55 +3195,55 @@
     "footway_with_surface": 17033,
     "footway_with_smoothness": 256,
     "road_ways": 16456,
-    "road_sidewalk_any_tag": 3507,
-    "road_sidewalk_separate": 1778,
-    "road_sidewalk_yes_or_both": 1211,
+    "road_sidewalk_any_tag": 3439,
+    "road_sidewalk_separate": 1790,
+    "road_sidewalk_yes_or_both": 1227,
     "road_sidewalk_no_explicit": 64,
-    "road_sidewalk_partial": 18,
+    "road_sidewalk_partial": 358,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3091,
-        "any_tag": 848,
-        "separate": 552,
-        "yes_or_both": 177,
-        "partial": 11,
+        "any_tag": 845,
+        "separate": 556,
+        "yes_or_both": 180,
+        "partial": 99,
         "no_explicit": 10
       },
       "primary": {
         "total": 1476,
-        "any_tag": 187,
-        "separate": 116,
-        "yes_or_both": 13,
-        "partial": 4,
+        "any_tag": 183,
+        "separate": 117,
+        "yes_or_both": 14,
+        "partial": 45,
         "no_explicit": 7
       },
       "secondary": {
         "total": 1691,
-        "any_tag": 396,
-        "separate": 300,
-        "yes_or_both": 38,
-        "partial": 0,
+        "any_tag": 385,
+        "separate": 307,
+        "yes_or_both": 39,
+        "partial": 32,
         "no_explicit": 7
       },
       "unclassified": {
         "total": 548,
-        "any_tag": 55,
+        "any_tag": 52,
         "separate": 19,
         "yes_or_both": 12,
-        "partial": 0,
+        "partial": 12,
         "no_explicit": 9
       },
       "residential": {
         "total": 9495,
-        "any_tag": 2002,
+        "any_tag": 1957,
         "separate": 774,
-        "yes_or_both": 971,
-        "partial": 3,
+        "yes_or_both": 982,
+        "partial": 170,
         "no_explicit": 31
       },
       "primary_link": {
         "total": 90,
-        "any_tag": 5,
+        "any_tag": 4,
         "separate": 4,
         "yes_or_both": 0,
         "partial": 0,
@@ -3259,7 +3259,7 @@
       },
       "secondary_link": {
         "total": 33,
-        "any_tag": 9,
+        "any_tag": 8,
         "separate": 8,
         "yes_or_both": 0,
         "partial": 0,
@@ -3267,8 +3267,8 @@
       }
     },
     "crossing_tagged_pct": 46.62,
-    "sidewalk_documented_pct": 18.55,
-    "sidewalk_separate_pct": 10.8,
+    "sidewalk_documented_pct": 18.72,
+    "sidewalk_separate_pct": 10.88,
     "footway_surface_pct": 48.07,
     "footway_smoothness_pct": 0.72,
     "tactile_paving_pct": 25.44,
@@ -3335,55 +3335,55 @@
     "footway_with_surface": 17444,
     "footway_with_smoothness": 282,
     "road_ways": 16516,
-    "road_sidewalk_any_tag": 3598,
-    "road_sidewalk_separate": 1816,
-    "road_sidewalk_yes_or_both": 1245,
+    "road_sidewalk_any_tag": 3530,
+    "road_sidewalk_separate": 1828,
+    "road_sidewalk_yes_or_both": 1261,
     "road_sidewalk_no_explicit": 70,
-    "road_sidewalk_partial": 18,
+    "road_sidewalk_partial": 371,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3109,
-        "any_tag": 857,
-        "separate": 556,
-        "yes_or_both": 180,
-        "partial": 11,
+        "any_tag": 854,
+        "separate": 560,
+        "yes_or_both": 183,
+        "partial": 100,
         "no_explicit": 11
       },
       "primary": {
         "total": 1479,
-        "any_tag": 207,
-        "separate": 131,
-        "yes_or_both": 16,
-        "partial": 4,
+        "any_tag": 203,
+        "separate": 132,
+        "yes_or_both": 17,
+        "partial": 45,
         "no_explicit": 9
       },
       "secondary": {
         "total": 1691,
-        "any_tag": 401,
-        "separate": 303,
-        "yes_or_both": 40,
-        "partial": 0,
+        "any_tag": 390,
+        "separate": 310,
+        "yes_or_both": 41,
+        "partial": 32,
         "no_explicit": 7
       },
       "unclassified": {
         "total": 553,
-        "any_tag": 56,
+        "any_tag": 53,
         "separate": 19,
         "yes_or_both": 12,
-        "partial": 0,
+        "partial": 13,
         "no_explicit": 9
       },
       "residential": {
         "total": 9528,
-        "any_tag": 2058,
+        "any_tag": 2013,
         "separate": 790,
-        "yes_or_both": 997,
-        "partial": 3,
+        "yes_or_both": 1008,
+        "partial": 181,
         "no_explicit": 34
       },
       "primary_link": {
         "total": 91,
-        "any_tag": 5,
+        "any_tag": 4,
         "separate": 4,
         "yes_or_both": 0,
         "partial": 0,
@@ -3399,7 +3399,7 @@
       },
       "secondary_link": {
         "total": 33,
-        "any_tag": 9,
+        "any_tag": 8,
         "separate": 8,
         "yes_or_both": 0,
         "partial": 0,
@@ -3407,8 +3407,8 @@
       }
     },
     "crossing_tagged_pct": 46.98,
-    "sidewalk_documented_pct": 18.96,
-    "sidewalk_separate_pct": 11.0,
+    "sidewalk_documented_pct": 19.13,
+    "sidewalk_separate_pct": 11.07,
     "footway_surface_pct": 48.67,
     "footway_smoothness_pct": 0.79,
     "tactile_paving_pct": 25.82,
@@ -3475,55 +3475,55 @@
     "footway_with_surface": 17766,
     "footway_with_smoothness": 285,
     "road_ways": 16571,
-    "road_sidewalk_any_tag": 3714,
-    "road_sidewalk_separate": 1872,
-    "road_sidewalk_yes_or_both": 1296,
+    "road_sidewalk_any_tag": 3646,
+    "road_sidewalk_separate": 1884,
+    "road_sidewalk_yes_or_both": 1310,
     "road_sidewalk_no_explicit": 71,
-    "road_sidewalk_partial": 18,
+    "road_sidewalk_partial": 381,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3124,
-        "any_tag": 880,
-        "separate": 573,
-        "yes_or_both": 186,
-        "partial": 11,
+        "any_tag": 877,
+        "separate": 577,
+        "yes_or_both": 189,
+        "partial": 100,
         "no_explicit": 11
       },
       "primary": {
         "total": 1484,
-        "any_tag": 210,
-        "separate": 133,
-        "yes_or_both": 16,
-        "partial": 4,
+        "any_tag": 206,
+        "separate": 134,
+        "yes_or_both": 17,
+        "partial": 45,
         "no_explicit": 10
       },
       "secondary": {
         "total": 1696,
-        "any_tag": 419,
-        "separate": 311,
-        "yes_or_both": 46,
-        "partial": 0,
+        "any_tag": 408,
+        "separate": 318,
+        "yes_or_both": 48,
+        "partial": 35,
         "no_explicit": 7
       },
       "unclassified": {
         "total": 549,
-        "any_tag": 53,
+        "any_tag": 50,
         "separate": 18,
         "yes_or_both": 10,
-        "partial": 0,
+        "partial": 13,
         "no_explicit": 9
       },
       "residential": {
         "total": 9562,
-        "any_tag": 2133,
+        "any_tag": 2088,
         "separate": 820,
-        "yes_or_both": 1038,
-        "partial": 3,
+        "yes_or_both": 1046,
+        "partial": 188,
         "no_explicit": 34
       },
       "primary_link": {
         "total": 91,
-        "any_tag": 5,
+        "any_tag": 4,
         "separate": 4,
         "yes_or_both": 0,
         "partial": 0,
@@ -3539,7 +3539,7 @@
       },
       "secondary_link": {
         "total": 33,
-        "any_tag": 9,
+        "any_tag": 8,
         "separate": 8,
         "yes_or_both": 0,
         "partial": 0,
@@ -3547,8 +3547,8 @@
       }
     },
     "crossing_tagged_pct": 47.22,
-    "sidewalk_documented_pct": 19.55,
-    "sidewalk_separate_pct": 11.3,
+    "sidewalk_documented_pct": 19.7,
+    "sidewalk_separate_pct": 11.37,
     "footway_surface_pct": 49.18,
     "footway_smoothness_pct": 0.79,
     "tactile_paving_pct": 26.18,
@@ -3615,55 +3615,55 @@
     "footway_with_surface": 18179,
     "footway_with_smoothness": 291,
     "road_ways": 16649,
-    "road_sidewalk_any_tag": 3800,
-    "road_sidewalk_separate": 1916,
-    "road_sidewalk_yes_or_both": 1324,
+    "road_sidewalk_any_tag": 3732,
+    "road_sidewalk_separate": 1933,
+    "road_sidewalk_yes_or_both": 1339,
     "road_sidewalk_no_explicit": 77,
-    "road_sidewalk_partial": 18,
+    "road_sidewalk_partial": 383,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3137,
-        "any_tag": 893,
-        "separate": 582,
-        "yes_or_both": 188,
-        "partial": 11,
+        "any_tag": 890,
+        "separate": 588,
+        "yes_or_both": 191,
+        "partial": 100,
         "no_explicit": 11
       },
       "primary": {
         "total": 1486,
-        "any_tag": 227,
-        "separate": 146,
-        "yes_or_both": 17,
-        "partial": 4,
+        "any_tag": 223,
+        "separate": 147,
+        "yes_or_both": 18,
+        "partial": 47,
         "no_explicit": 11
       },
       "secondary": {
         "total": 1696,
-        "any_tag": 428,
-        "separate": 318,
-        "yes_or_both": 46,
-        "partial": 0,
+        "any_tag": 417,
+        "separate": 326,
+        "yes_or_both": 48,
+        "partial": 36,
         "no_explicit": 7
       },
       "unclassified": {
         "total": 553,
-        "any_tag": 58,
+        "any_tag": 55,
         "separate": 18,
         "yes_or_both": 10,
-        "partial": 0,
+        "partial": 13,
         "no_explicit": 14
       },
       "residential": {
         "total": 9620,
-        "any_tag": 2174,
-        "separate": 834,
-        "yes_or_both": 1063,
-        "partial": 3,
+        "any_tag": 2129,
+        "separate": 836,
+        "yes_or_both": 1072,
+        "partial": 187,
         "no_explicit": 34
       },
       "primary_link": {
         "total": 92,
-        "any_tag": 6,
+        "any_tag": 5,
         "separate": 5,
         "yes_or_both": 0,
         "partial": 0,
@@ -3679,7 +3679,7 @@
       },
       "secondary_link": {
         "total": 33,
-        "any_tag": 9,
+        "any_tag": 8,
         "separate": 8,
         "yes_or_both": 0,
         "partial": 0,
@@ -3687,8 +3687,8 @@
       }
     },
     "crossing_tagged_pct": 47.75,
-    "sidewalk_documented_pct": 19.92,
-    "sidewalk_separate_pct": 11.51,
+    "sidewalk_documented_pct": 20.12,
+    "sidewalk_separate_pct": 11.61,
     "footway_surface_pct": 49.63,
     "footway_smoothness_pct": 0.79,
     "tactile_paving_pct": 26.59,
@@ -3755,55 +3755,55 @@
     "footway_with_surface": 18361,
     "footway_with_smoothness": 320,
     "road_ways": 16670,
-    "road_sidewalk_any_tag": 3823,
-    "road_sidewalk_separate": 1922,
-    "road_sidewalk_yes_or_both": 1338,
+    "road_sidewalk_any_tag": 3755,
+    "road_sidewalk_separate": 1939,
+    "road_sidewalk_yes_or_both": 1353,
     "road_sidewalk_no_explicit": 78,
-    "road_sidewalk_partial": 19,
+    "road_sidewalk_partial": 385,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3143,
-        "any_tag": 895,
-        "separate": 585,
-        "yes_or_both": 187,
-        "partial": 11,
+        "any_tag": 892,
+        "separate": 591,
+        "yes_or_both": 190,
+        "partial": 100,
         "no_explicit": 11
       },
       "primary": {
         "total": 1486,
-        "any_tag": 231,
-        "separate": 146,
-        "yes_or_both": 20,
-        "partial": 5,
+        "any_tag": 227,
+        "separate": 147,
+        "yes_or_both": 21,
+        "partial": 48,
         "no_explicit": 11
       },
       "secondary": {
         "total": 1699,
-        "any_tag": 430,
-        "separate": 319,
-        "yes_or_both": 47,
-        "partial": 0,
+        "any_tag": 419,
+        "separate": 327,
+        "yes_or_both": 49,
+        "partial": 36,
         "no_explicit": 7
       },
       "unclassified": {
         "total": 551,
-        "any_tag": 58,
+        "any_tag": 55,
         "separate": 18,
         "yes_or_both": 10,
-        "partial": 0,
+        "partial": 13,
         "no_explicit": 14
       },
       "residential": {
         "total": 9634,
-        "any_tag": 2189,
-        "separate": 836,
-        "yes_or_both": 1074,
-        "partial": 3,
+        "any_tag": 2144,
+        "separate": 838,
+        "yes_or_both": 1083,
+        "partial": 188,
         "no_explicit": 35
       },
       "primary_link": {
         "total": 92,
-        "any_tag": 6,
+        "any_tag": 5,
         "separate": 5,
         "yes_or_both": 0,
         "partial": 0,
@@ -3819,7 +3819,7 @@
       },
       "secondary_link": {
         "total": 33,
-        "any_tag": 9,
+        "any_tag": 8,
         "separate": 8,
         "yes_or_both": 0,
         "partial": 0,
@@ -3827,8 +3827,8 @@
       }
     },
     "crossing_tagged_pct": 47.85,
-    "sidewalk_documented_pct": 20.02,
-    "sidewalk_separate_pct": 11.53,
+    "sidewalk_documented_pct": 20.22,
+    "sidewalk_separate_pct": 11.63,
     "footway_surface_pct": 49.9,
     "footway_smoothness_pct": 0.87,
     "tactile_paving_pct": 26.78,
@@ -3895,55 +3895,55 @@
     "footway_with_surface": 18607,
     "footway_with_smoothness": 330,
     "road_ways": 16687,
-    "road_sidewalk_any_tag": 3876,
-    "road_sidewalk_separate": 1932,
-    "road_sidewalk_yes_or_both": 1358,
+    "road_sidewalk_any_tag": 3808,
+    "road_sidewalk_separate": 1965,
+    "road_sidewalk_yes_or_both": 1373,
     "road_sidewalk_no_explicit": 79,
-    "road_sidewalk_partial": 24,
+    "road_sidewalk_partial": 391,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3148,
-        "any_tag": 922,
-        "separate": 592,
-        "yes_or_both": 191,
-        "partial": 15,
+        "any_tag": 919,
+        "separate": 610,
+        "yes_or_both": 194,
+        "partial": 104,
         "no_explicit": 11
       },
       "primary": {
         "total": 1479,
-        "any_tag": 237,
-        "separate": 146,
-        "yes_or_both": 22,
-        "partial": 4,
+        "any_tag": 233,
+        "separate": 151,
+        "yes_or_both": 23,
+        "partial": 48,
         "no_explicit": 11
       },
       "secondary": {
         "total": 1700,
-        "any_tag": 431,
-        "separate": 319,
-        "yes_or_both": 48,
-        "partial": 0,
+        "any_tag": 420,
+        "separate": 327,
+        "yes_or_both": 50,
+        "partial": 36,
         "no_explicit": 7
       },
       "unclassified": {
         "total": 557,
-        "any_tag": 60,
+        "any_tag": 57,
         "separate": 18,
         "yes_or_both": 10,
-        "partial": 0,
+        "partial": 13,
         "no_explicit": 16
       },
       "residential": {
         "total": 9646,
-        "any_tag": 2206,
-        "separate": 839,
-        "yes_or_both": 1087,
-        "partial": 5,
+        "any_tag": 2161,
+        "separate": 841,
+        "yes_or_both": 1096,
+        "partial": 190,
         "no_explicit": 34
       },
       "primary_link": {
         "total": 92,
-        "any_tag": 6,
+        "any_tag": 5,
         "separate": 5,
         "yes_or_both": 0,
         "partial": 0,
@@ -3959,7 +3959,7 @@
       },
       "secondary_link": {
         "total": 33,
-        "any_tag": 9,
+        "any_tag": 8,
         "separate": 8,
         "yes_or_both": 0,
         "partial": 0,
@@ -3967,8 +3967,8 @@
       }
     },
     "crossing_tagged_pct": 48.04,
-    "sidewalk_documented_pct": 20.19,
-    "sidewalk_separate_pct": 11.58,
+    "sidewalk_documented_pct": 20.48,
+    "sidewalk_separate_pct": 11.78,
     "footway_surface_pct": 50.12,
     "footway_smoothness_pct": 0.89,
     "tactile_paving_pct": 26.86,
@@ -4035,55 +4035,55 @@
     "footway_with_surface": 19024,
     "footway_with_smoothness": 381,
     "road_ways": 16721,
-    "road_sidewalk_any_tag": 3953,
-    "road_sidewalk_separate": 1954,
-    "road_sidewalk_yes_or_both": 1405,
+    "road_sidewalk_any_tag": 3886,
+    "road_sidewalk_separate": 1987,
+    "road_sidewalk_yes_or_both": 1420,
     "road_sidewalk_no_explicit": 80,
-    "road_sidewalk_partial": 24,
+    "road_sidewalk_partial": 399,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3126,
-        "any_tag": 930,
-        "separate": 609,
-        "yes_or_both": 193,
-        "partial": 15,
+        "any_tag": 927,
+        "separate": 626,
+        "yes_or_both": 196,
+        "partial": 94,
         "no_explicit": 11
       },
       "residential": {
         "total": 9701,
-        "any_tag": 2272,
-        "separate": 843,
-        "yes_or_both": 1131,
-        "partial": 5,
+        "any_tag": 2228,
+        "separate": 846,
+        "yes_or_both": 1140,
+        "partial": 207,
         "no_explicit": 35
       },
       "primary": {
         "total": 1483,
-        "any_tag": 237,
-        "separate": 146,
-        "yes_or_both": 22,
-        "partial": 4,
+        "any_tag": 233,
+        "separate": 151,
+        "yes_or_both": 23,
+        "partial": 48,
         "no_explicit": 11
       },
       "secondary": {
         "total": 1701,
-        "any_tag": 436,
-        "separate": 322,
-        "yes_or_both": 49,
-        "partial": 0,
+        "any_tag": 425,
+        "separate": 330,
+        "yes_or_both": 51,
+        "partial": 37,
         "no_explicit": 7
       },
       "unclassified": {
         "total": 556,
-        "any_tag": 60,
+        "any_tag": 57,
         "separate": 18,
         "yes_or_both": 10,
-        "partial": 0,
+        "partial": 13,
         "no_explicit": 16
       },
       "primary_link": {
         "total": 93,
-        "any_tag": 6,
+        "any_tag": 5,
         "separate": 5,
         "yes_or_both": 0,
         "partial": 0,
@@ -4099,7 +4099,7 @@
       },
       "secondary_link": {
         "total": 33,
-        "any_tag": 9,
+        "any_tag": 8,
         "separate": 8,
         "yes_or_both": 0,
         "partial": 0,
@@ -4107,8 +4107,8 @@
       }
     },
     "crossing_tagged_pct": 48.31,
-    "sidewalk_documented_pct": 20.57,
-    "sidewalk_separate_pct": 11.69,
+    "sidewalk_documented_pct": 20.85,
+    "sidewalk_separate_pct": 11.88,
     "footway_surface_pct": 50.73,
     "footway_smoothness_pct": 1.02,
     "tactile_paving_pct": 27.22,
@@ -4176,41 +4176,41 @@
     "footway_with_smoothness": 496,
     "road_ways": 16801,
     "road_sidewalk_any_tag": 4108,
-    "road_sidewalk_separate": 2056,
-    "road_sidewalk_yes_or_both": 1451,
+    "road_sidewalk_separate": 2091,
+    "road_sidewalk_yes_or_both": 1468,
     "road_sidewalk_no_explicit": 147,
-    "road_sidewalk_partial": 21,
+    "road_sidewalk_partial": 402,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3146,
         "any_tag": 963,
-        "separate": 640,
-        "yes_or_both": 202,
-        "partial": 11,
+        "separate": 657,
+        "yes_or_both": 206,
+        "partial": 86,
         "no_explicit": 14
       },
       "residential": {
         "total": 9748,
         "any_tag": 2362,
-        "separate": 888,
-        "yes_or_both": 1166,
-        "partial": 5,
+        "separate": 891,
+        "yes_or_both": 1176,
+        "partial": 216,
         "no_explicit": 79
       },
       "primary": {
         "total": 1484,
         "any_tag": 256,
-        "separate": 163,
-        "yes_or_both": 22,
-        "partial": 5,
+        "separate": 168,
+        "yes_or_both": 23,
+        "partial": 50,
         "no_explicit": 15
       },
       "secondary": {
         "total": 1713,
         "any_tag": 448,
-        "separate": 330,
-        "yes_or_both": 51,
-        "partial": 0,
+        "separate": 340,
+        "yes_or_both": 53,
+        "partial": 37,
         "no_explicit": 18
       },
       "unclassified": {
@@ -4218,7 +4218,7 @@
         "any_tag": 60,
         "separate": 18,
         "yes_or_both": 10,
-        "partial": 0,
+        "partial": 13,
         "no_explicit": 19
       },
       "primary_link": {
@@ -4247,8 +4247,8 @@
       }
     },
     "crossing_tagged_pct": 48.89,
-    "sidewalk_documented_pct": 21.75,
-    "sidewalk_separate_pct": 12.24,
+    "sidewalk_documented_pct": 22.06,
+    "sidewalk_separate_pct": 12.45,
     "footway_surface_pct": 51.27,
     "footway_smoothness_pct": 1.3,
     "tactile_paving_pct": 27.59,
@@ -4316,41 +4316,41 @@
     "footway_with_smoothness": 509,
     "road_ways": 16833,
     "road_sidewalk_any_tag": 4166,
-    "road_sidewalk_separate": 2086,
-    "road_sidewalk_yes_or_both": 1476,
+    "road_sidewalk_separate": 2121,
+    "road_sidewalk_yes_or_both": 1493,
     "road_sidewalk_no_explicit": 147,
-    "road_sidewalk_partial": 21,
+    "road_sidewalk_partial": 405,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3144,
         "any_tag": 971,
-        "separate": 643,
-        "yes_or_both": 207,
-        "partial": 11,
+        "separate": 660,
+        "yes_or_both": 211,
+        "partial": 86,
         "no_explicit": 14
       },
       "residential": {
         "total": 9768,
         "any_tag": 2402,
-        "separate": 914,
-        "yes_or_both": 1183,
-        "partial": 5,
+        "separate": 917,
+        "yes_or_both": 1193,
+        "partial": 213,
         "no_explicit": 79
       },
       "primary": {
         "total": 1486,
         "any_tag": 259,
-        "separate": 163,
-        "yes_or_both": 22,
-        "partial": 5,
+        "separate": 168,
+        "yes_or_both": 23,
+        "partial": 53,
         "no_explicit": 15
       },
       "secondary": {
         "total": 1717,
         "any_tag": 455,
-        "separate": 331,
-        "yes_or_both": 54,
-        "partial": 0,
+        "separate": 341,
+        "yes_or_both": 56,
+        "partial": 40,
         "no_explicit": 18
       },
       "unclassified": {
@@ -4358,7 +4358,7 @@
         "any_tag": 60,
         "separate": 18,
         "yes_or_both": 10,
-        "partial": 0,
+        "partial": 13,
         "no_explicit": 19
       },
       "primary_link": {
@@ -4387,8 +4387,8 @@
       }
     },
     "crossing_tagged_pct": 49.15,
-    "sidewalk_documented_pct": 22.03,
-    "sidewalk_separate_pct": 12.39,
+    "sidewalk_documented_pct": 22.34,
+    "sidewalk_separate_pct": 12.6,
     "footway_surface_pct": 52.12,
     "footway_smoothness_pct": 1.33,
     "tactile_paving_pct": 27.93,
@@ -4456,41 +4456,41 @@
     "footway_with_smoothness": 511,
     "road_ways": 16873,
     "road_sidewalk_any_tag": 4275,
-    "road_sidewalk_separate": 2179,
-    "road_sidewalk_yes_or_both": 1494,
+    "road_sidewalk_separate": 2215,
+    "road_sidewalk_yes_or_both": 1513,
     "road_sidewalk_no_explicit": 147,
-    "road_sidewalk_partial": 21,
+    "road_sidewalk_partial": 400,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3155,
         "any_tag": 984,
-        "separate": 654,
-        "yes_or_both": 212,
-        "partial": 11,
+        "separate": 670,
+        "yes_or_both": 216,
+        "partial": 84,
         "no_explicit": 14
       },
       "residential": {
         "total": 9785,
         "any_tag": 2461,
-        "separate": 962,
-        "yes_or_both": 1195,
-        "partial": 5,
+        "separate": 965,
+        "yes_or_both": 1205,
+        "partial": 212,
         "no_explicit": 79
       },
       "primary": {
         "total": 1490,
         "any_tag": 286,
-        "separate": 192,
-        "yes_or_both": 20,
-        "partial": 5,
+        "separate": 199,
+        "yes_or_both": 21,
+        "partial": 51,
         "no_explicit": 15
       },
       "secondary": {
         "total": 1727,
         "any_tag": 460,
-        "separate": 333,
-        "yes_or_both": 55,
-        "partial": 0,
+        "separate": 343,
+        "yes_or_both": 59,
+        "partial": 40,
         "no_explicit": 18
       },
       "unclassified": {
@@ -4498,7 +4498,7 @@
         "any_tag": 62,
         "separate": 18,
         "yes_or_both": 12,
-        "partial": 0,
+        "partial": 13,
         "no_explicit": 19
       },
       "primary_link": {
@@ -4527,8 +4527,8 @@
       }
     },
     "crossing_tagged_pct": 49.46,
-    "sidewalk_documented_pct": 22.64,
-    "sidewalk_separate_pct": 12.91,
+    "sidewalk_documented_pct": 22.97,
+    "sidewalk_separate_pct": 13.13,
     "footway_surface_pct": 52.57,
     "footway_smoothness_pct": 1.32,
     "tactile_paving_pct": 28.1,
@@ -4596,41 +4596,41 @@
     "footway_with_smoothness": 518,
     "road_ways": 16884,
     "road_sidewalk_any_tag": 4411,
-    "road_sidewalk_separate": 2276,
-    "road_sidewalk_yes_or_both": 1537,
+    "road_sidewalk_separate": 2311,
+    "road_sidewalk_yes_or_both": 1556,
     "road_sidewalk_no_explicit": 150,
-    "road_sidewalk_partial": 21,
+    "road_sidewalk_partial": 394,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3158,
         "any_tag": 990,
-        "separate": 657,
-        "yes_or_both": 215,
-        "partial": 11,
+        "separate": 673,
+        "yes_or_both": 219,
+        "partial": 84,
         "no_explicit": 14
       },
       "residential": {
         "total": 9790,
         "any_tag": 2569,
-        "separate": 1036,
-        "yes_or_both": 1235,
-        "partial": 5,
+        "separate": 1038,
+        "yes_or_both": 1245,
+        "partial": 206,
         "no_explicit": 80
       },
       "primary": {
         "total": 1492,
         "any_tag": 286,
-        "separate": 192,
-        "yes_or_both": 20,
-        "partial": 5,
+        "separate": 199,
+        "yes_or_both": 21,
+        "partial": 51,
         "no_explicit": 15
       },
       "secondary": {
         "total": 1727,
         "any_tag": 480,
-        "separate": 353,
-        "yes_or_both": 55,
-        "partial": 0,
+        "separate": 363,
+        "yes_or_both": 59,
+        "partial": 40,
         "no_explicit": 18
       },
       "unclassified": {
@@ -4638,7 +4638,7 @@
         "any_tag": 64,
         "separate": 18,
         "yes_or_both": 12,
-        "partial": 0,
+        "partial": 13,
         "no_explicit": 21
       },
       "primary_link": {
@@ -4667,8 +4667,8 @@
       }
     },
     "crossing_tagged_pct": 49.73,
-    "sidewalk_documented_pct": 23.47,
-    "sidewalk_separate_pct": 13.48,
+    "sidewalk_documented_pct": 23.79,
+    "sidewalk_separate_pct": 13.69,
     "footway_surface_pct": 53.23,
     "footway_smoothness_pct": 1.33,
     "tactile_paving_pct": 28.32,
@@ -4736,41 +4736,41 @@
     "footway_with_smoothness": 519,
     "road_ways": 16893,
     "road_sidewalk_any_tag": 4445,
-    "road_sidewalk_separate": 2297,
-    "road_sidewalk_yes_or_both": 1548,
+    "road_sidewalk_separate": 2332,
+    "road_sidewalk_yes_or_both": 1567,
     "road_sidewalk_no_explicit": 150,
-    "road_sidewalk_partial": 21,
+    "road_sidewalk_partial": 396,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3161,
         "any_tag": 992,
-        "separate": 658,
-        "yes_or_both": 215,
-        "partial": 11,
+        "separate": 674,
+        "yes_or_both": 219,
+        "partial": 85,
         "no_explicit": 14
       },
       "residential": {
         "total": 9789,
         "any_tag": 2599,
-        "separate": 1056,
-        "yes_or_both": 1245,
-        "partial": 5,
+        "separate": 1058,
+        "yes_or_both": 1255,
+        "partial": 206,
         "no_explicit": 80
       },
       "primary": {
         "total": 1498,
         "any_tag": 287,
-        "separate": 193,
-        "yes_or_both": 20,
-        "partial": 5,
+        "separate": 200,
+        "yes_or_both": 21,
+        "partial": 51,
         "no_explicit": 15
       },
       "secondary": {
         "total": 1727,
         "any_tag": 479,
-        "separate": 352,
-        "yes_or_both": 55,
-        "partial": 0,
+        "separate": 362,
+        "yes_or_both": 59,
+        "partial": 40,
         "no_explicit": 18
       },
       "unclassified": {
@@ -4778,7 +4778,7 @@
         "any_tag": 66,
         "separate": 18,
         "yes_or_both": 13,
-        "partial": 0,
+        "partial": 14,
         "no_explicit": 21
       },
       "primary_link": {
@@ -4807,8 +4807,8 @@
       }
     },
     "crossing_tagged_pct": 49.82,
-    "sidewalk_documented_pct": 23.65,
-    "sidewalk_separate_pct": 13.6,
+    "sidewalk_documented_pct": 23.97,
+    "sidewalk_separate_pct": 13.8,
     "footway_surface_pct": 53.48,
     "footway_smoothness_pct": 1.32,
     "tactile_paving_pct": 28.51,
@@ -4876,41 +4876,41 @@
     "footway_with_smoothness": 522,
     "road_ways": 16912,
     "road_sidewalk_any_tag": 4535,
-    "road_sidewalk_separate": 2383,
-    "road_sidewalk_yes_or_both": 1556,
+    "road_sidewalk_separate": 2418,
+    "road_sidewalk_yes_or_both": 1574,
     "road_sidewalk_no_explicit": 147,
-    "road_sidewalk_partial": 21,
+    "road_sidewalk_partial": 396,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3162,
         "any_tag": 1022,
-        "separate": 691,
-        "yes_or_both": 212,
-        "partial": 11,
+        "separate": 707,
+        "yes_or_both": 216,
+        "partial": 85,
         "no_explicit": 14
       },
       "residential": {
         "total": 9813,
         "any_tag": 2641,
-        "separate": 1092,
-        "yes_or_both": 1254,
-        "partial": 5,
+        "separate": 1094,
+        "yes_or_both": 1263,
+        "partial": 206,
         "no_explicit": 78
       },
       "primary": {
         "total": 1494,
         "any_tag": 304,
-        "separate": 210,
-        "yes_or_both": 20,
-        "partial": 5,
+        "separate": 217,
+        "yes_or_both": 21,
+        "partial": 51,
         "no_explicit": 15
       },
       "secondary": {
         "total": 1731,
         "any_tag": 481,
-        "separate": 352,
-        "yes_or_both": 57,
-        "partial": 0,
+        "separate": 362,
+        "yes_or_both": 61,
+        "partial": 40,
         "no_explicit": 18
       },
       "unclassified": {
@@ -4918,7 +4918,7 @@
         "any_tag": 66,
         "separate": 18,
         "yes_or_both": 13,
-        "partial": 0,
+        "partial": 14,
         "no_explicit": 21
       },
       "primary_link": {
@@ -4947,8 +4947,8 @@
       }
     },
     "crossing_tagged_pct": 50.14,
-    "sidewalk_documented_pct": 24.16,
-    "sidewalk_separate_pct": 14.09,
+    "sidewalk_documented_pct": 24.47,
+    "sidewalk_separate_pct": 14.3,
     "footway_surface_pct": 54.42,
     "footway_smoothness_pct": 1.31,
     "tactile_paving_pct": 28.74,
@@ -5016,41 +5016,41 @@
     "footway_with_smoothness": 581,
     "road_ways": 16937,
     "road_sidewalk_any_tag": 4643,
-    "road_sidewalk_separate": 2397,
-    "road_sidewalk_yes_or_both": 1609,
+    "road_sidewalk_separate": 2433,
+    "road_sidewalk_yes_or_both": 1637,
     "road_sidewalk_no_explicit": 153,
-    "road_sidewalk_partial": 22,
+    "road_sidewalk_partial": 420,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3168,
         "any_tag": 1067,
-        "separate": 702,
-        "yes_or_both": 230,
-        "partial": 11,
+        "separate": 718,
+        "yes_or_both": 244,
+        "partial": 91,
         "no_explicit": 14
       },
       "residential": {
         "total": 9814,
         "any_tag": 2688,
-        "separate": 1095,
-        "yes_or_both": 1285,
-        "partial": 5,
+        "separate": 1097,
+        "yes_or_both": 1294,
+        "partial": 219,
         "no_explicit": 78
       },
       "primary": {
         "total": 1503,
         "any_tag": 312,
-        "separate": 210,
-        "yes_or_both": 20,
-        "partial": 6,
+        "separate": 218,
+        "yes_or_both": 21,
+        "partial": 53,
         "no_explicit": 20
       },
       "secondary": {
         "total": 1732,
         "any_tag": 486,
-        "separate": 352,
-        "yes_or_both": 60,
-        "partial": 0,
+        "separate": 362,
+        "yes_or_both": 64,
+        "partial": 41,
         "no_explicit": 19
       },
       "unclassified": {
@@ -5058,7 +5058,7 @@
         "any_tag": 68,
         "separate": 18,
         "yes_or_both": 14,
-        "partial": 0,
+        "partial": 15,
         "no_explicit": 21
       },
       "primary_link": {
@@ -5066,7 +5066,7 @@
         "any_tag": 10,
         "separate": 9,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 0
       },
       "tertiary_link": {
@@ -5087,8 +5087,8 @@
       }
     },
     "crossing_tagged_pct": 50.23,
-    "sidewalk_documented_pct": 24.56,
-    "sidewalk_separate_pct": 14.15,
+    "sidewalk_documented_pct": 24.93,
+    "sidewalk_separate_pct": 14.36,
     "footway_surface_pct": 55.24,
     "footway_smoothness_pct": 1.45,
     "tactile_paving_pct": 29.06,
@@ -5156,41 +5156,41 @@
     "footway_with_smoothness": 593,
     "road_ways": 16961,
     "road_sidewalk_any_tag": 4704,
-    "road_sidewalk_separate": 2452,
-    "road_sidewalk_yes_or_both": 1611,
+    "road_sidewalk_separate": 2488,
+    "road_sidewalk_yes_or_both": 1633,
     "road_sidewalk_no_explicit": 154,
-    "road_sidewalk_partial": 22,
+    "road_sidewalk_partial": 429,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3184,
         "any_tag": 1102,
-        "separate": 737,
-        "yes_or_both": 230,
-        "partial": 11,
+        "separate": 753,
+        "yes_or_both": 239,
+        "partial": 94,
         "no_explicit": 16
       },
       "residential": {
         "total": 9820,
         "any_tag": 2710,
-        "separate": 1112,
-        "yes_or_both": 1286,
-        "partial": 5,
+        "separate": 1114,
+        "yes_or_both": 1295,
+        "partial": 223,
         "no_explicit": 78
       },
       "primary": {
         "total": 1499,
         "any_tag": 312,
-        "separate": 210,
-        "yes_or_both": 20,
-        "partial": 6,
+        "separate": 218,
+        "yes_or_both": 21,
+        "partial": 53,
         "no_explicit": 20
       },
       "secondary": {
         "total": 1732,
         "any_tag": 488,
-        "separate": 354,
-        "yes_or_both": 61,
-        "partial": 0,
+        "separate": 364,
+        "yes_or_both": 64,
+        "partial": 41,
         "no_explicit": 19
       },
       "unclassified": {
@@ -5198,7 +5198,7 @@
         "any_tag": 70,
         "separate": 18,
         "yes_or_both": 14,
-        "partial": 0,
+        "partial": 17,
         "no_explicit": 21
       },
       "primary_link": {
@@ -5206,7 +5206,7 @@
         "any_tag": 10,
         "separate": 9,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 0
       },
       "tertiary_link": {
@@ -5227,8 +5227,8 @@
       }
     },
     "crossing_tagged_pct": 50.62,
-    "sidewalk_documented_pct": 24.86,
-    "sidewalk_separate_pct": 14.46,
+    "sidewalk_documented_pct": 25.2,
+    "sidewalk_separate_pct": 14.67,
     "footway_surface_pct": 55.67,
     "footway_smoothness_pct": 1.47,
     "tactile_paving_pct": 29.4,
@@ -5296,41 +5296,41 @@
     "footway_with_smoothness": 620,
     "road_ways": 16984,
     "road_sidewalk_any_tag": 4865,
-    "road_sidewalk_separate": 2497,
-    "road_sidewalk_yes_or_both": 1686,
+    "road_sidewalk_separate": 2534,
+    "road_sidewalk_yes_or_both": 1710,
     "road_sidewalk_no_explicit": 155,
-    "road_sidewalk_partial": 22,
+    "road_sidewalk_partial": 466,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3171,
         "any_tag": 1125,
-        "separate": 747,
-        "yes_or_both": 238,
-        "partial": 11,
+        "separate": 763,
+        "yes_or_both": 249,
+        "partial": 97,
         "no_explicit": 16
       },
       "residential": {
         "total": 9856,
         "any_tag": 2811,
-        "separate": 1148,
-        "yes_or_both": 1347,
-        "partial": 5,
+        "separate": 1151,
+        "yes_or_both": 1356,
+        "partial": 226,
         "no_explicit": 78
       },
       "primary": {
         "total": 1505,
         "any_tag": 312,
-        "separate": 209,
-        "yes_or_both": 20,
-        "partial": 6,
+        "separate": 217,
+        "yes_or_both": 21,
+        "partial": 54,
         "no_explicit": 20
       },
       "secondary": {
         "total": 1730,
         "any_tag": 524,
-        "separate": 354,
-        "yes_or_both": 67,
-        "partial": 0,
+        "separate": 364,
+        "yes_or_both": 70,
+        "partial": 71,
         "no_explicit": 19
       },
       "unclassified": {
@@ -5338,7 +5338,7 @@
         "any_tag": 70,
         "separate": 18,
         "yes_or_both": 14,
-        "partial": 0,
+        "partial": 17,
         "no_explicit": 21
       },
       "primary_link": {
@@ -5346,7 +5346,7 @@
         "any_tag": 11,
         "separate": 9,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 1
       },
       "tertiary_link": {
@@ -5367,8 +5367,8 @@
       }
     },
     "crossing_tagged_pct": 52.22,
-    "sidewalk_documented_pct": 25.54,
-    "sidewalk_separate_pct": 14.7,
+    "sidewalk_documented_pct": 25.9,
+    "sidewalk_separate_pct": 14.92,
     "footway_surface_pct": 55.06,
     "footway_smoothness_pct": 1.48,
     "tactile_paving_pct": 29.43,
@@ -5436,41 +5436,41 @@
     "footway_with_smoothness": 749,
     "road_ways": 16992,
     "road_sidewalk_any_tag": 4941,
-    "road_sidewalk_separate": 2532,
-    "road_sidewalk_yes_or_both": 1705,
+    "road_sidewalk_separate": 2576,
+    "road_sidewalk_yes_or_both": 1735,
     "road_sidewalk_no_explicit": 160,
-    "road_sidewalk_partial": 23,
+    "road_sidewalk_partial": 470,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3172,
         "any_tag": 1136,
-        "separate": 755,
-        "yes_or_both": 241,
-        "partial": 11,
+        "separate": 772,
+        "yes_or_both": 252,
+        "partial": 96,
         "no_explicit": 16
       },
       "residential": {
         "total": 9864,
         "any_tag": 2856,
-        "separate": 1157,
-        "yes_or_both": 1370,
-        "partial": 6,
+        "separate": 1163,
+        "yes_or_both": 1380,
+        "partial": 229,
         "no_explicit": 84
       },
       "primary": {
         "total": 1505,
         "any_tag": 321,
-        "separate": 214,
-        "yes_or_both": 20,
-        "partial": 6,
+        "separate": 225,
+        "yes_or_both": 21,
+        "partial": 55,
         "no_explicit": 20
       },
       "secondary": {
         "total": 1724,
         "any_tag": 534,
-        "separate": 366,
-        "yes_or_both": 60,
-        "partial": 0,
+        "separate": 376,
+        "yes_or_both": 68,
+        "partial": 72,
         "no_explicit": 18
       },
       "unclassified": {
@@ -5478,7 +5478,7 @@
         "any_tag": 70,
         "separate": 18,
         "yes_or_both": 14,
-        "partial": 0,
+        "partial": 17,
         "no_explicit": 21
       },
       "primary_link": {
@@ -5486,7 +5486,7 @@
         "any_tag": 12,
         "separate": 10,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 1
       },
       "tertiary_link": {
@@ -5507,8 +5507,8 @@
       }
     },
     "crossing_tagged_pct": 53.73,
-    "sidewalk_documented_pct": 25.88,
-    "sidewalk_separate_pct": 14.9,
+    "sidewalk_documented_pct": 26.31,
+    "sidewalk_separate_pct": 15.16,
     "footway_surface_pct": 54.43,
     "footway_smoothness_pct": 1.74,
     "tactile_paving_pct": 29.41,
@@ -5576,41 +5576,41 @@
     "footway_with_smoothness": 779,
     "road_ways": 16987,
     "road_sidewalk_any_tag": 4958,
-    "road_sidewalk_separate": 2553,
-    "road_sidewalk_yes_or_both": 1701,
+    "road_sidewalk_separate": 2600,
+    "road_sidewalk_yes_or_both": 1733,
     "road_sidewalk_no_explicit": 159,
-    "road_sidewalk_partial": 23,
+    "road_sidewalk_partial": 466,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3173,
         "any_tag": 1141,
-        "separate": 756,
-        "yes_or_both": 243,
-        "partial": 11,
+        "separate": 774,
+        "yes_or_both": 255,
+        "partial": 96,
         "no_explicit": 16
       },
       "residential": {
         "total": 9860,
         "any_tag": 2861,
-        "separate": 1176,
-        "yes_or_both": 1363,
-        "partial": 6,
+        "separate": 1182,
+        "yes_or_both": 1373,
+        "partial": 223,
         "no_explicit": 83
       },
       "primary": {
         "total": 1505,
         "any_tag": 325,
-        "separate": 215,
-        "yes_or_both": 20,
-        "partial": 6,
+        "separate": 228,
+        "yes_or_both": 22,
+        "partial": 55,
         "no_explicit": 20
       },
       "secondary": {
         "total": 1723,
         "any_tag": 537,
-        "separate": 366,
-        "yes_or_both": 61,
-        "partial": 0,
+        "separate": 376,
+        "yes_or_both": 69,
+        "partial": 74,
         "no_explicit": 18
       },
       "unclassified": {
@@ -5618,7 +5618,7 @@
         "any_tag": 70,
         "separate": 18,
         "yes_or_both": 14,
-        "partial": 0,
+        "partial": 17,
         "no_explicit": 21
       },
       "primary_link": {
@@ -5626,7 +5626,7 @@
         "any_tag": 12,
         "separate": 10,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 1
       },
       "tertiary_link": {
@@ -5647,8 +5647,8 @@
       }
     },
     "crossing_tagged_pct": 54.31,
-    "sidewalk_documented_pct": 25.98,
-    "sidewalk_separate_pct": 15.03,
+    "sidewalk_documented_pct": 26.44,
+    "sidewalk_separate_pct": 15.31,
     "footway_surface_pct": 54.09,
     "footway_smoothness_pct": 1.79,
     "tactile_paving_pct": 29.35,
@@ -5716,41 +5716,41 @@
     "footway_with_smoothness": 861,
     "road_ways": 17018,
     "road_sidewalk_any_tag": 5063,
-    "road_sidewalk_separate": 2621,
-    "road_sidewalk_yes_or_both": 1716,
+    "road_sidewalk_separate": 2681,
+    "road_sidewalk_yes_or_both": 1750,
     "road_sidewalk_no_explicit": 161,
-    "road_sidewalk_partial": 25,
+    "road_sidewalk_partial": 471,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3179,
         "any_tag": 1158,
-        "separate": 766,
-        "yes_or_both": 243,
-        "partial": 11,
+        "separate": 787,
+        "yes_or_both": 255,
+        "partial": 100,
         "no_explicit": 16
       },
       "residential": {
         "total": 9883,
         "any_tag": 2944,
-        "separate": 1233,
-        "yes_or_both": 1376,
-        "partial": 8,
+        "separate": 1247,
+        "yes_or_both": 1388,
+        "partial": 224,
         "no_explicit": 85
       },
       "primary": {
         "total": 1504,
         "any_tag": 327,
-        "separate": 216,
-        "yes_or_both": 20,
-        "partial": 6,
+        "separate": 231,
+        "yes_or_both": 22,
+        "partial": 55,
         "no_explicit": 19
       },
       "secondary": {
         "total": 1723,
         "any_tag": 539,
-        "separate": 366,
-        "yes_or_both": 63,
-        "partial": 0,
+        "separate": 376,
+        "yes_or_both": 71,
+        "partial": 74,
         "no_explicit": 18
       },
       "unclassified": {
@@ -5758,7 +5758,7 @@
         "any_tag": 71,
         "separate": 18,
         "yes_or_both": 14,
-        "partial": 0,
+        "partial": 17,
         "no_explicit": 22
       },
       "primary_link": {
@@ -5766,7 +5766,7 @@
         "any_tag": 12,
         "separate": 10,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 1
       },
       "tertiary_link": {
@@ -5787,8 +5787,8 @@
       }
     },
     "crossing_tagged_pct": 55.13,
-    "sidewalk_documented_pct": 26.43,
-    "sidewalk_separate_pct": 15.4,
+    "sidewalk_documented_pct": 26.98,
+    "sidewalk_separate_pct": 15.75,
     "footway_surface_pct": 53.84,
     "footway_smoothness_pct": 1.94,
     "tactile_paving_pct": 29.38,
@@ -5856,41 +5856,41 @@
     "footway_with_smoothness": 1034,
     "road_ways": 17055,
     "road_sidewalk_any_tag": 5239,
-    "road_sidewalk_separate": 2629,
-    "road_sidewalk_yes_or_both": 1809,
+    "road_sidewalk_separate": 2719,
+    "road_sidewalk_yes_or_both": 1853,
     "road_sidewalk_no_explicit": 167,
-    "road_sidewalk_partial": 22,
+    "road_sidewalk_partial": 500,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3193,
         "any_tag": 1195,
-        "separate": 766,
-        "yes_or_both": 258,
-        "partial": 8,
+        "separate": 802,
+        "yes_or_both": 273,
+        "partial": 104,
         "no_explicit": 16
       },
       "residential": {
         "total": 9898,
         "any_tag": 3040,
-        "separate": 1239,
-        "yes_or_both": 1447,
-        "partial": 8,
+        "separate": 1254,
+        "yes_or_both": 1465,
+        "partial": 233,
         "no_explicit": 88
       },
       "primary": {
         "total": 1505,
         "any_tag": 344,
-        "separate": 217,
-        "yes_or_both": 20,
-        "partial": 6,
+        "separate": 240,
+        "yes_or_both": 22,
+        "partial": 62,
         "no_explicit": 20
       },
       "secondary": {
         "total": 1731,
         "any_tag": 558,
-        "separate": 367,
-        "yes_or_both": 70,
-        "partial": 0,
+        "separate": 381,
+        "yes_or_both": 78,
+        "partial": 81,
         "no_explicit": 18
       },
       "unclassified": {
@@ -5898,7 +5898,7 @@
         "any_tag": 72,
         "separate": 18,
         "yes_or_both": 14,
-        "partial": 0,
+        "partial": 17,
         "no_explicit": 23
       },
       "primary_link": {
@@ -5906,7 +5906,7 @@
         "any_tag": 12,
         "separate": 10,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 1
       },
       "tertiary_link": {
@@ -5914,21 +5914,21 @@
         "any_tag": 4,
         "separate": 3,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 0
       },
       "secondary_link": {
         "total": 32,
         "any_tag": 14,
-        "separate": 9,
-        "yes_or_both": 0,
-        "partial": 0,
+        "separate": 11,
+        "yes_or_both": 1,
+        "partial": 1,
         "no_explicit": 1
       }
     },
     "crossing_tagged_pct": 55.31,
-    "sidewalk_documented_pct": 27.0,
-    "sidewalk_separate_pct": 15.41,
+    "sidewalk_documented_pct": 27.79,
+    "sidewalk_separate_pct": 15.94,
     "footway_surface_pct": 55.08,
     "footway_smoothness_pct": 2.32,
     "tactile_paving_pct": 29.86,
@@ -5996,49 +5996,49 @@
     "footway_with_smoothness": 1147,
     "road_ways": 17057,
     "road_sidewalk_any_tag": 5297,
-    "road_sidewalk_separate": 2631,
-    "road_sidewalk_yes_or_both": 1852,
+    "road_sidewalk_separate": 2724,
+    "road_sidewalk_yes_or_both": 1899,
     "road_sidewalk_no_explicit": 164,
-    "road_sidewalk_partial": 22,
+    "road_sidewalk_partial": 510,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3202,
         "any_tag": 1208,
-        "separate": 769,
-        "yes_or_both": 268,
-        "partial": 8,
+        "separate": 805,
+        "yes_or_both": 283,
+        "partial": 104,
         "no_explicit": 16
       },
       "residential": {
         "total": 9902,
         "any_tag": 3077,
-        "separate": 1249,
-        "yes_or_both": 1473,
-        "partial": 8,
+        "separate": 1265,
+        "yes_or_both": 1493,
+        "partial": 234,
         "no_explicit": 85
       },
       "primary": {
         "total": 1507,
         "any_tag": 347,
-        "separate": 217,
-        "yes_or_both": 22,
-        "partial": 6,
+        "separate": 240,
+        "yes_or_both": 24,
+        "partial": 63,
         "no_explicit": 20
       },
       "secondary": {
         "total": 1728,
         "any_tag": 569,
-        "separate": 365,
-        "yes_or_both": 74,
-        "partial": 0,
+        "separate": 380,
+        "yes_or_both": 83,
+        "partial": 88,
         "no_explicit": 18
       },
       "unclassified": {
         "total": 577,
         "any_tag": 72,
-        "separate": 16,
+        "separate": 17,
         "yes_or_both": 15,
-        "partial": 0,
+        "partial": 17,
         "no_explicit": 23
       },
       "primary_link": {
@@ -6046,7 +6046,7 @@
         "any_tag": 12,
         "separate": 10,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 1
       },
       "tertiary_link": {
@@ -6054,21 +6054,21 @@
         "any_tag": 4,
         "separate": 3,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 0
       },
       "secondary_link": {
         "total": 24,
         "any_tag": 8,
-        "separate": 2,
-        "yes_or_both": 0,
-        "partial": 0,
+        "separate": 4,
+        "yes_or_both": 1,
+        "partial": 2,
         "no_explicit": 1
       }
     },
     "crossing_tagged_pct": 55.48,
-    "sidewalk_documented_pct": 27.24,
-    "sidewalk_separate_pct": 15.42,
+    "sidewalk_documented_pct": 28.06,
+    "sidewalk_separate_pct": 15.97,
     "footway_surface_pct": 56.01,
     "footway_smoothness_pct": 2.55,
     "tactile_paving_pct": 30.31,
@@ -6136,49 +6136,49 @@
     "footway_with_smoothness": 1214,
     "road_ways": 17078,
     "road_sidewalk_any_tag": 5428,
-    "road_sidewalk_separate": 2673,
-    "road_sidewalk_yes_or_both": 1904,
+    "road_sidewalk_separate": 2784,
+    "road_sidewalk_yes_or_both": 1954,
     "road_sidewalk_no_explicit": 169,
-    "road_sidewalk_partial": 20,
+    "road_sidewalk_partial": 521,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3201,
         "any_tag": 1270,
-        "separate": 796,
-        "yes_or_both": 285,
-        "partial": 8,
+        "separate": 844,
+        "yes_or_both": 300,
+        "partial": 109,
         "no_explicit": 17
       },
       "residential": {
         "total": 9909,
         "any_tag": 3135,
-        "separate": 1257,
-        "yes_or_both": 1508,
-        "partial": 6,
+        "separate": 1278,
+        "yes_or_both": 1528,
+        "partial": 239,
         "no_explicit": 90
       },
       "primary": {
         "total": 1512,
         "any_tag": 351,
-        "separate": 217,
-        "yes_or_both": 22,
-        "partial": 6,
+        "separate": 240,
+        "yes_or_both": 27,
+        "partial": 64,
         "no_explicit": 20
       },
       "secondary": {
         "total": 1733,
         "any_tag": 572,
-        "separate": 367,
-        "yes_or_both": 74,
-        "partial": 0,
+        "separate": 383,
+        "yes_or_both": 83,
+        "partial": 88,
         "no_explicit": 18
       },
       "unclassified": {
         "total": 582,
         "any_tag": 75,
-        "separate": 20,
+        "separate": 21,
         "yes_or_both": 15,
-        "partial": 0,
+        "partial": 17,
         "no_explicit": 22
       },
       "primary_link": {
@@ -6186,7 +6186,7 @@
         "any_tag": 12,
         "separate": 10,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 1
       },
       "tertiary_link": {
@@ -6194,21 +6194,21 @@
         "any_tag": 5,
         "separate": 4,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 0
       },
       "secondary_link": {
         "total": 24,
         "any_tag": 8,
-        "separate": 2,
-        "yes_or_both": 0,
-        "partial": 0,
+        "separate": 4,
+        "yes_or_both": 1,
+        "partial": 2,
         "no_explicit": 1
       }
     },
     "crossing_tagged_pct": 55.71,
-    "sidewalk_documented_pct": 27.79,
-    "sidewalk_separate_pct": 15.65,
+    "sidewalk_documented_pct": 28.73,
+    "sidewalk_separate_pct": 16.3,
     "footway_surface_pct": 56.62,
     "footway_smoothness_pct": 2.68,
     "tactile_paving_pct": 30.56,
@@ -6276,49 +6276,49 @@
     "footway_with_smoothness": 1225,
     "road_ways": 17063,
     "road_sidewalk_any_tag": 5461,
-    "road_sidewalk_separate": 2687,
-    "road_sidewalk_yes_or_both": 1919,
+    "road_sidewalk_separate": 2798,
+    "road_sidewalk_yes_or_both": 1973,
     "road_sidewalk_no_explicit": 166,
-    "road_sidewalk_partial": 20,
+    "road_sidewalk_partial": 524,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3185,
         "any_tag": 1277,
-        "separate": 802,
-        "yes_or_both": 285,
-        "partial": 8,
+        "separate": 850,
+        "yes_or_both": 300,
+        "partial": 110,
         "no_explicit": 17
       },
       "residential": {
         "total": 9896,
         "any_tag": 3157,
-        "separate": 1265,
-        "yes_or_both": 1520,
-        "partial": 6,
+        "separate": 1286,
+        "yes_or_both": 1544,
+        "partial": 240,
         "no_explicit": 87
       },
       "primary": {
         "total": 1518,
         "any_tag": 351,
-        "separate": 217,
-        "yes_or_both": 22,
-        "partial": 6,
+        "separate": 240,
+        "yes_or_both": 27,
+        "partial": 64,
         "no_explicit": 20
       },
       "secondary": {
         "total": 1735,
         "any_tag": 575,
-        "separate": 367,
-        "yes_or_both": 77,
-        "partial": 0,
+        "separate": 383,
+        "yes_or_both": 86,
+        "partial": 88,
         "no_explicit": 18
       },
       "unclassified": {
         "total": 593,
         "any_tag": 76,
-        "separate": 20,
+        "separate": 21,
         "yes_or_both": 15,
-        "partial": 0,
+        "partial": 18,
         "no_explicit": 22
       },
       "primary_link": {
@@ -6326,7 +6326,7 @@
         "any_tag": 12,
         "separate": 10,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 1
       },
       "tertiary_link": {
@@ -6334,21 +6334,21 @@
         "any_tag": 5,
         "separate": 4,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 0
       },
       "secondary_link": {
         "total": 25,
         "any_tag": 8,
-        "separate": 2,
-        "yes_or_both": 0,
-        "partial": 0,
+        "separate": 4,
+        "yes_or_both": 1,
+        "partial": 2,
         "no_explicit": 1
       }
     },
     "crossing_tagged_pct": 55.96,
-    "sidewalk_documented_pct": 27.97,
-    "sidewalk_separate_pct": 15.75,
+    "sidewalk_documented_pct": 28.93,
+    "sidewalk_separate_pct": 16.4,
     "footway_surface_pct": 56.85,
     "footway_smoothness_pct": 2.69,
     "tactile_paving_pct": 30.81,
@@ -6416,49 +6416,49 @@
     "footway_with_smoothness": 1283,
     "road_ways": 17078,
     "road_sidewalk_any_tag": 5509,
-    "road_sidewalk_separate": 2711,
-    "road_sidewalk_yes_or_both": 1936,
+    "road_sidewalk_separate": 2823,
+    "road_sidewalk_yes_or_both": 1990,
     "road_sidewalk_no_explicit": 169,
-    "road_sidewalk_partial": 20,
+    "road_sidewalk_partial": 527,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3189,
         "any_tag": 1288,
-        "separate": 807,
-        "yes_or_both": 290,
-        "partial": 8,
+        "separate": 855,
+        "yes_or_both": 305,
+        "partial": 111,
         "no_explicit": 17
       },
       "residential": {
         "total": 9896,
         "any_tag": 3181,
-        "separate": 1282,
-        "yes_or_both": 1527,
-        "partial": 6,
+        "separate": 1303,
+        "yes_or_both": 1551,
+        "partial": 239,
         "no_explicit": 88
       },
       "primary": {
         "total": 1524,
         "any_tag": 357,
-        "separate": 217,
-        "yes_or_both": 25,
-        "partial": 6,
+        "separate": 241,
+        "yes_or_both": 30,
+        "partial": 65,
         "no_explicit": 21
       },
       "secondary": {
         "total": 1737,
         "any_tag": 581,
-        "separate": 369,
-        "yes_or_both": 79,
-        "partial": 0,
+        "separate": 385,
+        "yes_or_both": 88,
+        "partial": 90,
         "no_explicit": 18
       },
       "unclassified": {
         "total": 597,
         "any_tag": 77,
-        "separate": 20,
+        "separate": 21,
         "yes_or_both": 15,
-        "partial": 0,
+        "partial": 18,
         "no_explicit": 23
       },
       "primary_link": {
@@ -6466,7 +6466,7 @@
         "any_tag": 12,
         "separate": 10,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 1
       },
       "tertiary_link": {
@@ -6474,21 +6474,21 @@
         "any_tag": 5,
         "separate": 4,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 0
       },
       "secondary_link": {
         "total": 23,
         "any_tag": 8,
-        "separate": 2,
-        "yes_or_both": 0,
-        "partial": 0,
+        "separate": 4,
+        "yes_or_both": 1,
+        "partial": 2,
         "no_explicit": 1
       }
     },
     "crossing_tagged_pct": 56.02,
-    "sidewalk_documented_pct": 28.2,
-    "sidewalk_separate_pct": 15.87,
+    "sidewalk_documented_pct": 29.17,
+    "sidewalk_separate_pct": 16.53,
     "footway_surface_pct": 57.32,
     "footway_smoothness_pct": 2.8,
     "tactile_paving_pct": 31.04,
@@ -6556,49 +6556,49 @@
     "footway_with_smoothness": 1325,
     "road_ways": 17085,
     "road_sidewalk_any_tag": 5538,
-    "road_sidewalk_separate": 2723,
-    "road_sidewalk_yes_or_both": 1950,
+    "road_sidewalk_separate": 2836,
+    "road_sidewalk_yes_or_both": 2005,
     "road_sidewalk_no_explicit": 169,
-    "road_sidewalk_partial": 20,
+    "road_sidewalk_partial": 528,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3190,
         "any_tag": 1297,
-        "separate": 815,
-        "yes_or_both": 291,
-        "partial": 8,
+        "separate": 863,
+        "yes_or_both": 306,
+        "partial": 111,
         "no_explicit": 17
       },
       "residential": {
         "total": 9900,
         "any_tag": 3198,
-        "separate": 1285,
-        "yes_or_both": 1540,
-        "partial": 6,
+        "separate": 1306,
+        "yes_or_both": 1565,
+        "partial": 239,
         "no_explicit": 88
       },
       "primary": {
         "total": 1526,
         "any_tag": 358,
-        "separate": 217,
-        "yes_or_both": 25,
-        "partial": 6,
+        "separate": 242,
+        "yes_or_both": 30,
+        "partial": 65,
         "no_explicit": 21
       },
       "secondary": {
         "total": 1737,
         "any_tag": 583,
-        "separate": 370,
-        "yes_or_both": 79,
-        "partial": 0,
+        "separate": 386,
+        "yes_or_both": 88,
+        "partial": 91,
         "no_explicit": 18
       },
       "unclassified": {
         "total": 597,
         "any_tag": 77,
-        "separate": 20,
+        "separate": 21,
         "yes_or_both": 15,
-        "partial": 0,
+        "partial": 18,
         "no_explicit": 23
       },
       "primary_link": {
@@ -6606,7 +6606,7 @@
         "any_tag": 12,
         "separate": 10,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 1
       },
       "tertiary_link": {
@@ -6614,21 +6614,21 @@
         "any_tag": 5,
         "separate": 4,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 0
       },
       "secondary_link": {
         "total": 23,
         "any_tag": 8,
-        "separate": 2,
-        "yes_or_both": 0,
-        "partial": 0,
+        "separate": 4,
+        "yes_or_both": 1,
+        "partial": 2,
         "no_explicit": 1
       }
     },
     "crossing_tagged_pct": 56.1,
-    "sidewalk_documented_pct": 28.34,
-    "sidewalk_separate_pct": 15.94,
+    "sidewalk_documented_pct": 29.32,
+    "sidewalk_separate_pct": 16.6,
     "footway_surface_pct": 57.54,
     "footway_smoothness_pct": 2.88,
     "tactile_paving_pct": 31.22,
@@ -6696,49 +6696,49 @@
     "footway_with_smoothness": 1359,
     "road_ways": 17109,
     "road_sidewalk_any_tag": 5582,
-    "road_sidewalk_separate": 2745,
-    "road_sidewalk_yes_or_both": 1962,
+    "road_sidewalk_separate": 2859,
+    "road_sidewalk_yes_or_both": 2019,
     "road_sidewalk_no_explicit": 172,
-    "road_sidewalk_partial": 20,
+    "road_sidewalk_partial": 532,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3194,
         "any_tag": 1308,
-        "separate": 817,
-        "yes_or_both": 293,
-        "partial": 8,
+        "separate": 866,
+        "yes_or_both": 309,
+        "partial": 113,
         "no_explicit": 20
       },
       "residential": {
         "total": 9910,
         "any_tag": 3215,
-        "separate": 1290,
-        "yes_or_both": 1550,
-        "partial": 6,
+        "separate": 1311,
+        "yes_or_both": 1575,
+        "partial": 241,
         "no_explicit": 88
       },
       "primary": {
         "total": 1531,
         "any_tag": 360,
-        "separate": 218,
-        "yes_or_both": 25,
-        "partial": 6,
+        "separate": 243,
+        "yes_or_both": 31,
+        "partial": 65,
         "no_explicit": 21
       },
       "secondary": {
         "total": 1742,
         "any_tag": 597,
-        "separate": 384,
-        "yes_or_both": 79,
-        "partial": 0,
+        "separate": 400,
+        "yes_or_both": 88,
+        "partial": 91,
         "no_explicit": 18
       },
       "unclassified": {
         "total": 597,
         "any_tag": 77,
-        "separate": 20,
+        "separate": 21,
         "yes_or_both": 15,
-        "partial": 0,
+        "partial": 18,
         "no_explicit": 23
       },
       "primary_link": {
@@ -6746,7 +6746,7 @@
         "any_tag": 12,
         "separate": 10,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 1
       },
       "tertiary_link": {
@@ -6754,21 +6754,21 @@
         "any_tag": 5,
         "separate": 4,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 0
       },
       "secondary_link": {
         "total": 23,
         "any_tag": 8,
-        "separate": 2,
-        "yes_or_both": 0,
-        "partial": 0,
+        "separate": 4,
+        "yes_or_both": 1,
+        "partial": 2,
         "no_explicit": 1
       }
     },
     "crossing_tagged_pct": 56.14,
-    "sidewalk_documented_pct": 28.52,
-    "sidewalk_separate_pct": 16.04,
+    "sidewalk_documented_pct": 29.52,
+    "sidewalk_separate_pct": 16.71,
     "footway_surface_pct": 58.27,
     "footway_smoothness_pct": 2.94,
     "tactile_paving_pct": 31.4,
@@ -6836,49 +6836,49 @@
     "footway_with_smoothness": 1404,
     "road_ways": 17127,
     "road_sidewalk_any_tag": 5643,
-    "road_sidewalk_separate": 2746,
-    "road_sidewalk_yes_or_both": 2011,
+    "road_sidewalk_separate": 2863,
+    "road_sidewalk_yes_or_both": 2074,
     "road_sidewalk_no_explicit": 172,
-    "road_sidewalk_partial": 20,
+    "road_sidewalk_partial": 534,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3205,
         "any_tag": 1319,
-        "separate": 815,
-        "yes_or_both": 303,
-        "partial": 8,
+        "separate": 864,
+        "yes_or_both": 322,
+        "partial": 113,
         "no_explicit": 20
       },
       "residential": {
         "total": 9922,
         "any_tag": 3256,
-        "separate": 1292,
-        "yes_or_both": 1585,
-        "partial": 6,
+        "separate": 1313,
+        "yes_or_both": 1613,
+        "partial": 242,
         "no_explicit": 88
       },
       "primary": {
         "total": 1524,
         "any_tag": 362,
-        "separate": 218,
-        "yes_or_both": 25,
-        "partial": 6,
+        "separate": 244,
+        "yes_or_both": 31,
+        "partial": 66,
         "no_explicit": 21
       },
       "secondary": {
         "total": 1746,
         "any_tag": 604,
-        "separate": 385,
-        "yes_or_both": 83,
-        "partial": 0,
+        "separate": 403,
+        "yes_or_both": 92,
+        "partial": 91,
         "no_explicit": 18
       },
       "unclassified": {
         "total": 596,
         "any_tag": 77,
-        "separate": 20,
+        "separate": 21,
         "yes_or_both": 15,
-        "partial": 0,
+        "partial": 18,
         "no_explicit": 23
       },
       "primary_link": {
@@ -6886,15 +6886,15 @@
         "any_tag": 12,
         "separate": 10,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 1
       },
       "secondary_link": {
         "total": 25,
         "any_tag": 8,
-        "separate": 2,
-        "yes_or_both": 0,
-        "partial": 0,
+        "separate": 4,
+        "yes_or_both": 1,
+        "partial": 2,
         "no_explicit": 1
       },
       "tertiary_link": {
@@ -6902,13 +6902,13 @@
         "any_tag": 5,
         "separate": 4,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 0
       }
     },
     "crossing_tagged_pct": 56.45,
-    "sidewalk_documented_pct": 28.78,
-    "sidewalk_separate_pct": 16.03,
+    "sidewalk_documented_pct": 29.83,
+    "sidewalk_separate_pct": 16.72,
     "footway_surface_pct": 58.56,
     "footway_smoothness_pct": 3.03,
     "tactile_paving_pct": 31.66,
@@ -6976,49 +6976,49 @@
     "footway_with_smoothness": 1632,
     "road_ways": 17157,
     "road_sidewalk_any_tag": 5705,
-    "road_sidewalk_separate": 2760,
-    "road_sidewalk_yes_or_both": 2034,
+    "road_sidewalk_separate": 2890,
+    "road_sidewalk_yes_or_both": 2097,
     "road_sidewalk_no_explicit": 177,
-    "road_sidewalk_partial": 20,
+    "road_sidewalk_partial": 541,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3210,
         "any_tag": 1323,
-        "separate": 818,
-        "yes_or_both": 301,
-        "partial": 8,
+        "separate": 870,
+        "yes_or_both": 320,
+        "partial": 113,
         "no_explicit": 20
       },
       "residential": {
         "total": 9940,
         "any_tag": 3293,
-        "separate": 1303,
-        "yes_or_both": 1607,
-        "partial": 6,
+        "separate": 1324,
+        "yes_or_both": 1635,
+        "partial": 242,
         "no_explicit": 92
       },
       "primary": {
         "total": 1526,
         "any_tag": 362,
-        "separate": 218,
-        "yes_or_both": 25,
-        "partial": 6,
+        "separate": 244,
+        "yes_or_both": 31,
+        "partial": 66,
         "no_explicit": 21
       },
       "secondary": {
         "total": 1750,
         "any_tag": 622,
-        "separate": 385,
-        "yes_or_both": 86,
-        "partial": 0,
+        "separate": 412,
+        "yes_or_both": 95,
+        "partial": 97,
         "no_explicit": 18
       },
       "unclassified": {
         "total": 597,
         "any_tag": 79,
-        "separate": 20,
+        "separate": 21,
         "yes_or_both": 15,
-        "partial": 0,
+        "partial": 19,
         "no_explicit": 24
       },
       "primary_link": {
@@ -7026,15 +7026,15 @@
         "any_tag": 12,
         "separate": 10,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 1
       },
       "secondary_link": {
         "total": 25,
         "any_tag": 9,
-        "separate": 2,
-        "yes_or_both": 0,
-        "partial": 0,
+        "separate": 5,
+        "yes_or_both": 1,
+        "partial": 2,
         "no_explicit": 1
       },
       "tertiary_link": {
@@ -7042,13 +7042,13 @@
         "any_tag": 5,
         "separate": 4,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 0
       }
     },
     "crossing_tagged_pct": 56.63,
-    "sidewalk_documented_pct": 28.97,
-    "sidewalk_separate_pct": 16.09,
+    "sidewalk_documented_pct": 30.1,
+    "sidewalk_separate_pct": 16.84,
     "footway_surface_pct": 58.68,
     "footway_smoothness_pct": 3.5,
     "tactile_paving_pct": 31.77,
@@ -7116,49 +7116,49 @@
     "footway_with_smoothness": 1660,
     "road_ways": 17181,
     "road_sidewalk_any_tag": 5746,
-    "road_sidewalk_separate": 2779,
-    "road_sidewalk_yes_or_both": 2050,
+    "road_sidewalk_separate": 2913,
+    "road_sidewalk_yes_or_both": 2113,
     "road_sidewalk_no_explicit": 178,
-    "road_sidewalk_partial": 21,
+    "road_sidewalk_partial": 542,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3213,
         "any_tag": 1330,
-        "separate": 824,
-        "yes_or_both": 301,
-        "partial": 9,
+        "separate": 876,
+        "yes_or_both": 320,
+        "partial": 114,
         "no_explicit": 20
       },
       "residential": {
         "total": 9957,
         "any_tag": 3322,
-        "separate": 1316,
-        "yes_or_both": 1620,
-        "partial": 6,
+        "separate": 1339,
+        "yes_or_both": 1648,
+        "partial": 242,
         "no_explicit": 93
       },
       "primary": {
         "total": 1526,
         "any_tag": 363,
-        "separate": 218,
-        "yes_or_both": 25,
-        "partial": 6,
+        "separate": 246,
+        "yes_or_both": 31,
+        "partial": 65,
         "no_explicit": 21
       },
       "secondary": {
         "total": 1751,
         "any_tag": 625,
-        "separate": 385,
-        "yes_or_both": 89,
-        "partial": 0,
+        "separate": 412,
+        "yes_or_both": 98,
+        "partial": 97,
         "no_explicit": 18
       },
       "unclassified": {
         "total": 600,
         "any_tag": 80,
-        "separate": 20,
+        "separate": 21,
         "yes_or_both": 15,
-        "partial": 0,
+        "partial": 20,
         "no_explicit": 24
       },
       "primary_link": {
@@ -7166,15 +7166,15 @@
         "any_tag": 12,
         "separate": 10,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 1
       },
       "secondary_link": {
         "total": 25,
         "any_tag": 9,
-        "separate": 2,
-        "yes_or_both": 0,
-        "partial": 0,
+        "separate": 5,
+        "yes_or_both": 1,
+        "partial": 2,
         "no_explicit": 1
       },
       "tertiary_link": {
@@ -7182,13 +7182,13 @@
         "any_tag": 5,
         "separate": 4,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 0
       }
     },
     "crossing_tagged_pct": 56.47,
-    "sidewalk_documented_pct": 29.14,
-    "sidewalk_separate_pct": 16.17,
+    "sidewalk_documented_pct": 30.29,
+    "sidewalk_separate_pct": 16.95,
     "footway_surface_pct": 58.81,
     "footway_smoothness_pct": 3.54,
     "tactile_paving_pct": 32.0,
@@ -7256,49 +7256,49 @@
     "footway_with_smoothness": 1703,
     "road_ways": 17199,
     "road_sidewalk_any_tag": 5827,
-    "road_sidewalk_separate": 2841,
-    "road_sidewalk_yes_or_both": 2024,
+    "road_sidewalk_separate": 3015,
+    "road_sidewalk_yes_or_both": 2086,
     "road_sidewalk_no_explicit": 186,
-    "road_sidewalk_partial": 21,
+    "road_sidewalk_partial": 540,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3214,
         "any_tag": 1379,
-        "separate": 846,
-        "yes_or_both": 291,
-        "partial": 9,
+        "separate": 934,
+        "yes_or_both": 312,
+        "partial": 114,
         "no_explicit": 19
       },
       "residential": {
         "total": 9966,
         "any_tag": 3351,
-        "separate": 1355,
-        "yes_or_both": 1603,
-        "partial": 6,
+        "separate": 1382,
+        "yes_or_both": 1628,
+        "partial": 239,
         "no_explicit": 102
       },
       "primary": {
         "total": 1529,
         "any_tag": 363,
-        "separate": 219,
-        "yes_or_both": 25,
-        "partial": 6,
+        "separate": 247,
+        "yes_or_both": 31,
+        "partial": 64,
         "no_explicit": 21
       },
       "secondary": {
         "total": 1756,
         "any_tag": 628,
-        "separate": 385,
-        "yes_or_both": 90,
-        "partial": 0,
+        "separate": 412,
+        "yes_or_both": 99,
+        "partial": 99,
         "no_explicit": 18
       },
       "unclassified": {
         "total": 600,
         "any_tag": 80,
-        "separate": 20,
+        "separate": 21,
         "yes_or_both": 15,
-        "partial": 0,
+        "partial": 20,
         "no_explicit": 24
       },
       "primary_link": {
@@ -7306,15 +7306,15 @@
         "any_tag": 12,
         "separate": 10,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 1
       },
       "secondary_link": {
         "total": 25,
         "any_tag": 9,
-        "separate": 2,
-        "yes_or_both": 0,
-        "partial": 0,
+        "separate": 5,
+        "yes_or_both": 1,
+        "partial": 2,
         "no_explicit": 1
       },
       "tertiary_link": {
@@ -7322,13 +7322,13 @@
         "any_tag": 5,
         "separate": 4,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 0
       }
     },
     "crossing_tagged_pct": 56.62,
-    "sidewalk_documented_pct": 29.37,
-    "sidewalk_separate_pct": 16.52,
+    "sidewalk_documented_pct": 30.74,
+    "sidewalk_separate_pct": 17.53,
     "footway_surface_pct": 59.01,
     "footway_smoothness_pct": 3.61,
     "tactile_paving_pct": 32.02,
@@ -7396,49 +7396,49 @@
     "footway_with_smoothness": 1734,
     "road_ways": 17227,
     "road_sidewalk_any_tag": 6058,
-    "road_sidewalk_separate": 3064,
-    "road_sidewalk_yes_or_both": 1906,
+    "road_sidewalk_separate": 3311,
+    "road_sidewalk_yes_or_both": 1980,
     "road_sidewalk_no_explicit": 187,
-    "road_sidewalk_partial": 71,
+    "road_sidewalk_partial": 580,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3221,
         "any_tag": 1427,
-        "separate": 870,
-        "yes_or_both": 263,
-        "partial": 15,
+        "separate": 1007,
+        "yes_or_both": 287,
+        "partial": 114,
         "no_explicit": 19
       },
       "residential": {
         "total": 9982,
         "any_tag": 3505,
-        "separate": 1537,
-        "yes_or_both": 1518,
-        "partial": 33,
+        "separate": 1587,
+        "yes_or_both": 1552,
+        "partial": 263,
         "no_explicit": 103
       },
       "primary": {
         "total": 1529,
         "any_tag": 369,
-        "separate": 219,
-        "yes_or_both": 26,
-        "partial": 11,
+        "separate": 248,
+        "yes_or_both": 32,
+        "partial": 68,
         "no_explicit": 21
       },
       "secondary": {
         "total": 1760,
         "any_tag": 649,
-        "separate": 400,
-        "yes_or_both": 84,
-        "partial": 12,
+        "separate": 427,
+        "yes_or_both": 93,
+        "partial": 111,
         "no_explicit": 18
       },
       "unclassified": {
         "total": 601,
         "any_tag": 80,
-        "separate": 20,
+        "separate": 21,
         "yes_or_both": 15,
-        "partial": 0,
+        "partial": 20,
         "no_explicit": 24
       },
       "primary_link": {
@@ -7446,15 +7446,15 @@
         "any_tag": 12,
         "separate": 10,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 1
       },
       "secondary_link": {
         "total": 25,
         "any_tag": 9,
-        "separate": 2,
-        "yes_or_both": 0,
-        "partial": 0,
+        "separate": 5,
+        "yes_or_both": 1,
+        "partial": 2,
         "no_explicit": 1
       },
       "tertiary_link": {
@@ -7462,13 +7462,13 @@
         "any_tag": 7,
         "separate": 6,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 0
       }
     },
     "crossing_tagged_pct": 57.05,
-    "sidewalk_documented_pct": 29.94,
-    "sidewalk_separate_pct": 17.79,
+    "sidewalk_documented_pct": 31.8,
+    "sidewalk_separate_pct": 19.22,
     "footway_surface_pct": 59.28,
     "footway_smoothness_pct": 3.63,
     "tactile_paving_pct": 32.09,
@@ -7536,49 +7536,49 @@
     "footway_with_smoothness": 1783,
     "road_ways": 17255,
     "road_sidewalk_any_tag": 7407,
-    "road_sidewalk_separate": 3901,
-    "road_sidewalk_yes_or_both": 1698,
+    "road_sidewalk_separate": 4279,
+    "road_sidewalk_yes_or_both": 1824,
     "road_sidewalk_no_explicit": 189,
-    "road_sidewalk_partial": 703,
+    "road_sidewalk_partial": 1115,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3221,
         "any_tag": 1700,
-        "separate": 962,
-        "yes_or_both": 248,
-        "partial": 198,
+        "separate": 1125,
+        "yes_or_both": 279,
+        "partial": 277,
         "no_explicit": 19
       },
       "residential": {
         "total": 10003,
         "any_tag": 4432,
-        "separate": 2265,
-        "yes_or_both": 1335,
-        "partial": 353,
+        "separate": 2389,
+        "yes_or_both": 1408,
+        "partial": 529,
         "no_explicit": 106
       },
       "primary": {
         "total": 1529,
         "any_tag": 416,
-        "separate": 218,
-        "yes_or_both": 26,
-        "partial": 57,
+        "separate": 250,
+        "yes_or_both": 32,
+        "partial": 113,
         "no_explicit": 21
       },
       "secondary": {
         "total": 1764,
         "any_tag": 746,
-        "separate": 417,
-        "yes_or_both": 74,
-        "partial": 91,
+        "separate": 472,
+        "yes_or_both": 89,
+        "partial": 168,
         "no_explicit": 17
       },
       "unclassified": {
         "total": 604,
         "any_tag": 83,
-        "separate": 21,
+        "separate": 22,
         "yes_or_both": 15,
-        "partial": 2,
+        "partial": 22,
         "no_explicit": 24
       },
       "primary_link": {
@@ -7586,15 +7586,15 @@
         "any_tag": 14,
         "separate": 10,
         "yes_or_both": 0,
-        "partial": 2,
+        "partial": 3,
         "no_explicit": 1
       },
       "secondary_link": {
         "total": 25,
         "any_tag": 9,
-        "separate": 2,
-        "yes_or_both": 0,
-        "partial": 0,
+        "separate": 5,
+        "yes_or_both": 1,
+        "partial": 2,
         "no_explicit": 1
       },
       "tertiary_link": {
@@ -7602,13 +7602,13 @@
         "any_tag": 7,
         "separate": 6,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 0
       }
     },
     "crossing_tagged_pct": 57.49,
-    "sidewalk_documented_pct": 33.54,
-    "sidewalk_separate_pct": 22.61,
+    "sidewalk_documented_pct": 36.46,
+    "sidewalk_separate_pct": 24.8,
     "footway_surface_pct": 59.77,
     "footway_smoothness_pct": 3.7,
     "tactile_paving_pct": 32.22,
@@ -7676,49 +7676,49 @@
     "footway_with_smoothness": 1838,
     "road_ways": 17279,
     "road_sidewalk_any_tag": 7493,
-    "road_sidewalk_separate": 3927,
-    "road_sidewalk_yes_or_both": 1703,
+    "road_sidewalk_separate": 4344,
+    "road_sidewalk_yes_or_both": 1830,
     "road_sidewalk_no_explicit": 194,
-    "road_sidewalk_partial": 698,
+    "road_sidewalk_partial": 1125,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3229,
         "any_tag": 1732,
-        "separate": 964,
-        "yes_or_both": 247,
-        "partial": 195,
+        "separate": 1143,
+        "yes_or_both": 280,
+        "partial": 287,
         "no_explicit": 22
       },
       "residential": {
         "total": 10011,
         "any_tag": 4464,
-        "separate": 2284,
-        "yes_or_both": 1340,
-        "partial": 352,
+        "separate": 2416,
+        "yes_or_both": 1412,
+        "partial": 529,
         "no_explicit": 107
       },
       "primary": {
         "total": 1537,
         "any_tag": 423,
-        "separate": 218,
-        "yes_or_both": 27,
-        "partial": 57,
+        "separate": 254,
+        "yes_or_both": 33,
+        "partial": 114,
         "no_explicit": 22
       },
       "secondary": {
         "total": 1766,
         "any_tag": 761,
-        "separate": 422,
-        "yes_or_both": 74,
-        "partial": 90,
+        "separate": 488,
+        "yes_or_both": 89,
+        "partial": 167,
         "no_explicit": 17
       },
       "unclassified": {
         "total": 602,
         "any_tag": 83,
-        "separate": 21,
+        "separate": 22,
         "yes_or_both": 15,
-        "partial": 2,
+        "partial": 22,
         "no_explicit": 24
       },
       "primary_link": {
@@ -7726,15 +7726,15 @@
         "any_tag": 14,
         "separate": 10,
         "yes_or_both": 0,
-        "partial": 2,
+        "partial": 3,
         "no_explicit": 1
       },
       "secondary_link": {
         "total": 25,
         "any_tag": 9,
-        "separate": 2,
-        "yes_or_both": 0,
-        "partial": 0,
+        "separate": 5,
+        "yes_or_both": 1,
+        "partial": 2,
         "no_explicit": 1
       },
       "tertiary_link": {
@@ -7742,13 +7742,13 @@
         "any_tag": 7,
         "separate": 6,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 0
       }
     },
     "crossing_tagged_pct": 57.83,
-    "sidewalk_documented_pct": 33.71,
-    "sidewalk_separate_pct": 22.73,
+    "sidewalk_documented_pct": 36.85,
+    "sidewalk_separate_pct": 25.14,
     "footway_surface_pct": 60.15,
     "footway_smoothness_pct": 3.78,
     "tactile_paving_pct": 32.38,
@@ -7816,49 +7816,49 @@
     "footway_with_smoothness": 1932,
     "road_ways": 17316,
     "road_sidewalk_any_tag": 7612,
-    "road_sidewalk_separate": 3943,
-    "road_sidewalk_yes_or_both": 1721,
+    "road_sidewalk_separate": 4423,
+    "road_sidewalk_yes_or_both": 1850,
     "road_sidewalk_no_explicit": 214,
-    "road_sidewalk_partial": 685,
+    "road_sidewalk_partial": 1125,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3234,
         "any_tag": 1761,
-        "separate": 957,
-        "yes_or_both": 244,
-        "partial": 189,
+        "separate": 1168,
+        "yes_or_both": 277,
+        "partial": 286,
         "no_explicit": 30
       },
       "residential": {
         "total": 10037,
         "any_tag": 4535,
-        "separate": 2319,
-        "yes_or_both": 1356,
-        "partial": 346,
+        "separate": 2456,
+        "yes_or_both": 1430,
+        "partial": 533,
         "no_explicit": 116
       },
       "primary": {
         "total": 1542,
         "any_tag": 431,
-        "separate": 219,
-        "yes_or_both": 27,
-        "partial": 57,
+        "separate": 263,
+        "yes_or_both": 33,
+        "partial": 113,
         "no_explicit": 22
       },
       "secondary": {
         "total": 1761,
         "any_tag": 766,
-        "separate": 404,
-        "yes_or_both": 79,
-        "partial": 88,
+        "separate": 488,
+        "yes_or_both": 94,
+        "partial": 164,
         "no_explicit": 20
       },
       "unclassified": {
         "total": 608,
         "any_tag": 89,
-        "separate": 26,
+        "separate": 27,
         "yes_or_both": 15,
-        "partial": 3,
+        "partial": 23,
         "no_explicit": 24
       },
       "primary_link": {
@@ -7866,15 +7866,15 @@
         "any_tag": 14,
         "separate": 10,
         "yes_or_both": 0,
-        "partial": 2,
+        "partial": 3,
         "no_explicit": 1
       },
       "secondary_link": {
         "total": 25,
         "any_tag": 9,
-        "separate": 2,
-        "yes_or_both": 0,
-        "partial": 0,
+        "separate": 5,
+        "yes_or_both": 1,
+        "partial": 2,
         "no_explicit": 1
       },
       "tertiary_link": {
@@ -7882,13 +7882,13 @@
         "any_tag": 7,
         "separate": 6,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 0
       }
     },
     "crossing_tagged_pct": 58.67,
-    "sidewalk_documented_pct": 33.95,
-    "sidewalk_separate_pct": 22.77,
+    "sidewalk_documented_pct": 37.46,
+    "sidewalk_separate_pct": 25.54,
     "footway_surface_pct": 60.3,
     "footway_smoothness_pct": 3.89,
     "tactile_paving_pct": 32.6,
@@ -7956,49 +7956,49 @@
     "footway_with_smoothness": 2054,
     "road_ways": 17341,
     "road_sidewalk_any_tag": 7675,
-    "road_sidewalk_separate": 3985,
-    "road_sidewalk_yes_or_both": 1727,
+    "road_sidewalk_separate": 4492,
+    "road_sidewalk_yes_or_both": 1854,
     "road_sidewalk_no_explicit": 214,
-    "road_sidewalk_partial": 678,
+    "road_sidewalk_partial": 1115,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3235,
         "any_tag": 1771,
-        "separate": 963,
-        "yes_or_both": 247,
-        "partial": 187,
+        "separate": 1178,
+        "yes_or_both": 278,
+        "partial": 285,
         "no_explicit": 30
       },
       "residential": {
         "total": 10055,
         "any_tag": 4573,
-        "separate": 2348,
-        "yes_or_both": 1360,
-        "partial": 342,
+        "separate": 2499,
+        "yes_or_both": 1434,
+        "partial": 524,
         "no_explicit": 116
       },
       "primary": {
         "total": 1545,
         "any_tag": 435,
-        "separate": 220,
-        "yes_or_both": 27,
-        "partial": 57,
+        "separate": 266,
+        "yes_or_both": 33,
+        "partial": 114,
         "no_explicit": 22
       },
       "secondary": {
         "total": 1763,
         "any_tag": 777,
-        "separate": 410,
-        "yes_or_both": 78,
-        "partial": 87,
+        "separate": 501,
+        "yes_or_both": 93,
+        "partial": 163,
         "no_explicit": 20
       },
       "unclassified": {
         "total": 609,
         "any_tag": 89,
-        "separate": 26,
+        "separate": 27,
         "yes_or_both": 15,
-        "partial": 3,
+        "partial": 23,
         "no_explicit": 24
       },
       "primary_link": {
@@ -8006,15 +8006,15 @@
         "any_tag": 14,
         "separate": 10,
         "yes_or_both": 0,
-        "partial": 2,
+        "partial": 3,
         "no_explicit": 1
       },
       "secondary_link": {
         "total": 25,
         "any_tag": 9,
-        "separate": 2,
-        "yes_or_both": 0,
-        "partial": 0,
+        "separate": 5,
+        "yes_or_both": 1,
+        "partial": 2,
         "no_explicit": 1
       },
       "tertiary_link": {
@@ -8022,13 +8022,13 @@
         "any_tag": 7,
         "separate": 6,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 0
       }
     },
     "crossing_tagged_pct": 58.67,
-    "sidewalk_documented_pct": 34.17,
-    "sidewalk_separate_pct": 22.98,
+    "sidewalk_documented_pct": 37.83,
+    "sidewalk_separate_pct": 25.9,
     "footway_surface_pct": 60.53,
     "footway_smoothness_pct": 4.11,
     "tactile_paving_pct": 32.88,
@@ -8096,49 +8096,49 @@
     "footway_with_smoothness": 2153,
     "road_ways": 17350,
     "road_sidewalk_any_tag": 7746,
-    "road_sidewalk_separate": 4008,
-    "road_sidewalk_yes_or_both": 1738,
+    "road_sidewalk_separate": 4542,
+    "road_sidewalk_yes_or_both": 1865,
     "road_sidewalk_no_explicit": 222,
-    "road_sidewalk_partial": 681,
+    "road_sidewalk_partial": 1117,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3237,
         "any_tag": 1781,
-        "separate": 967,
-        "yes_or_both": 249,
-        "partial": 187,
+        "separate": 1188,
+        "yes_or_both": 280,
+        "partial": 283,
         "no_explicit": 30
       },
       "residential": {
         "total": 10060,
         "any_tag": 4623,
-        "separate": 2367,
-        "yes_or_both": 1368,
-        "partial": 348,
+        "separate": 2530,
+        "yes_or_both": 1442,
+        "partial": 530,
         "no_explicit": 121
       },
       "primary": {
         "total": 1546,
         "any_tag": 436,
-        "separate": 220,
-        "yes_or_both": 27,
-        "partial": 57,
+        "separate": 266,
+        "yes_or_both": 33,
+        "partial": 115,
         "no_explicit": 22
       },
       "secondary": {
         "total": 1765,
         "any_tag": 783,
-        "separate": 410,
-        "yes_or_both": 78,
-        "partial": 84,
+        "separate": 510,
+        "yes_or_both": 93,
+        "partial": 160,
         "no_explicit": 20
       },
       "unclassified": {
         "total": 608,
         "any_tag": 93,
-        "separate": 26,
+        "separate": 27,
         "yes_or_both": 16,
-        "partial": 3,
+        "partial": 23,
         "no_explicit": 27
       },
       "primary_link": {
@@ -8146,15 +8146,15 @@
         "any_tag": 14,
         "separate": 10,
         "yes_or_both": 0,
-        "partial": 2,
+        "partial": 3,
         "no_explicit": 1
       },
       "secondary_link": {
         "total": 25,
         "any_tag": 9,
-        "separate": 2,
-        "yes_or_both": 0,
-        "partial": 0,
+        "separate": 5,
+        "yes_or_both": 1,
+        "partial": 2,
         "no_explicit": 1
       },
       "tertiary_link": {
@@ -8162,13 +8162,13 @@
         "any_tag": 7,
         "separate": 6,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 0
       }
     },
     "crossing_tagged_pct": 59.13,
-    "sidewalk_documented_pct": 34.4,
-    "sidewalk_separate_pct": 23.1,
+    "sidewalk_documented_pct": 38.21,
+    "sidewalk_separate_pct": 26.18,
     "footway_surface_pct": 60.89,
     "footway_smoothness_pct": 4.27,
     "tactile_paving_pct": 32.95,
@@ -8236,49 +8236,49 @@
     "footway_with_smoothness": 2185,
     "road_ways": 17366,
     "road_sidewalk_any_tag": 7774,
-    "road_sidewalk_separate": 4019,
-    "road_sidewalk_yes_or_both": 1732,
+    "road_sidewalk_separate": 4583,
+    "road_sidewalk_yes_or_both": 1859,
     "road_sidewalk_no_explicit": 222,
-    "road_sidewalk_partial": 681,
+    "road_sidewalk_partial": 1110,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3238,
         "any_tag": 1780,
-        "separate": 967,
-        "yes_or_both": 248,
-        "partial": 187,
+        "separate": 1188,
+        "yes_or_both": 279,
+        "partial": 283,
         "no_explicit": 30
       },
       "residential": {
         "total": 10064,
         "any_tag": 4635,
-        "separate": 2381,
-        "yes_or_both": 1365,
-        "partial": 348,
+        "separate": 2544,
+        "yes_or_both": 1439,
+        "partial": 531,
         "no_explicit": 121
       },
       "primary": {
         "total": 1555,
         "any_tag": 436,
-        "separate": 220,
-        "yes_or_both": 27,
-        "partial": 57,
+        "separate": 266,
+        "yes_or_both": 33,
+        "partial": 115,
         "no_explicit": 22
       },
       "secondary": {
         "total": 1775,
         "any_tag": 800,
-        "separate": 407,
-        "yes_or_both": 76,
-        "partial": 84,
+        "separate": 537,
+        "yes_or_both": 91,
+        "partial": 152,
         "no_explicit": 20
       },
       "unclassified": {
         "total": 607,
         "any_tag": 93,
-        "separate": 26,
+        "separate": 27,
         "yes_or_both": 16,
-        "partial": 3,
+        "partial": 23,
         "no_explicit": 27
       },
       "primary_link": {
@@ -8286,15 +8286,15 @@
         "any_tag": 14,
         "separate": 10,
         "yes_or_both": 0,
-        "partial": 2,
+        "partial": 3,
         "no_explicit": 1
       },
       "secondary_link": {
         "total": 25,
         "any_tag": 9,
-        "separate": 2,
-        "yes_or_both": 0,
-        "partial": 0,
+        "separate": 5,
+        "yes_or_both": 1,
+        "partial": 2,
         "no_explicit": 1
       },
       "tertiary_link": {
@@ -8302,13 +8302,13 @@
         "any_tag": 7,
         "separate": 6,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 0
       }
     },
     "crossing_tagged_pct": 59.39,
-    "sidewalk_documented_pct": 34.39,
-    "sidewalk_separate_pct": 23.14,
+    "sidewalk_documented_pct": 38.37,
+    "sidewalk_separate_pct": 26.39,
     "footway_surface_pct": 61.28,
     "footway_smoothness_pct": 4.32,
     "tactile_paving_pct": 32.99,
@@ -8376,49 +8376,49 @@
     "footway_with_smoothness": 2196,
     "road_ways": 17398,
     "road_sidewalk_any_tag": 7808,
-    "road_sidewalk_separate": 4044,
-    "road_sidewalk_yes_or_both": 1735,
+    "road_sidewalk_separate": 4614,
+    "road_sidewalk_yes_or_both": 1862,
     "road_sidewalk_no_explicit": 224,
-    "road_sidewalk_partial": 681,
+    "road_sidewalk_partial": 1108,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3279,
         "any_tag": 1836,
-        "separate": 1026,
-        "yes_or_both": 242,
-        "partial": 187,
+        "separate": 1252,
+        "yes_or_both": 273,
+        "partial": 281,
         "no_explicit": 30
       },
       "residential": {
         "total": 10104,
         "any_tag": 4663,
-        "separate": 2398,
-        "yes_or_both": 1374,
-        "partial": 348,
+        "separate": 2561,
+        "yes_or_both": 1448,
+        "partial": 531,
         "no_explicit": 123
       },
       "primary": {
         "total": 1555,
         "any_tag": 436,
-        "separate": 221,
-        "yes_or_both": 26,
-        "partial": 57,
+        "separate": 267,
+        "yes_or_both": 32,
+        "partial": 115,
         "no_explicit": 22
       },
       "secondary": {
         "total": 1723,
         "any_tag": 749,
-        "separate": 355,
-        "yes_or_both": 76,
-        "partial": 84,
+        "separate": 486,
+        "yes_or_both": 91,
+        "partial": 152,
         "no_explicit": 20
       },
       "unclassified": {
         "total": 610,
         "any_tag": 94,
-        "separate": 26,
+        "separate": 27,
         "yes_or_both": 17,
-        "partial": 3,
+        "partial": 23,
         "no_explicit": 27
       },
       "primary_link": {
@@ -8426,15 +8426,15 @@
         "any_tag": 14,
         "separate": 10,
         "yes_or_both": 0,
-        "partial": 2,
+        "partial": 3,
         "no_explicit": 1
       },
       "secondary_link": {
         "total": 25,
         "any_tag": 9,
-        "separate": 2,
-        "yes_or_both": 0,
-        "partial": 0,
+        "separate": 5,
+        "yes_or_both": 1,
+        "partial": 2,
         "no_explicit": 1
       },
       "tertiary_link": {
@@ -8442,13 +8442,13 @@
         "any_tag": 7,
         "separate": 6,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 0
       }
     },
     "crossing_tagged_pct": 59.67,
-    "sidewalk_documented_pct": 34.5,
-    "sidewalk_separate_pct": 23.24,
+    "sidewalk_documented_pct": 38.51,
+    "sidewalk_separate_pct": 26.52,
     "footway_surface_pct": 61.21,
     "footway_smoothness_pct": 4.3,
     "tactile_paving_pct": 33.17,
@@ -8516,49 +8516,49 @@
     "footway_with_smoothness": 2230,
     "road_ways": 17419,
     "road_sidewalk_any_tag": 7879,
-    "road_sidewalk_separate": 4093,
-    "road_sidewalk_yes_or_both": 1732,
-    "road_sidewalk_no_explicit": 227,
-    "road_sidewalk_partial": 676,
+    "road_sidewalk_separate": 4690,
+    "road_sidewalk_yes_or_both": 1859,
+    "road_sidewalk_no_explicit": 228,
+    "road_sidewalk_partial": 1102,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3282,
         "any_tag": 1846,
-        "separate": 1031,
-        "yes_or_both": 241,
-        "partial": 186,
-        "no_explicit": 31
+        "separate": 1263,
+        "yes_or_both": 272,
+        "partial": 279,
+        "no_explicit": 32
       },
       "residential": {
         "total": 10120,
         "any_tag": 4711,
-        "separate": 2438,
-        "yes_or_both": 1372,
-        "partial": 344,
+        "separate": 2618,
+        "yes_or_both": 1446,
+        "partial": 524,
         "no_explicit": 123
       },
       "primary": {
         "total": 1557,
         "any_tag": 444,
-        "separate": 222,
-        "yes_or_both": 26,
-        "partial": 57,
+        "separate": 270,
+        "yes_or_both": 32,
+        "partial": 119,
         "no_explicit": 23
       },
       "secondary": {
         "total": 1723,
         "any_tag": 753,
-        "separate": 358,
-        "yes_or_both": 76,
-        "partial": 84,
+        "separate": 490,
+        "yes_or_both": 91,
+        "partial": 152,
         "no_explicit": 20
       },
       "unclassified": {
         "total": 610,
         "any_tag": 95,
-        "separate": 26,
+        "separate": 28,
         "yes_or_both": 17,
-        "partial": 3,
+        "partial": 22,
         "no_explicit": 28
       },
       "primary_link": {
@@ -8566,15 +8566,15 @@
         "any_tag": 14,
         "separate": 10,
         "yes_or_both": 0,
-        "partial": 2,
+        "partial": 3,
         "no_explicit": 1
       },
       "secondary_link": {
         "total": 25,
         "any_tag": 9,
-        "separate": 2,
-        "yes_or_both": 0,
-        "partial": 0,
+        "separate": 5,
+        "yes_or_both": 1,
+        "partial": 2,
         "no_explicit": 1
       },
       "tertiary_link": {
@@ -8582,13 +8582,13 @@
         "any_tag": 7,
         "separate": 6,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 0
       }
     },
     "crossing_tagged_pct": 60.21,
-    "sidewalk_documented_pct": 34.74,
-    "sidewalk_separate_pct": 23.5,
+    "sidewalk_documented_pct": 38.91,
+    "sidewalk_separate_pct": 26.92,
     "footway_surface_pct": 60.84,
     "footway_smoothness_pct": 4.32,
     "tactile_paving_pct": 33.15,
@@ -8656,49 +8656,49 @@
     "footway_with_smoothness": 2301,
     "road_ways": 17434,
     "road_sidewalk_any_tag": 7922,
-    "road_sidewalk_separate": 4095,
-    "road_sidewalk_yes_or_both": 1761,
+    "road_sidewalk_separate": 4708,
+    "road_sidewalk_yes_or_both": 1888,
     "road_sidewalk_no_explicit": 227,
-    "road_sidewalk_partial": 670,
+    "road_sidewalk_partial": 1099,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3279,
         "any_tag": 1845,
-        "separate": 1030,
-        "yes_or_both": 242,
-        "partial": 183,
+        "separate": 1264,
+        "yes_or_both": 273,
+        "partial": 277,
         "no_explicit": 31
       },
       "residential": {
         "total": 10134,
         "any_tag": 4749,
-        "separate": 2448,
-        "yes_or_both": 1396,
-        "partial": 342,
+        "separate": 2632,
+        "yes_or_both": 1470,
+        "partial": 524,
         "no_explicit": 123
       },
       "primary": {
         "total": 1559,
         "any_tag": 445,
-        "separate": 214,
-        "yes_or_both": 26,
-        "partial": 56,
+        "separate": 272,
+        "yes_or_both": 32,
+        "partial": 118,
         "no_explicit": 23
       },
       "secondary": {
         "total": 1725,
         "any_tag": 758,
-        "separate": 359,
-        "yes_or_both": 80,
-        "partial": 84,
+        "separate": 491,
+        "yes_or_both": 95,
+        "partial": 152,
         "no_explicit": 20
       },
       "unclassified": {
         "total": 610,
         "any_tag": 95,
-        "separate": 26,
+        "separate": 28,
         "yes_or_both": 17,
-        "partial": 3,
+        "partial": 22,
         "no_explicit": 28
       },
       "primary_link": {
@@ -8706,15 +8706,15 @@
         "any_tag": 14,
         "separate": 10,
         "yes_or_both": 0,
-        "partial": 2,
+        "partial": 3,
         "no_explicit": 1
       },
       "secondary_link": {
         "total": 25,
         "any_tag": 9,
-        "separate": 2,
-        "yes_or_both": 0,
-        "partial": 0,
+        "separate": 5,
+        "yes_or_both": 1,
+        "partial": 2,
         "no_explicit": 1
       },
       "tertiary_link": {
@@ -8722,13 +8722,13 @@
         "any_tag": 7,
         "separate": 6,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 0
       }
     },
     "crossing_tagged_pct": 60.31,
-    "sidewalk_documented_pct": 34.89,
-    "sidewalk_separate_pct": 23.49,
+    "sidewalk_documented_pct": 39.14,
+    "sidewalk_separate_pct": 27.0,
     "footway_surface_pct": 61.62,
     "footway_smoothness_pct": 4.45,
     "tactile_paving_pct": 33.39,
@@ -8796,49 +8796,49 @@
     "footway_with_smoothness": 2335,
     "road_ways": 17461,
     "road_sidewalk_any_tag": 7952,
-    "road_sidewalk_separate": 4113,
-    "road_sidewalk_yes_or_both": 1770,
+    "road_sidewalk_separate": 4733,
+    "road_sidewalk_yes_or_both": 1898,
     "road_sidewalk_no_explicit": 227,
-    "road_sidewalk_partial": 665,
+    "road_sidewalk_partial": 1094,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3283,
         "any_tag": 1850,
-        "separate": 1033,
-        "yes_or_both": 243,
-        "partial": 180,
+        "separate": 1271,
+        "yes_or_both": 274,
+        "partial": 274,
         "no_explicit": 31
       },
       "residential": {
         "total": 10152,
         "any_tag": 4772,
-        "separate": 2462,
-        "yes_or_both": 1404,
-        "partial": 341,
+        "separate": 2648,
+        "yes_or_both": 1478,
+        "partial": 523,
         "no_explicit": 123
       },
       "primary": {
         "total": 1564,
         "any_tag": 447,
-        "separate": 215,
-        "yes_or_both": 26,
-        "partial": 56,
+        "separate": 273,
+        "yes_or_both": 33,
+        "partial": 118,
         "no_explicit": 23
       },
       "secondary": {
         "total": 1725,
         "any_tag": 758,
-        "separate": 359,
-        "yes_or_both": 80,
-        "partial": 84,
+        "separate": 491,
+        "yes_or_both": 95,
+        "partial": 152,
         "no_explicit": 20
       },
       "unclassified": {
         "total": 610,
         "any_tag": 95,
-        "separate": 26,
+        "separate": 29,
         "yes_or_both": 17,
-        "partial": 2,
+        "partial": 21,
         "no_explicit": 28
       },
       "primary_link": {
@@ -8846,15 +8846,15 @@
         "any_tag": 14,
         "separate": 10,
         "yes_or_both": 0,
-        "partial": 2,
+        "partial": 3,
         "no_explicit": 1
       },
       "secondary_link": {
         "total": 25,
         "any_tag": 9,
-        "separate": 2,
-        "yes_or_both": 0,
-        "partial": 0,
+        "separate": 5,
+        "yes_or_both": 1,
+        "partial": 2,
         "no_explicit": 1
       },
       "tertiary_link": {
@@ -8862,13 +8862,13 @@
         "any_tag": 7,
         "separate": 6,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 0
       }
     },
     "crossing_tagged_pct": 60.39,
-    "sidewalk_documented_pct": 34.99,
-    "sidewalk_separate_pct": 23.56,
+    "sidewalk_documented_pct": 39.28,
+    "sidewalk_separate_pct": 27.11,
     "footway_surface_pct": 61.83,
     "footway_smoothness_pct": 4.5,
     "tactile_paving_pct": 33.52,
@@ -8936,49 +8936,49 @@
     "footway_with_smoothness": 2337,
     "road_ways": 17471,
     "road_sidewalk_any_tag": 7965,
-    "road_sidewalk_separate": 4116,
-    "road_sidewalk_yes_or_both": 1774,
+    "road_sidewalk_separate": 4744,
+    "road_sidewalk_yes_or_both": 1903,
     "road_sidewalk_no_explicit": 227,
-    "road_sidewalk_partial": 664,
+    "road_sidewalk_partial": 1091,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3283,
         "any_tag": 1851,
-        "separate": 1032,
-        "yes_or_both": 244,
-        "partial": 179,
+        "separate": 1271,
+        "yes_or_both": 276,
+        "partial": 273,
         "no_explicit": 31
       },
       "residential": {
         "total": 10154,
         "any_tag": 4778,
-        "separate": 2461,
-        "yes_or_both": 1408,
-        "partial": 341,
+        "separate": 2652,
+        "yes_or_both": 1482,
+        "partial": 521,
         "no_explicit": 123
       },
       "primary": {
         "total": 1566,
         "any_tag": 452,
-        "separate": 219,
-        "yes_or_both": 26,
-        "partial": 56,
+        "separate": 278,
+        "yes_or_both": 33,
+        "partial": 118,
         "no_explicit": 23
       },
       "secondary": {
         "total": 1728,
         "any_tag": 759,
-        "separate": 360,
-        "yes_or_both": 79,
-        "partial": 84,
+        "separate": 493,
+        "yes_or_both": 94,
+        "partial": 152,
         "no_explicit": 20
       },
       "unclassified": {
         "total": 613,
         "any_tag": 95,
-        "separate": 26,
+        "separate": 29,
         "yes_or_both": 17,
-        "partial": 2,
+        "partial": 21,
         "no_explicit": 28
       },
       "primary_link": {
@@ -8986,15 +8986,15 @@
         "any_tag": 14,
         "separate": 10,
         "yes_or_both": 0,
-        "partial": 2,
+        "partial": 3,
         "no_explicit": 1
       },
       "secondary_link": {
         "total": 25,
         "any_tag": 9,
-        "separate": 2,
-        "yes_or_both": 0,
-        "partial": 0,
+        "separate": 5,
+        "yes_or_both": 1,
+        "partial": 2,
         "no_explicit": 1
       },
       "tertiary_link": {
@@ -9002,13 +9002,13 @@
         "any_tag": 7,
         "separate": 6,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 0
       }
     },
     "crossing_tagged_pct": 60.41,
-    "sidewalk_documented_pct": 35.01,
-    "sidewalk_separate_pct": 23.56,
+    "sidewalk_documented_pct": 39.35,
+    "sidewalk_separate_pct": 27.15,
     "footway_surface_pct": 61.85,
     "footway_smoothness_pct": 4.48,
     "tactile_paving_pct": 33.61,
@@ -9076,49 +9076,49 @@
     "footway_with_smoothness": 2416,
     "road_ways": 17463,
     "road_sidewalk_any_tag": 8023,
-    "road_sidewalk_separate": 4131,
-    "road_sidewalk_yes_or_both": 1785,
+    "road_sidewalk_separate": 4774,
+    "road_sidewalk_yes_or_both": 1910,
     "road_sidewalk_no_explicit": 231,
-    "road_sidewalk_partial": 656,
+    "road_sidewalk_partial": 1108,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3298,
         "any_tag": 1864,
-        "separate": 1044,
-        "yes_or_both": 245,
-        "partial": 177,
+        "separate": 1285,
+        "yes_or_both": 275,
+        "partial": 275,
         "no_explicit": 29
       },
       "residential": {
         "total": 10139,
         "any_tag": 4796,
-        "separate": 2462,
-        "yes_or_both": 1414,
-        "partial": 333,
+        "separate": 2661,
+        "yes_or_both": 1489,
+        "partial": 523,
         "no_explicit": 123
       },
       "primary": {
         "total": 1568,
         "any_tag": 476,
-        "separate": 231,
-        "yes_or_both": 26,
-        "partial": 54,
+        "separate": 297,
+        "yes_or_both": 29,
+        "partial": 125,
         "no_explicit": 25
       },
       "secondary": {
         "total": 1718,
         "any_tag": 756,
-        "separate": 349,
-        "yes_or_both": 81,
-        "partial": 88,
+        "separate": 480,
+        "yes_or_both": 97,
+        "partial": 157,
         "no_explicit": 22
       },
       "unclassified": {
         "total": 613,
         "any_tag": 101,
-        "separate": 27,
+        "separate": 30,
         "yes_or_both": 19,
-        "partial": 2,
+        "partial": 22,
         "no_explicit": 30
       },
       "primary_link": {
@@ -9126,15 +9126,15 @@
         "any_tag": 14,
         "separate": 10,
         "yes_or_both": 0,
-        "partial": 2,
+        "partial": 3,
         "no_explicit": 1
       },
       "secondary_link": {
         "total": 25,
         "any_tag": 9,
-        "separate": 2,
-        "yes_or_both": 0,
-        "partial": 0,
+        "separate": 5,
+        "yes_or_both": 1,
+        "partial": 2,
         "no_explicit": 1
       },
       "tertiary_link": {
@@ -9142,13 +9142,13 @@
         "any_tag": 7,
         "separate": 6,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 0
       }
     },
     "crossing_tagged_pct": 60.84,
-    "sidewalk_documented_pct": 35.2,
-    "sidewalk_separate_pct": 23.66,
+    "sidewalk_documented_pct": 39.6,
+    "sidewalk_separate_pct": 27.34,
     "footway_surface_pct": 61.71,
     "footway_smoothness_pct": 4.59,
     "tactile_paving_pct": 33.61,
@@ -9216,49 +9216,49 @@
     "footway_with_smoothness": 2592,
     "road_ways": 17480,
     "road_sidewalk_any_tag": 8066,
-    "road_sidewalk_separate": 4144,
-    "road_sidewalk_yes_or_both": 1787,
+    "road_sidewalk_separate": 4812,
+    "road_sidewalk_yes_or_both": 1915,
     "road_sidewalk_no_explicit": 230,
-    "road_sidewalk_partial": 649,
+    "road_sidewalk_partial": 1109,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3282,
         "any_tag": 1866,
-        "separate": 1051,
-        "yes_or_both": 240,
-        "partial": 167,
+        "separate": 1296,
+        "yes_or_both": 273,
+        "partial": 268,
         "no_explicit": 29
       },
       "residential": {
         "total": 10181,
         "any_tag": 4838,
-        "separate": 2488,
-        "yes_or_both": 1418,
-        "partial": 338,
+        "separate": 2692,
+        "yes_or_both": 1493,
+        "partial": 530,
         "no_explicit": 123
       },
       "primary": {
         "total": 1570,
         "any_tag": 480,
-        "separate": 231,
-        "yes_or_both": 28,
-        "partial": 53,
+        "separate": 298,
+        "yes_or_both": 31,
+        "partial": 126,
         "no_explicit": 25
       },
       "secondary": {
         "total": 1714,
         "any_tag": 752,
-        "separate": 329,
-        "yes_or_both": 82,
-        "partial": 87,
+        "separate": 475,
+        "yes_or_both": 98,
+        "partial": 157,
         "no_explicit": 22
       },
       "unclassified": {
         "total": 606,
         "any_tag": 100,
-        "separate": 27,
+        "separate": 30,
         "yes_or_both": 19,
-        "partial": 2,
+        "partial": 22,
         "no_explicit": 29
       },
       "primary_link": {
@@ -9266,15 +9266,15 @@
         "any_tag": 14,
         "separate": 10,
         "yes_or_both": 0,
-        "partial": 2,
+        "partial": 3,
         "no_explicit": 1
       },
       "secondary_link": {
         "total": 25,
         "any_tag": 9,
-        "separate": 2,
-        "yes_or_both": 0,
-        "partial": 0,
+        "separate": 5,
+        "yes_or_both": 1,
+        "partial": 2,
         "no_explicit": 1
       },
       "tertiary_link": {
@@ -9282,13 +9282,13 @@
         "any_tag": 7,
         "separate": 6,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 0
       }
     },
     "crossing_tagged_pct": 61.03,
-    "sidewalk_documented_pct": 35.25,
-    "sidewalk_separate_pct": 23.71,
+    "sidewalk_documented_pct": 39.8,
+    "sidewalk_separate_pct": 27.53,
     "footway_surface_pct": 62.0,
     "footway_smoothness_pct": 4.9,
     "tactile_paving_pct": 33.75,
@@ -9356,49 +9356,49 @@
     "footway_with_smoothness": 2730,
     "road_ways": 17506,
     "road_sidewalk_any_tag": 8165,
-    "road_sidewalk_separate": 4157,
-    "road_sidewalk_yes_or_both": 1829,
+    "road_sidewalk_separate": 4866,
+    "road_sidewalk_yes_or_both": 1962,
     "road_sidewalk_no_explicit": 235,
-    "road_sidewalk_partial": 627,
+    "road_sidewalk_partial": 1102,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3277,
         "any_tag": 1863,
-        "separate": 1048,
-        "yes_or_both": 241,
-        "partial": 158,
+        "separate": 1304,
+        "yes_or_both": 274,
+        "partial": 256,
         "no_explicit": 29
       },
       "residential": {
         "total": 10199,
         "any_tag": 4906,
-        "separate": 2503,
-        "yes_or_both": 1457,
-        "partial": 326,
+        "separate": 2716,
+        "yes_or_both": 1536,
+        "partial": 526,
         "no_explicit": 128
       },
       "primary": {
         "total": 1579,
         "any_tag": 482,
-        "separate": 231,
-        "yes_or_both": 28,
-        "partial": 53,
+        "separate": 299,
+        "yes_or_both": 31,
+        "partial": 127,
         "no_explicit": 25
       },
       "secondary": {
         "total": 1716,
         "any_tag": 784,
-        "separate": 330,
-        "yes_or_both": 84,
-        "partial": 86,
+        "separate": 496,
+        "yes_or_both": 101,
+        "partial": 165,
         "no_explicit": 22
       },
       "unclassified": {
         "total": 608,
         "any_tag": 100,
-        "separate": 27,
+        "separate": 30,
         "yes_or_both": 19,
-        "partial": 2,
+        "partial": 22,
         "no_explicit": 29
       },
       "primary_link": {
@@ -9406,15 +9406,15 @@
         "any_tag": 14,
         "separate": 10,
         "yes_or_both": 0,
-        "partial": 2,
+        "partial": 3,
         "no_explicit": 1
       },
       "secondary_link": {
         "total": 25,
         "any_tag": 9,
-        "separate": 2,
-        "yes_or_both": 0,
-        "partial": 0,
+        "separate": 5,
+        "yes_or_both": 1,
+        "partial": 2,
         "no_explicit": 1
       },
       "tertiary_link": {
@@ -9422,13 +9422,13 @@
         "any_tag": 7,
         "separate": 6,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 0
       }
     },
     "crossing_tagged_pct": 61.39,
-    "sidewalk_documented_pct": 35.54,
-    "sidewalk_separate_pct": 23.75,
+    "sidewalk_documented_pct": 40.35,
+    "sidewalk_separate_pct": 27.8,
     "footway_surface_pct": 61.95,
     "footway_smoothness_pct": 5.11,
     "tactile_paving_pct": 33.98,
@@ -9496,49 +9496,49 @@
     "footway_with_smoothness": 2848,
     "road_ways": 17541,
     "road_sidewalk_any_tag": 8255,
-    "road_sidewalk_separate": 4237,
-    "road_sidewalk_yes_or_both": 1821,
+    "road_sidewalk_separate": 4973,
+    "road_sidewalk_yes_or_both": 1957,
     "road_sidewalk_no_explicit": 228,
-    "road_sidewalk_partial": 622,
+    "road_sidewalk_partial": 1097,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3280,
         "any_tag": 1882,
-        "separate": 1070,
-        "yes_or_both": 231,
-        "partial": 158,
+        "separate": 1331,
+        "yes_or_both": 266,
+        "partial": 256,
         "no_explicit": 29
       },
       "residential": {
         "total": 10219,
         "any_tag": 4959,
-        "separate": 2559,
-        "yes_or_both": 1459,
-        "partial": 323,
+        "separate": 2777,
+        "yes_or_both": 1539,
+        "partial": 523,
         "no_explicit": 120
       },
       "primary": {
         "total": 1581,
         "any_tag": 489,
-        "separate": 232,
-        "yes_or_both": 28,
-        "partial": 52,
+        "separate": 307,
+        "yes_or_both": 31,
+        "partial": 126,
         "no_explicit": 25
       },
       "secondary": {
         "total": 1714,
         "any_tag": 794,
-        "separate": 331,
-        "yes_or_both": 84,
-        "partial": 85,
+        "separate": 507,
+        "yes_or_both": 101,
+        "partial": 164,
         "no_explicit": 22
       },
       "unclassified": {
         "total": 617,
         "any_tag": 101,
-        "separate": 27,
+        "separate": 30,
         "yes_or_both": 19,
-        "partial": 2,
+        "partial": 22,
         "no_explicit": 30
       },
       "primary_link": {
@@ -9546,15 +9546,15 @@
         "any_tag": 14,
         "separate": 10,
         "yes_or_both": 0,
-        "partial": 2,
+        "partial": 3,
         "no_explicit": 1
       },
       "secondary_link": {
         "total": 25,
         "any_tag": 9,
-        "separate": 2,
-        "yes_or_both": 0,
-        "partial": 0,
+        "separate": 5,
+        "yes_or_both": 1,
+        "partial": 2,
         "no_explicit": 1
       },
       "tertiary_link": {
@@ -9562,13 +9562,13 @@
         "any_tag": 7,
         "separate": 6,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 0
       }
     },
     "crossing_tagged_pct": 62.27,
-    "sidewalk_documented_pct": 35.84,
-    "sidewalk_separate_pct": 24.15,
+    "sidewalk_documented_pct": 40.81,
+    "sidewalk_separate_pct": 28.35,
     "footway_surface_pct": 61.68,
     "footway_smoothness_pct": 5.23,
     "tactile_paving_pct": 34.18,
@@ -9636,49 +9636,49 @@
     "footway_with_smoothness": 2909,
     "road_ways": 17562,
     "road_sidewalk_any_tag": 8291,
-    "road_sidewalk_separate": 4272,
-    "road_sidewalk_yes_or_both": 1815,
+    "road_sidewalk_separate": 5017,
+    "road_sidewalk_yes_or_both": 1951,
     "road_sidewalk_no_explicit": 234,
-    "road_sidewalk_partial": 617,
+    "road_sidewalk_partial": 1089,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3284,
         "any_tag": 1889,
-        "separate": 1080,
-        "yes_or_both": 228,
-        "partial": 157,
+        "separate": 1341,
+        "yes_or_both": 263,
+        "partial": 256,
         "no_explicit": 29
       },
       "residential": {
         "total": 10243,
         "any_tag": 4978,
-        "separate": 2576,
-        "yes_or_both": 1461,
-        "partial": 320,
+        "separate": 2796,
+        "yes_or_both": 1540,
+        "partial": 519,
         "no_explicit": 123
       },
       "primary": {
         "total": 1579,
         "any_tag": 498,
-        "separate": 233,
-        "yes_or_both": 30,
-        "partial": 51,
+        "separate": 313,
+        "yes_or_both": 33,
+        "partial": 124,
         "no_explicit": 28
       },
       "secondary": {
         "total": 1716,
         "any_tag": 795,
-        "separate": 338,
-        "yes_or_both": 77,
-        "partial": 85,
+        "separate": 516,
+        "yes_or_both": 94,
+        "partial": 163,
         "no_explicit": 22
       },
       "unclassified": {
         "total": 607,
         "any_tag": 101,
-        "separate": 27,
-        "yes_or_both": 19,
-        "partial": 2,
+        "separate": 30,
+        "yes_or_both": 20,
+        "partial": 21,
         "no_explicit": 30
       },
       "primary_link": {
@@ -9686,15 +9686,15 @@
         "any_tag": 14,
         "separate": 10,
         "yes_or_both": 0,
-        "partial": 2,
+        "partial": 3,
         "no_explicit": 1
       },
       "secondary_link": {
         "total": 25,
         "any_tag": 9,
-        "separate": 2,
-        "yes_or_both": 0,
-        "partial": 0,
+        "separate": 5,
+        "yes_or_both": 1,
+        "partial": 2,
         "no_explicit": 1
       },
       "tertiary_link": {
@@ -9702,13 +9702,13 @@
         "any_tag": 7,
         "separate": 6,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 0
       }
     },
     "crossing_tagged_pct": 63.33,
-    "sidewalk_documented_pct": 35.99,
-    "sidewalk_separate_pct": 24.33,
+    "sidewalk_documented_pct": 41.01,
+    "sidewalk_separate_pct": 28.57,
     "footway_surface_pct": 60.78,
     "footway_smoothness_pct": 5.2,
     "tactile_paving_pct": 34.24,
@@ -9776,49 +9776,49 @@
     "footway_with_smoothness": 2981,
     "road_ways": 17600,
     "road_sidewalk_any_tag": 8379,
-    "road_sidewalk_separate": 4286,
-    "road_sidewalk_yes_or_both": 1832,
+    "road_sidewalk_separate": 5089,
+    "road_sidewalk_yes_or_both": 1974,
     "road_sidewalk_no_explicit": 241,
-    "road_sidewalk_partial": 605,
+    "road_sidewalk_partial": 1075,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3290,
         "any_tag": 1909,
-        "separate": 1068,
-        "yes_or_both": 227,
-        "partial": 151,
+        "separate": 1362,
+        "yes_or_both": 267,
+        "partial": 250,
         "no_explicit": 30
       },
       "residential": {
         "total": 10264,
         "any_tag": 5016,
-        "separate": 2591,
-        "yes_or_both": 1478,
-        "partial": 317,
+        "separate": 2817,
+        "yes_or_both": 1557,
+        "partial": 516,
         "no_explicit": 126
       },
       "primary": {
         "total": 1585,
         "any_tag": 511,
-        "separate": 233,
-        "yes_or_both": 36,
-        "partial": 51,
+        "separate": 319,
+        "yes_or_both": 41,
+        "partial": 123,
         "no_explicit": 28
       },
       "secondary": {
         "total": 1717,
         "any_tag": 812,
-        "separate": 349,
-        "yes_or_both": 73,
-        "partial": 82,
+        "separate": 540,
+        "yes_or_both": 89,
+        "partial": 159,
         "no_explicit": 24
       },
       "unclassified": {
         "total": 610,
         "any_tag": 101,
-        "separate": 27,
-        "yes_or_both": 18,
-        "partial": 2,
+        "separate": 30,
+        "yes_or_both": 19,
+        "partial": 21,
         "no_explicit": 31
       },
       "primary_link": {
@@ -9826,15 +9826,15 @@
         "any_tag": 14,
         "separate": 10,
         "yes_or_both": 0,
-        "partial": 2,
+        "partial": 3,
         "no_explicit": 1
       },
       "secondary_link": {
         "total": 25,
         "any_tag": 9,
-        "separate": 2,
-        "yes_or_both": 0,
-        "partial": 0,
+        "separate": 5,
+        "yes_or_both": 1,
+        "partial": 2,
         "no_explicit": 1
       },
       "tertiary_link": {
@@ -9842,13 +9842,13 @@
         "any_tag": 7,
         "separate": 6,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 0
       }
     },
     "crossing_tagged_pct": 64.17,
-    "sidewalk_documented_pct": 36.13,
-    "sidewalk_separate_pct": 24.35,
+    "sidewalk_documented_pct": 41.5,
+    "sidewalk_separate_pct": 28.91,
     "footway_surface_pct": 60.76,
     "footway_smoothness_pct": 5.26,
     "tactile_paving_pct": 34.32,
@@ -9916,49 +9916,49 @@
     "footway_with_smoothness": 2999,
     "road_ways": 17614,
     "road_sidewalk_any_tag": 8790,
-    "road_sidewalk_separate": 4401,
-    "road_sidewalk_yes_or_both": 1959,
+    "road_sidewalk_separate": 5390,
+    "road_sidewalk_yes_or_both": 2126,
     "road_sidewalk_no_explicit": 266,
-    "road_sidewalk_partial": 554,
+    "road_sidewalk_partial": 1008,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3292,
         "any_tag": 1996,
-        "separate": 1095,
-        "yes_or_both": 228,
-        "partial": 140,
+        "separate": 1459,
+        "yes_or_both": 274,
+        "partial": 233,
         "no_explicit": 30
       },
       "residential": {
         "total": 10275,
         "any_tag": 5263,
-        "separate": 2666,
-        "yes_or_both": 1608,
-        "partial": 297,
+        "separate": 2935,
+        "yes_or_both": 1700,
+        "partial": 495,
         "no_explicit": 133
       },
       "primary": {
         "total": 1585,
         "any_tag": 541,
-        "separate": 235,
-        "yes_or_both": 38,
-        "partial": 44,
+        "separate": 352,
+        "yes_or_both": 43,
+        "partial": 112,
         "no_explicit": 34
       },
       "secondary": {
         "total": 1719,
         "any_tag": 857,
-        "separate": 360,
-        "yes_or_both": 66,
-        "partial": 70,
+        "separate": 593,
+        "yes_or_both": 89,
+        "partial": 141,
         "no_explicit": 34
       },
       "unclassified": {
         "total": 609,
         "any_tag": 102,
-        "separate": 27,
+        "separate": 30,
         "yes_or_both": 19,
-        "partial": 1,
+        "partial": 21,
         "no_explicit": 32
       },
       "primary_link": {
@@ -9966,15 +9966,15 @@
         "any_tag": 15,
         "separate": 10,
         "yes_or_both": 0,
-        "partial": 2,
+        "partial": 3,
         "no_explicit": 2
       },
       "secondary_link": {
         "total": 25,
         "any_tag": 9,
-        "separate": 2,
-        "yes_or_both": 0,
-        "partial": 0,
+        "separate": 5,
+        "yes_or_both": 1,
+        "partial": 2,
         "no_explicit": 1
       },
       "tertiary_link": {
@@ -9982,13 +9982,13 @@
         "any_tag": 7,
         "separate": 6,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 0
       }
     },
     "crossing_tagged_pct": 64.77,
-    "sidewalk_documented_pct": 37.62,
-    "sidewalk_separate_pct": 24.99,
+    "sidewalk_documented_pct": 44.18,
+    "sidewalk_separate_pct": 30.6,
     "footway_surface_pct": 60.95,
     "footway_smoothness_pct": 5.24,
     "tactile_paving_pct": 34.44,
@@ -10056,79 +10056,79 @@
     "footway_with_smoothness": 3025,
     "road_ways": 17639,
     "road_sidewalk_any_tag": 9119,
-    "road_sidewalk_separate": 4519,
-    "road_sidewalk_yes_or_both": 1956,
+    "road_sidewalk_separate": 5718,
+    "road_sidewalk_yes_or_both": 2129,
     "road_sidewalk_no_explicit": 310,
-    "road_sidewalk_partial": 521,
+    "road_sidewalk_partial": 962,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3301,
         "any_tag": 2064,
-        "separate": 1118,
-        "yes_or_both": 222,
-        "partial": 136,
+        "separate": 1533,
+        "yes_or_both": 266,
+        "partial": 227,
         "no_explicit": 38
       },
       "residential": {
         "total": 10282,
         "any_tag": 5377,
-        "separate": 2729,
-        "yes_or_both": 1614,
-        "partial": 285,
+        "separate": 3047,
+        "yes_or_both": 1710,
+        "partial": 479,
         "no_explicit": 141
       },
       "primary": {
         "total": 1591,
         "any_tag": 635,
-        "separate": 259,
-        "yes_or_both": 35,
-        "partial": 37,
+        "separate": 440,
+        "yes_or_both": 44,
+        "partial": 101,
         "no_explicit": 50
       },
       "secondary": {
         "total": 1720,
         "any_tag": 892,
-        "separate": 366,
-        "yes_or_both": 66,
-        "partial": 61,
+        "separate": 637,
+        "yes_or_both": 89,
+        "partial": 128,
         "no_explicit": 38
       },
       "unclassified": {
         "total": 609,
         "any_tag": 112,
-        "separate": 29,
+        "separate": 35,
         "yes_or_both": 19,
-        "partial": 1,
+        "partial": 21,
         "no_explicit": 37
       },
       "primary_link": {
         "total": 82,
         "any_tag": 19,
-        "separate": 10,
+        "separate": 12,
         "yes_or_both": 0,
-        "partial": 1,
+        "partial": 2,
         "no_explicit": 5
       },
       "secondary_link": {
         "total": 27,
         "any_tag": 11,
-        "separate": 2,
-        "yes_or_both": 0,
-        "partial": 0,
+        "separate": 6,
+        "yes_or_both": 1,
+        "partial": 3,
         "no_explicit": 1
       },
       "tertiary_link": {
         "total": 27,
         "any_tag": 9,
-        "separate": 6,
+        "separate": 8,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 0
       }
     },
     "crossing_tagged_pct": 65.85,
-    "sidewalk_documented_pct": 38.47,
-    "sidewalk_separate_pct": 25.62,
+    "sidewalk_documented_pct": 46.24,
+    "sidewalk_separate_pct": 32.42,
     "footway_surface_pct": 60.78,
     "footway_smoothness_pct": 5.21,
     "tactile_paving_pct": 34.78,
@@ -10196,79 +10196,79 @@
     "footway_with_smoothness": 3072,
     "road_ways": 17657,
     "road_sidewalk_any_tag": 9265,
-    "road_sidewalk_separate": 4628,
-    "road_sidewalk_yes_or_both": 1952,
+    "road_sidewalk_separate": 5862,
+    "road_sidewalk_yes_or_both": 2132,
     "road_sidewalk_no_explicit": 314,
-    "road_sidewalk_partial": 513,
+    "road_sidewalk_partial": 957,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3307,
         "any_tag": 2088,
-        "separate": 1131,
-        "yes_or_both": 221,
-        "partial": 136,
+        "separate": 1553,
+        "yes_or_both": 266,
+        "partial": 231,
         "no_explicit": 38
       },
       "residential": {
         "total": 10279,
         "any_tag": 5458,
-        "separate": 2786,
-        "yes_or_both": 1629,
-        "partial": 280,
+        "separate": 3117,
+        "yes_or_both": 1726,
+        "partial": 474,
         "no_explicit": 141
       },
       "primary": {
         "total": 1599,
         "any_tag": 661,
-        "separate": 282,
-        "yes_or_both": 27,
-        "partial": 37,
+        "separate": 474,
+        "yes_or_both": 36,
+        "partial": 101,
         "no_explicit": 50
       },
       "secondary": {
         "total": 1722,
         "any_tag": 895,
-        "separate": 381,
-        "yes_or_both": 55,
-        "partial": 58,
+        "separate": 654,
+        "yes_or_both": 79,
+        "partial": 124,
         "no_explicit": 38
       },
       "unclassified": {
         "total": 613,
         "any_tag": 124,
-        "separate": 30,
-        "yes_or_both": 20,
-        "partial": 1,
+        "separate": 38,
+        "yes_or_both": 24,
+        "partial": 21,
         "no_explicit": 41
       },
       "primary_link": {
         "total": 83,
         "any_tag": 19,
-        "separate": 10,
+        "separate": 12,
         "yes_or_both": 0,
-        "partial": 1,
+        "partial": 2,
         "no_explicit": 5
       },
       "secondary_link": {
         "total": 27,
         "any_tag": 11,
-        "separate": 2,
-        "yes_or_both": 0,
-        "partial": 0,
+        "separate": 6,
+        "yes_or_both": 1,
+        "partial": 3,
         "no_explicit": 1
       },
       "tertiary_link": {
         "total": 27,
         "any_tag": 9,
-        "separate": 6,
+        "separate": 8,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 0
       }
     },
     "crossing_tagged_pct": 66.39,
-    "sidewalk_documented_pct": 39.04,
-    "sidewalk_separate_pct": 26.21,
+    "sidewalk_documented_pct": 47.05,
+    "sidewalk_separate_pct": 33.2,
     "footway_surface_pct": 60.82,
     "footway_smoothness_pct": 5.23,
     "tactile_paving_pct": 34.93,
@@ -10285,6 +10285,146 @@
       "living_street": 107.8,
       "pedestrian": 128.7,
       "service": 719.2,
+      "unclassified": 61.0,
+      "primary_link": 5.0,
+      "footway": 2125.4,
+      "secondary_link": 1.2,
+      "tertiary_link": 1.1,
+      "cycleway": 235.3,
+      "path": 252.5,
+      "steps": 35.8,
+      "track": 94.6,
+      "elevator": 0.2
+    },
+    "ways_by_highway": {
+      "tertiary": 3302,
+      "residential": 10292,
+      "primary": 1599,
+      "secondary": 1722,
+      "living_street": 1392,
+      "pedestrian": 2455,
+      "service": 10965,
+      "unclassified": 608,
+      "primary_link": 90,
+      "footway": 59630,
+      "secondary_link": 27,
+      "tertiary_link": 31,
+      "cycleway": 2739,
+      "path": 2949,
+      "steps": 4105,
+      "track": 491,
+      "elevator": 22
+    },
+    "ped_km": 2650.4,
+    "road_km": 1761.9,
+    "cycleway_km": 235.3,
+    "crossing_nodes": 22886,
+    "crossing_continuous": 145,
+    "crossing_marked": 117,
+    "crossing_unmarked": 3530,
+    "crossing_signals": 2984,
+    "crossing_with_tactile": 8096,
+    "elevator_nodes": 224,
+    "footway_ways": 59630,
+    "footway_sidewalk": 24868,
+    "footway_crossing": 15429,
+    "footway_link": 72,
+    "footway_traffic_island": 1625,
+    "footway_other": 32,
+    "footway_no_subtag": 17604,
+    "footway_with_surface": 36210,
+    "footway_with_smoothness": 3177,
+    "road_ways": 17671,
+    "road_sidewalk_any_tag": 9410,
+    "road_sidewalk_separate": 5996,
+    "road_sidewalk_yes_or_both": 2144,
+    "road_sidewalk_no_explicit": 325,
+    "road_sidewalk_partial": 945,
+    "road_sidewalk_by_type": {
+      "tertiary": {
+        "total": 3302,
+        "any_tag": 2121,
+        "separate": 1594,
+        "yes_or_both": 260,
+        "partial": 228,
+        "no_explicit": 39
+      },
+      "residential": {
+        "total": 10292,
+        "any_tag": 5553,
+        "separate": 3190,
+        "yes_or_both": 1746,
+        "partial": 466,
+        "no_explicit": 151
+      },
+      "primary": {
+        "total": 1599,
+        "any_tag": 664,
+        "separate": 475,
+        "yes_or_both": 33,
+        "partial": 105,
+        "no_explicit": 51
+      },
+      "secondary": {
+        "total": 1722,
+        "any_tag": 901,
+        "separate": 666,
+        "yes_or_both": 79,
+        "partial": 119,
+        "no_explicit": 37
+      },
+      "unclassified": {
+        "total": 608,
+        "any_tag": 123,
+        "separate": 36,
+        "yes_or_both": 25,
+        "partial": 21,
+        "no_explicit": 41
+      },
+      "primary_link": {
+        "total": 90,
+        "any_tag": 26,
+        "separate": 19,
+        "yes_or_both": 0,
+        "partial": 2,
+        "no_explicit": 5
+      },
+      "secondary_link": {
+        "total": 27,
+        "any_tag": 11,
+        "separate": 6,
+        "yes_or_both": 1,
+        "partial": 3,
+        "no_explicit": 1
+      },
+      "tertiary_link": {
+        "total": 31,
+        "any_tag": 11,
+        "separate": 10,
+        "yes_or_both": 0,
+        "partial": 1,
+        "no_explicit": 0
+      }
+    },
+    "crossing_tagged_pct": 67.42,
+    "sidewalk_documented_pct": 47.9,
+    "sidewalk_separate_pct": 33.93,
+    "footway_surface_pct": 60.72,
+    "footway_smoothness_pct": 5.33,
+    "tactile_paving_pct": 35.38,
+    "filename": "01_11_2026_brussels_capital_region.pbf",
+    "type": "snapshot"
+  },
+  {
+    "date": "2026-11-02",
+    "km_by_highway": {
+      "tertiary": 257.2,
+      "residential": 1113.6,
+      "primary": 170.9,
+      "secondary": 151.9,
+      "living_street": 107.8,
+      "pedestrian": 128.7,
+      "service": 719.1,
       "unclassified": 61.0,
       "primary_link": 5.0,
       "footway": 2126.6,
@@ -10335,80 +10475,80 @@
     "footway_with_surface": 36227,
     "footway_with_smoothness": 3177,
     "road_ways": 17671,
-    "road_sidewalk_any_tag": 9418,
-    "road_sidewalk_separate": 4707,
-    "road_sidewalk_yes_or_both": 1952,
+    "road_sidewalk_any_tag": 9420,
+    "road_sidewalk_separate": 6012,
+    "road_sidewalk_yes_or_both": 2144,
     "road_sidewalk_no_explicit": 325,
-    "road_sidewalk_partial": 502,
+    "road_sidewalk_partial": 939,
     "road_sidewalk_by_type": {
       "tertiary": {
         "total": 3302,
         "any_tag": 2121,
-        "separate": 1154,
-        "yes_or_both": 213,
-        "partial": 134,
+        "separate": 1594,
+        "yes_or_both": 260,
+        "partial": 228,
         "no_explicit": 39
       },
       "residential": {
         "total": 10292,
-        "any_tag": 5555,
-        "separate": 2837,
-        "yes_or_both": 1642,
-        "partial": 275,
+        "any_tag": 5557,
+        "separate": 3192,
+        "yes_or_both": 1748,
+        "partial": 466,
         "no_explicit": 151
       },
       "primary": {
         "total": 1599,
         "any_tag": 664,
-        "separate": 283,
-        "yes_or_both": 24,
-        "partial": 38,
+        "separate": 475,
+        "yes_or_both": 33,
+        "partial": 105,
         "no_explicit": 51
       },
       "secondary": {
         "total": 1722,
         "any_tag": 907,
-        "separate": 382,
-        "yes_or_both": 53,
-        "partial": 53,
+        "separate": 680,
+        "yes_or_both": 77,
+        "partial": 113,
         "no_explicit": 37
       },
       "unclassified": {
         "total": 608,
         "any_tag": 123,
-        "separate": 28,
-        "yes_or_both": 20,
-        "partial": 1,
+        "separate": 36,
+        "yes_or_both": 25,
+        "partial": 21,
         "no_explicit": 41
       },
       "primary_link": {
         "total": 90,
         "any_tag": 26,
-        "separate": 13,
+        "separate": 19,
         "yes_or_both": 0,
-        "partial": 1,
+        "partial": 2,
         "no_explicit": 5
       },
       "secondary_link": {
         "total": 27,
         "any_tag": 11,
-        "separate": 2,
-        "yes_or_both": 0,
-        "partial": 0,
+        "separate": 6,
+        "yes_or_both": 1,
+        "partial": 3,
         "no_explicit": 1
       },
       "tertiary_link": {
         "total": 31,
         "any_tag": 11,
-        "separate": 8,
+        "separate": 10,
         "yes_or_both": 0,
-        "partial": 0,
+        "partial": 1,
         "no_explicit": 0
       }
     },
     "crossing_tagged_pct": 67.49,
-    "sidewalk_documented_pct": 39.52,
-    "sidewalk_separate_pct": 26.64,
+    "sidewalk_documented_pct": 47.99,
+    "sidewalk_separate_pct": 34.02,
     "footway_surface_pct": 60.71,
     "footway_smoothness_pct": 5.32,
     "tactile_paving_pct": 35.4,
