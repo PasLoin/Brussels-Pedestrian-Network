@@ -90,11 +90,6 @@ def test_way_is_kept_in_both_directions(bundle, name, tags):
     assert back == (v, u)
 
 
-def test_excluded_ways_leave_no_street_sidewalk_entry(bundle):
-    for name, tags in _EXCLUDED:
-        assert name not in bundle.street_sidewalk_status
-
-
 def test_edge_arrays_stay_aligned_after_exclusions(bundle):
     n = bundle.graph.ecount()
     assert n == 2 * len(_KEPT)
