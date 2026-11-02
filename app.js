@@ -629,7 +629,7 @@ const CLICK_LAYERS = [
       const isMissingWay = p.type === "missing_way";
       const nearM = (typeof p.nearest_tag_m === "number" && p.nearest_tag_m >= 0)
         ? p.nearest_tag_m : null;
-      const radius = p.detect_radius || 20;
+      const radius = p.detect_radius || 3;
       const nid = parseInt(p.osm_id, 10) || 0;
       return `
         ${isMissingWay ? popupTitle("#f97316", "Traversée non mappée") : popupTitle("#eab308", "Tag footway=crossing absent")}
