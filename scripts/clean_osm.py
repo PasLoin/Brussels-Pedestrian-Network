@@ -81,6 +81,24 @@ def _normalize_platforms(root: ET.Element) -> int:
     return added
 
 
+def _remove_pedestrian_areas(root: ET.Element) -> int:
+    removed_refs: set[str] = set()
+    removed = 0
+    for way in list(root.findall("way")):
+        tags = {t.get("k"): (t.get("v") or "").strip().lower() for t in way.findall("tag")}
+        if tags.get("highway") == "pedestrian" and tags.get("area") == "yes":
+            removed_refs.update(nd.get("ref") for nd in way.findall("nd"))
+            root.remove(way)
+            removed += 1
+    if removed_refs:
+        still_used = {nd.get("ref") for way in root.findall("way") for nd in way.findall("nd")}
+        orphans = removed_refs - still_used
+        for node in list(root.findall("node")):
+            if node.get("id") in orphans:
+                root.remove(node)
+    return removed
+
+
 def _remove_dangling_ways(root: ET.Element) -> int:
     node_ids = {n.get("id") for n in root.findall("node")}
     removed = 0
@@ -100,6 +118,9 @@ def clean_osm(input_path: str = "routing_raw.osm",
 
     normalized = _normalize_platforms(root)
     print(f"  Platforms tagged highway=platform: {normalized}")
+
+    pedestrian_areas = _remove_pedestrian_areas(root)
+    print(f"  Ways removed (highway=pedestrian area=yes): {pedestrian_areas}")
 
     blocked = _find_blocked_nodes(root)
     print(f"  Blocked barrier nodes: {len(blocked)}")
