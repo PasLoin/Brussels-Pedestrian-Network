@@ -339,7 +339,7 @@ function computeCompleteness(s) {
     0, 100,
   );
 
-  const sidewalkSepPct = clamp((swPct.separate || 0) + (swPct.documented || 0), 0, 100);
+  const sidewalkSepPct = clamp((swRoad.separate_all_sides || {}).pct || 0, 0, 100);
 
   const nNodes = mc.crossing_nodes_found || 0;
   const nMissingWay = mc.missing_crossing_way || 0;
@@ -365,7 +365,7 @@ function computeCompleteness(s) {
     global: Math.round(global * 10) / 10,
     subs: [
       { label: 'Tags trottoir documentés',  pct: sidewalkDocPct,    hint: '(separate + yes + documenté + ½ partial)' },
-      { label: 'Trottoirs mappés séparément', pct: sidewalkSepPct,   hint: 'sidewalk:both=separate (forme idéale)' },
+      { label: 'Trottoirs mappés séparément', pct: sidewalkSepPct,   hint: 'tous les trottoirs existants mappés en separate (forme idéale)' },
       { label: 'Traversées connectées',     pct: crossingConnPct,    hint: 'highway=crossing ayant une footway connectée' },
       { label: 'Traversées entièrement taguées', pct: crossingTagPct, hint: 'footway=crossing présent sur le way connecté' },
       { label: 'Continuité des trottoirs',  pct: continuityPct,      hint: 'routes avec trottoir des deux côtés, parmi celles qui en ont au moins un' },
