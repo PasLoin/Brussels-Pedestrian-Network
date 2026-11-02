@@ -145,3 +145,33 @@ def test_gap_layer_empty_when_cycleway_fills_side(street):
     detect_sidewalk_gaps(roads, footways, cycleways)
     gaps = gpd.read_file(tmp_path / "sidewalk_gaps.geojson")
     assert gaps.geometry.dropna().empty
+
+
+def test_sidewalk_tags_drive_skip_and_separate_candidates(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    roads = _write_geojson(tmp_path / "roads.geojson", [
+        (_hline(0), {"highway": "residential", "name": "Sans tag"}),
+        (_hline(100), {"highway": "residential", "sidewalk": "no"}),
+        (_hline(200), {"highway": "residential", "sidewalk": "left"}),
+        (_hline(300), {"highway": "residential", "sidewalk": "none"}),
+        (_hline(400), {"highway": "residential", "sidewalk:both": "separate"}),
+        (_hline(500), {"highway": "residential", "sidewalk": "both", "sidewalk:right": "no"}),
+    ])
+    footways = _write_geojson(tmp_path / "footways.geojson", [
+        (_hline(dy), {"highway": "footway", "footway": "sidewalk"})
+        for base in (0, 400) for dy in (base - 7, base + 7)
+    ])
+
+    stats = detect_sidewalk_gaps(roads, footways)
+
+    assert stats["skipped_no_sidewalk"] == 3
+    assert stats["roads_analysed"] == 3
+    assert stats["both_sides"] == 2
+    assert stats["neither_side"] == 1
+    assert stats["one_side_gap"] == 0
+    assert stats["both_length_km"] == 0.2
+    assert stats["neither_length_km"] == 0.1
+    assert stats["separate_candidates"] == 1
+    assert stats["separate_candidates_length_km"] == 0.1
+    candidates = gpd.read_file(tmp_path / "sidewalk_separate_candidates.geojson")
+    assert list(candidates["name"]) == ["sans tag"]

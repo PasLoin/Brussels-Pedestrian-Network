@@ -5,6 +5,7 @@ from collections import Counter
 import geopandas as gpd
 
 from config import ROAD_TYPES_SIDEWALK_EXPECTED
+from sidewalk_tags import CATEGORY_SEPARATE, stats_category
 
 _ROAD_TYPES = ROAD_TYPES_SIDEWALK_EXPECTED - {"service"}
 
@@ -72,6 +73,9 @@ def export_sidewalk_roads(
 
     rows: list[dict] = []
     length_by_status: dict[str, float] = {}
+    n_separate_all_sides = 0
+    separate_all_sides_m = 0.0
+    street_documented: dict[str, bool] = {}
 
     for _, row in gdf_proj.iterrows():
         sw = _safe_str(row.get("sidewalk"))
@@ -84,10 +88,19 @@ def export_sidewalk_roads(
         road_length = row.geometry.length
         length_by_status[status] = length_by_status.get(status, 0.0) + road_length
 
+        category = stats_category(sw, sw_l, sw_r, sw_b)
+        if category == CATEGORY_SEPARATE:
+            n_separate_all_sides += 1
+            separate_all_sides_m += road_length
+
+        name = _safe_str(row.get("name")) or ""
+        if name:
+            street_documented[name] = street_documented.get(name, False) or category is not None
+
         rows.append({
             "geometry": row.geometry,
             "sw": status,
-            "name": _safe_str(row.get("name")) or "",
+            "name": name,
         })
 
     fb = {"geometry": None, "sw": "", "name": ""}
@@ -102,6 +115,9 @@ def export_sidewalk_roads(
     counts = Counter(r["sw"] for r in rows)
     for st in ("separate", "yes", "documented", "partial", "unknown"):
         print(f"    {st}: {counts.get(st, 0)}")
+    print(f"  All existing sidewalks mapped separately: {n_separate_all_sides}")
+    print(f"  Named streets: {len(street_documented)} "
+          f"(with ≥1 sidewalk tag: {sum(street_documented.values())})")
 
     total_ways = len(rows)
 
@@ -118,4 +134,11 @@ def export_sidewalk_roads(
             st: round(length_by_status.get(st, 0) / 1000, 2)
             for st in ("separate", "yes", "documented", "partial", "unknown")
         },
+        "separate_all_sides": {
+            "count": n_separate_all_sides,
+            "pct": round(n_separate_all_sides / total_ways * 100, 1) if total_ways > 0 else 0,
+            "km": round(separate_all_sides_m / 1000, 2),
+        },
+        "streets_total": len(street_documented),
+        "streets_with_sidewalk_tags": sum(street_documented.values()),
     }

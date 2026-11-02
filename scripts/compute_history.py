@@ -10,6 +10,15 @@ from collections import defaultdict
 
 from pyproj import Transformer
 
+from sidewalk_tags import (
+    CATEGORY_NO,
+    CATEGORY_PARTIAL,
+    CATEGORY_SEPARATE,
+    CATEGORY_YES,
+    normalize,
+    stats_category,
+)
+
 _TRACKED_HIGHWAY_TYPES = frozenset({
     "footway", "pedestrian", "path", "living_street", "steps",
     "elevator", "cycleway",
@@ -135,7 +144,7 @@ class _BrusselsStatsHandler:
             sw_l = str(tags.get("sidewalk:left", "")).lower()
             sw_r = str(tags.get("sidewalk:right", "")).lower()
 
-            has_any = any([sw, sw_b, sw_l, sw_r])
+            has_any = any(normalize(sw, sw_l, sw_r, sw_b))
             if has_any:
                 self.n_road_sidewalk_any_tag += 1
 
@@ -144,16 +153,17 @@ class _BrusselsStatsHandler:
             if has_any:
                 by_type["any_tag"] += 1
 
-            if sw == "separate" or sw_b == "separate" or (sw_l == "separate" and sw_r == "separate"):
+            category = stats_category(sw, sw_l, sw_r, sw_b)
+            if category == CATEGORY_SEPARATE:
                 self.n_road_sidewalk_separate += 1
                 by_type["separate"] += 1
-            elif sw in ("yes", "both") or sw_b in ("yes", "both"):
+            elif category == CATEGORY_YES:
                 self.n_road_sidewalk_yes_or_both += 1
                 by_type["yes_or_both"] += 1
-            elif sw == "no" or sw_b == "no":
+            elif category == CATEGORY_NO:
                 self.n_road_sidewalk_no_explicit += 1
                 by_type["no_explicit"] += 1
-            elif (sw_l and not sw_r) or (sw_r and not sw_l):
+            elif category == CATEGORY_PARTIAL:
                 self.n_road_sidewalk_partial += 1
                 by_type["partial"] += 1
 

@@ -159,3 +159,57 @@ def test_normalized_platform_keeps_its_tag_when_split_at_a_barrier(tmp_path):
     for way in ways:
         tags = {t.get("k"): t.get("v") for t in way.findall("tag")}
         assert tags["highway"] == "platform"
+
+
+_SQUARE_OSM = """<?xml version='1.0' encoding='UTF-8'?>
+<osm version="0.6" generator="test">
+  <node id="1" lat="50.8500" lon="4.3500"/>
+  <node id="2" lat="50.8500" lon="4.3510"/>
+  <node id="3" lat="50.8506" lon="4.3510"/>
+  <node id="4" lat="50.8506" lon="4.3500"/>
+  <node id="5" lat="50.8494" lon="4.3500"/>
+  <node id="6" lat="50.8512" lon="4.3510"/>
+  <way id="20">
+    <nd ref="1"/><nd ref="2"/><nd ref="3"/><nd ref="4"/><nd ref="1"/>
+    <tag k="highway" v="pedestrian"/>
+    <tag k="area" v="yes"/>
+    <tag k="name" v="Place Test"/>
+  </way>
+  <way id="21">
+    <nd ref="5"/><nd ref="1"/>
+    <tag k="highway" v="footway"/>
+    <tag k="name" v="Accès sud"/>
+  </way>
+  <way id="22">
+    <nd ref="3"/><nd ref="6"/>
+    <tag k="highway" v="footway"/>
+    <tag k="name" v="Accès nord"/>
+  </way>
+</osm>
+"""
+
+
+@pytest.fixture()
+def square_paths(tmp_path):
+    src = tmp_path / "in.osm"
+    dst = tmp_path / "out.osm"
+    src.write_text(_SQUARE_OSM)
+    clean_osm(str(src), str(dst))
+    return dst
+
+
+def test_pedestrian_area_is_removed(square_paths):
+    root = ET.parse(square_paths).getroot()
+    assert sorted(w.get("id") for w in root.findall("way")) == ["21", "22"]
+    assert sorted(n.get("id") for n in root.findall("node")) == ["1", "3", "5", "6"]
+
+
+def test_pedestrian_area_breaks_connectivity(square_paths):
+    from build_graph import build_graph
+
+    gb = build_graph(str(square_paths))
+    assert "Place Test" not in gb.edge_names
+    assert sorted(gb.edge_names) == ["Accès nord", "Accès nord", "Accès sud", "Accès sud"]
+    assert gb.graph.vcount() == 4
+    assert min(gb.graph.degree()) > 0
+    assert len(gb.graph.connected_components(mode="weak")) == 2

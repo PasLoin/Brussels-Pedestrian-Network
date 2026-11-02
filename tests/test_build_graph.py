@@ -3,75 +3,9 @@ import math
 import pytest
 
 from build_graph import (
-    SidewalkInfo,
-    _aggregate_sidewalk,
-    _edge_sidewalk_status,
     _first_str,
-    _unanimous_str,
     build_graph,
 )
-
-
-@pytest.mark.parametrize(
-    "sw, left, right, both, expected",
-    [
-        ("both", "", "", "", "both"),
-        ("yes", "", "", "", "both"),
-        ("separate", "", "", "", "both"),
-        ("left", "", "", "", "partial"),
-        ("right", "", "", "", "partial"),
-        ("no", "", "", "", "none"),
-        ("", "", "", "", "unknown"),
-        ("", "", "", "yes", "both"),
-        ("", "", "", "separate", "both"),
-        ("", "", "", "no", "none"),
-        ("", "yes", "yes", "", "both"),
-        ("", "separate", "separate", "", "both"),
-        ("", "yes", "no", "", "partial"),
-        ("", "separate", "no", "", "partial"),
-        ("", "no", "yes", "", "partial"),
-        ("", "no", "no", "", "none"),
-        ("", "yes", "", "", "partial"),
-        ("", "no", "", "", "unknown"),
-        ("left", "", "yes", "", "both"),
-    ],
-)
-def test_edge_sidewalk_status(sw, left, right, both, expected):
-    assert _edge_sidewalk_status(sw, left, right, both) == expected
-
-
-def test_aggregate_fully_tagged_both():
-    info = _aggregate_sidewalk({"both": 500.0})
-    assert info.status == "both"
-    assert info.doc_share == 1.0
-
-
-def test_aggregate_fully_untagged_street():
-    info = _aggregate_sidewalk({"unknown": 300.0})
-    assert info.status == "unknown"
-    assert info.doc_share == 0.0
-
-
-def test_aggregate_one_tagged_segment_does_not_flip_whole_street():
-    info = _aggregate_sidewalk({"both": 50.0, "unknown": 200.0})
-    assert info.status == "unknown"
-    assert info.doc_share == pytest.approx(0.2)
-
-
-def test_aggregate_mixed_documented():
-    info = _aggregate_sidewalk({"both": 300.0, "partial": 100.0})
-    assert info.status == "both"
-    assert info.doc_share == 1.0
-
-
-def test_aggregate_tie_breaks_pessimistically():
-    info = _aggregate_sidewalk({"both": 100.0, "none": 100.0})
-    assert info.status == "none"
-
-
-def test_aggregate_empty():
-    info = _aggregate_sidewalk({})
-    assert info == SidewalkInfo("unknown", 0.0)
 
 
 def test_first_str():
@@ -81,17 +15,6 @@ def test_first_str():
     assert _first_str("  yes ") == "yes"
     assert _first_str(["", None, nan, "left"]) == "left"
     assert _first_str([nan, nan]) == ""
-
-
-def test_unanimous_str():
-    nan = float("nan")
-    assert _unanimous_str("yes") == "yes"
-    assert _unanimous_str(["yes", "yes"]) == "yes"
-    assert _unanimous_str(["yes", "no"]) == ""
-    assert _unanimous_str(["yes", nan]) == ""
-    assert _unanimous_str(["yes", None]) == ""
-    assert _unanimous_str([nan, nan]) == ""
-    assert _unanimous_str(None) == ""
 
 
 _TEST_OSM = """<?xml version='1.0' encoding='UTF-8'?>
@@ -185,25 +108,15 @@ def test_oneway_street_is_bidirectional_for_pedestrians(bundle):
     assert (n2, n1) in bundle.edge_tuples
 
 
-def test_sidewalk_separate_scores_as_both(bundle):
-    info = bundle.street_sidewalk_status["Rue Sens Unique"]
-    assert info.status == "both"
-
-
-def test_sidewalk_left_right_schema_is_used(bundle):
-    info = bundle.street_sidewalk_status["Rue Moderne"]
-    assert info.status == "partial"
-
-
-def test_multi_segment_street_is_length_weighted(bundle):
-    info = bundle.street_sidewalk_status["Rue Mixte"]
-    assert info.status == "unknown"
-    assert 0.0 < info.doc_share < 1.0
+def test_segments_with_different_sidewalk_tags_are_not_merged(bundle):
+    eids = [e for e, n in enumerate(bundle.edge_names) if n == "Rue Mixte"]
+    assert len(eids) == 4
+    osmid_to_idx = {osmid: i for i, osmid in enumerate(bundle.node_list)}
+    assert 6 in osmid_to_idx
 
 
 def test_access_private_is_excluded(bundle):
     assert "Chemin Privé" not in bundle.edge_names
-    assert "Chemin Privé" not in bundle.street_sidewalk_status
 
 
 def test_access_private_with_foot_yes_is_kept(bundle):
@@ -211,9 +124,8 @@ def test_access_private_with_foot_yes_is_kept(bundle):
 
 
 def test_simplification_does_not_merge_different_streets(bundle):
-    assert "Petit Square" in bundle.street_sidewalk_status
-    assert bundle.street_sidewalk_status["Petit Square"].status == "unknown"
-    assert bundle.street_sidewalk_status["Rue Amont"].status == "both"
+    assert bundle.edge_names.count("Petit Square") == 2
+    assert bundle.edge_names.count("Rue Amont") == 2
 
 
 def test_graph_weights_positive(bundle):

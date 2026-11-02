@@ -68,10 +68,6 @@ def main() -> None:
             if gb.edge_highways[eids[0]] == "cycleway"
             and gb.edge_cycleway_nf[eids[0]]
         ),
-        "streets_with_sidewalk_tags": sum(
-            1 for info in gb.street_sidewalk_status.values()
-            if info.doc_share > 0
-        ),
     }
 
     with step("detect_graph_islands"):

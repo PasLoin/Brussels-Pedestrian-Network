@@ -24,6 +24,8 @@ _EXCLUDED = [
     ("service route=FERRY", {"highway": "service", "route": "FERRY"}),
     ("pier foot=yes", {"man_made": "pier", "foot": "yes"}),
     ("building passage foot=yes", {"building": "yes", "foot": "yes"}),
+    ("pedestrian area=yes", {"highway": "pedestrian", "area": "yes"}),
+    ("pedestrian area=YES", {"highway": "pedestrian", "area": "YES"}),
 ]
 
 _KEPT = [
@@ -45,6 +47,11 @@ _KEPT = [
     ("footway foot=destination", {"highway": "footway", "foot": "destination"}),
     ("steps foot=delivery", {"highway": "steps", "foot": "delivery"}),
     ("railway=platform access=private foot=yes", {"railway": "platform", "access": "private", "foot": "yes"}),
+    ("pedestrian", {"highway": "pedestrian"}),
+    ("pedestrian area=no", {"highway": "pedestrian", "area": "no"}),
+    ("footway area=yes", {"highway": "footway", "area": "yes"}),
+    ("steps area=yes", {"highway": "steps", "area": "yes"}),
+    ("platform area=yes", {"highway": "platform", "area": "yes"}),
 ]
 
 _ALL = _EXCLUDED + _KEPT
@@ -88,11 +95,6 @@ def test_way_is_kept_in_both_directions(bundle, name, tags):
     assert len(eids) == 2
     (u, v), back = bundle.edge_tuples[eids[0]], bundle.edge_tuples[eids[1]]
     assert back == (v, u)
-
-
-def test_excluded_ways_leave_no_street_sidewalk_entry(bundle):
-    for name, tags in _EXCLUDED:
-        assert name not in bundle.street_sidewalk_status
 
 
 def test_edge_arrays_stay_aligned_after_exclusions(bundle):
