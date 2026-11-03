@@ -11,6 +11,8 @@ on:
       - "*.css"
       - "*.html"
       - ".github/workflows/tests.yml"
+      - ".github/scripts/coverage_summary.py"
+      - ".coveragerc"
   pull_request:
     paths:
       - "scripts/**"
@@ -20,6 +22,8 @@ on:
       - "*.css"
       - "*.html"
       - ".github/workflows/tests.yml"
+      - ".github/scripts/coverage_summary.py"
+      - ".coveragerc"
   workflow_dispatch:
 
 jobs:
@@ -40,7 +44,7 @@ jobs:
           node-version: "24"
 
       - name: Install Python dependencies
-        run: pip install "shapely>=2" osmnx geopandas igraph numpy pyproj pyyaml pytest playwright
+        run: pip install "shapely>=2" osmnx geopandas igraph numpy pyproj pyyaml pytest pytest-cov playwright
 
       - name: Install browser for layout tests
         run: python -m playwright install --with-deps chromium
@@ -48,8 +52,51 @@ jobs:
       - name: Run JavaScript tests
         run: node --test tests/js/*.test.js
 
+      - name: JavaScript coverage
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        run: >
+          node --test
+          --experimental-test-coverage
+          --test-coverage-exclude='tests/**'
+          --test-reporter=spec --test-reporter-destination=stdout
+          --test-reporter=lcov --test-reporter-destination=lcov.info
+          tests/js/*.test.js
+
       - name: Run unit tests
         env:
           REQUIRE_BROWSER_TESTS: "1"
           REQUIRE_NODE_TESTS: "1"
-        run: python -m pytest tests/ -v
+        run: python -m pytest tests/ -v --cov --cov-report=term-missing:skip-covered
+
+      - name: Coverage report
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        run: |
+          python -m coverage json -q
+          python -m coverage xml -q
+          python -m coverage html -q
+          {
+            python .github/scripts/coverage_summary.py
+            echo "<details><summary>Python, détail par fichier</summary>"
+            echo
+            python -m coverage report --format=markdown
+            echo
+            echo "</details>"
+          } > coverage-summary.md
+          cat coverage-summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload coverage
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v6
+        with:
+          name: coverage
+          path: |
+            coverage-summary.md
+            coverage.xml
+            coverage.json
+            lcov.info
+            htmlcov/
+          retention-days: 14
+          if-no-files-found: ignore
