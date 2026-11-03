@@ -2,27 +2,26 @@ from __future__ import annotations
 
 import json
 import math
-import os
 
 import geopandas as gpd
 from shapely.geometry import Point, shape
 from shapely.strtree import STRtree
 
-from config import ROAD_TYPES_SIDEWALK_EXPECTED
+from config import (
+    CROSSING_NODE_CONNECTED_M,
+    CROSSING_NODE_ROAD_SEARCH_M,
+    CROSSING_SIDEWALK_MAX_ANGLE,
+    CROSSING_SIDEWALK_OFFSET_M,
+    CROSSING_SIDEWALK_SEARCH_M,
+    CROSSING_WAY_SEARCH_RADIUS_M,
+    CROSSING_WRONG_TAG_SNAP_M,
+    ROAD_TYPES_SIDEWALK_EXPECTED,
+)
 from timing import step
 
 _CROSSING_ROAD_TYPES = ROAD_TYPES_SIDEWALK_EXPECTED - {"service"}
 _MIN_ROAD_LENGTH = 15.0
 
-
-CROSSING_NODE_ROAD_SEARCH_M  = float(os.environ.get("CROSSING_NODE_ROAD_SEARCH_M",  20.0))
-CROSSING_WAY_SEARCH_RADIUS_M = float(os.environ.get("CROSSING_WAY_SEARCH_RADIUS_M",  3.0))
-CROSSING_NODE_CONNECTED_M    = float(os.environ.get("CROSSING_NODE_CONNECTED_M",     3.0))
-CROSSING_SIDEWALK_OFFSET_M   = float(os.environ.get("CROSSING_SIDEWALK_OFFSET_M",    7.0))
-CROSSING_SIDEWALK_SEARCH_M   = float(os.environ.get("CROSSING_SIDEWALK_SEARCH_M",   15.0))
-
-CROSSING_SIDEWALK_MAX_ANGLE  = float(os.environ.get("CROSSING_SIDEWALK_MAX_ANGLE",  40.0))
-CROSSING_WRONG_TAG_SNAP_M    = float(os.environ.get("CROSSING_WRONG_TAG_SNAP_M",     0.5))
 
 _WRONG_FOOTWAY_VALUES = frozenset({"sidewalk"})
 
