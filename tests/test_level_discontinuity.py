@@ -10,6 +10,7 @@ from detect_graph_islands import (
     parse_level,
 )
 from export import undirected_edge_groups
+from front_contract import assert_layer_contract
 
 
 @pytest.mark.parametrize(
@@ -298,3 +299,16 @@ def test_level_rows_written_to_islands_layer(bundle, groups, tmp_path):
     assert set(level[62]["way_ids"].split(",")) == {"601", "602"}
     assert level[2]["levels"] == "-2;-1 : niveau -2 non raccordé"
     assert set(level[2]["way_ids"].split(",")) == {"101", "496286153"}
+
+
+def test_islands_layer_matches_front_contract(bundle, groups, tmp_path):
+    out = tmp_path / "graph_islands.geojson"
+    detect_graph_islands(
+        bundle.graph, groups, bundle.edge_tuples, bundle.edge_geoms, bundle.edge_lengths,
+        bundle.edge_highways, bundle.edge_osm_ids,
+        output_path=str(out), platforms_path=str(tmp_path / "absent.geojson"),
+        edge_levels=bundle.edge_levels, elevator_vertices=bundle.elevator_vertices,
+        node_list=bundle.node_list,
+    )
+    features = assert_layer_contract(out, "graph_islands")
+    assert {f["properties"]["type"] for f in features} == {"isolated", "level"}
