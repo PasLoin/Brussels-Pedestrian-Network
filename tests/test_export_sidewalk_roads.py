@@ -5,6 +5,7 @@ import pytest
 from pyproj import Transformer
 
 from export_sidewalk_roads import _classify_edge_sidewalk, export_sidewalk_roads
+from front_contract import assert_layer_contract
 
 _TO_WGS84 = Transformer.from_crs("EPSG:31370", "EPSG:4326", always_xy=True)
 
@@ -139,3 +140,12 @@ def test_empty_input_writes_placeholder(tmp_path, monkeypatch):
     gdf = gpd.read_file(tmp_path / "sidewalk_roads.geojson")
     assert len(gdf) == 1
     assert gdf.geometry.isna().all()
+
+
+def test_layer_matches_front_contract(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    export_sidewalk_roads(_write_roads(tmp_path / "roads.geojson", _ROADS))
+    features = assert_layer_contract(tmp_path / "sidewalk_roads.geojson", "sidewalk_roads")
+    assert {f["properties"]["sw"] for f in features} == {
+        "separate", "yes", "documented", "partial", "unknown",
+    }
