@@ -94,46 +94,68 @@ brussels.osm.pbf
 
 ## Paramètres
 
-Les valeurs utilisées en production sont dans le bloc `env` de `.github/workflows/build.yml`. La colonne « Code » donne la valeur par défaut quand la variable est absente.
+Tous les paramètres de calcul sont dans `scripts/config.py`, avec leur valeur de production. C'est la seule source de vérité : `build.yml` n'en contient aucun, et un test le vérifie. Pour adapter le projet à une autre ville, on modifie `config.py`, ainsi que l'URL du PBF, le polygone de découpe, les types de voies et les niveaux de zoom dans `build.yml`.
+
+Pour lancer une simulation différente, on définit la variable d'environnement du même nom : elle l'emporte sur `config.py`, par exemple `MAX_OD_DISTANCE_KM=2 python3 scripts/main.py`.
 
 ### Échantillonnage et routage
 
-| Variable | build.yml | Code | Description |
-|----------|-----------|------|-------------|
-| `OD_SAMPLE_INTERVAL_M` | 100 | 100 | Intervalle entre points OD le long d'une rue (m) |
-| `MIN_OD_DISTANCE_M` | 600 | 300 | Distance minimale d'une paire OD (m) |
-| `MAX_OD_DISTANCE_KM` | 1 | 5 | Distance maximale d'une paire OD (km) |
-| `MAX_OD_PAIRS` | 900 000 | 50 000 | Nombre de paires simulées |
-| `MAX_SNAP_DISTANCE_M` | 150 | 150 | Au-delà, une adresse n'est pas accrochée au réseau |
+| Variable | Valeur | Description |
+|----------|--------|-------------|
+| `OD_SAMPLE_INTERVAL_M` | 100 | Intervalle entre points OD le long d'une rue (m) |
+| `POINTS_PER_SIDE` | 5 | Mode historique, si `OD_SAMPLE_INTERVAL_M` vaut 0 : points OD par côté de rue |
+| `MIN_OD_DISTANCE_M` | 600 | Distance minimale d'une paire OD (m) |
+| `MAX_OD_DISTANCE_KM` | 1 | Distance maximale d'une paire OD (km) |
+| `MAX_OD_PAIRS` | 900 000 | Nombre de paires simulées |
+| `MAX_SNAP_DISTANCE_M` | 150 | Au-delà, une adresse n'est pas accrochée au réseau (m) |
 
 ### Flux et export
 
-| Variable | build.yml | Code | Description |
-|----------|-----------|------|-------------|
-| `TOP_RANK_PCT` | 15 | 5 | Part des flux les plus forts gardée dans `forced_*` (%) |
-| `MIN_FLOW_THRESHOLD` | 5 | 5 | Passages minimum pour qu'une arête entre dans `flow_edges` |
+| Variable | Valeur | Description |
+|----------|--------|-------------|
+| `TOP_RANK_PCT` | 15 | Part des flux les plus forts gardée dans `forced_*` (%) |
+| `MIN_FLOW_THRESHOLD` | 5 | Passages minimum pour qu'une arête entre dans `flow_edges` |
 
 ### Trottoirs d'un seul côté
 
-| Variable | build.yml | Code | Description |
-|----------|-----------|------|-------------|
-| `SIDEWALK_GAP_OFFSET_M` | 7 | 7 | Distance à l'axe de la route où l'on cherche un trottoir (m) |
-| `SIDEWALK_GAP_SEARCH_M` | 8 | 7 | Rayon de recherche autour de ce point (m) |
-| `SIDEWALK_GAP_MAX_ANGLE` | 65 | 35 | Écart d'angle maximum avec la route (°) |
-| `SIDEWALK_GAP_MIN_COVERAGE` | 0.4 | 0.4 | Part de la longueur à couvrir pour valider un côté |
+| Variable | Valeur | Description |
+|----------|--------|-------------|
+| `SIDEWALK_GAP_OFFSET_M` | 7 | Distance à l'axe de la route où l'on cherche un trottoir (m) |
+| `SIDEWALK_GAP_SEARCH_M` | 8 | Rayon de recherche autour de ce point (m) |
+| `SIDEWALK_GAP_MAX_ANGLE` | 65 | Écart d'angle maximum avec la route (°) |
+| `SIDEWALK_GAP_MIN_COVERAGE` | 0.4 | Part de la longueur à couvrir pour valider un côté |
 
-### Traversées, îlots, kerbs
+### Traversées
 
-| Variable | build.yml | Description |
-|----------|-----------|-------------|
+| Variable | Valeur | Description |
+|----------|--------|-------------|
 | `CROSSING_NODE_ROAD_SEARCH_M` | 20 | Recherche de la route sous un nœud crossing (m) |
-| `CROSSING_WAY_SEARCH_RADIUS_M` | 20 | Rayon de recherche d'un way `footway=crossing` (m) |
+| `CROSSING_WAY_SEARCH_RADIUS_M` | 3 | Rayon de recherche d'un way `footway=crossing` (m) |
 | `CROSSING_NODE_CONNECTED_M` | 3 | Distance en dessous de laquelle un footway est considéré relié (m) |
-| `CROSSING_SIDEWALK_OFFSET_M` / `_SEARCH_M` / `_MAX_ANGLE` | 7 / 15 / 40 | Recherche des trottoirs de part et d'autre du crossing |
-| `FOOTWAY_CONN_ENDPOINT_TOL_M` / `_TIP_MARGIN_M` / `_MAX_LEN_M` | 3 / 2 / 40 | Candidats `footway=crossing` |
+| `CROSSING_SIDEWALK_OFFSET_M` | 7 | Distance au nœud où l'on cherche les trottoirs (m) |
+| `CROSSING_SIDEWALK_SEARCH_M` | 15 | Rayon de recherche des trottoirs (m) |
+| `CROSSING_SIDEWALK_MAX_ANGLE` | 40 | Écart d'angle maximum entre trottoir et route (°) |
+| `CROSSING_WRONG_TAG_SNAP_M` | 0.5 | Un `footway=sidewalk` à moins de cette distance du nœud est une traversée mal taguée (m) |
+| `FOOTWAY_CONN_ENDPOINT_TOL_M` | 3 | Candidats `footway=crossing` : distance max entre une extrémité et un trottoir (m) |
+| `FOOTWAY_CONN_TIP_MARGIN_M` | 2 | Candidats `footway=crossing` : la route doit être croisée à plus de cette distance des extrémités (m) |
+| `FOOTWAY_CONN_MAX_LEN_M` | 40 | Candidats `footway=crossing` : longueur maximale (m) |
+
+### Îlots, niveaux, kerbs
+
+| Variable | Valeur | Description |
+|----------|--------|-------------|
 | `ISLAND_UNJOINED_GAP_M` | 2 | Écart maximum pour classer un îlot en « jonction manquante » (m) |
 | `ISLAND_PLATFORM_TOLERANCE_M` | 1 | Tolérance pour les quais de transport public (m) |
-| `TACTILE_PAVING_WAY_MATCH_M` / `_KERB_MATCH_M` | 0.5 / 0.5 | Appariement crossing ↔ way ↔ kerb (m) |
+| `LEVEL_UNTAGGED_AS_GROUND` | 0 | Traiter un `level` absent comme le niveau du sol (1 = oui) |
+| `TACTILE_PAVING_WAY_MATCH_M` | 0.5 | Appariement crossing ↔ way (m) |
+| `TACTILE_PAVING_KERB_MATCH_M` | 0.5 | Appariement way ↔ kerb (m) |
+
+### Outils de diagnostic
+
+| Variable | Valeur | Description |
+|----------|--------|-------------|
+| `BENCH_N_SOURCES` | 1000 | `bench_dijkstra.py` : nombre de sources |
+| `BENCH_N_TARGETS` | 50 | `bench_dijkstra.py` : cibles par source |
 
 ## Coût des arêtes
 
