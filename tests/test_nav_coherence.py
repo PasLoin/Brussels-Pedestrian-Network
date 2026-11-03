@@ -86,9 +86,9 @@ def exported(request, tmp_path_factory):
     os.chdir(folder)
     try:
         export_routing_graph(
-            gb.node_list, gb.nodes_gdf, gb.edge_tuples, gb.edge_weights, gb.edge_lengths,
-            gb.edge_highways, gb.edge_geoms, gb.edge_cycleway_nf, gb.edge_foot_tags,
-            edge_levels=gb.edge_levels,
+            gb.node_list, gb.nodes_gdf, gb.edges.tuples, gb.edges.weights, gb.edges.lengths,
+            gb.edges.highways, gb.edges.geoms, gb.edges.cycleway_nf, gb.edges.foot_tags,
+            edge_levels=gb.edges.levels,
         )
     finally:
         os.chdir(cwd)
@@ -115,7 +115,7 @@ def _graph_from_json(data):
 
 def test_graph_json_keeps_the_igraph_structure(exported):
     gb, data, _, _ = exported
-    assert [(e[0], e[1]) for e in data["e"]] == gb.edge_tuples
+    assert [(e[0], e[1]) for e in data["e"]] == gb.edges.tuples
     assert len(data["n"]) == gb.graph.vcount()
 
 
