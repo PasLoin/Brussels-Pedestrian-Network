@@ -105,9 +105,9 @@ def _chosen(network, name, reverse=False):
     index = {osmid: i for i, osmid in enumerate(gb.node_list)}
     a, b = (index[n] for n in endpoints[name])
     src, tgt = (b, a) if reverse else (a, b)
-    result = route_pairs(gb.graph, [(src, tgt)], gb.edge_lengths)
+    result = route_pairs(gb.graph, [(src, tgt)], gb.edges.lengths)
     used = {
-        gb.edge_names[eid].rsplit(" | ", 1)[1]
+        gb.edges.names[eid].rsplit(" | ", 1)[1]
         for eid, flow in enumerate(result.flow_arr) if flow > 0
     }
     assert result.routed == 1
@@ -129,9 +129,9 @@ def test_route_takes_the_expected_path(network, name, expected, reverse):
 def test_scenario_geometry_is_as_designed(network, name, direct_m, direct_tags, detour_m, detour_tags, expected):
     gb, _ = network
     lengths = {}
-    for eid, edge_name in enumerate(gb.edge_names):
+    for eid, edge_name in enumerate(gb.edges.names):
         if edge_name.startswith(f"{name} | "):
-            lengths[edge_name.rsplit(" | ", 1)[1]] = gb.edge_lengths[eid]
+            lengths[edge_name.rsplit(" | ", 1)[1]] = gb.edges.lengths[eid]
     assert lengths["detour"] == pytest.approx(detour_m, rel=0.01)
     if "direct" in lengths:
         assert lengths["direct"] == pytest.approx(direct_m, rel=0.01)
@@ -140,5 +140,5 @@ def test_scenario_geometry_is_as_designed(network, name, direct_m, direct_tags, 
 def test_competing_paths_are_not_merged_by_simplification(network):
     gb, _ = network
     name = _SCENARIOS[0][0]
-    kinds = [n.rsplit(" | ", 1)[1] for n in gb.edge_names if n.startswith(f"{name} | ")]
+    kinds = [n.rsplit(" | ", 1)[1] for n in gb.edges.names if n.startswith(f"{name} | ")]
     assert sorted(kinds) == ["detour", "detour", "direct", "direct"]
