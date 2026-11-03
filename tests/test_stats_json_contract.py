@@ -74,14 +74,14 @@ def _build_stats(tmp_path, monkeypatch, populated: bool) -> dict:
     (tmp_path / "raw.osm").write_text(_OSM if populated else _EMPTY_OSM)
     clean_osm("raw.osm", "clean.osm")
     gb = build_graph("clean.osm")
-    groups = undirected_edge_groups(gb.edge_tuples, gb.edge_geoms, gb.edge_lengths)
+    groups = undirected_edge_groups(gb.edges.tuples, gb.edges.geoms, gb.edges.lengths)
 
     save_stats(
         12 if populated else 0, 9000.0 if populated else 0.0,
         40 if populated else 0, 80 if populated else 0, 3, 2, 1.5,
         graph_stats=compute_graph_stats(gb, groups),
         network_stats=compute_network_stats(
-            groups, gb.edge_highways, gb.edge_lengths, gb.edge_cycleway_nf, gb.edge_foot_tags,
+            groups, gb.edges.highways, gb.edges.lengths, gb.edges.cycleway_nf, gb.edges.foot_tags,
         ),
         sidewalk_gap_stats=detect_sidewalk_gaps("roads.geojson", "footways.geojson"),
         sidewalk_road_stats=export_sidewalk_roads("roads.geojson"),
