@@ -5,6 +5,7 @@ import geopandas as gpd
 import pytest
 from shapely.geometry import Point
 
+from front_contract import assert_layer_contract
 from detect_tactile_paving_issues import (
     _IN_SCOPE_VALUES,
     _crossing_nodes_from,
@@ -361,9 +362,12 @@ def test_untagged_crossing_does_not_change_coherence_results(scene):
 
 
 def test_no_crossing_at_all_writes_empty_outputs(scene):
+    scene([_crossing(0, 0, "yes", 1)], [_cw([(-3, 0), (0, 0), (3, 0)], 101)], [])
+    full_keys = list(detect_tactile_paving_issues())
     path = scene([], [_cw([(-3, 0), (3, 0)], 101)], [])
     stats = detect_tactile_paving_issues()
-    assert stats == {"crossings_in_scope": 0, "flagged": 0}
+    assert list(stats) == full_keys
+    assert set(stats.values()) == {0}
     assert _kerb_issues(path) == []
     assert _tactile_issues(path) == []
 
@@ -379,3 +383,20 @@ def test_only_untagged_crossings_still_writes_coherence_layer(scene):
     assert stats["flagged"] == 0
     assert _tactile_issues(path) == []
     assert (path / "tactile_paving_issues.geojson").exists()
+
+
+def test_layers_match_front_contract(scene):
+    path = scene(
+        [_crossing(0, 0, "yes", 1), _crossing(20, 0, "yes", 2), _crossing(40, 0, None, 3)],
+        [
+            _cw([(-3, 0), (0, 0), (3, 0)], 101),
+            _cw([(17, 0), (20, 0), (23, 0)], 102),
+            _cw([(37, 0), (40, 0), (43, 0)], 103),
+        ],
+        [_kerb(-3, 0, "no", 201), _kerb(3, 0, "yes", 202), _kerb(17, 0, "yes", 203), _kerb(23, 0, None, 204)],
+    )
+    detect_tactile_paving_issues()
+    tactile = assert_layer_contract(path / "tactile_paving_issues.geojson", "tactile_paving_issues")
+    kerbs = assert_layer_contract(path / "kerb_issues.geojson", "kerb_issues")
+    assert [f["properties"]["osm_id"] for f in tactile] == [1]
+    assert {f["properties"]["type"] for f in kerbs} == {"kerb_missing", "kerb_untagged"}
