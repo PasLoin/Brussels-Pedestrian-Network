@@ -253,8 +253,9 @@ fetch("./state.txt")
 fetch("./stats.json")
   .then(r => r.json())
   .then(s => {
-    const avgKm = (s.avg_distance_m / 1000).toFixed(2);
-    const trips = s.routed_trips.toLocaleString("fr-BE");
+    const routing = s.routing || {};
+    const avgKm = ((routing.avg_distance_m || 0) / 1000).toFixed(2);
+    const trips = (routing.routed_trips || 0).toLocaleString("fr-BE");
     document.getElementById("routing-stats").innerHTML =
       `Trajets simulés : <span>${escapeHTML(trips)}</span><br>` +
       `Distance moyenne : <span>${escapeHTML(avgKm)} km</span>`;
