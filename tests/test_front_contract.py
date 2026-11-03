@@ -4,14 +4,19 @@ from front_contract import (
     HISTORY_PATHS,
     FILTER_VALUES,
     LAYER_PROPS,
+    PAGES,
     STATS_HTML_PATHS,
     app_stats_block,
+    build_trigger_paths,
     built_layers,
+    deployed_files,
     evolution_ped_types,
     filter_values,
+    front_js,
     history_reads,
     layer_props,
     layer_sources,
+    local_scripts,
     read_text,
     slim_highway_props,
     stats_reads,
@@ -27,15 +32,15 @@ def test_app_js_stats_reads_match_contract():
 
 
 def test_app_js_layer_properties_match_contract():
-    assert layer_props(read_text("app.js")) == LAYER_PROPS
+    assert layer_props(front_js()) == LAYER_PROPS
 
 
 def test_app_js_filter_values_match_contract():
-    assert filter_values(read_text("app.js")) == FILTER_VALUES
+    assert filter_values(front_js()) == FILTER_VALUES
 
 
 def test_every_layer_read_by_app_js_is_built():
-    used = set(layer_sources(read_text("app.js")).values())
+    used = set(layer_sources(front_js()).values())
     assert used <= built_layers(read_text(".github/workflows/build.yml"))
 
 
@@ -50,3 +55,11 @@ def test_evolution_history_reads_match_contract():
 
 def test_evolution_pedestrian_types_match_config():
     assert evolution_ped_types(read_text("evolution.html")) == PED_HIGHWAY_TYPES
+
+
+def test_every_local_script_is_deployed_and_triggers_a_rebuild():
+    workflow = read_text(".github/workflows/build.yml")
+    scripts = set().union(*(local_scripts(read_text(page)) for page in PAGES))
+    assert {"app.js", "popups.js"} <= scripts
+    assert scripts <= deployed_files(workflow)
+    assert scripts <= build_trigger_paths(workflow)
