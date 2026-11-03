@@ -1,24 +1,22 @@
 from __future__ import annotations
 
 import math
-import os
 
 import geopandas as gpd
 from shapely.geometry import Point
 from shapely.strtree import STRtree
 
-from config import ROAD_TYPES_SIDEWALK_EXPECTED
+from config import (
+    FOOTWAY_CONN_ENDPOINT_TOL_M,
+    FOOTWAY_CONN_MAX_LEN_M,
+    FOOTWAY_CONN_TIP_MARGIN_M,
+    ROAD_TYPES_SIDEWALK_EXPECTED,
+)
 from timing import step
 
 _CROSSING_ROAD_TYPES = ROAD_TYPES_SIDEWALK_EXPECTED - {"service"}
 _MIN_ROAD_LENGTH = 15.0
 
-
-FOOTWAY_CONN_ENDPOINT_TOL_M = float(os.environ.get("FOOTWAY_CONN_ENDPOINT_TOL_M", 3.0))
-
-FOOTWAY_CONN_TIP_MARGIN_M = float(os.environ.get("FOOTWAY_CONN_TIP_MARGIN_M", 2.0))
-
-FOOTWAY_CONN_MAX_LEN_M = float(os.environ.get("FOOTWAY_CONN_MAX_LEN_M", 40.0))
 
 _MIN_CAND_LEN_M = 1.0
 
