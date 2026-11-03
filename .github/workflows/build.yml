@@ -291,7 +291,7 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
 
-      - name: Build main PMTiles (without QA point layers)
+       - name: Build main PMTiles (without QA point layers)
         run: |
           tippecanoe \
             -o main.pmtiles \
@@ -302,12 +302,23 @@ jobs:
             --extend-zooms-if-still-dropping \
             --drop-densest-as-needed \
             --named-layer=highways:highways.geojson \
-            --named-layer=flow_edges:flow_edges.geojson \
             --named-layer=sidewalk_gaps:sidewalk_gaps.geojson \
             --named-layer=sidewalk_separate_candidates:sidewalk_separate_candidates.geojson \
             --named-layer=sidewalk_roads:sidewalk_roads.geojson \
             --named-layer=footway_crossing_candidates:footway_crossing_candidates.geojson \
             --named-layer=graph_islands:graph_islands.geojson
+
+      - name: Build flow PMTiles (keep every edge)
+        run: |
+          tippecanoe \
+            -o flow.pmtiles \
+            --force \
+            -Z${{ env.MIN_ZOOM }} -z${{ env.MAX_ZOOM }} \
+            -B${{ env.MIN_ZOOM }} \
+            -r1 \
+            --no-tile-size-limit \
+            --no-feature-limit \
+            --named-layer=flow_edges:flow_edges.geojson
 
       - name: Build QA point layers PMTiles (preserve every point)
         run: |
@@ -328,11 +339,15 @@ jobs:
           tile-join \
             -o pedestrian.pmtiles \
             --force \
+            --no-tile-size-limit \
             --name "Brussels Pedestrian Network" \
             --attribution "© OpenStreetMap contributors" \
             main.pmtiles \
+            flow.pmtiles \
             qa_points.pmtiles
-          ls -lh main.pmtiles qa_points.pmtiles pedestrian.pmtiles
+          ls -lh main.pmtiles flow.pmtiles qa_points.pmtiles pedestrian.pmtiles         
+
+    
 
       - name: Add build timestamp to state.txt
         run: echo "build_timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> state.txt
