@@ -433,6 +433,36 @@ def _missing_kerb_rows(
     }
 
 
+_STAT_KEYS = (
+    "crossings_in_scope",
+    "no_crossing_way_found",
+    "ambiguous_way_match",
+    "degenerate_way",
+    "half_mapped_sides",
+    "half_mapped_incorrect_skipped",
+    "contiguous_pair_merged",
+    "contiguous_pair_tp_conflict",
+    "coherent",
+    "kerb_missing",
+    "kerb_untagged",
+    "kerb_missing_points",
+    "kerb_untagged_points",
+    "value_mismatch",
+    "incorrect_not_mixed",
+    "flagged",
+    "kerb_check_crossings",
+    "kerb_check_resolved",
+    "kerb_check_skipped",
+    "kerb_missing_crossings",
+)
+
+
+def _stats(**counts: int) -> dict:
+    stats = {key: 0 for key in _STAT_KEYS}
+    stats.update(counts)
+    return stats
+
+
 def detect_tactile_paving_issues(
     highways_geojson_path: str = "highways.geojson",
     footways_geojson_path: str = "sidewalk_footways_raw.geojson",
@@ -459,7 +489,7 @@ def detect_tactile_paving_issues(
         print("  Nothing to analyse, skipping.")
         _write_empty_output()
         _write_empty_kerb_issues_output()
-        return {"crossings_in_scope": 0, "flagged": 0}
+        return _stats()
 
     with step("load footway=crossing ways"):
         way_gdf, vertex_tree, vertex_points, vertex_way_idx = _load_crossing_ways(footways_geojson_path)
@@ -684,28 +714,28 @@ def detect_tactile_paving_issues(
     print(f"  Flagged, incorrect not a yes/no pair:       {n_incorrect_mixed}")
     print(f"  Total flagged:                              {n_flagged}")
 
-    return {
-        "crossings_in_scope":              n_total,
-        "no_crossing_way_found":           n_no_way,
-        "ambiguous_way_match":             n_ambiguous_way,
-        "degenerate_way":                  n_degenerate_way,
-        "half_mapped_sides":               n_half_mapped_sides,
-        "half_mapped_incorrect_skipped":   n_half_mapped_incorrect_skipped,
-        "contiguous_pair_merged":          n_contiguous_sides,
-        "contiguous_pair_tp_conflict":     n_contiguous_conflict,
-        "coherent":                        n_ok,
-        "kerb_missing":                    n_kerb_missing,
-        "kerb_untagged":                   n_kerb_untagged,
-        "kerb_missing_points":             presence_stats["kerb_missing_points"],
-        "kerb_untagged_points":            n_kerb_untagged_points,
-        "value_mismatch":                  n_value_mismatch,
-        "incorrect_not_mixed":             n_incorrect_mixed,
-        "flagged":                         n_flagged,
-        "kerb_check_crossings":            presence_stats["kerb_check_crossings"],
-        "kerb_check_resolved":             presence_stats["kerb_check_resolved"],
-        "kerb_check_skipped":              presence_stats["kerb_check_skipped"],
-        "kerb_missing_crossings":          presence_stats["kerb_missing_crossings"],
-    }
+    return _stats(
+        crossings_in_scope=n_total,
+        no_crossing_way_found=n_no_way,
+        ambiguous_way_match=n_ambiguous_way,
+        degenerate_way=n_degenerate_way,
+        half_mapped_sides=n_half_mapped_sides,
+        half_mapped_incorrect_skipped=n_half_mapped_incorrect_skipped,
+        contiguous_pair_merged=n_contiguous_sides,
+        contiguous_pair_tp_conflict=n_contiguous_conflict,
+        coherent=n_ok,
+        kerb_missing=n_kerb_missing,
+        kerb_untagged=n_kerb_untagged,
+        kerb_missing_points=presence_stats["kerb_missing_points"],
+        kerb_untagged_points=n_kerb_untagged_points,
+        value_mismatch=n_value_mismatch,
+        incorrect_not_mixed=n_incorrect_mixed,
+        flagged=n_flagged,
+        kerb_check_crossings=presence_stats["kerb_check_crossings"],
+        kerb_check_resolved=presence_stats["kerb_check_resolved"],
+        kerb_check_skipped=presence_stats["kerb_check_skipped"],
+        kerb_missing_crossings=presence_stats["kerb_missing_crossings"],
+    )
 
 
 def _empty_gdf() -> gpd.GeoDataFrame:
