@@ -158,3 +158,35 @@ def test_user_choice_during_the_route_wins(page):
 
 def test_popups_js_is_loaded_before_app_js(page):
     assert page.evaluate("() => [typeof makePopupLayers, typeof escapeHTML]") == ["function", "function"]
+
+
+@pytest.mark.parametrize("width, height", [(600, 900), (414, 896), (390, 844), (375, 667), (360, 740)])
+def test_phone_header_and_legend_never_overlap(page, width, height):
+    page.set_viewport_size({"width": width, "height": height})
+    page.evaluate(_TALL_LEGEND)
+    page.evaluate(_HIDE)
+    page.evaluate("() => { setLegendOpen(false); setHeaderOpen(false); }")
+    page.wait_for_timeout(400)
+    for action in ["() => toggleLegend()", "() => toggleHeader()", "() => toggleLegend()", "() => setLegendOpen(false)"]:
+        page.evaluate(action)
+        page.wait_for_timeout(400)
+        rects = page.evaluate(_RECTS, ["#header", "#legend"])
+        assert not _overlap(rects["#header"], rects["#legend"]), f"{action} at {width}x{height}: {rects}"
+
+
+def test_desktop_legend_shows_its_last_item(page):
+    page.set_viewport_size({"width": 1600, "height": 1000})
+    page.evaluate(_TALL_LEGEND)
+    page.evaluate(_HIDE)
+    page.wait_for_timeout(400)
+    sizes = page.evaluate("""
+() => {
+  const c = document.getElementById("legend-content");
+  const legend = document.getElementById("legend");
+  legend.scrollTop = legend.scrollHeight;
+  const last = c.lastElementChild.getBoundingClientRect();
+  return { scroll: c.scrollHeight, client: c.clientHeight, last: last.bottom, legend: legend.getBoundingClientRect().bottom };
+}
+""")
+    assert sizes["client"] >= sizes["scroll"]
+    assert sizes["last"] <= sizes["legend"]

@@ -194,7 +194,7 @@ body { font-family: system-ui, sans-serif; background: #1a1a1a; }
   padding: 0 14px 12px;
   transition: max-height 0.3s ease, opacity 0.2s ease;
 }
-#legend.open #legend-content { max-height: 800px; opacity: 1; }
+#legend.open #legend-content { max-height: none; opacity: 1; }
 #legend.closed #legend-content { max-height: 0; opacity: 0; padding: 0 14px; }
 
 .legend-section { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-faint); margin: 10px 0 4px; }
@@ -322,7 +322,12 @@ body { font-family: system-ui, sans-serif; background: #1a1a1a; }
   #header { width: 200px; }
   #header h1 { font-size: 12px; }
   #zoom-badge { right: 8px; }
-  #legend { min-width: 150px; top: 44px; right: 8px; }
+  #legend {
+    min-width: 0; top: 56px; right: 8px;
+    max-width: calc(100vw - 16px);
+    max-height: calc(100vh - 56px - var(--attribution-clearance, 40px));
+  }
+  #legend.closed #legend-content { width: 0; }
   #route-panel { bottom: 16px; min-width: 200px; max-width: min(240px, calc(100vw - 128px)); }
   #basemap-control { left: 8px; flex-direction: column-reverse; align-items: flex-start; }
 }

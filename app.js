@@ -1,11 +1,24 @@
 const SMALL_SCREEN_QUERY = "(max-width: 600px)";
 let legendAutoCollapsed = false;
 
-function toggleHeader() {
+function isSmallScreen() {
+  return window.matchMedia(SMALL_SCREEN_QUERY).matches;
+}
+
+function setHeaderOpen(open) {
   const el = document.getElementById("header");
-  const isOpen = el.classList.toggle("open");
-  el.classList.toggle("closed");
-  document.getElementById("header-toggle").setAttribute("aria-expanded", isOpen);
+  el.classList.toggle("open", open);
+  el.classList.toggle("closed", !open);
+  document.getElementById("header-toggle").setAttribute("aria-expanded", open);
+}
+
+function toggleHeader() {
+  const open = !document.getElementById("header").classList.contains("open");
+  setHeaderOpen(open);
+  if (open && isSmallScreen()) {
+    legendAutoCollapsed = false;
+    setLegendOpen(false);
+  }
 }
 
 function setLegendOpen(open) {
@@ -13,6 +26,7 @@ function setLegendOpen(open) {
   el.classList.toggle("open", open);
   el.classList.toggle("closed", !open);
   document.getElementById("legend-toggle").setAttribute("aria-expanded", open);
+  if (open && isSmallScreen()) setHeaderOpen(false);
 }
 
 function toggleLegend() {
@@ -23,7 +37,7 @@ function toggleLegend() {
 function showRoutePanel() {
   document.getElementById("route-panel").classList.add("visible");
   const legendOpen = document.getElementById("legend").classList.contains("open");
-  if (legendOpen && window.matchMedia(SMALL_SCREEN_QUERY).matches) {
+  if (legendOpen && isSmallScreen()) {
     setLegendOpen(false);
     legendAutoCollapsed = true;
   }
@@ -38,16 +52,9 @@ function hideRoutePanel() {
 }
 
 (function () {
-  if (window.innerWidth <= 600) {
-    const legend = document.getElementById("legend");
-    legend.classList.remove("open");
-    legend.classList.add("closed");
-    document.getElementById("legend-toggle").setAttribute("aria-expanded", "false");
-
-    const header = document.getElementById("header");
-    header.classList.remove("open");
-    header.classList.add("closed");
-    document.getElementById("header-toggle").setAttribute("aria-expanded", "false");
+  if (isSmallScreen()) {
+    setLegendOpen(false);
+    setHeaderOpen(false);
   }
 })();
 
@@ -560,12 +567,13 @@ const BASEMAPS = [
     thumb: ZINNEKE_BASE + "assets/img/basemap-zinneke.png",
     url: ZINNEKE_BASE + "style.json",
     hideSources: ["public_transport", "poi"],
-    hideLayers: ["railway-tram*", "railway-subway*", "railway-tunnel-tram", "railway-tunnel-subway"]
+    hideLayers: ["railway-tram*", "railway-subway*", "railway-tunnel-tram", "railway-tunnel-subway", "man_made-tunnel-*"]
   },
   {
     id: "nb", label: "Zinneke N&B", title: "ZinnekeTiles noir et blanc",
     thumb: ZINNEKE_BASE + "assets/img/basemap-nb.png",
-    url: ZINNEKE_BASE + "style.nb.json"
+    url: ZINNEKE_BASE + "style.nb.json",
+    hideLayers: ["man_made-tunnel-*"]
   }
 ];
 
