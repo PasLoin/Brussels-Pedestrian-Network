@@ -10,14 +10,11 @@ import shapely
 from shapely.geometry import Point
 from shapely.strtree import STRtree
 
+from config import TACTILE_PAVING_KERB_MATCH_M, TACTILE_PAVING_WAY_MATCH_M
 from timing import step
 
 
 _IN_SCOPE_VALUES = frozenset({"yes", "no", "incorrect"})
-
-
-TACTILE_PAVING_WAY_MATCH_M = float(os.environ.get("TACTILE_PAVING_WAY_MATCH_M", 0.5))
-TACTILE_PAVING_KERB_MATCH_M = float(os.environ.get("TACTILE_PAVING_KERB_MATCH_M", 0.5))
 
 
 def _safe_str(val) -> str:
