@@ -208,8 +208,8 @@ def test_pedestrian_area_breaks_connectivity(square_paths):
     from build_graph import build_graph
 
     gb = build_graph(str(square_paths))
-    assert "Place Test" not in gb.edge_names
-    assert sorted(gb.edge_names) == ["Accès nord", "Accès nord", "Accès sud", "Accès sud"]
+    assert "Place Test" not in gb.edges.names
+    assert sorted(gb.edges.names) == ["Accès nord", "Accès nord", "Accès sud", "Accès sud"]
     assert gb.graph.vcount() == 4
     assert min(gb.graph.degree()) > 0
     assert len(gb.graph.connected_components(mode="weak")) == 2
