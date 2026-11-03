@@ -567,12 +567,13 @@ const BASEMAPS = [
     thumb: ZINNEKE_BASE + "assets/img/basemap-zinneke.png",
     url: ZINNEKE_BASE + "style.json",
     hideSources: ["public_transport", "poi"],
-    hideLayers: ["railway-tram*", "railway-subway*", "railway-tunnel-tram", "railway-tunnel-subway"]
+    hideLayers: ["railway-tram*", "railway-subway*", "railway-tunnel-tram", "railway-tunnel-subway", "man_made-tunnel-*"]
   },
   {
     id: "nb", label: "Zinneke N&B", title: "ZinnekeTiles noir et blanc",
     thumb: ZINNEKE_BASE + "assets/img/basemap-nb.png",
-    url: ZINNEKE_BASE + "style.nb.json"
+    url: ZINNEKE_BASE + "style.nb.json",
+    hideLayers: ["man_made-tunnel-*"]
   }
 ];
 
