@@ -206,25 +206,25 @@ def bundle(tmp_path_factory):
 
 @pytest.fixture(scope="module")
 def groups(bundle):
-    return undirected_edge_groups(bundle.edge_tuples, bundle.edge_geoms, bundle.edge_lengths)
+    return undirected_edge_groups(bundle.edges.tuples, bundle.edges.geoms, bundle.edges.lengths)
 
 
 def _flagged_nodes(bundle, groups, untagged_as_ground=False):
     found = find_level_discontinuities(
-        groups, bundle.edge_tuples, bundle.edge_highways,
-        bundle.edge_levels, bundle.elevator_vertices,
+        groups, bundle.edges.tuples, bundle.edges.highways,
+        bundle.edges.levels, bundle.elevator_vertices,
         untagged_as_ground=untagged_as_ground,
     )
     return {bundle.node_list[v]: (g, m) for v, g, m in found}
 
 
 def _ways(bundle, groups, group_ids):
-    return {w for g in group_ids for w in bundle.edge_osm_ids[groups[g][0]]}
+    return {w for g in group_ids for w in bundle.edges.osm_ids[groups[g][0]]}
 
 
 def test_levels_survive_simplification(bundle):
-    assert "-2;-1" in bundle.edge_levels
-    assert "-1;0" in bundle.edge_levels
+    assert "-2;-1" in bundle.edges.levels
+    assert "-1;0" in bundle.edges.levels
 
 
 def test_elevator_node_detected(bundle):
@@ -280,11 +280,11 @@ def test_level_rows_written_to_islands_layer(bundle, groups, tmp_path):
     out = tmp_path / "graph_islands.geojson"
     _, stats = detect_graph_islands(
         bundle.graph, groups,
-        bundle.edge_tuples, bundle.edge_geoms, bundle.edge_lengths,
-        bundle.edge_highways, bundle.edge_osm_ids,
+        bundle.edges.tuples, bundle.edges.geoms, bundle.edges.lengths,
+        bundle.edges.highways, bundle.edges.osm_ids,
         output_path=str(out),
         platforms_path=str(tmp_path / "missing.geojson"),
-        edge_levels=bundle.edge_levels,
+        edge_levels=bundle.edges.levels,
         elevator_vertices=bundle.elevator_vertices,
         node_list=bundle.node_list,
     )
@@ -304,10 +304,10 @@ def test_level_rows_written_to_islands_layer(bundle, groups, tmp_path):
 def test_islands_layer_matches_front_contract(bundle, groups, tmp_path):
     out = tmp_path / "graph_islands.geojson"
     detect_graph_islands(
-        bundle.graph, groups, bundle.edge_tuples, bundle.edge_geoms, bundle.edge_lengths,
-        bundle.edge_highways, bundle.edge_osm_ids,
+        bundle.graph, groups, bundle.edges.tuples, bundle.edges.geoms, bundle.edges.lengths,
+        bundle.edges.highways, bundle.edges.osm_ids,
         output_path=str(out), platforms_path=str(tmp_path / "absent.geojson"),
-        edge_levels=bundle.edge_levels, elevator_vertices=bundle.elevator_vertices,
+        edge_levels=bundle.edges.levels, elevator_vertices=bundle.elevator_vertices,
         node_list=bundle.node_list,
     )
     features = assert_layer_contract(out, "graph_islands")
