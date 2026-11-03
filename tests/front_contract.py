@@ -99,6 +99,31 @@ def read_text(name: str) -> str:
     return (ROOT / name).read_text(encoding="utf-8")
 
 
+FRONT_JS = ("app.js", "popups.js")
+
+PAGES = ("index.html", "stats.html", "evolution.html", "about.html")
+
+
+def front_js() -> str:
+    return "\n".join(read_text(name) for name in FRONT_JS)
+
+
+def local_scripts(html: str) -> set:
+    return set(re.findall(r'<script\s+src="\./([\w.-]+\.js)"', html))
+
+
+def deployed_files(workflow: str) -> set:
+    start = workflow.index("cp ", workflow.index("name: Prepare site"))
+    command = workflow[start:workflow.index("_site/", start)]
+    return set(command.replace("\\", " ").split()[1:])
+
+
+def build_trigger_paths(workflow: str) -> set:
+    start = workflow.index("paths:", workflow.index("push:"))
+    block = workflow[start:workflow.index("workflow_dispatch", start)]
+    return set(re.findall(r'-\s*"([^"]+)"', block))
+
+
 def _block(src: str, start: int) -> str:
     depth = 0
     for i in range(start, len(src)):
