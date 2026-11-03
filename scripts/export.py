@@ -263,13 +263,13 @@ def compute_graph_stats(gb, edge_groups: list[list[int]]) -> dict:
         "directed_edges": gb.graph.ecount(),
         "cycleways_foot_yes": sum(
             1 for eids in edge_groups
-            if gb.edge_highways[eids[0]] == "cycleway"
-            and not gb.edge_cycleway_nf[eids[0]]
+            if gb.edges.highways[eids[0]] == "cycleway"
+            and not gb.edges.cycleway_nf[eids[0]]
         ),
         "cycleways_no_foot": sum(
             1 for eids in edge_groups
-            if gb.edge_highways[eids[0]] == "cycleway"
-            and gb.edge_cycleway_nf[eids[0]]
+            if gb.edges.highways[eids[0]] == "cycleway"
+            and gb.edges.cycleway_nf[eids[0]]
         ),
     }
 
