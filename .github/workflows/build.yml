@@ -291,7 +291,7 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
 
-       - name: Build main PMTiles (without QA point layers)
+      - name: Build main PMTiles (without QA point layers)
         run: |
           tippecanoe \
             -o main.pmtiles \
@@ -345,9 +345,7 @@ jobs:
             main.pmtiles \
             flow.pmtiles \
             qa_points.pmtiles
-          ls -lh main.pmtiles flow.pmtiles qa_points.pmtiles pedestrian.pmtiles         
-
-    
+          ls -lh main.pmtiles flow.pmtiles qa_points.pmtiles pedestrian.pmtiles
 
       - name: Add build timestamp to state.txt
         run: echo "build_timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> state.txt
