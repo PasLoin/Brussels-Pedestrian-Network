@@ -18,6 +18,7 @@ on:
       - "app.js"
       - "nav.js"
       - "filters.js"
+      - "popups.js"
       - "app.css"
       - "style.json"
   workflow_dispatch:
@@ -354,7 +355,7 @@ jobs:
       - name: Prepare site
         run: |
           mkdir -p _site
-          cp index.html stats.html evolution.html about.html robots.txt favicon.svg app.js nav.js filters.js app.css \
+          cp index.html stats.html evolution.html about.html robots.txt favicon.svg app.js nav.js filters.js popups.js app.css \
              style.json state.txt sitemap.xml stats.json graph.json \
              pedestrian.pmtiles history.json \
              _site/
