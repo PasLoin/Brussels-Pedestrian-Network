@@ -278,6 +278,27 @@ def _load_excluded_roads(
     return all_geoms, STRtree(all_geoms)
 
 
+_STAT_KEYS = (
+    "crossing_nodes_found",
+    "no_eligible_road",
+    "on_excluded_way",
+    "crossing_continuous",
+    "crossing_fully_mapped",
+    "connected_pedestrian_only",
+    "sidewalk_missing_or_skewed",
+    "missing_crossing_way",
+    "missing_crossing_tag",
+    "wrong_crossing_tag",
+    "missing_crossings_detected",
+)
+
+
+def _stats(**counts: int) -> dict:
+    stats = {key: 0 for key in _STAT_KEYS}
+    stats.update(counts)
+    return stats
+
+
 def detect_missing_crossings(
     highways_geojson_path:      str = "highways.geojson",
     footways_geojson_path:      str = "sidewalk_footways_raw.geojson",
@@ -302,7 +323,7 @@ def detect_missing_crossings(
     if crossing_nodes.empty:
         print("  No crossing nodes, skipping.")
         _write_empty_output()
-        return {"crossing_nodes_found": 0, "missing_crossings_detected": 0}
+        return _stats()
 
     with step("load footway=crossing ways (tier 1)"):
         cw_geoms, cw_tree = _load_crossing_ways(footways_geojson_path)
@@ -336,8 +357,7 @@ def detect_missing_crossings(
     if sw_tree is None:
         print("  No footway=sidewalk ways, skipping.")
         _write_empty_output()
-        return {"crossing_nodes_found": len(crossing_nodes),
-                "missing_crossings_detected": 0}
+        return _stats(crossing_nodes_found=len(crossing_nodes))
 
     rows: list[dict] = []
     n_no_road     = 0
@@ -464,19 +484,19 @@ def detect_missing_crossings(
     print(f"  Missing footway=crossing TAG detected:   {n_missing_tag}")
     print(f"  Wrong footway=* TAG on crossing way:     {n_wrong_tag}")
 
-    return {
-        "crossing_nodes_found":        n_total,
-        "no_eligible_road":            n_no_road,
-        "on_excluded_way":             n_excluded,
-        "crossing_continuous":         n_continuous,
-        "crossing_fully_mapped":       n_fully_ok,
-        "connected_pedestrian_only":   n_pedestrian_only,
-        "sidewalk_missing_or_skewed":  n_no_sw,
-        "missing_crossing_way":        n_missing_way,
-        "missing_crossing_tag":        n_missing_tag,
-        "wrong_crossing_tag":          n_wrong_tag,
-        "missing_crossings_detected":  n_missing_way + n_missing_tag + n_wrong_tag,
-    }
+    return _stats(
+        crossing_nodes_found=n_total,
+        no_eligible_road=n_no_road,
+        on_excluded_way=n_excluded,
+        crossing_continuous=n_continuous,
+        crossing_fully_mapped=n_fully_ok,
+        connected_pedestrian_only=n_pedestrian_only,
+        sidewalk_missing_or_skewed=n_no_sw,
+        missing_crossing_way=n_missing_way,
+        missing_crossing_tag=n_missing_tag,
+        wrong_crossing_tag=n_wrong_tag,
+        missing_crossings_detected=n_missing_way + n_missing_tag + n_wrong_tag,
+    )
 
 
 def _flag_row(
