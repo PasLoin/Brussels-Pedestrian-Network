@@ -14,6 +14,7 @@ from export import (
     export_routing_graph,
     undirected_edge_groups,
 )
+from front_contract import assert_layer_contract
 
 _X0, _Y0 = 150000.0, 170000.0
 _TO_WGS = Transformer.from_crs("EPSG:31370", "EPSG:4326", always_xy=True)
@@ -251,7 +252,9 @@ def test_network_stats_count_each_physical_segment_once():
     assert stats["total_km"] == 1.75
     assert stats["km_by_highway"] == {"footway": 1.0, "primary": 0.5, "cycleway": 0.25}
     assert stats["edges_by_highway"] == {"footway": 1, "primary": 1, "cycleway": 1}
-    assert stats["km_by_category"] == {"pedestrian": 1.0, "road": 0.5, "cycleway_no_foot": 0.25}
+    assert stats["km_by_category"] == {
+        "pedestrian": 1.0, "road": 0.5, "cycleway_no_foot": 0.25, "cycleway_foot_yes": 0.0,
+    }
 
 
 def _routing_graph(tmp_path, monkeypatch):
@@ -411,3 +414,9 @@ def test_routing_graph_ground_flag_follows_levels(tmp_path, monkeypatch):
 def test_routing_graph_without_levels_marks_everything_as_ground(tmp_path, monkeypatch):
     data = _ground_graph(tmp_path, monkeypatch, None)
     assert [e[7] for e in data["e"]] == [1] * 6
+
+
+def test_flow_layer_matches_front_contract(workdir):
+    _scenario().export()
+    features = assert_layer_contract(workdir / "flow_edges.geojson", "flow_edges")
+    assert {f["properties"]["infra_type"] for f in features} == {"road", "cycleway_no_foot"}

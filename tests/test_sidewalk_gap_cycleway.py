@@ -5,6 +5,7 @@ import pytest
 from pyproj import Transformer
 from shapely.geometry import LineString
 
+from front_contract import assert_layer_contract
 from sidewalk_gap import _foot_cycleway_mask, _load_foot_cycleways, detect_sidewalk_gaps
 
 _TO_WGS84 = Transformer.from_crs("EPSG:31370", "EPSG:4326", always_xy=True)
@@ -175,3 +176,17 @@ def test_sidewalk_tags_drive_skip_and_separate_candidates(tmp_path, monkeypatch)
     assert stats["separate_candidates_length_km"] == 0.1
     candidates = gpd.read_file(tmp_path / "sidewalk_separate_candidates.geojson")
     assert list(candidates["name"]) == ["sans tag"]
+
+
+def test_gap_layer_matches_front_contract(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    roads = _write_geojson(tmp_path / "roads.geojson", [
+        (_hline(0), {"highway": "residential", "name": "Rue Sans Trottoir"}),
+        (_hline(100), {"highway": "residential", "name": "Rue Un Côté"}),
+    ])
+    footways = _write_geojson(tmp_path / "footways.geojson", [
+        (_hline(107), {"highway": "footway", "footway": "sidewalk"}),
+    ])
+    detect_sidewalk_gaps(roads, footways)
+    features = assert_layer_contract(tmp_path / "sidewalk_gaps.geojson", "sidewalk_gaps")
+    assert [f["properties"]["name"] for f in features] == ["rue un côté"]

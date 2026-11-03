@@ -86,14 +86,14 @@ def bundle(tmp_path_factory):
 
 @pytest.mark.parametrize("name, tags", _EXCLUDED, ids=[c[0] for c in _EXCLUDED])
 def test_way_is_excluded(bundle, name, tags):
-    assert name not in bundle.edge_names
+    assert name not in bundle.edges.names
 
 
 @pytest.mark.parametrize("name, tags", _KEPT, ids=[c[0] for c in _KEPT])
 def test_way_is_kept_in_both_directions(bundle, name, tags):
-    eids = [e for e, n in enumerate(bundle.edge_names) if n == name]
+    eids = [e for e, n in enumerate(bundle.edges.names) if n == name]
     assert len(eids) == 2
-    (u, v), back = bundle.edge_tuples[eids[0]], bundle.edge_tuples[eids[1]]
+    (u, v), back = bundle.edges.tuples[eids[0]], bundle.edges.tuples[eids[1]]
     assert back == (v, u)
 
 
@@ -101,13 +101,13 @@ def test_edge_arrays_stay_aligned_after_exclusions(bundle):
     n = bundle.graph.ecount()
     assert n == 2 * len(_KEPT)
     for arr in (
-        bundle.edge_tuples, bundle.edge_weights, bundle.edge_lengths,
-        bundle.edge_highways, bundle.edge_geoms, bundle.edge_cycleway_nf,
-        bundle.edge_foot_tags, bundle.edge_names, bundle.edge_osm_ids,
-        bundle.edge_levels,
+        bundle.edges.tuples, bundle.edges.weights, bundle.edges.lengths,
+        bundle.edges.highways, bundle.edges.geoms, bundle.edges.cycleway_nf,
+        bundle.edges.foot_tags, bundle.edges.names, bundle.edges.osm_ids,
+        bundle.edges.levels,
     ):
         assert len(arr) == n
-    assert [(e.source, e.target) for e in bundle.graph.es] == bundle.edge_tuples
+    assert [(e.source, e.target) for e in bundle.graph.es] == bundle.edges.tuples
 
 
 @pytest.mark.filterwarnings("ignore::RuntimeWarning")
@@ -131,4 +131,4 @@ def test_excluded_way_cuts_the_only_connection(tmp_path):
     index = {osmid: i for i, osmid in enumerate(gb.node_list)}
     paths = gb.graph.get_shortest_paths(index[1], to=index[4], weights="weight", output="epath")
     assert paths == [[]]
-    assert "Gate" not in gb.edge_names
+    assert "Gate" not in gb.edges.names

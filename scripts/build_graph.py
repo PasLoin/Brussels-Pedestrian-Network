@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import NamedTuple
+from dataclasses import dataclass, fields
 
 import geopandas as gpd
 import igraph as ig
@@ -24,21 +24,35 @@ from timing import step
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 
-class GraphBundle(NamedTuple):
+@dataclass(frozen=True)
+class EdgeAttrs:
+    tuples: list[tuple[int, int]]
+    weights: list[float]
+    lengths: list[float]
+    highways: list[str]
+    geoms: list
+    cycleway_nf: list[bool]
+    foot_tags: list[str]
+    names: list[str]
+    osm_ids: list[tuple[int, ...]]
+    levels: list[str]
+
+    def __post_init__(self) -> None:
+        sizes = {f.name: len(getattr(self, f.name)) for f in fields(self)}
+        if len(set(sizes.values())) > 1:
+            raise ValueError(f"edge attributes are misaligned: {sizes}")
+
+    def __len__(self) -> int:
+        return len(self.tuples)
+
+
+@dataclass(frozen=True)
+class GraphBundle:
     graph: ig.Graph
     node_list: list
     nodes_gdf: gpd.GeoDataFrame
-    edge_tuples: list
-    edge_weights: list[float]
-    edge_lengths: list[float]
-    edge_highways: list[str]
-    edge_geoms: list
-    edge_cycleway_nf: list[bool]
-    edge_foot_tags: list[str]
-    edge_names: list[str]
-    edge_osm_ids: list[tuple[int, ...]] = []
-    edge_levels: list[str] = []
-    elevator_vertices: frozenset = frozenset()
+    edges: EdgeAttrs
+    elevator_vertices: frozenset
 
 
 def _first_str(val) -> str:
@@ -257,15 +271,17 @@ def build_graph(osm_path: str = "routing_clean.osm") -> GraphBundle:
         graph=g,
         node_list=node_list,
         nodes_gdf=nodes_gdf,
-        edge_tuples=edge_tuples,
-        edge_weights=edge_weights,
-        edge_lengths=edge_lengths,
-        edge_highways=edge_highways,
-        edge_geoms=edge_geoms,
-        edge_cycleway_nf=edge_cycleway_nf,
-        edge_foot_tags=edge_foot_tags,
-        edge_names=edge_names,
-        edge_osm_ids=edge_osm_ids,
-        edge_levels=edge_levels,
+        edges=EdgeAttrs(
+            tuples=edge_tuples,
+            weights=edge_weights,
+            lengths=edge_lengths,
+            highways=edge_highways,
+            geoms=edge_geoms,
+            cycleway_nf=edge_cycleway_nf,
+            foot_tags=edge_foot_tags,
+            names=edge_names,
+            osm_ids=edge_osm_ids,
+            levels=edge_levels,
+        ),
         elevator_vertices=_elevator_vertices(nodes_gdf, node_map),
     )

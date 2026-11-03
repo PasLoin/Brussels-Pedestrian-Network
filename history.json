@@ -266,7 +266,8 @@
       "steps": 0.9,
       "living_street": 1.5,
       "cycleway": 67.6,
-      "track": 7.9
+      "track": 7.9,
+      "bridleway": 4.0
     },
     "ways_by_highway": {
       "tertiary": 522,
@@ -281,9 +282,10 @@
       "steps": 32,
       "living_street": 12,
       "cycleway": 58,
-      "track": 21
+      "track": 21,
+      "bridleway": 6
     },
-    "ped_km": 96.2,
+    "ped_km": 108.1,
     "road_km": 1694.7,
     "cycleway_km": 67.6,
     "crossing_nodes": 1,
@@ -384,7 +386,9 @@
       "living_street": 7.2,
       "cycleway": 78.9,
       "track": 35.9,
+      "bridleway": 17.7,
       "elevator": 0.0,
+      "platform": 12.9,
       "secondary_link": 0.2
     },
     "ways_by_highway": {
@@ -402,10 +406,12 @@
       "living_street": 55,
       "cycleway": 184,
       "track": 101,
+      "bridleway": 23,
       "elevator": 1,
+      "platform": 49,
       "secondary_link": 5
     },
-    "ped_km": 293.7,
+    "ped_km": 360.2,
     "road_km": 1728.2,
     "cycleway_km": 78.9,
     "crossing_nodes": 58,
@@ -514,6 +520,8 @@
       "living_street": 8.2,
       "cycleway": 87.6,
       "track": 83.7,
+      "bridleway": 19.4,
+      "platform": 12.9,
       "secondary_link": 0.0
     },
     "ways_by_highway": {
@@ -531,9 +539,11 @@
       "living_street": 60,
       "cycleway": 266,
       "track": 216,
+      "bridleway": 25,
+      "platform": 49,
       "secondary_link": 1
     },
-    "ped_km": 306.3,
+    "ped_km": 422.3,
     "road_km": 1739.8,
     "cycleway_km": 87.6,
     "crossing_nodes": 79,
@@ -642,7 +652,9 @@
       "living_street": 9.6,
       "cycleway": 84.6,
       "track": 88.6,
+      "bridleway": 19.4,
       "secondary_link": 0.4,
+      "platform": 10.4,
       "tertiary_link": 0.0
     },
     "ways_by_highway": {
@@ -660,10 +672,12 @@
       "living_street": 80,
       "cycleway": 246,
       "track": 245,
+      "bridleway": 25,
       "secondary_link": 5,
+      "platform": 63,
       "tertiary_link": 1
     },
-    "ped_km": 394.8,
+    "ped_km": 513.2,
     "road_km": 1770.6,
     "cycleway_km": 84.6,
     "crossing_nodes": 787,
@@ -781,6 +795,8 @@
       "cycleway": 95.6,
       "secondary_link": 0.7,
       "track": 91.0,
+      "bridleway": 19.4,
+      "platform": 8.4,
       "tertiary_link": 0.1
     },
     "ways_by_highway": {
@@ -799,9 +815,11 @@
       "cycleway": 313,
       "secondary_link": 10,
       "track": 253,
+      "bridleway": 25,
+      "platform": 78,
       "tertiary_link": 3
     },
-    "ped_km": 452.2,
+    "ped_km": 571.0,
     "road_km": 1874.1,
     "cycleway_km": 95.6,
     "crossing_nodes": 2023,
@@ -919,7 +937,9 @@
       "cycleway": 86.2,
       "secondary_link": 0.8,
       "track": 92.3,
+      "bridleway": 19.8,
       "tertiary_link": 0.8,
+      "platform": 10.7,
       "elevator": 0.0
     },
     "ways_by_highway": {
@@ -938,10 +958,12 @@
       "cycleway": 348,
       "secondary_link": 12,
       "track": 270,
+      "bridleway": 31,
       "tertiary_link": 8,
+      "platform": 117,
       "elevator": 1
     },
-    "ped_km": 506.3,
+    "ped_km": 629.1,
     "road_km": 1878.6,
     "cycleway_km": 86.2,
     "crossing_nodes": 3070,
@@ -1060,6 +1082,8 @@
       "cycleway": 118.9,
       "secondary_link": 1.1,
       "track": 90.8,
+      "bridleway": 19.2,
+      "platform": 17.8,
       "elevator": 0.0
     },
     "ways_by_highway": {
@@ -1079,9 +1103,11 @@
       "cycleway": 458,
       "secondary_link": 15,
       "track": 279,
+      "bridleway": 34,
+      "platform": 334,
       "elevator": 1
     },
-    "ped_km": 557.8,
+    "ped_km": 685.6,
     "road_km": 1885.6,
     "cycleway_km": 118.9,
     "crossing_nodes": 5045,
@@ -1200,6 +1226,8 @@
       "cycleway": 120.7,
       "secondary_link": 0.9,
       "track": 89.7,
+      "bridleway": 19.1,
+      "platform": 18.2,
       "elevator": 0.0
     },
     "ways_by_highway": {
@@ -1219,9 +1247,11 @@
       "cycleway": 472,
       "secondary_link": 14,
       "track": 286,
+      "bridleway": 33,
+      "platform": 340,
       "elevator": 1
     },
-    "ped_km": 587.2,
+    "ped_km": 714.2,
     "road_km": 1881.7,
     "cycleway_km": 120.7,
     "crossing_nodes": 5610,
@@ -1339,7 +1369,9 @@
       "living_street": 11.5,
       "steps": 10.2,
       "secondary_link": 1.3,
-      "track": 88.5
+      "track": 88.5,
+      "bridleway": 18.4,
+      "platform": 25.0
     },
     "ways_by_highway": {
       "tertiary": 2453,
@@ -1357,9 +1389,11 @@
       "living_street": 110,
       "steps": 744,
       "secondary_link": 23,
-      "track": 292
+      "track": 292,
+      "bridleway": 31,
+      "platform": 571
     },
-    "ped_km": 661.0,
+    "ped_km": 792.9,
     "road_km": 1882.3,
     "cycleway_km": 116.9,
     "crossing_nodes": 6900,
@@ -1477,7 +1511,9 @@
       "cycleway": 118.1,
       "path": 300.9,
       "steps": 22.7,
-      "track": 94.7
+      "track": 94.7,
+      "bridleway": 18.6,
+      "platform": 38.0
     },
     "ways_by_highway": {
       "tertiary": 2705,
@@ -1495,9 +1531,11 @@
       "cycleway": 755,
       "path": 2426,
       "steps": 1922,
-      "track": 342
+      "track": 342,
+      "bridleway": 33,
+      "platform": 1041
     },
-    "ped_km": 915.3,
+    "ped_km": 1066.6,
     "road_km": 1870.9,
     "cycleway_km": 118.1,
     "crossing_nodes": 9683,
@@ -1615,7 +1653,10 @@
       "cycleway": 135.3,
       "path": 295.7,
       "steps": 23.6,
-      "track": 95.7
+      "track": 95.7,
+      "bridleway": 20.8,
+      "platform": 39.0,
+      "corridor": 1.3
     },
     "ways_by_highway": {
       "tertiary": 2829,
@@ -1633,9 +1674,12 @@
       "cycleway": 952,
       "path": 2518,
       "steps": 2064,
-      "track": 367
+      "track": 367,
+      "bridleway": 33,
+      "platform": 1223,
+      "corridor": 34
     },
-    "ped_km": 986.3,
+    "ped_km": 1143.1,
     "road_km": 1865.9,
     "cycleway_km": 135.3,
     "crossing_nodes": 13685,
@@ -1754,6 +1798,9 @@
       "path": 298.6,
       "steps": 25.2,
       "track": 93.0,
+      "bridleway": 20.9,
+      "platform": 39.2,
+      "corridor": 1.7,
       "elevator": 0.1
     },
     "ways_by_highway": {
@@ -1773,9 +1820,12 @@
       "path": 2632,
       "steps": 2274,
       "track": 360,
+      "bridleway": 34,
+      "platform": 1202,
+      "corridor": 45,
       "elevator": 9
     },
-    "ped_km": 1050.2,
+    "ped_km": 1205.0,
     "road_km": 1863.5,
     "cycleway_km": 153.7,
     "crossing_nodes": 14624,
@@ -1894,6 +1944,9 @@
       "cycleway": 182.2,
       "steps": 26.7,
       "track": 93.1,
+      "bridleway": 20.9,
+      "corridor": 1.6,
+      "platform": 36.0,
       "elevator": 0.1
     },
     "ways_by_highway": {
@@ -1913,9 +1966,12 @@
       "cycleway": 1550,
       "steps": 2547,
       "track": 393,
+      "bridleway": 34,
+      "corridor": 41,
+      "platform": 1173,
       "elevator": 16
     },
-    "ped_km": 1296.1,
+    "ped_km": 1447.7,
     "road_km": 1809.5,
     "cycleway_km": 182.2,
     "crossing_nodes": 16755,
@@ -2034,6 +2090,9 @@
       "steps": 28.6,
       "secondary_link": 1.2,
       "track": 90.9,
+      "bridleway": 21.4,
+      "corridor": 2.0,
+      "platform": 33.5,
       "elevator": 0.1
     },
     "ways_by_highway": {
@@ -2053,9 +2112,12 @@
       "steps": 2874,
       "secondary_link": 28,
       "track": 400,
+      "bridleway": 37,
+      "corridor": 74,
+      "platform": 1124,
       "elevator": 16
     },
-    "ped_km": 1517.0,
+    "ped_km": 1664.8,
     "road_km": 1807.2,
     "cycleway_km": 192.3,
     "crossing_nodes": 18411,
@@ -2174,6 +2236,9 @@
       "secondary_link": 1.4,
       "steps": 28.6,
       "track": 90.3,
+      "bridleway": 21.4,
+      "corridor": 2.0,
+      "platform": 31.9,
       "elevator": 0.1
     },
     "ways_by_highway": {
@@ -2193,9 +2258,12 @@
       "secondary_link": 33,
       "steps": 2879,
       "track": 399,
+      "bridleway": 37,
+      "corridor": 74,
+      "platform": 1078,
       "elevator": 16
     },
-    "ped_km": 1543.3,
+    "ped_km": 1688.9,
     "road_km": 1804.2,
     "cycleway_km": 192.5,
     "crossing_nodes": 18552,
@@ -2314,6 +2382,9 @@
       "secondary_link": 1.4,
       "steps": 28.6,
       "track": 91.1,
+      "bridleway": 19.3,
+      "corridor": 2.0,
+      "platform": 31.8,
       "elevator": 0.1
     },
     "ways_by_highway": {
@@ -2333,9 +2404,12 @@
       "secondary_link": 33,
       "steps": 2900,
       "track": 402,
+      "bridleway": 35,
+      "corridor": 74,
+      "platform": 1072,
       "elevator": 16
     },
-    "ped_km": 1557.9,
+    "ped_km": 1702.1,
     "road_km": 1804.2,
     "cycleway_km": 192.0,
     "crossing_nodes": 18625,
@@ -2454,6 +2528,9 @@
       "secondary_link": 1.4,
       "steps": 28.7,
       "track": 90.5,
+      "bridleway": 18.6,
+      "corridor": 2.0,
+      "platform": 31.5,
       "elevator": 0.1
     },
     "ways_by_highway": {
@@ -2473,9 +2550,12 @@
       "secondary_link": 33,
       "steps": 2912,
       "track": 414,
+      "bridleway": 34,
+      "corridor": 74,
+      "platform": 1058,
       "elevator": 16
     },
-    "ped_km": 1563.0,
+    "ped_km": 1705.6,
     "road_km": 1804.3,
     "cycleway_km": 193.0,
     "crossing_nodes": 18705,
@@ -2594,6 +2674,9 @@
       "secondary_link": 1.4,
       "steps": 28.7,
       "track": 89.6,
+      "bridleway": 18.6,
+      "corridor": 2.0,
+      "platform": 31.4,
       "elevator": 0.1
     },
     "ways_by_highway": {
@@ -2613,9 +2696,12 @@
       "secondary_link": 33,
       "steps": 2947,
       "track": 410,
+      "bridleway": 35,
+      "corridor": 74,
+      "platform": 1058,
       "elevator": 16
     },
-    "ped_km": 1594.7,
+    "ped_km": 1736.3,
     "road_km": 1802.9,
     "cycleway_km": 197.7,
     "crossing_nodes": 18827,
@@ -2734,6 +2820,9 @@
       "secondary_link": 1.4,
       "steps": 28.9,
       "track": 88.7,
+      "bridleway": 18.6,
+      "corridor": 2.0,
+      "platform": 31.4,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -2753,9 +2842,12 @@
       "secondary_link": 33,
       "steps": 2988,
       "track": 405,
+      "bridleway": 36,
+      "corridor": 74,
+      "platform": 1057,
       "elevator": 17
     },
-    "ped_km": 1614.1,
+    "ped_km": 1754.8,
     "road_km": 1801.9,
     "cycleway_km": 200.0,
     "crossing_nodes": 18900,
@@ -2874,6 +2966,9 @@
       "secondary_link": 1.4,
       "steps": 29.0,
       "track": 88.9,
+      "bridleway": 18.6,
+      "corridor": 2.0,
+      "platform": 31.1,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -2893,9 +2988,12 @@
       "secondary_link": 33,
       "steps": 3001,
       "track": 403,
+      "bridleway": 36,
+      "corridor": 74,
+      "platform": 1048,
       "elevator": 17
     },
-    "ped_km": 1627.2,
+    "ped_km": 1767.8,
     "road_km": 1800.8,
     "cycleway_km": 201.1,
     "crossing_nodes": 18977,
@@ -3014,6 +3112,9 @@
       "secondary_link": 1.4,
       "steps": 29.4,
       "track": 88.8,
+      "bridleway": 18.6,
+      "corridor": 2.0,
+      "platform": 30.7,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -3033,9 +3134,12 @@
       "secondary_link": 33,
       "steps": 3054,
       "track": 404,
+      "bridleway": 36,
+      "corridor": 74,
+      "platform": 1037,
       "elevator": 22
     },
-    "ped_km": 1650.1,
+    "ped_km": 1790.2,
     "road_km": 1800.2,
     "cycleway_km": 201.8,
     "crossing_nodes": 19096,
@@ -3154,6 +3258,9 @@
       "secondary_link": 1.4,
       "steps": 29.5,
       "track": 88.9,
+      "bridleway": 18.6,
+      "corridor": 2.0,
+      "platform": 30.6,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -3173,9 +3280,12 @@
       "secondary_link": 33,
       "steps": 3068,
       "track": 404,
+      "bridleway": 36,
+      "corridor": 71,
+      "platform": 1035,
       "elevator": 22
     },
-    "ped_km": 1661.2,
+    "ped_km": 1801.3,
     "road_km": 1798.6,
     "cycleway_km": 199.2,
     "crossing_nodes": 19131,
@@ -3294,6 +3404,9 @@
       "secondary_link": 1.4,
       "steps": 29.9,
       "track": 88.9,
+      "bridleway": 18.6,
+      "corridor": 1.9,
+      "platform": 30.5,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -3313,9 +3426,12 @@
       "secondary_link": 33,
       "steps": 3109,
       "track": 404,
+      "bridleway": 36,
+      "corridor": 67,
+      "platform": 1030,
       "elevator": 22
     },
-    "ped_km": 1674.3,
+    "ped_km": 1814.2,
     "road_km": 1795.9,
     "cycleway_km": 199.5,
     "crossing_nodes": 19179,
@@ -3434,6 +3550,9 @@
       "secondary_link": 1.4,
       "steps": 30.0,
       "track": 88.5,
+      "bridleway": 18.8,
+      "corridor": 1.9,
+      "platform": 30.3,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -3453,9 +3572,12 @@
       "secondary_link": 33,
       "steps": 3133,
       "track": 402,
+      "bridleway": 37,
+      "corridor": 60,
+      "platform": 1027,
       "elevator": 23
     },
-    "ped_km": 1682.4,
+    "ped_km": 1821.9,
     "road_km": 1795.9,
     "cycleway_km": 199.9,
     "crossing_nodes": 19216,
@@ -3574,6 +3696,9 @@
       "secondary_link": 1.4,
       "steps": 30.0,
       "track": 88.4,
+      "bridleway": 18.8,
+      "corridor": 1.8,
+      "platform": 30.6,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -3593,9 +3718,12 @@
       "secondary_link": 33,
       "steps": 3150,
       "track": 400,
+      "bridleway": 37,
+      "corridor": 58,
+      "platform": 1034,
       "elevator": 23
     },
-    "ped_km": 1699.8,
+    "ped_km": 1839.4,
     "road_km": 1796.7,
     "cycleway_km": 200.6,
     "crossing_nodes": 19284,
@@ -3714,6 +3842,9 @@
       "secondary_link": 1.4,
       "steps": 30.1,
       "track": 88.6,
+      "bridleway": 18.8,
+      "corridor": 1.8,
+      "platform": 30.2,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -3733,9 +3864,12 @@
       "secondary_link": 33,
       "steps": 3165,
       "track": 402,
+      "bridleway": 37,
+      "corridor": 58,
+      "platform": 1025,
       "elevator": 23
     },
-    "ped_km": 1703.7,
+    "ped_km": 1843.1,
     "road_km": 1794.4,
     "cycleway_km": 203.5,
     "crossing_nodes": 19303,
@@ -3854,6 +3988,9 @@
       "secondary_link": 1.4,
       "steps": 30.2,
       "track": 88.8,
+      "bridleway": 18.8,
+      "platform": 30.1,
+      "corridor": 0.4,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -3873,9 +4010,12 @@
       "secondary_link": 33,
       "steps": 3191,
       "track": 405,
+      "bridleway": 37,
+      "platform": 1021,
+      "corridor": 24,
       "elevator": 23
     },
-    "ped_km": 1714.5,
+    "ped_km": 1852.6,
     "road_km": 1794.5,
     "cycleway_km": 202.8,
     "crossing_nodes": 19318,
@@ -3994,6 +4134,9 @@
       "secondary_link": 1.4,
       "steps": 30.4,
       "track": 88.8,
+      "bridleway": 18.8,
+      "platform": 30.0,
+      "corridor": 0.4,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -4013,9 +4156,12 @@
       "secondary_link": 33,
       "steps": 3222,
       "track": 405,
+      "bridleway": 37,
+      "platform": 1016,
+      "corridor": 24,
       "elevator": 23
     },
-    "ped_km": 1725.6,
+    "ped_km": 1863.6,
     "road_km": 1794.0,
     "cycleway_km": 204.5,
     "crossing_nodes": 19396,
@@ -4134,6 +4280,9 @@
       "secondary_link": 1.4,
       "steps": 31.1,
       "track": 90.1,
+      "bridleway": 18.8,
+      "platform": 29.8,
+      "corridor": 0.4,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -4153,9 +4302,12 @@
       "secondary_link": 33,
       "steps": 3282,
       "track": 414,
+      "bridleway": 37,
+      "platform": 1012,
+      "corridor": 24,
       "elevator": 23
     },
-    "ped_km": 1741.6,
+    "ped_km": 1880.7,
     "road_km": 1793.8,
     "cycleway_km": 205.2,
     "crossing_nodes": 19416,
@@ -4274,6 +4426,9 @@
       "secondary_link": 1.4,
       "steps": 31.3,
       "track": 91.0,
+      "bridleway": 18.8,
+      "platform": 29.6,
+      "corridor": 0.9,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -4293,9 +4448,12 @@
       "secondary_link": 32,
       "steps": 3308,
       "track": 424,
+      "bridleway": 37,
+      "platform": 1008,
+      "corridor": 32,
       "elevator": 23
     },
-    "ped_km": 1755.0,
+    "ped_km": 1895.3,
     "road_km": 1792.9,
     "cycleway_km": 205.1,
     "crossing_nodes": 19482,
@@ -4414,6 +4572,9 @@
       "secondary_link": 1.4,
       "steps": 31.3,
       "track": 92.1,
+      "bridleway": 18.8,
+      "platform": 29.7,
+      "corridor": 0.9,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -4433,9 +4594,12 @@
       "secondary_link": 32,
       "steps": 3319,
       "track": 431,
+      "bridleway": 37,
+      "platform": 1009,
+      "corridor": 32,
       "elevator": 23
     },
-    "ped_km": 1765.1,
+    "ped_km": 1906.6,
     "road_km": 1789.7,
     "cycleway_km": 206.1,
     "crossing_nodes": 19539,
@@ -4554,6 +4718,9 @@
       "secondary_link": 1.4,
       "steps": 31.5,
       "track": 92.4,
+      "bridleway": 18.8,
+      "platform": 29.6,
+      "corridor": 0.9,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -4573,9 +4740,12 @@
       "secondary_link": 32,
       "steps": 3355,
       "track": 433,
+      "bridleway": 37,
+      "platform": 1007,
+      "corridor": 32,
       "elevator": 23
     },
-    "ped_km": 1777.3,
+    "ped_km": 1919.0,
     "road_km": 1789.7,
     "cycleway_km": 207.6,
     "crossing_nodes": 19597,
@@ -4694,6 +4864,9 @@
       "secondary_link": 1.4,
       "steps": 31.7,
       "track": 92.9,
+      "bridleway": 18.8,
+      "platform": 29.6,
+      "corridor": 0.9,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -4713,9 +4886,12 @@
       "secondary_link": 32,
       "steps": 3370,
       "track": 435,
+      "bridleway": 37,
+      "platform": 1008,
+      "corridor": 32,
       "elevator": 23
     },
-    "ped_km": 1783.0,
+    "ped_km": 1925.2,
     "road_km": 1788.9,
     "cycleway_km": 208.7,
     "crossing_nodes": 19620,
@@ -4834,6 +5010,9 @@
       "secondary_link": 1.4,
       "steps": 32.1,
       "track": 93.0,
+      "bridleway": 18.8,
+      "platform": 30.9,
+      "corridor": 0.9,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -4853,9 +5032,12 @@
       "secondary_link": 32,
       "steps": 3418,
       "track": 437,
+      "bridleway": 37,
+      "platform": 1003,
+      "corridor": 32,
       "elevator": 23
     },
-    "ped_km": 1797.3,
+    "ped_km": 1940.9,
     "road_km": 1787.4,
     "cycleway_km": 210.6,
     "crossing_nodes": 19691,
@@ -4974,6 +5156,9 @@
       "secondary_link": 1.4,
       "steps": 32.4,
       "track": 93.0,
+      "bridleway": 18.8,
+      "platform": 29.8,
+      "corridor": 0.9,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -4993,9 +5178,12 @@
       "secondary_link": 32,
       "steps": 3445,
       "track": 436,
+      "bridleway": 37,
+      "platform": 1002,
+      "corridor": 32,
       "elevator": 23
     },
-    "ped_km": 1805.8,
+    "ped_km": 1948.3,
     "road_km": 1788.0,
     "cycleway_km": 211.2,
     "crossing_nodes": 19733,
@@ -5114,6 +5302,9 @@
       "secondary_link": 1.4,
       "steps": 32.6,
       "track": 93.0,
+      "bridleway": 18.8,
+      "platform": 29.8,
+      "corridor": 0.9,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -5133,9 +5324,12 @@
       "secondary_link": 32,
       "steps": 3493,
       "track": 437,
+      "bridleway": 37,
+      "platform": 1001,
+      "corridor": 32,
       "elevator": 23
     },
-    "ped_km": 1827.3,
+    "ped_km": 1969.8,
     "road_km": 1788.0,
     "cycleway_km": 211.5,
     "crossing_nodes": 19818,
@@ -5254,6 +5448,9 @@
       "secondary_link": 1.4,
       "steps": 32.7,
       "track": 92.2,
+      "bridleway": 18.8,
+      "platform": 29.7,
+      "corridor": 0.9,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -5273,9 +5470,12 @@
       "secondary_link": 32,
       "steps": 3510,
       "track": 445,
+      "bridleway": 37,
+      "platform": 998,
+      "corridor": 32,
       "elevator": 23
     },
-    "ped_km": 1905.4,
+    "ped_km": 2047.0,
     "road_km": 1787.1,
     "cycleway_km": 208.4,
     "crossing_nodes": 19992,
@@ -5394,6 +5594,9 @@
       "secondary_link": 1.4,
       "steps": 32.7,
       "track": 92.2,
+      "bridleway": 19.1,
+      "platform": 29.7,
+      "corridor": 0.9,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -5413,9 +5616,12 @@
       "secondary_link": 32,
       "steps": 3545,
       "track": 446,
+      "bridleway": 38,
+      "platform": 1002,
+      "corridor": 32,
       "elevator": 23
     },
-    "ped_km": 1970.9,
+    "ped_km": 2112.8,
     "road_km": 1785.0,
     "cycleway_km": 208.7,
     "crossing_nodes": 20239,
@@ -5534,6 +5740,9 @@
       "secondary_link": 1.4,
       "steps": 32.8,
       "track": 91.1,
+      "bridleway": 17.3,
+      "platform": 29.7,
+      "corridor": 0.9,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -5553,9 +5762,12 @@
       "secondary_link": 32,
       "steps": 3553,
       "track": 444,
+      "bridleway": 36,
+      "platform": 1002,
+      "corridor": 32,
       "elevator": 23
     },
-    "ped_km": 2008.7,
+    "ped_km": 2147.7,
     "road_km": 1780.0,
     "cycleway_km": 207.8,
     "crossing_nodes": 20335,
@@ -5674,6 +5886,9 @@
       "secondary_link": 1.4,
       "steps": 32.9,
       "track": 91.0,
+      "bridleway": 17.3,
+      "platform": 29.7,
+      "corridor": 0.9,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -5693,9 +5908,12 @@
       "secondary_link": 32,
       "steps": 3559,
       "track": 442,
+      "bridleway": 36,
+      "platform": 1002,
+      "corridor": 32,
       "elevator": 23
     },
-    "ped_km": 2046.9,
+    "ped_km": 2185.8,
     "road_km": 1779.1,
     "cycleway_km": 208.1,
     "crossing_nodes": 20471,
@@ -5814,6 +6032,9 @@
       "secondary_link": 1.4,
       "steps": 33.0,
       "track": 91.0,
+      "bridleway": 17.7,
+      "platform": 29.7,
+      "corridor": 0.9,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -5833,9 +6054,12 @@
       "secondary_link": 32,
       "steps": 3587,
       "track": 442,
+      "bridleway": 37,
+      "platform": 1002,
+      "corridor": 32,
       "elevator": 23
     },
-    "ped_km": 2060.3,
+    "ped_km": 2199.6,
     "road_km": 1778.7,
     "cycleway_km": 207.5,
     "crossing_nodes": 20504,
@@ -5954,6 +6178,9 @@
       "secondary_link": 1.1,
       "steps": 33.1,
       "track": 90.0,
+      "bridleway": 17.4,
+      "platform": 29.7,
+      "corridor": 0.9,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -5973,9 +6200,12 @@
       "secondary_link": 24,
       "steps": 3618,
       "track": 435,
+      "bridleway": 36,
+      "platform": 1002,
+      "corridor": 32,
       "elevator": 23
     },
-    "ped_km": 2073.2,
+    "ped_km": 2211.2,
     "road_km": 1775.0,
     "cycleway_km": 208.2,
     "crossing_nodes": 20535,
@@ -6094,6 +6324,9 @@
       "secondary_link": 1.1,
       "steps": 33.3,
       "track": 91.1,
+      "bridleway": 19.2,
+      "platform": 29.7,
+      "corridor": 0.9,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -6113,9 +6346,12 @@
       "secondary_link": 24,
       "steps": 3639,
       "track": 437,
+      "bridleway": 38,
+      "platform": 1000,
+      "corridor": 32,
       "elevator": 23
     },
-    "ped_km": 2091.7,
+    "ped_km": 2232.6,
     "road_km": 1777.7,
     "cycleway_km": 209.6,
     "crossing_nodes": 20585,
@@ -6234,6 +6470,9 @@
       "secondary_link": 1.1,
       "steps": 33.4,
       "track": 91.2,
+      "bridleway": 19.1,
+      "platform": 29.6,
+      "corridor": 0.9,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -6253,9 +6492,12 @@
       "secondary_link": 25,
       "steps": 3657,
       "track": 441,
+      "bridleway": 38,
+      "platform": 998,
+      "corridor": 32,
       "elevator": 23
     },
-    "ped_km": 2104.5,
+    "ped_km": 2245.3,
     "road_km": 1774.1,
     "cycleway_km": 208.9,
     "crossing_nodes": 20615,
@@ -6374,6 +6616,9 @@
       "secondary_link": 1.0,
       "steps": 33.5,
       "track": 91.8,
+      "bridleway": 19.1,
+      "platform": 29.5,
+      "corridor": 1.0,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -6393,9 +6638,12 @@
       "secondary_link": 23,
       "steps": 3678,
       "track": 443,
+      "bridleway": 38,
+      "platform": 997,
+      "corridor": 33,
       "elevator": 23
     },
-    "ped_km": 2118.0,
+    "ped_km": 2259.4,
     "road_km": 1771.5,
     "cycleway_km": 215.9,
     "crossing_nodes": 20704,
@@ -6514,6 +6762,9 @@
       "secondary_link": 1.0,
       "steps": 33.6,
       "track": 91.7,
+      "bridleway": 19.1,
+      "platform": 29.5,
+      "corridor": 1.0,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -6533,9 +6784,12 @@
       "secondary_link": 23,
       "steps": 3696,
       "track": 442,
+      "bridleway": 38,
+      "platform": 996,
+      "corridor": 33,
       "elevator": 23
     },
-    "ped_km": 2123.8,
+    "ped_km": 2265.1,
     "road_km": 1770.3,
     "cycleway_km": 216.1,
     "crossing_nodes": 20742,
@@ -6654,6 +6908,9 @@
       "secondary_link": 1.0,
       "steps": 33.6,
       "track": 91.9,
+      "bridleway": 19.1,
+      "platform": 29.6,
+      "corridor": 1.0,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -6673,9 +6930,12 @@
       "secondary_link": 23,
       "steps": 3707,
       "track": 445,
+      "bridleway": 38,
+      "platform": 1000,
+      "corridor": 33,
       "elevator": 23
     },
-    "ped_km": 2127.4,
+    "ped_km": 2269.0,
     "road_km": 1769.3,
     "cycleway_km": 217.2,
     "crossing_nodes": 20778,
@@ -6794,6 +7054,9 @@
       "path": 258.4,
       "steps": 33.8,
       "track": 92.1,
+      "bridleway": 19.1,
+      "platform": 29.8,
+      "corridor": 1.0,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -6813,9 +7076,12 @@
       "path": 2883,
       "steps": 3729,
       "track": 445,
+      "bridleway": 38,
+      "platform": 1002,
+      "corridor": 33,
       "elevator": 23
     },
-    "ped_km": 2134.5,
+    "ped_km": 2276.5,
     "road_km": 1767.8,
     "cycleway_km": 219.5,
     "crossing_nodes": 20799,
@@ -6934,6 +7200,9 @@
       "path": 260.9,
       "steps": 33.9,
       "track": 91.8,
+      "bridleway": 19.1,
+      "platform": 29.6,
+      "corridor": 1.0,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -6953,9 +7222,12 @@
       "path": 2992,
       "steps": 3747,
       "track": 445,
+      "bridleway": 38,
+      "platform": 997,
+      "corridor": 33,
       "elevator": 23
     },
-    "ped_km": 2145.6,
+    "ped_km": 2287.1,
     "road_km": 1767.9,
     "cycleway_km": 218.9,
     "crossing_nodes": 20834,
@@ -7074,6 +7346,9 @@
       "path": 261.1,
       "steps": 34.1,
       "track": 92.2,
+      "bridleway": 19.1,
+      "platform": 29.6,
+      "corridor": 1.0,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -7093,9 +7368,12 @@
       "path": 3002,
       "steps": 3772,
       "track": 451,
+      "bridleway": 38,
+      "platform": 996,
+      "corridor": 33,
       "elevator": 23
     },
-    "ped_km": 2153.4,
+    "ped_km": 2295.3,
     "road_km": 1768.1,
     "cycleway_km": 219.7,
     "crossing_nodes": 21025,
@@ -7214,6 +7492,9 @@
       "path": 261.1,
       "steps": 34.1,
       "track": 92.3,
+      "bridleway": 19.1,
+      "platform": 29.4,
+      "corridor": 1.0,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -7233,9 +7514,12 @@
       "path": 3005,
       "steps": 3779,
       "track": 455,
+      "bridleway": 38,
+      "platform": 994,
+      "corridor": 33,
       "elevator": 23
     },
-    "ped_km": 2167.0,
+    "ped_km": 2308.8,
     "road_km": 1767.5,
     "cycleway_km": 220.6,
     "crossing_nodes": 21133,
@@ -7354,6 +7638,9 @@
       "path": 258.5,
       "steps": 34.2,
       "track": 92.0,
+      "bridleway": 19.1,
+      "platform": 29.4,
+      "corridor": 1.0,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -7373,9 +7660,12 @@
       "path": 2903,
       "steps": 3782,
       "track": 452,
+      "bridleway": 38,
+      "platform": 994,
+      "corridor": 33,
       "elevator": 23
     },
-    "ped_km": 2189.8,
+    "ped_km": 2331.3,
     "road_km": 1767.1,
     "cycleway_km": 220.6,
     "crossing_nodes": 21186,
@@ -7494,6 +7784,9 @@
       "path": 258.3,
       "steps": 34.2,
       "track": 92.0,
+      "bridleway": 19.1,
+      "platform": 29.3,
+      "corridor": 1.0,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -7513,9 +7806,12 @@
       "path": 2897,
       "steps": 3798,
       "track": 452,
+      "bridleway": 38,
+      "platform": 990,
+      "corridor": 33,
       "elevator": 23
     },
-    "ped_km": 2202.8,
+    "ped_km": 2344.2,
     "road_km": 1767.3,
     "cycleway_km": 220.5,
     "crossing_nodes": 21241,
@@ -7634,6 +7930,9 @@
       "path": 257.5,
       "steps": 34.3,
       "track": 92.2,
+      "bridleway": 19.1,
+      "platform": 28.8,
+      "corridor": 1.0,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -7653,9 +7952,12 @@
       "path": 2902,
       "steps": 3826,
       "track": 458,
+      "bridleway": 38,
+      "platform": 979,
+      "corridor": 33,
       "elevator": 23
     },
-    "ped_km": 2217.5,
+    "ped_km": 2358.6,
     "road_km": 1766.8,
     "cycleway_km": 221.2,
     "crossing_nodes": 21321,
@@ -7774,6 +8076,9 @@
       "path": 255.8,
       "steps": 34.5,
       "track": 92.2,
+      "bridleway": 19.1,
+      "platform": 28.8,
+      "corridor": 1.0,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -7793,9 +8098,12 @@
       "path": 2878,
       "steps": 3853,
       "track": 458,
+      "bridleway": 38,
+      "platform": 978,
+      "corridor": 33,
       "elevator": 23
     },
-    "ped_km": 2258.5,
+    "ped_km": 2399.6,
     "road_km": 1765.4,
     "cycleway_km": 221.7,
     "crossing_nodes": 21516,
@@ -7914,6 +8222,9 @@
       "path": 255.7,
       "steps": 34.5,
       "track": 92.3,
+      "bridleway": 19.1,
+      "platform": 28.8,
+      "corridor": 1.0,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -7933,9 +8244,12 @@
       "path": 2879,
       "steps": 3858,
       "track": 459,
+      "bridleway": 38,
+      "platform": 980,
+      "corridor": 33,
       "elevator": 23
     },
-    "ped_km": 2269.5,
+    "ped_km": 2410.7,
     "road_km": 1765.4,
     "cycleway_km": 222.0,
     "crossing_nodes": 21688,
@@ -8054,6 +8368,9 @@
       "path": 258.2,
       "steps": 34.7,
       "track": 92.6,
+      "bridleway": 18.8,
+      "platform": 28.7,
+      "corridor": 0.9,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -8073,9 +8390,12 @@
       "path": 2910,
       "steps": 3876,
       "track": 465,
+      "bridleway": 36,
+      "platform": 979,
+      "corridor": 25,
       "elevator": 23
     },
-    "ped_km": 2281.7,
+    "ped_km": 2422.7,
     "road_km": 1764.9,
     "cycleway_km": 222.2,
     "crossing_nodes": 21714,
@@ -8194,6 +8514,9 @@
       "path": 256.9,
       "steps": 34.7,
       "track": 93.0,
+      "bridleway": 18.8,
+      "platform": 28.1,
+      "corridor": 0.9,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -8213,9 +8536,12 @@
       "path": 2904,
       "steps": 3889,
       "track": 468,
+      "bridleway": 36,
+      "platform": 965,
+      "corridor": 25,
       "elevator": 23
     },
-    "ped_km": 2289.8,
+    "ped_km": 2430.6,
     "road_km": 1765.2,
     "cycleway_km": 222.9,
     "crossing_nodes": 21722,
@@ -8334,6 +8660,9 @@
       "path": 257.0,
       "steps": 34.8,
       "track": 93.0,
+      "bridleway": 18.8,
+      "platform": 28.0,
+      "corridor": 0.9,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -8353,9 +8682,12 @@
       "path": 2924,
       "steps": 3912,
       "track": 465,
+      "bridleway": 36,
+      "platform": 961,
+      "corridor": 25,
       "elevator": 23
     },
-    "ped_km": 2307.6,
+    "ped_km": 2448.3,
     "road_km": 1765.0,
     "cycleway_km": 223.7,
     "crossing_nodes": 21750,
@@ -8474,6 +8806,9 @@
       "path": 257.2,
       "steps": 35.0,
       "track": 92.7,
+      "bridleway": 18.8,
+      "platform": 27.3,
+      "corridor": 0.9,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -8493,9 +8828,12 @@
       "path": 2929,
       "steps": 3927,
       "track": 466,
+      "bridleway": 36,
+      "platform": 956,
+      "corridor": 25,
       "elevator": 23
     },
-    "ped_km": 2341.9,
+    "ped_km": 2481.6,
     "road_km": 1765.6,
     "cycleway_km": 224.0,
     "crossing_nodes": 21834,
@@ -8614,6 +8952,9 @@
       "path": 257.6,
       "steps": 35.0,
       "track": 92.8,
+      "bridleway": 18.8,
+      "platform": 27.3,
+      "corridor": 0.9,
       "elevator": 0.2
     },
     "ways_by_highway": {
@@ -8633,9 +8974,12 @@
       "path": 2937,
       "steps": 3930,
       "track": 468,
+      "bridleway": 36,
+      "platform": 954,
+      "corridor": 25,
       "elevator": 23
     },
-    "ped_km": 2345.2,
+    "ped_km": 2485.0,
     "road_km": 1765.6,
     "cycleway_km": 224.0,
     "crossing_nodes": 21842,
@@ -8754,7 +9098,10 @@
       "path": 257.3,
       "steps": 35.0,
       "track": 92.6,
-      "elevator": 0.2
+      "bridleway": 18.8,
+      "platform": 27.3,
+      "elevator": 0.2,
+      "corridor": 0.8
     },
     "ways_by_highway": {
       "tertiary": 3283,
@@ -8773,9 +9120,12 @@
       "path": 2938,
       "steps": 3935,
       "track": 466,
-      "elevator": 23
+      "bridleway": 36,
+      "platform": 953,
+      "elevator": 23,
+      "corridor": 16
     },
-    "ped_km": 2353.3,
+    "ped_km": 2492.8,
     "road_km": 1765.5,
     "cycleway_km": 225.5,
     "crossing_nodes": 21873,
@@ -8894,7 +9244,10 @@
       "path": 256.8,
       "steps": 35.1,
       "track": 92.6,
-      "elevator": 0.2
+      "bridleway": 18.8,
+      "platform": 27.1,
+      "elevator": 0.2,
+      "corridor": 0.8
     },
     "ways_by_highway": {
       "tertiary": 3283,
@@ -8913,9 +9266,12 @@
       "path": 2940,
       "steps": 3950,
       "track": 466,
-      "elevator": 22
+      "bridleway": 36,
+      "platform": 947,
+      "elevator": 22,
+      "corridor": 16
     },
-    "ped_km": 2361.0,
+    "ped_km": 2500.3,
     "road_km": 1764.4,
     "cycleway_km": 225.9,
     "crossing_nodes": 21946,
@@ -9034,7 +9390,10 @@
       "path": 251.6,
       "steps": 35.1,
       "track": 92.6,
-      "elevator": 0.2
+      "bridleway": 18.8,
+      "platform": 27.1,
+      "elevator": 0.2,
+      "corridor": 0.8
     },
     "ways_by_highway": {
       "tertiary": 3298,
@@ -9053,9 +9412,12 @@
       "path": 2909,
       "steps": 3958,
       "track": 466,
-      "elevator": 22
+      "bridleway": 36,
+      "platform": 943,
+      "elevator": 22,
+      "corridor": 16
     },
-    "ped_km": 2383.2,
+    "ped_km": 2522.5,
     "road_km": 1762.4,
     "cycleway_km": 225.8,
     "crossing_nodes": 22012,
@@ -9174,7 +9536,10 @@
       "path": 252.2,
       "steps": 35.2,
       "track": 92.6,
-      "elevator": 0.2
+      "bridleway": 18.8,
+      "platform": 27.0,
+      "elevator": 0.2,
+      "corridor": 0.8
     },
     "ways_by_highway": {
       "tertiary": 3282,
@@ -9193,9 +9558,12 @@
       "path": 2922,
       "steps": 3968,
       "track": 469,
-      "elevator": 22
+      "bridleway": 36,
+      "platform": 941,
+      "elevator": 22,
+      "corridor": 16
     },
-    "ped_km": 2395.3,
+    "ped_km": 2534.5,
     "road_km": 1760.0,
     "cycleway_km": 227.5,
     "crossing_nodes": 22039,
@@ -9314,7 +9682,10 @@
       "path": 252.6,
       "steps": 35.2,
       "track": 93.0,
-      "elevator": 0.2
+      "bridleway": 18.8,
+      "platform": 26.8,
+      "elevator": 0.2,
+      "corridor": 0.8
     },
     "ways_by_highway": {
       "tertiary": 3277,
@@ -9333,9 +9704,12 @@
       "path": 2934,
       "steps": 3980,
       "track": 470,
-      "elevator": 22
+      "bridleway": 36,
+      "platform": 936,
+      "elevator": 22,
+      "corridor": 16
     },
-    "ped_km": 2416.0,
+    "ped_km": 2555.4,
     "road_km": 1760.9,
     "cycleway_km": 226.9,
     "crossing_nodes": 22133,
@@ -9454,7 +9828,10 @@
       "path": 252.2,
       "steps": 35.4,
       "track": 93.4,
-      "elevator": 0.2
+      "bridleway": 18.8,
+      "platform": 26.7,
+      "elevator": 0.2,
+      "corridor": 0.8
     },
     "ways_by_highway": {
       "tertiary": 3280,
@@ -9473,9 +9850,12 @@
       "path": 2926,
       "steps": 3998,
       "track": 471,
-      "elevator": 22
+      "bridleway": 36,
+      "platform": 932,
+      "elevator": 22,
+      "corridor": 16
     },
-    "ped_km": 2463.0,
+    "ped_km": 2602.7,
     "road_km": 1762.3,
     "cycleway_km": 229.9,
     "crossing_nodes": 22288,
@@ -9594,7 +9974,10 @@
       "path": 251.1,
       "steps": 35.5,
       "track": 94.0,
-      "elevator": 0.2
+      "bridleway": 18.8,
+      "platform": 26.5,
+      "elevator": 0.2,
+      "corridor": 0.8
     },
     "ways_by_highway": {
       "tertiary": 3284,
@@ -9613,9 +9996,12 @@
       "path": 2930,
       "steps": 4015,
       "track": 477,
-      "elevator": 22
+      "bridleway": 36,
+      "platform": 928,
+      "elevator": 22,
+      "corridor": 16
     },
-    "ped_km": 2518.6,
+    "ped_km": 2658.7,
     "road_km": 1762.2,
     "cycleway_km": 230.4,
     "crossing_nodes": 22615,
@@ -9734,7 +10120,10 @@
       "path": 251.7,
       "steps": 35.6,
       "track": 94.4,
-      "elevator": 0.2
+      "bridleway": 18.8,
+      "platform": 26.4,
+      "elevator": 0.2,
+      "corridor": 0.8
     },
     "ways_by_highway": {
       "tertiary": 3290,
@@ -9753,9 +10142,12 @@
       "path": 2943,
       "steps": 4041,
       "track": 483,
-      "elevator": 22
+      "bridleway": 36,
+      "platform": 925,
+      "elevator": 22,
+      "corridor": 16
     },
-    "ped_km": 2544.9,
+    "ped_km": 2685.3,
     "road_km": 1761.4,
     "cycleway_km": 233.6,
     "crossing_nodes": 22648,
@@ -9874,7 +10266,10 @@
       "path": 251.5,
       "steps": 35.6,
       "track": 94.9,
-      "elevator": 0.2
+      "bridleway": 18.8,
+      "platform": 26.4,
+      "elevator": 0.2,
+      "corridor": 0.8
     },
     "ways_by_highway": {
       "tertiary": 3292,
@@ -9893,9 +10288,12 @@
       "path": 2937,
       "steps": 4052,
       "track": 484,
-      "elevator": 22
+      "bridleway": 36,
+      "platform": 925,
+      "elevator": 22,
+      "corridor": 16
     },
-    "ped_km": 2564.4,
+    "ped_km": 2705.3,
     "road_km": 1761.5,
     "cycleway_km": 233.7,
     "crossing_nodes": 22736,
@@ -10014,7 +10412,10 @@
       "path": 251.3,
       "steps": 35.7,
       "track": 94.4,
-      "elevator": 0.2
+      "bridleway": 18.8,
+      "platform": 26.4,
+      "elevator": 0.2,
+      "corridor": 0.8
     },
     "ways_by_highway": {
       "tertiary": 3301,
@@ -10033,9 +10434,12 @@
       "path": 2933,
       "steps": 4076,
       "track": 484,
-      "elevator": 22
+      "bridleway": 36,
+      "platform": 924,
+      "elevator": 22,
+      "corridor": 16
     },
-    "ped_km": 2599.1,
+    "ped_km": 2739.5,
     "road_km": 1761.4,
     "cycleway_km": 233.7,
     "crossing_nodes": 22767,
@@ -10154,7 +10558,10 @@
       "path": 251.4,
       "steps": 35.7,
       "track": 94.5,
-      "elevator": 0.2
+      "bridleway": 18.3,
+      "platform": 26.3,
+      "elevator": 0.2,
+      "corridor": 0.8
     },
     "ways_by_highway": {
       "tertiary": 3307,
@@ -10173,9 +10580,12 @@
       "path": 2932,
       "steps": 4084,
       "track": 487,
-      "elevator": 22
+      "bridleway": 35,
+      "platform": 922,
+      "elevator": 22,
+      "corridor": 16
     },
-    "ped_km": 2622.1,
+    "ped_km": 2762.0,
     "road_km": 1761.3,
     "cycleway_km": 235.0,
     "crossing_nodes": 22837,
@@ -10294,7 +10704,10 @@
       "path": 252.5,
       "steps": 35.8,
       "track": 94.6,
-      "elevator": 0.2
+      "bridleway": 18.8,
+      "platform": 26.3,
+      "elevator": 0.2,
+      "corridor": 0.8
     },
     "ways_by_highway": {
       "tertiary": 3302,
@@ -10313,9 +10726,12 @@
       "path": 2949,
       "steps": 4105,
       "track": 491,
-      "elevator": 22
+      "bridleway": 36,
+      "platform": 922,
+      "elevator": 22,
+      "corridor": 16
     },
-    "ped_km": 2650.4,
+    "ped_km": 2790.9,
     "road_km": 1761.9,
     "cycleway_km": 235.3,
     "crossing_nodes": 22886,
@@ -10416,7 +10832,7 @@
     "type": "snapshot"
   },
   {
-    "date": "2026-11-02",
+    "date": "2026-11-03",
     "km_by_highway": {
       "tertiary": 257.2,
       "residential": 1113.6,
@@ -10434,7 +10850,10 @@
       "path": 252.5,
       "steps": 35.8,
       "track": 94.6,
-      "elevator": 0.2
+      "bridleway": 18.8,
+      "platform": 26.3,
+      "elevator": 0.2,
+      "corridor": 0.8
     },
     "ways_by_highway": {
       "tertiary": 3302,
@@ -10442,42 +10861,45 @@
       "primary": 1599,
       "secondary": 1722,
       "living_street": 1392,
-      "pedestrian": 2455,
+      "pedestrian": 2456,
       "service": 10965,
       "unclassified": 608,
       "primary_link": 90,
-      "footway": 59671,
+      "footway": 59672,
       "secondary_link": 27,
       "tertiary_link": 31,
       "cycleway": 2739,
       "path": 2949,
       "steps": 4105,
       "track": 491,
-      "elevator": 22
+      "bridleway": 36,
+      "platform": 922,
+      "elevator": 22,
+      "corridor": 16
     },
-    "ped_km": 2651.6,
+    "ped_km": 2792.1,
     "road_km": 1761.9,
     "cycleway_km": 235.3,
-    "crossing_nodes": 22886,
+    "crossing_nodes": 22877,
     "crossing_continuous": 145,
     "crossing_marked": 117,
-    "crossing_unmarked": 3526,
+    "crossing_unmarked": 3521,
     "crossing_signals": 2987,
-    "crossing_with_tactile": 8102,
+    "crossing_with_tactile": 8098,
     "elevator_nodes": 224,
-    "footway_ways": 59671,
-    "footway_sidewalk": 24883,
-    "footway_crossing": 15446,
+    "footway_ways": 59672,
+    "footway_sidewalk": 24888,
+    "footway_crossing": 15449,
     "footway_link": 72,
     "footway_traffic_island": 1636,
     "footway_other": 32,
-    "footway_no_subtag": 17602,
-    "footway_with_surface": 36227,
-    "footway_with_smoothness": 3177,
+    "footway_no_subtag": 17595,
+    "footway_with_surface": 36252,
+    "footway_with_smoothness": 3179,
     "road_ways": 17671,
-    "road_sidewalk_any_tag": 9420,
-    "road_sidewalk_separate": 6012,
-    "road_sidewalk_yes_or_both": 2144,
+    "road_sidewalk_any_tag": 9424,
+    "road_sidewalk_separate": 6015,
+    "road_sidewalk_yes_or_both": 2145,
     "road_sidewalk_no_explicit": 325,
     "road_sidewalk_partial": 939,
     "road_sidewalk_by_type": {
@@ -10499,16 +10921,16 @@
       },
       "primary": {
         "total": 1599,
-        "any_tag": 664,
-        "separate": 475,
-        "yes_or_both": 33,
+        "any_tag": 666,
+        "separate": 476,
+        "yes_or_both": 34,
         "partial": 105,
         "no_explicit": 51
       },
       "secondary": {
         "total": 1722,
-        "any_tag": 907,
-        "separate": 680,
+        "any_tag": 909,
+        "separate": 682,
         "yes_or_both": 77,
         "partial": 113,
         "no_explicit": 37
@@ -10546,11 +10968,11 @@
         "no_explicit": 0
       }
     },
-    "crossing_tagged_pct": 67.49,
-    "sidewalk_documented_pct": 47.99,
-    "sidewalk_separate_pct": 34.02,
-    "footway_surface_pct": 60.71,
-    "footway_smoothness_pct": 5.32,
+    "crossing_tagged_pct": 67.53,
+    "sidewalk_documented_pct": 48.02,
+    "sidewalk_separate_pct": 34.04,
+    "footway_surface_pct": 60.75,
+    "footway_smoothness_pct": 5.33,
     "tactile_paving_pct": 35.4,
     "filename": "Brussels-daily.pbf",
     "type": "daily"

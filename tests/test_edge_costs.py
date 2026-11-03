@@ -78,7 +78,7 @@ def bundle(tmp_path_factory):
 
 def _edges_named(bundle, name):
     return [
-        eid for eid, edge_name in enumerate(bundle.edge_names) if edge_name == name
+        eid for eid, edge_name in enumerate(bundle.edges.names) if edge_name == name
     ]
 
 
@@ -88,14 +88,14 @@ def test_weight_is_length_times_cost(bundle, name, tags, cost, cycleway_nf):
 
     assert len(eids) == 2
     for eid in eids:
-        assert bundle.edge_lengths[eid] > 50.0
-        assert bundle.edge_weights[eid] / bundle.edge_lengths[eid] == pytest.approx(cost, abs=1e-9)
+        assert bundle.edges.lengths[eid] > 50.0
+        assert bundle.edges.weights[eid] / bundle.edges.lengths[eid] == pytest.approx(cost, abs=1e-9)
 
 
 @pytest.mark.parametrize("name, tags, cost, cycleway_nf", _CASES, ids=[c[0] for c in _CASES])
 def test_cycleway_no_foot_flag(bundle, name, tags, cost, cycleway_nf):
     for eid in _edges_named(bundle, name):
-        assert bundle.edge_cycleway_nf[eid] is cycleway_nf
+        assert bundle.edges.cycleway_nf[eid] is cycleway_nf
 
 
 @pytest.mark.parametrize("name, tags, cost, cycleway_nf", _CASES, ids=[c[0] for c in _CASES])
@@ -103,19 +103,19 @@ def test_highway_and_foot_are_recorded(bundle, name, tags, cost, cycleway_nf):
     expected_hw = _EXPECTED_HIGHWAY.get(name, tags.get("highway"))
     expected_foot = tags.get("foot", "").lower()
     for eid in _edges_named(bundle, name):
-        assert bundle.edge_highways[eid] == expected_hw
-        assert bundle.edge_foot_tags[eid] == expected_foot
+        assert bundle.edges.highways[eid] == expected_hw
+        assert bundle.edges.foot_tags[eid] == expected_foot
 
 
 def test_both_directions_have_the_same_weight(bundle):
     for name, _, _, _ in _CASES:
-        first, second = (bundle.edge_weights[e] for e in _edges_named(bundle, name))
+        first, second = (bundle.edges.weights[e] for e in _edges_named(bundle, name))
         assert first == pytest.approx(second)
 
 
 def test_igraph_weights_match_bundle(bundle):
-    assert bundle.graph.es["weight"] == bundle.edge_weights
-    assert bundle.graph.es["length"] == bundle.edge_lengths
+    assert bundle.graph.es["weight"] == bundle.edges.weights
+    assert bundle.graph.es["length"] == bundle.edges.lengths
 
 
 def _routing_highway_types():

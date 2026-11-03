@@ -10,6 +10,7 @@ from collections import defaultdict
 
 from pyproj import Transformer
 
+from config import PED_HIGHWAY_TYPES
 from sidewalk_tags import (
     CATEGORY_NO,
     CATEGORY_PARTIAL,
@@ -27,11 +28,7 @@ _TRACKED_HIGHWAY_TYPES = frozenset({
     "secondary", "secondary_link",
     "primary", "primary_link",
     "track",
-})
-
-_PED_HIGHWAY_TYPES = frozenset({
-    "footway", "pedestrian", "path", "living_street", "steps", "elevator",
-})
+}) | PED_HIGHWAY_TYPES
 
 _ROAD_TYPES_SIDEWALK_EXPECTED = frozenset({
     "residential", "unclassified",
@@ -109,6 +106,8 @@ class _BrusselsStatsHandler:
 
     def _handle_way(self, tags: dict, coords: list[list[float]]) -> None:
         hw = tags.get("highway")
+        if not hw and "platform" in (tags.get("railway"), tags.get("public_transport")):
+            hw = "platform"
         if not hw:
             return
 
@@ -182,7 +181,7 @@ class _BrusselsStatsHandler:
 
 def _build_record(date_iso: str, h: _BrusselsStatsHandler) -> dict:
     km_by_hw = {k: round(v, 1) for k, v in h.km_by_highway.items()}
-    ped_km  = sum(v for k, v in km_by_hw.items() if k in _PED_HIGHWAY_TYPES)
+    ped_km  = sum(v for k, v in km_by_hw.items() if k in PED_HIGHWAY_TYPES)
     road_km = sum(v for k, v in km_by_hw.items() if k in _ROAD_TYPES_SIDEWALK_EXPECTED)
     cyc_km  = km_by_hw.get("cycleway", 0.0)
 

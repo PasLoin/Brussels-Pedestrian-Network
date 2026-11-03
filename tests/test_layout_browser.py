@@ -154,3 +154,7 @@ def test_user_choice_during_the_route_wins(page):
     page.evaluate("() => toggleLegend()")
     page.evaluate(_HIDE)
     assert _legend(page)["open"] is False
+
+
+def test_popups_js_is_loaded_before_app_js(page):
+    assert page.evaluate("() => [typeof makePopupLayers, typeof escapeHTML]") == ["function", "function"]

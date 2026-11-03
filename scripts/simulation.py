@@ -38,10 +38,10 @@ def simulate_flows(
     with step("snap_to_graph"):
         snapped, snap_stats = snap_to_graph(
             od_points, gb.node_list, gb.nodes_gdf,
-            gb.edge_tuples, gb.edge_geoms,
+            gb.edges.tuples, gb.edges.geoms,
             vertex_mask=main_mask,
             max_snap_m=max_snap_m,
-            edge_snappable=[is_ground_level(lv) for lv in gb.edge_levels],
+            edge_snappable=[is_ground_level(lv) for lv in gb.edges.levels],
         )
 
     snapped, od_points, od_streets, od_sides = drop_unsnapped(
@@ -59,15 +59,15 @@ def simulate_flows(
         od_pairs, rejected_near, rejected_far = generate_od_pairs(od_points, snapped)
 
     with step("route_pairs"):
-        routing = route_pairs(gb.graph, od_pairs, gb.edge_lengths)
+        routing = route_pairs(gb.graph, od_pairs, gb.edges.lengths)
 
     with step("export_flow_layers"):
         flow_stats = export_flow_layers(
             routing.flow_arr,
             edge_groups,
-            gb.edge_highways, gb.edge_geoms,
-            gb.edge_lengths, gb.edge_cycleway_nf,
-            gb.edge_foot_tags,
+            gb.edges.highways, gb.edges.geoms,
+            gb.edges.lengths, gb.edges.cycleway_nf,
+            gb.edges.foot_tags,
         )
 
     return SimulationResult(

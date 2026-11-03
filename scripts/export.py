@@ -70,6 +70,9 @@ def undirected_edge_groups(
     return list(groups.values())
 
 
+INFRA_TYPES = ("pedestrian", "road", "cycleway_no_foot", "cycleway_foot_yes")
+
+
 def _infra_type(hw: str, cycleway_nf: bool, foot: str) -> str:
     if hw == "cycleway":
         if foot in FOOT_ALLOWED or not cycleway_nf:
@@ -227,8 +230,6 @@ def save_stats(
             "min_dist_m": MIN_OD_DISTANCE_M,
             "max_dist_m": MAX_OD_DISTANCE_M,
         },
-        "routed_trips": routed,
-        "avg_distance_m": round(avg_dist, 1),
     }
 
     if od_sampling_stats:
@@ -255,6 +256,24 @@ def save_stats(
     print("  Stats saved to stats.json")
 
 
+def compute_graph_stats(gb, edge_groups: list[list[int]]) -> dict:
+    return {
+        "nodes": gb.graph.vcount(),
+        "edges": len(edge_groups),
+        "directed_edges": gb.graph.ecount(),
+        "cycleways_foot_yes": sum(
+            1 for eids in edge_groups
+            if gb.edges.highways[eids[0]] == "cycleway"
+            and not gb.edges.cycleway_nf[eids[0]]
+        ),
+        "cycleways_no_foot": sum(
+            1 for eids in edge_groups
+            if gb.edges.highways[eids[0]] == "cycleway"
+            and gb.edges.cycleway_nf[eids[0]]
+        ),
+    }
+
+
 def compute_network_stats(
     edge_groups: list[list[int]],
     edge_highways: list[str],
@@ -263,7 +282,7 @@ def compute_network_stats(
     edge_foot_tags: list[str],
 ) -> dict:
     km_by_highway: dict[str, float] = defaultdict(float)
-    km_by_category: dict[str, float] = defaultdict(float)
+    km_by_category: dict[str, float] = {infra: 0.0 for infra in INFRA_TYPES}
     count_by_highway: dict[str, int] = defaultdict(int)
 
     for eids in edge_groups:

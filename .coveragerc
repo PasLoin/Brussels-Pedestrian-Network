@@ -1,0 +1,20 @@
+[run]
+source = scripts
+branch = true
+omit =
+    scripts/bench_dijkstra.py
+    scripts/debug_snap.py
+
+[report]
+precision = 1
+sort = Cover
+skip_empty = true
+
+[html]
+directory = htmlcov
+
+[xml]
+output = coverage.xml
+
+[json]
+output = coverage.json

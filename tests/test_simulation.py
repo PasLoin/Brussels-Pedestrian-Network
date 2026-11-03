@@ -138,7 +138,7 @@ def _simulate(tmp_path, monkeypatch, kind):
     raw.write_text(_street_xml(kind))
     clean_osm(str(raw), str(clean))
     gb = build_graph(str(clean))
-    groups = undirected_edge_groups(gb.edge_tuples, gb.edge_geoms, gb.edge_lengths)
+    groups = undirected_edge_groups(gb.edges.tuples, gb.edges.geoms, gb.edges.lengths)
     mask = _main_component_mask(gb.graph)
     assert not mask.all()
     pts, streets, sides = _od_points()
@@ -228,7 +228,7 @@ def test_point_next_to_an_island_is_redirected_to_main_network(variant, request)
     gb, sim, _ = request.getfixturevalue(variant)
     assert sim.od_sampling_stats["points_redirected_from_islands"] == 1
     assert sim.routing.routed == 10
-    island = {gb.edge_tuples[e] for e, n in enumerate(gb.edge_names) if n == "Îlot"}
+    island = {gb.edges.tuples[e] for e, n in enumerate(gb.edges.names) if n == "Îlot"}
     island_nodes = {n for t in island for n in t}
     assert not island_nodes & {n for pair in sim.od_pairs for n in pair}
 

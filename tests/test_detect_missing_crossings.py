@@ -1,6 +1,9 @@
 import json
 
+import pytest
+
 from detect_missing_crossings import _load_crossing_nodes
+from front_contract import assert_layer_contract
 
 
 def _write_geojson(path, features):
@@ -279,3 +282,29 @@ def test_excluded_way_farther_than_road_is_ignored(tmp_path, monkeypatch):
     )
     assert stats == _expected(missing_crossing_way=1)
     assert [f["properties"]["type"] for f in feats] == ["missing_way"]
+
+
+@pytest.mark.parametrize("connector", [None, {"highway": "footway", "@id": 99},
+                                       {"highway": "footway", "footway": "sidewalk", "@id": 99}],
+                         ids=["missing_way", "missing_tag", "wrong_tag"])
+def test_layer_matches_front_contract(tmp_path, monkeypatch, connector):
+    _run_scenario(tmp_path, monkeypatch, connector)
+    assert_layer_contract(tmp_path / "missing_crossings.geojson", "missing_crossings")
+
+
+def test_early_returns_keep_every_stat_key(tmp_path, monkeypatch):
+    full, _ = _run_scenario(tmp_path, monkeypatch, None)
+    no_sidewalk, _ = _run_scenario(tmp_path, monkeypatch, None, sidewalk_offsets=())
+    assert list(no_sidewalk) == list(full)
+    assert no_sidewalk == _expected()
+    _write_geojson(tmp_path / "highways.geojson", [])
+    stats = detect_missing_crossings(
+        highways_geojson_path="highways.geojson",
+        footways_geojson_path="footways.geojson",
+        roads_geojson_path="roads.geojson",
+        service_roads_geojson_path="absent.geojson",
+        cycleways_geojson_path="absent.geojson",
+        tracks_geojson_path="absent.geojson",
+    )
+    assert list(stats) == list(full)
+    assert set(stats.values()) == {0}

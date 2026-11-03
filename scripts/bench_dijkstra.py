@@ -8,10 +8,9 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 from clean_osm import clean_osm
+from config import BENCH_N_SOURCES, BENCH_N_TARGETS
 from build_graph import build_graph
 
-N_SOURCES = int(os.environ.get("BENCH_N_SOURCES", 1000))
-N_TARGETS_PER_SOURCE = int(os.environ.get("BENCH_N_TARGETS", 50))
 THREAD_COUNTS = [1, 2, 4, 8]
 
 
@@ -59,13 +58,13 @@ def main() -> None:
 
     random.seed(42)
     work_items: list[tuple[int, list[int]]] = []
-    for _ in range(N_SOURCES):
+    for _ in range(BENCH_N_SOURCES):
         src = random.randrange(n_vertices)
-        targets = [random.randrange(n_vertices) for _ in range(N_TARGETS_PER_SOURCE)]
+        targets = [random.randrange(n_vertices) for _ in range(BENCH_N_TARGETS)]
         work_items.append((src, targets))
 
-    n_queries = N_SOURCES * N_TARGETS_PER_SOURCE
-    print(f"\nWorkload: {N_SOURCES} sources × {N_TARGETS_PER_SOURCE} targets "
+    n_queries = BENCH_N_SOURCES * BENCH_N_TARGETS
+    print(f"\nWorkload: {BENCH_N_SOURCES} sources × {BENCH_N_TARGETS} targets "
           f"= {n_queries} pair queries")
 
     _shortest_paths_batch(g, work_items[0][0], work_items[0][1])
@@ -90,7 +89,7 @@ def main() -> None:
     print()
     print("=" * 70)
     print("  DIJKSTRA PARALLELISATION BENCHMARK")
-    print(f"  {N_SOURCES} sources × {N_TARGETS_PER_SOURCE} targets "
+    print(f"  {BENCH_N_SOURCES} sources × {BENCH_N_TARGETS} targets "
           f"({n_queries} queries)")
     print(f"  Graph: {n_vertices} vertices, {g.ecount()} edges")
     print(f"  Runner: {os.cpu_count()} logical CPUs")

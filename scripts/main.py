@@ -17,6 +17,7 @@ from build_graph import build_graph
 from sample_od import sample_od_points
 from simulation import simulate_flows
 from export import (
+    compute_graph_stats,
     compute_network_stats,
     export_routing_graph,
     save_stats,
@@ -49,33 +50,19 @@ def main() -> None:
 
     with step("undirected_edge_groups"):
         edge_groups = undirected_edge_groups(
-            gb.edge_tuples, gb.edge_geoms, gb.edge_lengths,
+            gb.edges.tuples, gb.edges.geoms, gb.edges.lengths,
         )
     print(f"  Physical segments: {len(edge_groups)} "
           f"(directed edges: {gb.graph.ecount()})")
 
-    graph_stats = {
-        "nodes": gb.graph.vcount(),
-        "edges": len(edge_groups),
-        "directed_edges": gb.graph.ecount(),
-        "cycleways_foot_yes": sum(
-            1 for eids in edge_groups
-            if gb.edge_highways[eids[0]] == "cycleway"
-            and not gb.edge_cycleway_nf[eids[0]]
-        ),
-        "cycleways_no_foot": sum(
-            1 for eids in edge_groups
-            if gb.edge_highways[eids[0]] == "cycleway"
-            and gb.edge_cycleway_nf[eids[0]]
-        ),
-    }
+    graph_stats = compute_graph_stats(gb, edge_groups)
 
     with step("detect_graph_islands"):
         main_mask, island_stats = detect_graph_islands(
             gb.graph, edge_groups,
-            gb.edge_tuples, gb.edge_geoms, gb.edge_lengths,
-            gb.edge_highways, gb.edge_osm_ids,
-            edge_levels=gb.edge_levels,
+            gb.edges.tuples, gb.edges.geoms, gb.edges.lengths,
+            gb.edges.highways, gb.edges.osm_ids,
+            edge_levels=gb.edges.levels,
             elevator_vertices=gb.elevator_vertices,
             node_list=gb.node_list,
         )
@@ -83,8 +70,8 @@ def main() -> None:
 
     network_stats = compute_network_stats(
         edge_groups,
-        gb.edge_highways, gb.edge_lengths,
-        gb.edge_cycleway_nf, gb.edge_foot_tags,
+        gb.edges.highways, gb.edges.lengths,
+        gb.edges.cycleway_nf, gb.edges.foot_tags,
     )
 
     with step("sample_od_points"):
@@ -149,9 +136,9 @@ def main() -> None:
     with step("export_routing_graph"):
         export_routing_graph(
             gb.node_list, gb.nodes_gdf,
-            gb.edge_tuples, gb.edge_weights, gb.edge_lengths,
-            gb.edge_highways, gb.edge_geoms, gb.edge_cycleway_nf,
-            gb.edge_foot_tags, edge_levels=gb.edge_levels,
+            gb.edges.tuples, gb.edges.weights, gb.edges.lengths,
+            gb.edges.highways, gb.edges.geoms, gb.edges.cycleway_nf,
+            gb.edges.foot_tags, edge_levels=gb.edges.levels,
         )
 
     print(f"\nTotal time: {time.time() - t0:.1f}s")

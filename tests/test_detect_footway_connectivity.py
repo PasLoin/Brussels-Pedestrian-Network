@@ -4,6 +4,7 @@ import math
 import pytest
 
 from detect_footway_connectivity import detect_footway_connectivity_candidates
+from front_contract import assert_layer_contract
 
 
 @pytest.fixture(autouse=True)
@@ -135,3 +136,32 @@ def test_underground_sidewalk_does_not_validate_a_surface_candidate(tmp_path):
     stats = detect_footway_connectivity_candidates(str(fw_p), str(roads_p))
     assert stats["flagged"] == 0
     assert stats["no_sidewalk_both_ends"] == 1
+
+
+def _diagonal_scene(tmp_path, with_sidewalks=True):
+    roads_p = tmp_path / "roads.geojson"
+    _write_geojson(roads_p, [_road_feature([(-50, 0), (50, 0)])])
+    fw_p = tmp_path / "footways.geojson"
+    features = [_footway_feature([(-8, 8), (10, -9)], fid=111)]
+    if with_sidewalks:
+        features += [
+            _footway_feature([(-20, 8), (-8, 8), (5, 8)], footway="sidewalk", fid=201),
+            _footway_feature([(-5, -9), (10, -9), (25, -9)], footway="sidewalk", fid=202),
+        ]
+    _write_geojson(fw_p, features)
+    return detect_footway_connectivity_candidates(str(fw_p), str(roads_p))
+
+
+def test_layer_matches_front_contract(tmp_path):
+    _diagonal_scene(tmp_path)
+    features = assert_layer_contract(
+        tmp_path / "footway_crossing_candidates.geojson", "footway_crossing_candidates",
+    )
+    assert [f["properties"]["osm_id"] for f in features] == [111]
+
+
+def test_early_return_keeps_every_stat_key(tmp_path):
+    full = _diagonal_scene(tmp_path)
+    empty = _diagonal_scene(tmp_path, with_sidewalks=False)
+    assert list(empty) == list(full)
+    assert empty == {**{k: 0 for k in full}, "candidates_scanned": 1}

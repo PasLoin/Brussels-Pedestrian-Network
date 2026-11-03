@@ -1,8 +1,10 @@
+import dataclasses
 import math
 
 import pytest
 
 from build_graph import (
+    EdgeAttrs,
     _first_str,
     build_graph,
 )
@@ -104,30 +106,62 @@ def bundle(tmp_path_factory):
 def test_oneway_street_is_bidirectional_for_pedestrians(bundle):
     osmid_to_idx = {osmid: i for i, osmid in enumerate(bundle.node_list)}
     n1, n2 = osmid_to_idx[1], osmid_to_idx[2]
-    assert (n1, n2) in bundle.edge_tuples
-    assert (n2, n1) in bundle.edge_tuples
+    assert (n1, n2) in bundle.edges.tuples
+    assert (n2, n1) in bundle.edges.tuples
 
 
 def test_segments_with_different_sidewalk_tags_are_not_merged(bundle):
-    eids = [e for e, n in enumerate(bundle.edge_names) if n == "Rue Mixte"]
+    eids = [e for e, n in enumerate(bundle.edges.names) if n == "Rue Mixte"]
     assert len(eids) == 4
     osmid_to_idx = {osmid: i for i, osmid in enumerate(bundle.node_list)}
     assert 6 in osmid_to_idx
 
 
 def test_access_private_is_excluded(bundle):
-    assert "Chemin Privé" not in bundle.edge_names
+    assert "Chemin Privé" not in bundle.edges.names
 
 
 def test_access_private_with_foot_yes_is_kept(bundle):
-    assert "Allée Privée Foot" in bundle.edge_names
+    assert "Allée Privée Foot" in bundle.edges.names
 
 
 def test_simplification_does_not_merge_different_streets(bundle):
-    assert bundle.edge_names.count("Petit Square") == 2
-    assert bundle.edge_names.count("Rue Amont") == 2
+    assert bundle.edges.names.count("Petit Square") == 2
+    assert bundle.edges.names.count("Rue Amont") == 2
 
 
 def test_graph_weights_positive(bundle):
-    assert bundle.graph.ecount() == len(bundle.edge_weights)
-    assert all(w > 0 and math.isfinite(w) for w in bundle.edge_weights)
+    assert bundle.graph.ecount() == len(bundle.edges.weights)
+    assert all(w > 0 and math.isfinite(w) for w in bundle.edges.weights)
+
+
+def _edge_attrs(n=2, **overrides):
+    values = {
+        "tuples": [(0, 1)] * n, "weights": [1.0] * n, "lengths": [1.0] * n,
+        "highways": ["footway"] * n, "geoms": [None] * n, "cycleway_nf": [False] * n,
+        "foot_tags": [""] * n, "names": [""] * n, "osm_ids": [(1,)] * n, "levels": [""] * n,
+    }
+    values.update(overrides)
+    return EdgeAttrs(**values)
+
+
+def test_edge_attrs_length():
+    assert len(_edge_attrs(3)) == 3
+
+
+def test_edge_attrs_reject_misaligned_lists():
+    with pytest.raises(ValueError, match="misaligned"):
+        _edge_attrs(2, levels=[""])
+
+
+def test_bundle_is_frozen(bundle):
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        bundle.edges = None
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        bundle.edges.lengths = []
+
+
+def test_bundle_edges_match_graph(bundle):
+    assert len(bundle.edges) == bundle.graph.ecount()
+    assert list(bundle.graph.get_edgelist()) == bundle.edges.tuples
+    assert bundle.graph.es["length"] == bundle.edges.lengths

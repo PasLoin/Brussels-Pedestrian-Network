@@ -1,24 +1,22 @@
 from __future__ import annotations
 
 import math
-import os
 
 import geopandas as gpd
 from shapely.geometry import Point
 from shapely.strtree import STRtree
 
-from config import ROAD_TYPES_SIDEWALK_EXPECTED
+from config import (
+    FOOTWAY_CONN_ENDPOINT_TOL_M,
+    FOOTWAY_CONN_MAX_LEN_M,
+    FOOTWAY_CONN_TIP_MARGIN_M,
+    ROAD_TYPES_SIDEWALK_EXPECTED,
+)
 from timing import step
 
 _CROSSING_ROAD_TYPES = ROAD_TYPES_SIDEWALK_EXPECTED - {"service"}
 _MIN_ROAD_LENGTH = 15.0
 
-
-FOOTWAY_CONN_ENDPOINT_TOL_M = float(os.environ.get("FOOTWAY_CONN_ENDPOINT_TOL_M", 3.0))
-
-FOOTWAY_CONN_TIP_MARGIN_M = float(os.environ.get("FOOTWAY_CONN_TIP_MARGIN_M", 2.0))
-
-FOOTWAY_CONN_MAX_LEN_M = float(os.environ.get("FOOTWAY_CONN_MAX_LEN_M", 40.0))
 
 _MIN_CAND_LEN_M = 1.0
 
@@ -121,6 +119,22 @@ def _write_empty_output() -> None:
     ).to_file("footway_crossing_candidates.geojson", driver="GeoJSON")
 
 
+_STAT_KEYS = (
+    "candidates_scanned",
+    "length_out_of_range",
+    "no_midway_road_crossing",
+    "sidewalks_same_side",
+    "no_sidewalk_both_ends",
+    "flagged",
+)
+
+
+def _stats(**counts: int) -> dict:
+    stats = {key: 0 for key in _STAT_KEYS}
+    stats.update(counts)
+    return stats
+
+
 def detect_footway_connectivity_candidates(
     footways_geojson_path: str = "sidewalk_footways_raw.geojson",
     roads_geojson_path:    str = "sidewalk_roads_raw.geojson",
@@ -148,7 +162,7 @@ def detect_footway_connectivity_candidates(
     if cand_gdf.empty or sw_tree is None or road_tree is None:
         print("  Nothing to analyse, skipping.")
         _write_empty_output()
-        return {"candidates_scanned": int(len(cand_gdf)), "flagged": 0}
+        return _stats(candidates_scanned=int(len(cand_gdf)))
 
     has_name_col = "name" in roads_gdf.columns
 
@@ -237,11 +251,11 @@ def detect_footway_connectivity_candidates(
     print(f"  Skipped, no sidewalk on both ends:      {n_no_sidewalk_both}")
     print(f"  Flagged as crossing candidates:          {n_flagged}")
 
-    return {
-        "candidates_scanned":       n_total,
-        "length_out_of_range":      n_too_short_or_long,
-        "no_midway_road_crossing":  n_no_road_cross,
-        "sidewalks_same_side":      n_same_side,
-        "no_sidewalk_both_ends":    n_no_sidewalk_both,
-        "flagged":                  n_flagged,
-    }
+    return _stats(
+        candidates_scanned=n_total,
+        length_out_of_range=n_too_short_or_long,
+        no_midway_road_crossing=n_no_road_cross,
+        sidewalks_same_side=n_same_side,
+        no_sidewalk_both_ends=n_no_sidewalk_both,
+        flagged=n_flagged,
+    )

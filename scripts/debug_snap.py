@@ -28,7 +28,7 @@ node_xy = np.array([
 
 valid_eids = []
 valid_geoms = []
-for eid, geom in enumerate(gb.edge_geoms):
+for eid, geom in enumerate(gb.edges.geoms):
     if geom is not None and not geom.is_empty and geom.length >= 0.5:
         valid_eids.append(eid)
         valid_geoms.append(geom)
@@ -69,10 +69,10 @@ for _, row in street_addr.iterrows():
     dist = nearest_geom.distance(pt)
     real_eid = valid_eids[nearest_vi]
 
-    hw = gb.edge_highways[real_eid]
-    name = gb.edge_names[real_eid]
+    hw = gb.edges.highways[real_eid]
+    name = gb.edges.names[real_eid]
 
-    src_i, tgt_i = gb.edge_tuples[real_eid]
+    src_i, tgt_i = gb.edges.tuples[real_eid]
     sx, sy = node_xy[src_i]
     tx, ty = node_xy[tgt_i]
     d_src = (row.geometry.x - sx)**2 + (row.geometry.y - sy)**2
@@ -95,7 +95,7 @@ for label, sub in [("Even (pair)", street_addr[street_addr["_num"] % 2 == 0]),
     for ci in candidates:
         d = valid_geoms[ci].distance(pt)
         eid = valid_eids[ci]
-        results.append((d, gb.edge_highways[eid], gb.edge_names[eid]))
+        results.append((d, gb.edges.highways[eid], gb.edges.names[eid]))
     results.sort()
 
     print(f"\n{label}: HN {row['_raw_hn']} at ({row.geometry.x:.0f}, {row.geometry.y:.0f})")
