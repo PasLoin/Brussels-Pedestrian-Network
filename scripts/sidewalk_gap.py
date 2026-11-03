@@ -6,19 +6,19 @@ import os
 import geopandas as gpd
 from shapely.strtree import STRtree
 
-from config import FOOT_ALLOWED, ROAD_TYPES_SIDEWALK_EXPECTED
+from config import (
+    FOOT_ALLOWED,
+    ROAD_TYPES_SIDEWALK_EXPECTED,
+    SIDEWALK_GAP_MAX_ANGLE,
+    SIDEWALK_GAP_MIN_COVERAGE,
+    SIDEWALK_GAP_OFFSET_M,
+    SIDEWALK_GAP_SEARCH_M,
+)
 from sidewalk_tags import has_absent_side
 from timing import step
 
 _GAP_ROAD_TYPES = ROAD_TYPES_SIDEWALK_EXPECTED - {"service"}
 
-SIDEWALK_GAP_OFFSET_M = float(os.environ.get("SIDEWALK_GAP_OFFSET_M", 7))
-
-SIDEWALK_GAP_SEARCH_M = float(os.environ.get("SIDEWALK_GAP_SEARCH_M", 7))
-
-MAX_ANGLE_DIFF = float(os.environ.get("SIDEWALK_GAP_MAX_ANGLE", 35))
-
-SIDEWALK_GAP_MIN_COVERAGE = float(os.environ.get("SIDEWALK_GAP_MIN_COVERAGE", 0.4))
 
 _MIN_ROAD_LENGTH = 20.0
 
@@ -52,7 +52,7 @@ def _is_parallel(road_bearing: float, footway_bearing: float | None) -> bool:
     diff = abs(road_bearing - footway_bearing)
     if diff > 90:
         diff = 180 - diff
-    return diff <= MAX_ANGLE_DIFF
+    return diff <= SIDEWALK_GAP_MAX_ANGLE
 
 
 def _iter_linestrings(geom):
@@ -194,7 +194,7 @@ def detect_sidewalk_gaps(
     print("Detecting sidewalk gaps (footway on one side only)...")
     print(f"  Offset: {SIDEWALK_GAP_OFFSET_M}m | "
           f"Search radius: {SIDEWALK_GAP_SEARCH_M}m | "
-          f"Max angle: {MAX_ANGLE_DIFF}° | "
+          f"Max angle: {SIDEWALK_GAP_MAX_ANGLE}° | "
           f"Min coverage: {SIDEWALK_GAP_MIN_COVERAGE:.0%}")
 
     with step("load + filter footways"):
