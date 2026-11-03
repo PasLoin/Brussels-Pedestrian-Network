@@ -17,6 +17,7 @@ from build_graph import build_graph
 from sample_od import sample_od_points
 from simulation import simulate_flows
 from export import (
+    compute_graph_stats,
     compute_network_stats,
     export_routing_graph,
     save_stats,
@@ -54,21 +55,7 @@ def main() -> None:
     print(f"  Physical segments: {len(edge_groups)} "
           f"(directed edges: {gb.graph.ecount()})")
 
-    graph_stats = {
-        "nodes": gb.graph.vcount(),
-        "edges": len(edge_groups),
-        "directed_edges": gb.graph.ecount(),
-        "cycleways_foot_yes": sum(
-            1 for eids in edge_groups
-            if gb.edge_highways[eids[0]] == "cycleway"
-            and not gb.edge_cycleway_nf[eids[0]]
-        ),
-        "cycleways_no_foot": sum(
-            1 for eids in edge_groups
-            if gb.edge_highways[eids[0]] == "cycleway"
-            and gb.edge_cycleway_nf[eids[0]]
-        ),
-    }
+    graph_stats = compute_graph_stats(gb, edge_groups)
 
     with step("detect_graph_islands"):
         main_mask, island_stats = detect_graph_islands(
