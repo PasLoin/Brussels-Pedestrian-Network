@@ -60,6 +60,9 @@ def main() -> None:
 
     graph_stats = compute_graph_stats(gb, edge_groups)
 
+    with step("load_analysis_boundary"):
+        boundary = load_analysis_boundary(ANALYSIS_BOUNDARY_PATH)
+
     with step("detect_graph_islands"):
         main_mask, island_stats = detect_graph_islands(
             gb.graph, edge_groups,
@@ -68,6 +71,7 @@ def main() -> None:
             edge_levels=gb.edges.levels,
             elevator_vertices=gb.elevator_vertices,
             node_list=gb.node_list,
+            boundary=boundary,
         )
     graph_stats["components"] = island_stats
 
@@ -85,9 +89,6 @@ def main() -> None:
         od_points, od_streets, od_sides,
         max_snap_m=MAX_SNAP_DISTANCE_M,
     )
-
-    with step("load_analysis_boundary"):
-        boundary = load_analysis_boundary(ANALYSIS_BOUNDARY_PATH)
 
     with step("detect_sidewalk_gaps"):
         sidewalk_gap_stats = detect_sidewalk_gaps(
