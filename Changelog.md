@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-11-04
+ 
+### Couches QA limitées à la Région de Bruxelles-Capitale (#46)
+ 
+- Ajout d'une limitation au polygone de la région (`54094.poly`) sur les analyse QA pour éliminer les faux positifs à la frontière régionale.
+
+### Ajout de tests unitaires manquants
+
+- Certaines parties du code n'était couvert par aucun tests, ajout également d'une sortie "coverage" pour ajouts futurs et % couvert par chaque test.
+
+
 ## 2026-10-28
 
 ### Kerbs absents : vérifiés sur toutes les traversées, quel que soit le `tactile_paving` du crossing (#60)
