@@ -7,6 +7,7 @@ import geopandas as gpd
 from shapely.geometry import Point, shape
 from shapely.strtree import STRtree
 
+from analysis_boundary import inside
 from config import (
     CROSSING_NODE_CONNECTED_M,
     CROSSING_NODE_ROAD_SEARCH_M,
@@ -278,6 +279,7 @@ def _load_excluded_roads(
 
 
 _STAT_KEYS = (
+    "crossings_outside_boundary",
     "crossing_nodes_found",
     "no_eligible_road",
     "on_excluded_way",
@@ -305,6 +307,7 @@ def detect_missing_crossings(
     service_roads_geojson_path: str = "service_roads_raw.geojson",
     cycleways_geojson_path:     str = "cycleways_raw.geojson",
     tracks_geojson_path:        str = "tracks_raw.geojson",
+    boundary=None,
 ) -> dict:
     print("Detecting missing crossing ways / tags...")
     print(
@@ -317,12 +320,16 @@ def detect_missing_crossings(
 
     with step("load crossing nodes"):
         crossing_nodes = _load_crossing_nodes(highways_geojson_path)
+        in_area = inside(crossing_nodes.geometry, boundary)
+        n_outside = int((~in_area).sum())
+        crossing_nodes = crossing_nodes[in_area]
+    print(f"  highway=crossing nodes outside the analysis boundary: {n_outside}")
     print(f"  highway=crossing nodes: {len(crossing_nodes)}")
 
     if crossing_nodes.empty:
         print("  No crossing nodes, skipping.")
         _write_empty_output()
-        return _stats()
+        return _stats(crossings_outside_boundary=n_outside)
 
     with step("load footway=crossing ways (tier 1)"):
         cw_geoms, cw_tree = _load_crossing_ways(footways_geojson_path)
@@ -356,7 +363,10 @@ def detect_missing_crossings(
     if sw_tree is None:
         print("  No footway=sidewalk ways, skipping.")
         _write_empty_output()
-        return _stats(crossing_nodes_found=len(crossing_nodes))
+        return _stats(
+            crossings_outside_boundary=n_outside,
+            crossing_nodes_found=len(crossing_nodes),
+        )
 
     rows: list[dict] = []
     n_no_road     = 0
@@ -484,6 +494,7 @@ def detect_missing_crossings(
     print(f"  Wrong footway=* TAG on crossing way:     {n_wrong_tag}")
 
     return _stats(
+        crossings_outside_boundary=n_outside,
         crossing_nodes_found=n_total,
         no_eligible_road=n_no_road,
         on_excluded_way=n_excluded,
