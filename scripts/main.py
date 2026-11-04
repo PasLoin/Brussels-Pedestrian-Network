@@ -12,6 +12,7 @@ from config import (
     POINTS_PER_SIDE,
     TOP_RANK_PCT,
 )
+from analysis_boundary import load_analysis_boundary
 from clean_osm import clean_osm
 from build_graph import build_graph
 from sample_od import sample_od_points
@@ -30,6 +31,8 @@ from detect_missing_crossings import detect_missing_crossings
 from detect_footway_connectivity import detect_footway_connectivity_candidates
 from detect_tactile_paving_issues import detect_tactile_paving_issues
 from timing import step, print_summary
+
+ANALYSIS_BOUNDARY_PATH = "analysis_boundary.poly"
 
 
 def main() -> None:
@@ -83,11 +86,15 @@ def main() -> None:
         max_snap_m=MAX_SNAP_DISTANCE_M,
     )
 
+    with step("load_analysis_boundary"):
+        boundary = load_analysis_boundary(ANALYSIS_BOUNDARY_PATH)
+
     with step("detect_sidewalk_gaps"):
         sidewalk_gap_stats = detect_sidewalk_gaps(
             "sidewalk_roads_raw.geojson",
             "sidewalk_footways_raw.geojson",
             "cycleways_raw.geojson",
+            boundary=boundary,
         )
 
     with step("export_sidewalk_roads"):
@@ -98,6 +105,7 @@ def main() -> None:
             "highways.geojson",
             "sidewalk_footways_raw.geojson",
             "sidewalk_roads_raw.geojson",
+            boundary=boundary,
         )
 
     with step("detect_footway_connectivity_candidates"):
@@ -112,6 +120,7 @@ def main() -> None:
             "sidewalk_footways_raw.geojson",
             "kerbs_raw.geojson",
             ("sidewalk_roads_raw.geojson", "service_roads_raw.geojson"),
+            boundary=boundary,
         )
 
     save_stats(
