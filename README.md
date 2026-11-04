@@ -52,6 +52,8 @@ brussels.osm.pbf
     ├─ osmium tags-filter → routing_raw.osm
     └─ osmium tags-filter → addresses.geojson
               │
+    analysis_boundary.poly ← BOUNDARY_POLY_URL   (zone d'analyse des couches QA)
+              │
     scripts/main.py
               │
     ├─ clean_osm.py                    : coupe les ways aux barrières bloquantes
@@ -76,6 +78,7 @@ brussels.osm.pbf
 | Fichier | Rôle |
 |---------|------|
 | `config.py` | Paramètres communs, lus depuis les variables d'environnement |
+| `analysis_boundary.py` | Lecture du polygone `.poly` de la zone d'analyse, filtrage et découpe des objets |
 | `clean_osm.py` | Nettoyage de l'OSM XML, découpe aux barrières |
 | `build_graph.py` | Graphe igraph, index sidewalk |
 | `sample_od.py` | Points OD depuis les adresses, accrochage |
@@ -94,7 +97,7 @@ brussels.osm.pbf
 
 ## Paramètres
 
-Tous les paramètres de calcul sont dans `scripts/config.py`, avec leur valeur de production. C'est la seule source de vérité : `build.yml` n'en contient aucun, et un test le vérifie. Pour adapter le projet à une autre ville, on modifie `config.py`, ainsi que l'URL du PBF, le polygone de découpe, les types de voies et les niveaux de zoom dans `build.yml`.
+Tous les paramètres de calcul sont dans `scripts/config.py`, avec leur valeur de production. C'est la seule source de vérité : `build.yml` n'en contient aucun, et un test le vérifie. Pour adapter le projet à une autre ville, on modifie `config.py`, ainsi que l'URL du PBF, l'URL du polygone de la zone d'analyse (`BOUNDARY_POLY_URL`), les types de voies et les niveaux de zoom dans `build.yml`.
 
 Pour lancer une simulation différente, on définit la variable d'environnement du même nom : elle l'emporte sur `config.py`, par exemple `MAX_OD_DISTANCE_KM=2 python3 scripts/main.py`.
 
@@ -156,6 +159,10 @@ Pour lancer une simulation différente, on définit la variable d'environnement 
 |----------|--------|-------------|
 | `BENCH_N_SOURCES` | 1000 | `bench_dijkstra.py` : nombre de sources |
 | `BENCH_N_TARGETS` | 50 | `bench_dijkstra.py` : cibles par source |
+
+## Zone d'analyse
+
+Les couches QA se limitent au polygone `analysis_boundary.poly` (Région de Bruxelles-Capitale, relation OSM 54094), téléchargé par le build depuis `BOUNDARY_POLY_URL`. Seuls les nœuds `highway=crossing` de la zone sont examinés, et les routes de `sidewalk_gaps` sont coupées à sa limite ; les données hors zone servent de contexte. Les objets écartés sont comptés dans `crossings_outside_boundary` et `roads_outside_boundary`. Sans ce fichier, aucune restriction n'est appliquée.
 
 ## Coût des arêtes
 

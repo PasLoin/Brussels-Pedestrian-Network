@@ -171,6 +171,7 @@ def test_sidewalk_near_but_not_through_node_is_not_wrong_tag(tmp_path, monkeypat
 
 def _expected(**counts):
     stats = {
+        "crossings_outside_boundary": 0,
         "crossing_nodes_found": 1,
         "no_eligible_road": 0,
         "on_excluded_way": 0,

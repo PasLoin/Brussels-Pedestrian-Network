@@ -80,6 +80,7 @@ env:
 
   OSM_PBF_URL: https://raw.githubusercontent.com/PasLoin/Osm-python-analyse_Belgium/main/pbf_analyse/history/Brussels-daily.pbf
   OSM_STATE_URL: https://raw.githubusercontent.com/PasLoin/Osm-python-analyse_Belgium/main/pbf_analyse/history/state.txt
+  BOUNDARY_POLY_URL: https://raw.githubusercontent.com/PasLoin/Osm-python-analyse_Belgium/main/pbf_analyse/54094.poly
 
   MIN_ZOOM: 9
   MAX_ZOOM: 19
@@ -106,6 +107,11 @@ jobs:
         run: |
           wget -O brussels.osm.pbf "$OSM_PBF_URL"
           wget -O state.txt "$OSM_STATE_URL"
+
+      - name: Download analysis boundary
+        run: |
+          curl -fsSL "$BOUNDARY_POLY_URL" -o analysis_boundary.poly
+          head -2 analysis_boundary.poly
 
       - name: Filter pedestrian features
         run: |
