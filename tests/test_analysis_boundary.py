@@ -1,6 +1,7 @@
 import json
 
 import geopandas as gpd
+import igraph as ig
 import pytest
 from pyproj import Transformer
 from shapely.geometry import LineString, Point, box
@@ -12,6 +13,7 @@ from analysis_boundary import (
     parse_poly,
     touches_area,
 )
+from detect_graph_islands import detect_graph_islands
 from detect_missing_crossings import detect_missing_crossings
 from detect_tactile_paving_issues import detect_tactile_paving_issues
 from sidewalk_gap import detect_sidewalk_gaps
@@ -281,3 +283,46 @@ def test_sidewalk_gap_evaluates_only_the_part_inside_boundary(tmp_path, monkeypa
     assert stats["both_sides"] == 1
     assert _lambert_lengths(tmp_path / "sidewalk_gaps.geojson") == []
     assert _lambert_lengths(tmp_path / "sidewalk_separate_candidates.geojson") == [100]
+
+
+_ISLAND_EDGES = [
+    ((0, 1), [(-40, 0), (0, 0)], 1),
+    ((1, 2), [(0, 0), (40, 0)], 1),
+    ((2, 3), [(40, 0), (80, 0)], 1),
+    ((4, 5), [(20, 30), (60, 30)], 2),
+    ((6, 7), [(60, -30), (160, -30)], 3),
+    ((8, 9), [(400, 0), (450, 0)], 4),
+]
+
+
+def _run_islands(tmp_path, boundary=None):
+    graph = ig.Graph(n=10, edges=[e for e, _, _ in _ISLAND_EDGES])
+    geoms = [LineString([(_X0 + x, _Y0 + y) for x, y in c]) for _, c, _ in _ISLAND_EDGES]
+    out = tmp_path / "graph_islands.geojson"
+    _, stats = detect_graph_islands(
+        graph,
+        [[i] for i in range(len(_ISLAND_EDGES))],
+        [e for e, _, _ in _ISLAND_EDGES],
+        geoms,
+        [g.length for g in geoms],
+        ["footway"] * len(_ISLAND_EDGES),
+        [(w,) for _, _, w in _ISLAND_EDGES],
+        output_path=str(out),
+        platforms_path=str(tmp_path / "absent.geojson"),
+        boundary=boundary,
+    )
+    ways = sorted(f["properties"]["way_ids"] for f in _features(out))
+    return stats, ways
+
+
+def test_islands_without_boundary_include_truncated_components(tmp_path):
+    stats, ways = _run_islands(tmp_path)
+    assert ways == ["2", "3", "4"]
+    assert stats["islands_outside_boundary"] == 0
+
+
+def test_islands_partly_or_fully_outside_boundary_are_not_flagged(tmp_path):
+    stats, ways = _run_islands(tmp_path, boundary=AREA)
+    assert ways == ["2"]
+    assert stats["islands"] == 1
+    assert stats["islands_outside_boundary"] == 2
