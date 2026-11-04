@@ -6,6 +6,7 @@ import os
 import geopandas as gpd
 from shapely.strtree import STRtree
 
+from analysis_boundary import clip_lines, touches_area
 from config import (
     FOOT_ALLOWED,
     ROAD_TYPES_SIDEWALK_EXPECTED,
@@ -190,6 +191,7 @@ def detect_sidewalk_gaps(
     roads_geojson_path: str,
     footways_geojson_path: str,
     cycleways_geojson_path: str | None = None,
+    boundary=None,
 ) -> dict:
     print("Detecting sidewalk gaps (footway on one side only)...")
     print(f"  Offset: {SIDEWALK_GAP_OFFSET_M}m | "
@@ -216,7 +218,10 @@ def detect_sidewalk_gaps(
         roads_gdf = roads_gdf[roads_gdf.geometry.geom_type == "LineString"].copy()
         roads_gdf = roads_gdf.to_crs("EPSG:31370")
         roads_gdf = roads_gdf[roads_gdf["highway"].isin(_GAP_ROAD_TYPES)]
+        n_outside = int((~touches_area(roads_gdf.geometry, boundary)).sum())
+        roads_gdf = clip_lines(roads_gdf, boundary)
         roads_gdf = roads_gdf[roads_gdf.geometry.length >= _MIN_ROAD_LENGTH]
+    print(f"  Road ways outside the analysis boundary: {n_outside}")
     print(f"  Road ways after filtering: {len(roads_gdf)}")
 
     rows: list[dict] = []
@@ -332,6 +337,7 @@ def detect_sidewalk_gaps(
           f"{n_separate_candidates}")
 
     return {
+        "roads_outside_boundary": n_outside,
         "roads_analysed": n_roads,
         "skipped_no_sidewalk": n_skipped_no_sidewalk,
         "both_sides": n_both,
