@@ -10,6 +10,7 @@ import shapely
 from shapely.geometry import Point
 from shapely.strtree import STRtree
 
+from analysis_boundary import inside
 from config import TACTILE_PAVING_KERB_MATCH_M, TACTILE_PAVING_WAY_MATCH_M
 from timing import step
 
@@ -431,6 +432,7 @@ def _missing_kerb_rows(
 
 
 _STAT_KEYS = (
+    "crossings_outside_boundary",
     "crossings_in_scope",
     "no_crossing_way_found",
     "ambiguous_way_match",
@@ -465,6 +467,7 @@ def detect_tactile_paving_issues(
     footways_geojson_path: str = "sidewalk_footways_raw.geojson",
     kerbs_geojson_path:    str = "kerbs_raw.geojson",
     other_ways_geojson_paths: tuple = (),
+    boundary=None,
 ) -> dict:
     print("Detecting tactile_paving incoherences (crossing ↔ kerb)...")
     print(
@@ -475,9 +478,13 @@ def detect_tactile_paving_issues(
     with step("load crossing nodes"):
         highways_gdf = gpd.read_file(highways_geojson_path)
         all_crossing_gdf = _crossing_nodes_from(highways_gdf)
+        in_area = inside(all_crossing_gdf.geometry, boundary)
+        n_outside = int((~in_area).sum())
+        all_crossing_gdf = all_crossing_gdf[in_area].reset_index(drop=True)
         crossing_gdf = all_crossing_gdf[
             all_crossing_gdf["tactile_paving"].isin(_IN_SCOPE_VALUES)
         ].reset_index(drop=True)
+    print(f"  highway=crossing nodes outside the analysis boundary: {n_outside}")
     print(f"  highway=crossing nodes (all): {len(all_crossing_gdf)}")
     print(f"  highway=crossing nodes with in-scope tactile_paving "
           f"(yes/no/incorrect): {len(crossing_gdf)}")
@@ -486,7 +493,7 @@ def detect_tactile_paving_issues(
         print("  Nothing to analyse, skipping.")
         _write_empty_output()
         _write_empty_kerb_issues_output()
-        return _stats()
+        return _stats(crossings_outside_boundary=n_outside)
 
     with step("load footway=crossing ways"):
         way_gdf, vertex_tree, vertex_points, vertex_way_idx = _load_crossing_ways(footways_geojson_path)
@@ -712,6 +719,7 @@ def detect_tactile_paving_issues(
     print(f"  Total flagged:                              {n_flagged}")
 
     return _stats(
+        crossings_outside_boundary=n_outside,
         crossings_in_scope=n_total,
         no_crossing_way_found=n_no_way,
         ambiguous_way_match=n_ambiguous_way,
