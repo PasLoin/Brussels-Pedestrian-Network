@@ -242,6 +242,7 @@ def detect_graph_islands(
     edge_levels: list[str] | None = None,
     elevator_vertices: frozenset = frozenset(),
     node_list: list | None = None,
+    boundary=None,
 ) -> tuple[np.ndarray, dict]:
     print("Detecting graph islands (components disconnected from the main network)...")
 
@@ -282,6 +283,7 @@ def detect_graph_islands(
     platform_tree = STRtree(platform_geoms) if platform_geoms else None
     n_platform_linked = 0
     platform_linked_length_m = 0.0
+    n_outside_boundary = 0
 
     comps_sorted = sorted(island_lines, key=lambda c: -island_length[c])
     rows: list[dict] = []
@@ -292,6 +294,9 @@ def detect_graph_islands(
     island_id = 0
     for comp in comps_sorted:
         geom = MultiLineString(island_lines[comp])
+        if boundary is not None and not shapely.covers(boundary, geom):
+            n_outside_boundary += 1
+            continue
         if platform_tree is not None and len(platform_tree.query(
             geom, predicate="dwithin", distance=ISLAND_PLATFORM_TOLERANCE_M,
         )):
@@ -389,6 +394,8 @@ def detect_graph_islands(
     print(f"  Linked to a public_transport=platform (not flagged): "
           f"{n_platform_linked} ({platform_linked_length_m / 1000:.1f} km), "
           f"platforms loaded: {len(platform_geoms)}")
+    print(f"  Islands not entirely inside the analysis boundary (not flagged): "
+          f"{n_outside_boundary}")
     print(f"  Islands: {n_islands} ({total_length_m / 1000:.1f} km) | "
           f"unjoined (gap ≤ {ISLAND_UNJOINED_GAP_M} m): {n_unjoined} | "
           f"isolated: {n_islands - n_unjoined}")
@@ -400,6 +407,7 @@ def detect_graph_islands(
         "main_component_vertices": n_main_vertices,
         "main_component_share_pct": main_share_pct,
         "isolated_vertices": n_isolated_vertices,
+        "islands_outside_boundary": n_outside_boundary,
         "islands": n_islands,
         "islands_unjoined": n_unjoined,
         "islands_isolated": n_islands - n_unjoined,
