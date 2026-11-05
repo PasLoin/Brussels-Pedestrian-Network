@@ -9,6 +9,7 @@ from front_contract import assert_layer_contract
 from detect_tactile_paving_issues import (
     _IN_SCOPE_VALUES,
     _crossing_nodes_from,
+    _load_kerb_nodes,
     detect_tactile_paving_issues,
 )
 
@@ -46,6 +47,14 @@ def _cw(coords, fid):
 
 def _kerb(x, y, tp, fid):
     props = {"barrier": "kerb", "@id": fid}
+    if tp is not None:
+        props["tactile_paving"] = tp
+    return {"type": "Feature", "geometry": {"type": "Point", "coordinates": _xy(x, y)},
+            "properties": props}
+
+
+def _kerb_no(x, y, tp, fid, **tags):
+    props = {"kerb": "no", "@id": fid, **tags}
     if tp is not None:
         props["tactile_paving"] = tp
     return {"type": "Feature", "geometry": {"type": "Point", "coordinates": _xy(x, y)},
@@ -400,3 +409,98 @@ def test_layers_match_front_contract(scene):
     kerbs = assert_layer_contract(path / "kerb_issues.geojson", "kerb_issues")
     assert [f["properties"]["osm_id"] for f in tactile] == [1]
     assert {f["properties"]["type"] for f in kerbs} == {"kerb_missing", "kerb_untagged"}
+
+
+def test_issue_57_kerb_no_at_traffic_island_is_not_missing(scene):
+    path = scene(
+        [_crossing(0, 0, None, 5431981512)],
+        [
+            _cw([(-3, 0), (0, 0), (3, 0)], 101),
+            _line([(3, 0), (3, 4)], 501, highway="footway", footway="traffic_island"),
+        ],
+        [_kerb(-3, 0, None, 201), _kerb_no(3, 0, None, 13078034862)],
+    )
+    stats = detect_tactile_paving_issues()
+    assert _kerb_issues(path) == []
+    assert stats["kerb_missing_points"] == 0
+    assert stats["kerb_missing_crossings"] == 0
+    assert stats["kerb_check_resolved"] == 1
+
+
+def test_kerb_no_only_side_reports_the_other_missing_side(scene):
+    path = scene(
+        [_crossing(0, 0, None, 1)],
+        [_cw([(-3, 0), (0, 0), (3, 0)], 101)],
+        [_kerb_no(3, 0, None, 202)],
+    )
+    stats = detect_tactile_paving_issues()
+    issues = _kerb_issues(path)
+    assert len(issues) == 1
+    assert issues[0]["type"] == "kerb_missing"
+    assert stats["kerb_missing_points"] == 1
+
+
+def test_kerb_no_tactile_paving_is_used_for_coherence(scene):
+    path = scene(
+        [_crossing(0, 0, "yes", 1)],
+        [_cw([(-3, 0), (0, 0), (3, 0)], 101)],
+        [_kerb(-3, 0, "yes", 201), _kerb_no(3, 0, "yes", 202)],
+    )
+    stats = detect_tactile_paving_issues()
+    assert stats["coherent"] == 1
+    assert stats["kerb_missing"] == 0
+    assert stats["flagged"] == 0
+    assert _kerb_issues(path) == []
+
+
+def test_kerb_no_without_tactile_paving_is_reported_untagged(scene):
+    path = scene(
+        [_crossing(0, 0, "yes", 1)],
+        [_cw([(-3, 0), (0, 0), (3, 0)], 101)],
+        [_kerb(-3, 0, "yes", 201), _kerb_no(3, 0, None, 202)],
+    )
+    stats = detect_tactile_paving_issues()
+    assert stats["kerb_missing"] == 0
+    assert stats["kerb_untagged"] == 1
+    issues = _kerb_issues(path)
+    assert len(issues) == 1
+    assert issues[0]["type"] == "kerb_untagged"
+    assert issues[0]["kerb_osm_id"] == 202
+
+
+def test_kerb_no_between_two_crossing_ways_is_an_extremity(scene):
+    path = scene(
+        [_crossing(-3, 0, "yes", 1), _crossing(3, 0, "yes", 2)],
+        [
+            _cw([(-6, 0), (-3, 0), (0, 0)], 101),
+            _cw([(0, 0), (3, 0), (6, 0)], 102),
+        ],
+        [_kerb(-6, 0, "yes", 201), _kerb_no(0, 0, "yes", 202), _kerb(6, 0, "yes", 203)],
+    )
+    stats = detect_tactile_paving_issues()
+    assert _kerb_issues(path) == []
+    assert stats["contiguous_pair_merged"] == 0
+    assert stats["coherent"] == 2
+    assert stats["kerb_missing_points"] == 0
+
+
+def test_load_kerb_nodes_keeps_barrier_and_kerb_no_only(tmp_path):
+    _write(tmp_path / "kerbs_raw.geojson", [
+        _kerb(0, 0, "yes", 1),
+        _kerb_no(1, 0, None, 2),
+        _kerb_no(2, 0, "no", 3, barrier="kerb"),
+        _kerb_no(3, 0, None, 4, highway="crossing"),
+        {"type": "Feature", "geometry": {"type": "Point", "coordinates": _xy(4, 0)},
+         "properties": {"kerb": "lowered", "@id": 5}},
+    ])
+    gdf, geoms, tree = _load_kerb_nodes(str(tmp_path / "kerbs_raw.geojson"))
+    assert sorted(gdf["osm_id"]) == [1, 2, 3]
+    assert len(geoms) == 3
+    assert tree is not None
+
+
+def test_load_kerb_nodes_accepts_file_without_barrier_column(tmp_path):
+    _write(tmp_path / "kerbs_raw.geojson", [_kerb_no(0, 0, "yes", 9)])
+    gdf, _, _ = _load_kerb_nodes(str(tmp_path / "kerbs_raw.geojson"))
+    assert list(gdf["osm_id"]) == [9]
+    assert list(gdf["tactile_paving"]) == ["yes"]
