@@ -229,8 +229,8 @@ function makePopupLayers({ flowColors, sidewalkStatuses, highwayLayers, elevator
         return `
           ${isMissing ? popupTitle("#1e3a8a", "Kerb absent") : popupTitle("#7c2d12", "Kerb sans tactile_paving")}
           <div class="popup-row"><span class="label">Problème</span><span class="value">${isMissing
-            ? "Aucun nœud barrier=kerb trouvé à cette extrémité"
-            : "Kerb présent mais sans tag tactile_paving"
+            ? "Aucun nœud barrier=kerb ou kerb=no trouvé à cette extrémité"
+            : "Nœud barrier=kerb ou kerb=no présent mais sans tag tactile_paving"
           }</span></div>
           ${cid > 0 ? `<div class="popup-row"><span class="label">Crossing</span><span class="value">
             <a href="https://www.openstreetmap.org/node/${cid}" target="_blank" rel="noopener">n${cid}</a>

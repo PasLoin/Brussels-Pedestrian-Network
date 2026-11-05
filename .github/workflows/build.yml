@@ -214,7 +214,7 @@ jobs:
 
       - name: Export kerb nodes for tactile paving QA
         run: |
-          osmium tags-filter brussels.osm.pbf n/barrier=kerb \
+          osmium tags-filter brussels.osm.pbf n/barrier=kerb n/kerb=no \
             -o kerbs.osm.pbf --overwrite
           osmium export kerbs.osm.pbf \
             --geometry-types=point \
