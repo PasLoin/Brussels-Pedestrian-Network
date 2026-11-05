@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-05
+ 
+### Kerbs absents : `kerb=no` accepté comme extrémité renseignée (#57)
+ 
+- L'extraction Osmium prend maintenant aussi `n/kerb=no et est traité par les QA kerbs de la même manière que barrier=kerb
+
+
 ## 2026-11-04
  
 ### Couches QA limitées à la Région de Bruxelles-Capitale (#46)
