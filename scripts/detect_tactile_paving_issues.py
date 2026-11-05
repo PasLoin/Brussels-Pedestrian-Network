@@ -217,13 +217,17 @@ def _load_kerb_nodes(
         print(f"  {kerbs_path} not available: {e}")
         return gpd.GeoDataFrame(geometry=[], crs="EPSG:31370"), [], None
     gdf = gdf[gdf.geometry.geom_type == "Point"].copy()
-    for col in ("barrier", "tactile_paving"):
+    for col in ("barrier", "kerb", "highway", "tactile_paving"):
         if col not in gdf.columns:
             gdf[col] = ""
     if "@id" not in gdf.columns:
         gdf["@id"] = 0
-    mask = gdf["barrier"].apply(_safe_str) == "kerb"
-    gdf = gdf[mask].copy()
+    is_barrier = gdf["barrier"].apply(_safe_str) == "kerb"
+    is_kerb_no = (
+        (gdf["kerb"].apply(_safe_str) == "no") &
+        (gdf["highway"].apply(_safe_str) != "crossing")
+    )
+    gdf = gdf[is_barrier | is_kerb_no].copy()
     gdf["tactile_paving"] = gdf["tactile_paving"].apply(_safe_str)
     gdf["osm_id"] = gdf["@id"].apply(_safe_id)
     gdf = gdf.to_crs("EPSG:31370").reset_index(drop=True)
@@ -501,7 +505,7 @@ def detect_tactile_paving_issues(
 
     with step("load kerb nodes"):
         kerb_gdf, kerb_geoms, kerb_tree = _load_kerb_nodes(kerbs_geojson_path)
-    print(f"  barrier=kerb nodes: {len(kerb_gdf)}")
+    print(f"  barrier=kerb or kerb=no nodes: {len(kerb_gdf)}")
 
     with step("index contiguous footway=crossing pairs"):
         xing_geoms, xing_tps, xing_tree = _crossing_points_from(highways_gdf)
