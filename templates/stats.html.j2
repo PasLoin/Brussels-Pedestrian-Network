@@ -1,6 +1,6 @@
 {% extends "_base.html.j2" %}
-{% block title %}Statistiques du Brussels Pedestrian Network{% endblock %}
-{% block description %}Statistiques de complétude du réseau piéton bruxellois sur OpenStreetMap : trottoirs documentés et traversées connectées.{% endblock %}
+{% block title %}{{ t("meta.stats.title") }}{% endblock %}
+{% block description %}{{ t("meta.stats.description") }}{% endblock %}
 {% block head %}
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
   <style>
@@ -247,24 +247,24 @@
 
 <header class="page-header">
   <div class="page-header-inner">
-    <div><a class="home" href="./">Brussels Pedestrian Network</a><h1>Statistiques</h1></div>
+    <div><a class="home" href="./">Brussels Pedestrian Network</a><h1>{{ t("common.nav.stats") }}</h1></div>
     <div class="page-header-right">
       <span id="build-date"></span>
-      <a href="./">Carte</a>
-      <a href="./evolution.html">Évolution</a>
-      <a href="./about.html">Méthodologie</a>
+      <a href="./">{{ t("common.nav.map") }}</a>
+      <a href="./evolution.html">{{ t("common.nav.evolution") }}</a>
+      <a href="./about.html">{{ t("common.nav.about") }}</a>
     </div>
   </div>
 </header>
 
 <main class="container" id="main">
-  <div class="loading" id="loading">Chargement…</div>
+  <div class="loading" id="loading">{{ t("common.loading") }}</div>
 </main>
 
 <footer class="footer">
-  Données : <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>
-  · <a href="https://github.com/PasLoin/Brussels-Pedestrian-Network" target="_blank" rel="noopener">Source</a>
-  · <a href="./evolution.html">Évolution</a>
+  {{ t("common.footer.data") }} <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>
+  · <a href="https://github.com/PasLoin/Brussels-Pedestrian-Network" target="_blank" rel="noopener">{{ t("common.footer.source") }}</a>
+  · <a href="./evolution.html">{{ t("common.nav.evolution") }}</a>
 </footer>
 
 <script src="{{ root }}stats.js"></script>
