@@ -192,3 +192,36 @@ def test_desktop_legend_shows_its_last_item(page):
 """)
     assert sizes["client"] >= sizes["scroll"]
     assert sizes["last"] <= sizes["legend"]
+
+
+_COLLECT_CSP_VIOLATIONS = """
+window.__cspViolations = [];
+document.addEventListener("securitypolicyviolation", e => window.__cspViolations.push(`${e.violatedDirective} ${e.blockedURI}`));
+"""
+
+
+def test_controls_work_without_inline_scripts(page, server):
+    pg = page.context.browser.new_page(viewport={"width": 1280, "height": 720})
+    pg.add_init_script(_COLLECT_CSP_VIOLATIONS)
+    pg.goto(server, wait_until="domcontentloaded")
+    pg.wait_for_function("() => typeof toggleLegend === 'function'")
+
+    legend_before = pg.evaluate(_LEGEND_STATE)
+    pg.dispatch_event("#legend-toggle", "click")
+    assert pg.evaluate(_LEGEND_STATE)["open"] != legend_before["open"]
+
+    header_open = "() => document.getElementById('header').classList.contains('open')"
+    header_before = pg.evaluate(header_open)
+    pg.dispatch_event("#header-toggle", "click")
+    assert pg.evaluate(header_open) != header_before
+
+    pg.eval_on_selector("#flow-threshold-slider", "el => { el.value = '50'; el.dispatchEvent(new Event('input')); }")
+    assert pg.inner_text("#flow-threshold-val") == "50 %"
+
+    pg.evaluate(_SHOW)
+    pg.dispatch_event("#route-clear", "click")
+    assert not pg.evaluate("() => document.getElementById('route-panel').classList.contains('visible')")
+
+    violations = [v for v in pg.evaluate("window.__cspViolations") if v.startswith("script-src")]
+    assert violations == []
+    pg.close()

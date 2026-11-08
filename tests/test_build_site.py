@@ -235,3 +235,19 @@ def test_page_runs_no_inline_script(site, page):
     html = (site / page).read_text(encoding="utf-8")
     inline = re.findall(r"<script(?![^>]*\bsrc=)([^>]*)>", html)
     assert all('type="application/json"' in attrs for attrs in inline), inline
+
+
+@pytest.mark.parametrize("page", PAGES)
+def test_page_has_no_inline_event_handler(site, page):
+    html = (site / page).read_text(encoding="utf-8")
+    assert not re.search(r"<[^>]*\son[a-z]+\s*=", html)
+
+
+@pytest.mark.parametrize("page", PAGES)
+def test_script_policy_forbids_inline_code(site, page):
+    html = (site / page).read_text(encoding="utf-8")
+    csp = _attr(html, r'http-equiv="Content-Security-Policy" content="([^"]*)"')
+    script_src = next(d for d in csp.split(";") if d.strip().startswith("script-src"))
+    assert "'self'" in script_src
+    assert "'unsafe-inline'" not in script_src
+    assert "'unsafe-eval'" not in script_src

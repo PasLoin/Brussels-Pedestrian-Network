@@ -123,7 +123,7 @@ def deployed_files() -> set:
     return set(build_site.STATIC)
 
 
-def build_trigger_paths(workflow: str) -> set:
+def push_trigger_paths(workflow: str) -> set:
     start = workflow.index("paths:", workflow.index("push:"))
     block = workflow[start:workflow.index("workflow_dispatch", start)]
     return set(re.findall(r'-\s*"([^"]+)"', block))
