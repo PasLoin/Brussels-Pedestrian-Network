@@ -14,6 +14,7 @@ UNSUPPORTED = (
     (re.compile(r"\$t\("), "nested $t() calls are not supported"),
     (re.compile(r"\{\{\s*-"), "unescaped {{- }} interpolation is not supported"),
     (re.compile(r"\{\{\s*\w+\s*,"), "formatted {{value, format}} interpolation is not supported"),
+    (re.compile(r"</?[A-Za-z][^>]*>|&[A-Za-z]+;|&#\d+;"), "HTML markup is not allowed: values are plain text, escaped where they are inserted"),
 )
 FRAGMENT_ID = re.compile(r"""\bid\s*=\s*["']([^"']+)["']""")
 FRAGMENT_CODE = re.compile(r"<code\b")
