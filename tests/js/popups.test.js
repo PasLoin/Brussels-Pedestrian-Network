@@ -121,7 +121,7 @@ test("tactile paving popup flags the unchecked side and links the contiguous way
   });
   assert.match(html, /non vérifié/);
   assert.match(html, /objects=w7,w8/);
-  assert.match(html, /tactile_paving du kerb différent/);
+  assert.match(html, /tactile_paving de la bordure différent/);
 });
 
 test("graph island popup builds a JOSM zoom on the bbox with the ways selected", () => {
