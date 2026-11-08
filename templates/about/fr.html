@@ -1,0 +1,94 @@
+  <h1>Méthodologie</h1>
+  <p class="lede">Comment les flux sont simulés, ce que signale chaque couche de contrôle qualité et comment sont calculés les indicateurs.</p>
+
+  <p>
+    Le site simule des trajets à pied à Bruxelles sur les données OpenStreetMap. Les flux montrent où un mapping incomplet pèse le plus sur les trajets simulés. Les couches de contrôle qualité pointent des erreurs de topologie ou des tags manquants sur des objets précis, avec un lien vers l'éditeur.
+  </p>
+
+  <h2 id="routing-costs">Coûts de routage</h2>
+  <p>
+    Le routeur (Dijkstra, igraph) cherche le chemin de poids minimal. Le poids d'un segment est sa longueur multipliée par un facteur qui dépend du type de voie : plus le facteur est élevé, plus le routeur cherche un détour.
+  </p>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Tag highway</th><th>Coût</th><th>Raison</th></tr>
+    <tr><td><code>pedestrian</code>, <code>footway</code></td><td class="num">1.0</td><td>Infrastructure piétonne.</td></tr>
+    <tr><td><code>cycleway</code> avec <code>foot=yes</code>, <code>designated</code> ou <code>permissive</code></td><td class="num">1.0</td><td>Ouverte aux piétons.</td></tr>
+    <tr><td><code>living_street</code>, <code>path</code>, <code>track</code>, <code>bridleway</code></td><td class="num">1.2</td><td>Usage mixte ou chemin non aménagé.</td></tr>
+    <tr><td><code>steps</code></td><td class="num">1.5</td><td>Difficile en poussette ou en fauteuil.</td></tr>
+    <tr><td><code>cycleway</code> sans accès piéton explicite</td><td class="num">1.8</td><td>Empruntée seulement faute de mieux.</td></tr>
+    <tr><td><code>residential</code>, <code>service</code></td><td class="num">2.0</td><td>Chaussée partagée avec les voitures.</td></tr>
+    <tr><td><code>unclassified</code></td><td class="num">2.2</td><td></td></tr>
+    <tr><td><code>tertiary</code></td><td class="num">3.5</td><td>Trafic plus dense.</td></tr>
+    <tr><td><code>secondary</code></td><td class="num">5.0</td><td></td></tr>
+    <tr><td><code>primary</code></td><td class="num">8.0</td><td>Axe chargé, peu adapté à la marche sans trottoir séparé.</td></tr>
+  </table>
+  </div>
+
+  <h2 id="quality-layers">Couches de contrôle qualité</h2>
+
+  <h3 id="road-flows">Flux sur route</h3>
+  <p>
+    Segments de chaussée où la simulation fait passer beaucoup de piétons alors qu'aucune infrastructure piétonne n'est renseignée (trottoir mappé ou tag <code>sidewalk</code>). Vérifiez sur le terrain ou sur l'imagerie si un trottoir existe, puis ajoutez le tag ou la géométrie.
+  </p>
+
+  <h3 id="sidewalk-one-side">Trottoir d'un seul côté</h3>
+  <p>
+    Pour chaque segment de route, on cherche de part et d'autre des ways <code>highway=footway</code> à peu près parallèles. Une piste <code>highway=cycleway</code> avec <code>foot=yes</code>, <code>designated</code> ou <code>permissive</code> compte aussi comme trottoir. Le segment est signalé quand un trottoir séparé n'est trouvé que d'un côté.
+  </p>
+
+  <h3 id="sidewalk-tags">Tags sidewalk</h3>
+  <p>
+    Statut des tags <code>sidewalk</code>, <code>sidewalk:left</code>, <code>sidewalk:right</code> et <code>sidewalk:both</code> sur chaque route : <code>separate</code>, <code>yes</code>, documenté des deux côtés, d'un seul côté, ou aucun tag.
+  </p>
+
+  <h3 id="missing-crossings">Traversées manquantes</h3>
+  <p>
+    Nœuds <code>highway=crossing</code> sur une route qui a un <code>footway=sidewalk</code> parallèle des deux côtés, mais qui ne sont pas reliés à ces trottoirs par un way <code>footway=crossing</code>. Trois cas :
+  </p>
+  <ul>
+    <li><code>missing_way</code> : aucun footway ne touche le nœud ;</li>
+    <li><code>missing_tag</code> : un footway touche le nœud mais n'a pas <code>footway=crossing</code> ;</li>
+    <li><code>wrong_tag</code> : le way qui traverse est tagué <code>footway=sidewalk</code>.</li>
+  </ul>
+  <p>
+    Dans les trois cas, les trottoirs sont mappés mais le graphe de routage est coupé à cet endroit. Les nœuds sur <code>service</code>, <code>cycleway</code> ou <code>track</code>, et les traversées <code>crossing:continuous=yes</code>, ne sont pas signalés comme <code>missing_tag</code>.
+  </p>
+
+  <h3 id="crossing-candidates">Traversée sans footway=crossing</h3>
+  <p>
+    Footways courts qui relient un trottoir de chaque côté d'une route sans porter <code>footway=crossing</code>. Ce sont des candidats : à vérifier avant de modifier.
+  </p>
+
+  <h3 id="kerbs-tactile-paving">Kerbs et bandes podotactiles</h3>
+  <p>
+    Sur chaque traversée, on regarde les nœuds <code>barrier=kerb</code> aux deux extrémités du way <code>footway=crossing</code>. Un point est placé quand le kerb manque ou n'a pas de <code>tactile_paving</code>. Une incohérence est signalée quand le <code>tactile_paving</code> du crossing contredit celui des kerbs : <code>yes</code> ou <code>no</code> attend la même valeur des deux côtés, <code>incorrect</code> attend un côté <code>yes</code> et l'autre <code>no</code>. Deux <code>footway=crossing</code> bout à bout sont traités comme une seule traversée.
+  </p>
+
+  <h3 id="network-islands">Îlots déconnectés</h3>
+  <p>
+    Parties du réseau piéton sans lien avec le réseau principal. Une « jonction manquante » touche presque le réseau (2 m au plus) et il lui manque sans doute un nœud commun. Un « îlot isolé » n'a rien de proche, souvent à cause d'un accès privé, d'un portail ou d'une cartographie incomplète. La couche signale aussi les escaliers dont le <code>level</code> ne recouvre pas celui d'un chemin raccordé ; dans les stations à plusieurs niveaux, cela donne parfois des faux positifs.
+  </p>
+
+  <h2 id="indicators">Indicateurs</h2>
+  <p>
+    Le score de complétude de la page Statistiques est la moyenne de cinq parts, en pourcentage :
+  </p>
+  <ul>
+    <li>segments de route dont les trottoirs sont documentés par un tag (<code>separate</code>, <code>yes</code> ou les deux côtés ; un seul côté compte pour moitié) ;</li>
+    <li>segments de route dont les trottoirs sont mappés comme ways séparés ;</li>
+    <li>nœuds <code>highway=crossing</code> reliés à un footway ;</li>
+    <li>nœuds <code>highway=crossing</code> reliés à un way correctement tagué <code>footway=crossing</code> ;</li>
+    <li>longueur de route avec un trottoir détecté des deux côtés, parmi celles qui en ont au moins un.</li>
+  </ul>
+  <p>
+    La page Évolution suit en plus la présence de <code>surface</code> et <code>smoothness</code> sur les footways et de <code>tactile_paving</code> sur les crossings.
+  </p>
+
+  <h2 id="contributing">Contribuer</h2>
+  <ol>
+    <li>Repérez un segment rouge (flux sur route) ou un point d'une couche de contrôle.</li>
+    <li>Cliquez dessus pour ouvrir l'objet dans iD ou JOSM, ou utilisez « Éditer dans OSM » à partir du zoom 16.</li>
+    <li>Corrigez les tags ou la géométrie.</li>
+    <li>La carte est recalculée chaque nuit à partir de l'extrait OSM du jour.</li>
+  </ol>
