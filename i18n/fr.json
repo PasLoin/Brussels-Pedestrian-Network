@@ -3,6 +3,14 @@
     "index": {
       "title": "Flux piétons simulés et QA OpenStreetMap à Bruxelles",
       "description": "Carte des flux piétons simulés à Bruxelles à partir d'OpenStreetMap, avec des couches de contrôle qualité pour corriger trottoirs et traversées."
+    },
+    "stats": {
+      "title": "Statistiques du Brussels Pedestrian Network",
+      "description": "Statistiques de complétude du réseau piéton bruxellois sur OpenStreetMap : trottoirs documentés et traversées connectées."
+    },
+    "evolution": {
+      "title": "Évolution du Brussels Pedestrian Network",
+      "description": "Évolution mensuelle du mapping piéton à Bruxelles sur OpenStreetMap : réseau, trottoirs documentés et traversées au fil du temps."
     }
   },
   "common": {
@@ -11,7 +19,17 @@
       "stats": "Statistiques",
       "evolution": "Évolution",
       "about": "Méthodologie",
-      "statsShort": "Stats"
+      "statsShort": "Stats",
+      "map": "Carte",
+      "backToMap": "Retour à la carte"
+    },
+    "footer": {
+      "data": "Données :",
+      "source": "Source"
+    },
+    "error": "Erreur : {{message}}",
+    "chart": {
+      "tooltip": "{{label}} : {{value}}"
     }
   },
   "header": {
@@ -185,6 +203,208 @@
     "kerb": {
       "missingProblem": "Aucun nœud barrier=kerb ou kerb=no trouvé à cette extrémité",
       "untaggedProblem": "Nœud barrier=kerb ou kerb=no présent mais sans tag tactile_paving"
+    }
+  },
+  "stats": {
+    "infra": {
+      "pedestrian": "Piéton",
+      "road": "Route",
+      "cyclewayFootYes": "Cycleway (foot=yes)",
+      "cyclewayNoFoot": "Cycleway (no foot)"
+    },
+    "sidewalk": {
+      "documented": "documenté",
+      "partial": "partiel",
+      "unknown": "inconnu"
+    },
+    "completeness": {
+      "title": "Complétude du réseau piéton",
+      "intro": "Moyenne des cinq indicateurs ci-dessous. Le calcul est décrit dans la {{link}}.",
+      "methodologyLink": "méthodologie",
+      "outOf100": "sur 100"
+    },
+    "indicator": {
+      "sidewalkTags": {
+        "label": "Tags trottoir documentés",
+        "hint": "(separate + yes + documenté + ½ partial)"
+      },
+      "sidewalkSeparate": {
+        "label": "Trottoirs mappés séparément",
+        "hint": "tous les trottoirs existants mappés en separate (forme idéale)"
+      },
+      "crossingsConnected": {
+        "label": "Traversées connectées",
+        "hint": "highway=crossing ayant une footway connectée"
+      },
+      "crossingsTagged": {
+        "label": "Traversées entièrement taguées",
+        "hint": "footway=crossing présent sur le way connecté"
+      },
+      "continuity": {
+        "label": "Continuité des trottoirs",
+        "hint": "routes avec trottoir des deux côtés, parmi celles qui en ont au moins un"
+      }
+    },
+    "crossings": {
+      "title": "Traversées piétonnes",
+      "intro": "État des nœuds highway=crossing repérés sur le réseau analysable.",
+      "nodes": "Nœuds crossing",
+      "nodesSub": "analysés",
+      "ok": "Way + tag OK",
+      "missingWay": "Way manquant",
+      "missingWaySub": "à mapper",
+      "missingTag": "Tag manquant",
+      "missingTagSub": "footway=crossing absent",
+      "wrongTag": "Tag erroné",
+      "wrongTagSub": "taguée footway=sidewalk",
+      "continuous": "Continus",
+      "excluded": "Sur way exclue",
+      "chart": "État des crossings"
+    },
+    "network": {
+      "title": "Réseau",
+      "totalLength": "Longueur totale",
+      "nodes": "Noeuds",
+      "edges": "Arêtes",
+      "pedestrian": "Piéton dédié",
+      "roads": "Routes",
+      "cycleways": "Cycleways",
+      "cyclewaysSub": "foot=yes : {{footYes}} · no foot : {{noFoot}}",
+      "density": "Densité piéton/route",
+      "densitySub": "km piéton / km route",
+      "chartCategory": "km par catégorie",
+      "chartHighway": "km par type highway"
+    },
+    "sidewalkTags": {
+      "title": "Tags sidewalk",
+      "segments": "Segments routiers",
+      "documented": "Documentés",
+      "documentedSub": "separate + yes + documenté",
+      "partial": "Partiels",
+      "untagged": "Sans tag",
+      "chartCount": "Segments par statut",
+      "chartKm": "km par statut",
+      "segmentsAxis": "segments"
+    },
+    "spatial": {
+      "title": "Analyse spatiale des trottoirs",
+      "analysed": "Routes analysées",
+      "excluded_one": "{{count}} exclue (sidewalk=no documenté)",
+      "excluded_other": "{{count}} exclues (sidewalk=no documenté)",
+      "bothSides": "Deux côtés",
+      "oneSide": "Un seul côté",
+      "noSide": "Aucun côté",
+      "chartResult": "Résultat par segment",
+      "chartFootways": "Footways retenus (composition)"
+    },
+    "simulation": {
+      "title": "Simulation",
+      "trips": "Trajets routés",
+      "avgDistance": "Distance moyenne",
+      "odPoints": "Points OD",
+      "computeTime": "Temps de calcul"
+    }
+  },
+  "evolution": {
+    "loading": "Chargement de l'historique…",
+    "currentStats": "Statistiques actuelles",
+    "emptyHistory": "Historique vide. Lancez le workflow \"Compute History\".",
+    "intro_one": "{{snapshots}} relevés couvrant {{count}} an du réseau piéton bruxellois dans OpenStreetMap.",
+    "intro_other": "{{snapshots}} relevés couvrant {{count}} ans du réseau piéton bruxellois dans OpenStreetMap.",
+    "meta": {
+      "range": "Du {{from}} au {{to}}",
+      "pedKm": "{{now}} km piéton actuellement ({{first}} km au premier relevé)",
+      "daily": "* = dernière extraction quotidienne ({{date}})",
+      "area": "Zone : Région de Bruxelles-Capitale (relation OSM 54094)"
+    },
+    "period": {
+      "title": "Période d'analyse",
+      "from": "Du",
+      "to": "au",
+      "last6Months": "6 derniers mois",
+      "full": "Période complète",
+      "hint": "L'échelle verticale des graphiques s'ajuste à la période choisie, ce qui rend visibles les petites variations. Par défaut : les 6 derniers mois.",
+      "fullInfo_one": "Période complète · {{count}} point",
+      "fullInfo_other": "Période complète · {{count}} points",
+      "zoomInfo_one": "{{count}} point affiché (zoom actif)",
+      "zoomInfo_other": "{{count}} points affichés (zoom actif)"
+    },
+    "deltas": {
+      "title": "Évolution",
+      "at": "Évolution au {{date}}",
+      "range": "Évolution du {{from}} au {{to}}",
+      "since": "{{delta}} depuis le {{date}}",
+      "points": "{{value}} pts",
+      "pedNetwork": "Réseau piéton",
+      "footwaySidewalk": "footway=sidewalk",
+      "crossingNodes": "Nœuds crossing",
+      "crossingWays": "Ways footway=crossing",
+      "sidewalksDocumented": "Trottoirs documentés",
+      "sidewalksSeparate": "Trottoirs séparés",
+      "crossingTagged": "Ratio crossing tagged",
+      "tactilePaving": "Tactile paving"
+    },
+    "compare": {
+      "title": "Depuis le dernier snapshot mensuel",
+      "hwTitle": "Km par type d'infrastructure piétonne : snapshot vs aujourd'hui",
+      "hwSubtitle": "Comparaison entre le dernier snapshot mensuel ({{snapshot}}) et l'extrait quotidien le plus récent ({{today}}). Seule l'infrastructure piétonne dédiée est comparée : les routes (primary, etc.) varient très peu d'un jour à l'autre et sont couvertes plus bas.",
+      "fwTitle": "Sous-types de footway : snapshot vs aujourd'hui",
+      "fwSubtitle": "Détail des ways highway=footway par sous-tag footway=*, mêmes deux dates.",
+      "snapshotOf": "Snapshot du {{date}}",
+      "today": "Aujourd'hui ({{date}})"
+    },
+    "network": {
+      "title": "Longueur du réseau (km)",
+      "pedTitle": "Infrastructure piétonne dédiée",
+      "allTitle": "Réseau global par catégorie",
+      "allSubtitle": "Piéton, route, cycleway. « Route » regroupe les voies de residential à primary où les piétons marchent sur la chaussée.",
+      "hwTitle": "Détail par type highway",
+      "hwSubtitle": "Six types les plus présents en km."
+    },
+    "quality": {
+      "title": "Qualité de mapping piéton",
+      "swTitle": "Trottoirs : ratio des routes documentées",
+      "swSubtitle": "% de routes (résidentielles → primaires) avec un tag sidewalk explicite (separate, yes, both, no), et part restant non documentée.",
+      "xingTitle": "Traversées : nœuds et ways",
+      "xingSubtitle": "Un crossing est correctement mappé quand il a à la fois un nœud highway=crossing et un way footway=crossing. L'écart entre les deux courbes donne le nombre de traversées à compléter.",
+      "accTitle": "Accessibilité : tags annexes",
+      "accSubtitle": "% de footways avec surface, % de footways avec smoothness, % de crossings avec tactile_paving."
+    },
+    "footways": {
+      "title": "Composition des footways",
+      "mixTitle": "Sous-tags footway=* (empilés)",
+      "mixSubtitle": "sidewalk / crossing / link / traffic_island / autre / sans tag. « Autre » : un sous-tag footway=* hors de cette liste ; « sans tag » : aucun sous-tag."
+    },
+    "sidewalks": {
+      "title": "Composition des tags sidewalk sur les routes",
+      "mixTitle": "Tags sidewalk (empilés)",
+      "mixSubtitle": "separate / yes / partial / no / sans tag. Quand des routes passent de « yes » à « separate », leurs trottoirs ont été dessinés comme ways séparés.",
+      "byTypeTitle": "Détail par type de route",
+      "byTypeSubtitle": "Même composition (separate / yes / partial / no / sans tag), ventilée par type de route, pour le point le plus récent de la période sélectionnée.",
+      "noData": "Détail par type de route pas encore disponible pour le {{date}}. Il apparaîtra après la prochaine extraction.",
+      "noDataUndated": "Détail par type de route pas encore disponible."
+    },
+    "series": {
+      "pedestrian": "Piéton",
+      "roads": "Routes",
+      "cycleway": "Cycleway",
+      "documentedAnyTag": "Documenté (any tag)",
+      "notDocumented": "Non documenté",
+      "crossingNodes": "Nœuds highway=crossing",
+      "crossingWays": "Ways footway=crossing",
+      "continuousCrossings": "Crossings continus",
+      "other": "autre",
+      "otherRecognised": "autre (sous-tag reconnu)",
+      "noTag": "sans tag",
+      "noExplicit": "no (explicite)"
+    },
+    "roadType": {
+      "residential": "Résidentiel",
+      "tertiary": "Tertiaire",
+      "secondary": "Secondaire",
+      "primary": "Primaire",
+      "total_one": "{{count}} route au total",
+      "total_other": "{{count}} routes au total"
     }
   }
 }
