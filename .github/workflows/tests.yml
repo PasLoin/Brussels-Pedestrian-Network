@@ -9,7 +9,10 @@ on:
       - "pwg/**"
       - "*.js"
       - "*.css"
-      - "*.html"
+      - "build_site.py"
+      - "templates/**"
+      - "i18n/**"
+      - "sitemap.xml"
       - ".github/workflows/tests.yml"
       - ".github/scripts/coverage_summary.py"
       - ".coveragerc"
@@ -20,7 +23,10 @@ on:
       - "pwg/**"
       - "*.js"
       - "*.css"
-      - "*.html"
+      - "build_site.py"
+      - "templates/**"
+      - "i18n/**"
+      - "sitemap.xml"
       - ".github/workflows/tests.yml"
       - ".github/scripts/coverage_summary.py"
       - ".coveragerc"
@@ -44,7 +50,7 @@ jobs:
           node-version: "24"
 
       - name: Install Python dependencies
-        run: pip install "shapely>=2" osmnx geopandas igraph numpy pyproj pyyaml pytest pytest-cov playwright
+        run: pip install "shapely>=2" osmnx geopandas igraph numpy pyproj pyyaml "jinja2>=3.1" pytest pytest-cov playwright
 
       - name: Install browser for layout tests
         run: python -m playwright install --with-deps chromium
