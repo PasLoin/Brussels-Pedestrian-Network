@@ -10,6 +10,9 @@ on:
       - "*.js"
       - "*.css"
       - "build_site.py"
+      - "check_i18n.py"
+      - ".github/workflows/build.yml"
+      - ".github/workflows/site.yml"
       - "templates/**"
       - "i18n/**"
       - "sitemap.xml"
@@ -24,6 +27,9 @@ on:
       - "*.js"
       - "*.css"
       - "build_site.py"
+      - "check_i18n.py"
+      - ".github/workflows/build.yml"
+      - ".github/workflows/site.yml"
       - "templates/**"
       - "i18n/**"
       - "sitemap.xml"
@@ -54,6 +60,9 @@ jobs:
 
       - name: Install browser for layout tests
         run: python -m playwright install --with-deps chromium
+
+      - name: Check translations
+        run: python check_i18n.py
 
       - name: Run JavaScript tests
         run: node --test tests/js/*.test.js
