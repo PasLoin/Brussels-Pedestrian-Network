@@ -62,7 +62,7 @@
   <a href="./about.html" aria-current="page">{{ t("common.nav.about") }}</a>
 </nav>
 
-<main>
+<main data-i18n-fragment="about">
 {% include ["about/" ~ lang ~ ".html", "about/" ~ reference ~ ".html"] %}
 </main>
 
