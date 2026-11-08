@@ -62,7 +62,7 @@ function hideRoutePanel() {
 
 function updateFlowFilter(rawValue) {
   const minPct = parseInt(rawValue, 10);
-  document.getElementById("flow-threshold-val").textContent = minPct + " %";
+  document.getElementById("flow-threshold-val").textContent = i18n.percent(minPct, { maximumFractionDigits: 0 });
   if (!mapRef) return;
   const baseFilter = ["==", ["get", "infra_type"], "road"];
   const filter = minPct > 0
@@ -74,35 +74,35 @@ function updateFlowFilter(rawValue) {
 const SIDEWALK_STATUSES = [
   { value: "separate",   label: "separate",          color: "#22c55e" },
   { value: "yes",        label: "yes",               color: "#06b6d4" },
-  { value: "documented", label: "documenté (both)",  color: "#22c55e" },
-  { value: "partial",    label: "partial (1 côté)",  color: "#f5700b" },
-  { value: "unknown",    label: "aucun tag",         color: "#b587c7" },
+  { value: "documented", label: i18n.t("layer.sidewalk.documented"), color: "#22c55e" },
+  { value: "partial",    label: i18n.t("layer.sidewalk.partial"),    color: "#f5700b" },
+  { value: "unknown",    label: i18n.t("layer.sidewalk.unknown"),    color: "#b587c7" },
 ];
 const activeSidewalkStatuses = new Set(SIDEWALK_STATUSES.map(s => s.value));
 
 const updateSidewalkFilter = makeMembershipFilterUpdater(() => mapRef, "sidewalk-roads", "sw", activeSidewalkStatuses, SIDEWALK_STATUSES);
 
 const MISSING_CROSSING_TYPES = [
-  { value: "missing_way", label: "Way non mappé",               color: "#f97316" },
-  { value: "missing_tag", label: "Tag footway=crossing absent",  color: "#eab308" },
-  { value: "wrong_tag",   label: "Taguée footway=sidewalk",      color: "#dc2626" },
+  { value: "missing_way", label: i18n.t("layer.missingCrossing.missingWay"), color: "#f97316" },
+  { value: "missing_tag", label: i18n.t("layer.missingCrossing.missingTag"), color: "#eab308" },
+  { value: "wrong_tag",   label: i18n.t("layer.missingCrossing.wrongTag"),   color: "#dc2626" },
 ];
 const activeMissingTypes = new Set(MISSING_CROSSING_TYPES.map(t => t.value));
 
 const updateMissingCrossingsFilter = makeMembershipFilterUpdater(() => mapRef, "missing-crossings", "type", activeMissingTypes, MISSING_CROSSING_TYPES);
 
 const KERB_ISSUE_TYPES = [
-  { value: "kerb_missing",  label: "Kerb absent",             color: "#1e3a8a" },
-  { value: "kerb_untagged", label: "Kerb sans tactile_paving", color: "#7c2d12" },
+  { value: "kerb_missing",  label: i18n.t("layer.kerb.missing"),  color: "#1e3a8a" },
+  { value: "kerb_untagged", label: i18n.t("layer.kerb.untagged"), color: "#7c2d12" },
 ];
 const activeKerbIssueTypes = new Set();
 
 const updateKerbIssuesFilter = makeMembershipFilterUpdater(() => mapRef, "kerb-issues", "type", activeKerbIssueTypes, KERB_ISSUE_TYPES);
 
 const ISLAND_TYPES = [
-  { value: "unjoined", label: "Jonction manquante (≤ 2 m)", color: "#db2777" },
-  { value: "isolated", label: "Îlot isolé",                 color: "#0d9488" },
-  { value: "level",    label: "Discontinuité de niveau",    color: "#ea580c" },
+  { value: "unjoined", label: i18n.t("layer.island.unjoined"), color: "#db2777" },
+  { value: "isolated", label: i18n.t("layer.island.isolated"), color: "#0d9488" },
+  { value: "level",    label: i18n.t("layer.island.level"),    color: "#ea580c" },
 ];
 const activeIslandTypes = new Set(ISLAND_TYPES.map(t => t.value));
 
@@ -125,12 +125,12 @@ fetch(i18n.dataUrl("graph.json"))
     const btn = document.getElementById("nav-btn");
     btn.classList.remove("loading");
     btn.setAttribute("aria-busy", "false");
-    document.getElementById("nav-btn-label").textContent = "Navigation";
+    document.getElementById("nav-btn-label").textContent = i18n.t("nav.start");
     console.log(`Graph loaded: ${data.n.length} nodes, ${data.e.length} edges`);
   })
   .catch(err => {
     console.warn("graph.json not available:", err);
-    document.getElementById("nav-btn-label").textContent = "Navigation (indisponible)";
+    document.getElementById("nav-btn-label").textContent = i18n.t("nav.unavailable");
     document.getElementById("nav-btn").classList.add("disabled");
     document.getElementById("nav-btn").setAttribute("aria-busy", "false");
   });
@@ -146,6 +146,7 @@ document.getElementById("legend-toggle").addEventListener("click", () => toggleL
 document.getElementById("nav-btn").addEventListener("click", () => toggleNavMode());
 document.getElementById("route-clear").addEventListener("click", () => clearRoute());
 document.getElementById("flow-threshold-slider").addEventListener("input", (e) => updateFlowFilter(e.target.value));
+updateFlowFilter(document.getElementById("flow-threshold-slider").value);
 
 function toggleNavMode() {
   if (!graphReady) return;
@@ -155,13 +156,13 @@ function toggleNavMode() {
   btn.setAttribute("aria-pressed", navMode);
   if (navMode) {
     btn.classList.add("active");
-    document.getElementById("nav-btn-label").textContent = "Quitter la navigation";
-    hint.textContent = "Cliquez sur la carte pour placer le départ";
+    document.getElementById("nav-btn-label").textContent = i18n.t("nav.exit");
+    hint.textContent = i18n.t("nav.placeStart");
     navStep = 0;
     document.getElementById("map").classList.add("nav-mode-cursor");
   } else {
     btn.classList.remove("active");
-    document.getElementById("nav-btn-label").textContent = "Navigation";
+    document.getElementById("nav-btn-label").textContent = i18n.t("nav.start");
     hint.textContent = "";
     clearRoute();
     document.getElementById("map").classList.remove("nav-mode-cursor");
@@ -177,7 +178,7 @@ function clearRoute() {
     const src = mapRef.getSource("nav-route");
     if (src) src.setData({ type: "FeatureCollection", features: [] });
   }
-  if (navMode) document.getElementById("nav-hint").textContent = "Cliquez sur la carte pour placer le départ";
+  if (navMode) document.getElementById("nav-hint").textContent = i18n.t("nav.placeStart");
 }
 
 function handleNavClick(e) {
@@ -188,37 +189,38 @@ function handleNavClick(e) {
     if (startMarker) startMarker.remove();
     startMarker = new maplibregl.Marker({ color: "#22c55e" }).setLngLat([lng, lat]).addTo(mapRef);
     navStep = 1;
-    document.getElementById("nav-hint").textContent = "Cliquez pour placer l'arrivée";
+    document.getElementById("nav-hint").textContent = i18n.t("nav.placeEnd");
   } else if (navStep === 1) {
     endSnap = snapToNetwork(graphData, lat, lng, mainComponent, groundEdges);
     if (endMarker) endMarker.remove();
     endMarker = new maplibregl.Marker({ color: "#ef4444" }).setLngLat([lng, lat]).addTo(mapRef);
-    document.getElementById("nav-hint").textContent = "Calcul…";
+    document.getElementById("nav-hint").textContent = i18n.t("nav.computing");
     requestAnimationFrame(() => {
       const t0 = performance.now();
       const found = startSnap && endSnap ? routeBetween(graphData, adjList, startSnap, endSnap) : null;
-      const dt = (performance.now() - t0).toFixed(0);
+      const dt = Math.round(performance.now() - t0);
       if (!found || found.legs.length === 0) {
-        document.getElementById("nav-hint").textContent = "Aucun itinéraire trouvé";
+        document.getElementById("nav-hint").textContent = i18n.t("nav.noRoute");
         navStep = 2; return;
       }
       const route = buildRoute(graphData, found.legs);
       const src = mapRef.getSource("nav-route");
       if (src) src.setData(route.geojson);
       document.getElementById("route-dist").textContent = route.totalM >= 1000
-        ? `${(route.totalM / 1000).toLocaleString("fr-BE", { maximumFractionDigits: 2 })} km` : `${route.totalM} m`;
-      document.getElementById("route-time").textContent = `≈ ${route.walkMin} min à pied`;
+        ? `${i18n.number(route.totalM / 1000, { maximumFractionDigits: 2 })} km` : `${i18n.number(route.totalM)} m`;
+      document.getElementById("route-time").textContent = i18n.t("route.walkTime", { minutes: route.walkMin });
       document.getElementById("bar-ped").style.width  = route.pedPct  + "%";
       document.getElementById("bar-road").style.width = route.roadPct + "%";
       document.getElementById("bar-cyc").style.width  = route.cycPct  + "%";
-      document.getElementById("stat-ped-m").textContent   = `${route.pedM} m`;
-      document.getElementById("stat-road-m").textContent  = `${route.roadM} m`;
-      document.getElementById("stat-cyc-m").textContent   = `${route.cycM} m`;
-      document.getElementById("stat-ped-pct").textContent  = `${route.pedPct.toFixed(0)}%`;
-      document.getElementById("stat-road-pct").textContent = `${route.roadPct.toFixed(0)}%`;
-      document.getElementById("stat-cyc-pct").textContent  = `${route.cycPct.toFixed(0)}%`;
+      const wholePct = { maximumFractionDigits: 0 };
+      document.getElementById("stat-ped-m").textContent   = `${i18n.number(route.pedM)} m`;
+      document.getElementById("stat-road-m").textContent  = `${i18n.number(route.roadM)} m`;
+      document.getElementById("stat-cyc-m").textContent   = `${i18n.number(route.cycM)} m`;
+      document.getElementById("stat-ped-pct").textContent  = i18n.percent(route.pedPct, wholePct);
+      document.getElementById("stat-road-pct").textContent = i18n.percent(route.roadPct, wholePct);
+      document.getElementById("stat-cyc-pct").textContent  = i18n.percent(route.cycPct, wholePct);
       showRoutePanel();
-      document.getElementById("nav-hint").textContent = `Calculé en ${dt} ms`;
+      document.getElementById("nav-hint").textContent = i18n.t("nav.computedIn", { ms: dt });
       navStep = 2;
     });
   } else {
@@ -237,27 +239,27 @@ fetch(i18n.dataUrl("state.txt"))
         const state = JSON.parse(jsonMatch[0]);
         if (state.timestamp) {
           document.getElementById("osm-date").textContent =
-            `Données OSM : ${new Date(state.timestamp).toLocaleString("fr-BE", fmtOpts)}`;
+            i18n.t("header.osmDate", { date: i18n.date(state.timestamp, fmtOpts) });
         }
       } catch (e) { console.warn("state.txt JSON parse error:", e); }
     }
     const buildMatch = txt.match(/build_timestamp=(.+)/);
     if (buildMatch) {
       document.getElementById("build-date").textContent =
-        `Calcul : ${new Date(buildMatch[1].trim()).toLocaleString("fr-BE", fmtOpts)}`;
+        i18n.t("header.buildDate", { date: i18n.date(buildMatch[1].trim(), fmtOpts) });
     }
   })
-  .catch(() => { document.getElementById("osm-date").textContent = "Données OSM : date inconnue"; });
+  .catch(() => { document.getElementById("osm-date").textContent = i18n.t("header.osmDateUnknown"); });
 
 fetch(i18n.dataUrl("stats.json"))
   .then(r => r.json())
   .then(s => {
     const routing = s.routing || {};
-    const avgKm = ((routing.avg_distance_m || 0) / 1000).toFixed(2);
-    const trips = (routing.routed_trips || 0).toLocaleString("fr-BE");
+    const avgKm = i18n.number((routing.avg_distance_m || 0) / 1000, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const trips = i18n.number(routing.routed_trips || 0);
     document.getElementById("routing-stats").innerHTML =
-      `Trajets simulés : <span>${escapeHTML(trips)}</span><br>` +
-      `Distance moyenne : <span>${escapeHTML(avgKm)} km</span>`;
+      `${escapeHTML(i18n.t("header.simulatedTrips"))} <span>${escapeHTML(trips)}</span><br>` +
+      `${escapeHTML(i18n.t("header.averageDistance"))} <span>${escapeHTML(avgKm)} km</span>`;
   })
   .catch(() => { });
 
@@ -321,14 +323,14 @@ const BASE_STYLE_OVERRIDES = {
 };
 
 const HIGHWAY_LAYERS = [
-  { id: "living_street", label: "Rue partagée",     color: "#16a34a", width: 3,   dash: false, hidden: true },
-  { id: "pedestrian",    label: "Zone piétonne",     color: "#15803d", width: 3,   dash: false, hidden: true },
-  { id: "footway",       label: "Trottoir / allée",  color: "#22c55e", width: 2,   dash: false, hidden: true },
-  { id: "cycleway",      label: "Piste cyclable",    color: "#0000ff", width: 2.5, dash: false, hidden: true },
-  { id: "path",          label: "Sentier",           color: "#86efac", width: 1.5, dash: true,  hidden: true },
-  { id: "steps",         label: "Escaliers",         color: "#166534", width: 2,   dash: true,  hidden: true },
-  { id: "track",         label: "Chemin rural / forestier", color: "#a16207", width: 1.5, dash: true, hidden: true },
-  { id: "platform",      label: "Quai d'arrêt",      color: "#64748b", width: 2.5, dash: false, hidden: true },
+  { id: "living_street", label: i18n.t("layer.highway.livingStreet"), color: "#16a34a", width: 3,   dash: false, hidden: true },
+  { id: "pedestrian",    label: i18n.t("layer.highway.pedestrian"),   color: "#15803d", width: 3,   dash: false, hidden: true },
+  { id: "footway",       label: i18n.t("layer.highway.footway"),      color: "#22c55e", width: 2,   dash: false, hidden: true },
+  { id: "cycleway",      label: i18n.t("layer.highway.cycleway"),     color: "#0000ff", width: 2.5, dash: false, hidden: true },
+  { id: "path",          label: i18n.t("layer.highway.path"),         color: "#86efac", width: 1.5, dash: true,  hidden: true },
+  { id: "steps",         label: i18n.t("layer.highway.steps"),        color: "#166534", width: 2,   dash: true,  hidden: true },
+  { id: "track",         label: i18n.t("layer.highway.track"),        color: "#a16207", width: 1.5, dash: true, hidden: true },
+  { id: "platform",      label: i18n.t("layer.highway.platform"),     color: "#64748b", width: 2.5, dash: false, hidden: true },
 ];
 
 const ELEVATOR_COLOR = "#4338ca";
@@ -549,7 +551,7 @@ const { hover: HOVER_LAYERS, click: CLICK_LAYERS } = makePopupLayers({
   highwayLayers: HIGHWAY_LAYERS,
   elevatorColor: ELEVATOR_COLOR,
   elevatorLayerIds: ELEVATOR_LAYER_IDS,
-});
+}, i18n);
 
 const LIBERTY_URL = "https://tiles.openfreemap.org/styles/liberty";
 const ZINNEKE_BASE = "https://pasloin.github.io/ZinnekeTiles/";
@@ -577,7 +579,7 @@ const BASEMAPS = [
     hideLayers: ["railway-tram*", "railway-subway*", "railway-tunnel-tram", "railway-tunnel-subway", "man_made-tunnel-*"]
   },
   {
-    id: "nb", label: "Zinneke N&B", title: "ZinnekeTiles noir et blanc",
+    id: "nb", label: i18n.t("basemap.blackWhite.label"), title: i18n.t("basemap.blackWhite.title"),
     thumb: ZINNEKE_BASE + "assets/img/basemap-nb.png",
     url: ZINNEKE_BASE + "style.nb.json",
     hideLayers: ["man_made-tunnel-*"]
@@ -795,7 +797,7 @@ function initMap(style) {
   map.addControl(
     new maplibregl.AttributionControl({
       compact: false,
-      customAttribution: ['<a href="https://github.com/PasLoin/Brussels-Pedestrian-Network" target="_blank" rel="noopener">PasLoin</a> · <a href="./stats.html">Stats</a>']
+      customAttribution: [`<a href="https://github.com/PasLoin/Brussels-Pedestrian-Network" target="_blank" rel="noopener">PasLoin</a> · <a href="./stats.html">${escapeHTML(i18n.t("common.nav.statsShort"))}</a>`]
     }),
     "bottom-right"
   );
@@ -915,7 +917,7 @@ function initMap(style) {
     const makeSubFilter = ({ items, activeSet, dataKey, updateFn, parentSub, layerId, parentItem }) => {
       const header = document.createElement("div");
       header.className = "legend-sub-header";
-      header.innerHTML = `<span>Filtrer par type</span>`;
+      header.innerHTML = `<span>${escapeHTML(i18n.t("legend.filterByType"))}</span>`;
 
       const resetBtn = document.createElement("button");
       resetBtn.className = "legend-sub-reset";
@@ -931,7 +933,7 @@ function initMap(style) {
           el.setAttribute("aria-pressed", on);
         });
         resetBtn.textContent = shown && activeSet.size === items.length
-          ? "Tout désélectionner" : "Tout sélectionner";
+          ? i18n.t("legend.deselectAll") : i18n.t("legend.selectAll");
       };
 
       const apply = () => {
@@ -1006,15 +1008,15 @@ function initMap(style) {
       legendEl.appendChild(sub);
     };
 
-    addSection("Routage simulé");
-    legendEl.appendChild(makeItem({ layerId: "flow-ped",      label: "Flux piéton",        color: "#bbf7d0", color2: "#14532d" }));
-    legendEl.appendChild(makeItem({ layerId: "flow-cycleway",  label: "Flux sur piste cyclable",     color: "#bfdbfe", color2: "#3b0764" }));
-    legendEl.appendChild(makeItem({ layerId: "flow-road",      label: "Flux sur route",      color: "#fdba74", color2: "#450a0a" }));
+    addSection(i18n.t("legend.section.routing"));
+    legendEl.appendChild(makeItem({ layerId: "flow-ped",      label: i18n.t("layer.flow.pedestrian"), color: "#bbf7d0", color2: "#14532d" }));
+    legendEl.appendChild(makeItem({ layerId: "flow-cycleway",  label: i18n.t("layer.flow.cycleway"), color: "#bfdbfe", color2: "#3b0764" }));
+    legendEl.appendChild(makeItem({ layerId: "flow-road",      label: i18n.t("layer.flow.road"), color: "#fdba74", color2: "#450a0a" }));
 
-    addSection("Analyse spatiale et qualité");
-    legendEl.appendChild(makeItem({ layerId: "sidewalk-gaps", label: "Trottoir d'un seul côté", color: "#f59e0b", dashed: true }));
-    legendEl.appendChild(makeItem({ layerId: "footway-crossing-candidates", label: "Traversée sans footway=crossing ?", color: "#7f1d1d", dashed: true }));
-    legendEl.appendChild(makeItem({ layerId: "tactile-paving-issues", label: "Bande podotactile incohérente", color: "#a855f7", swatchType: "dot" }));
+    addSection(i18n.t("legend.section.quality"));
+    legendEl.appendChild(makeItem({ layerId: "sidewalk-gaps", label: i18n.t("layer.sidewalkGaps"), color: "#f59e0b", dashed: true }));
+    legendEl.appendChild(makeItem({ layerId: "footway-crossing-candidates", label: i18n.t("layer.crossingCandidates"), color: "#7f1d1d", dashed: true }));
+    legendEl.appendChild(makeItem({ layerId: "tactile-paving-issues", label: i18n.t("layer.tactilePaving"), color: "#a855f7", swatchType: "dot" }));
 
     KERB_ISSUE_TYPES.forEach(t => {
       legendEl.appendChild(makeKerbTypeItem({ type: t.value, label: t.label, color: t.color }));
@@ -1022,7 +1024,7 @@ function initMap(style) {
 
     addFilteredLayer({
       layerId:   "missing-crossings",
-      label:     "Traversée manquante",
+      label:     i18n.t("layer.missingCrossings"),
       color:     "#f97316",
       swatchType: "dot",
       items:     MISSING_CROSSING_TYPES,
@@ -1033,7 +1035,7 @@ function initMap(style) {
 
     addFilteredLayer({
       layerId:   "graph-islands",
-      label:     "Îlot déconnecté du réseau",
+      label:     i18n.t("layer.islands"),
       color:     "#db2777",
       color2:    "#0d9488",
       items:     ISLAND_TYPES,
@@ -1044,7 +1046,7 @@ function initMap(style) {
 
     addFilteredLayer({
       layerId:   "sidewalk-roads",
-      label:     "Tags sidewalk",
+      label:     i18n.t("layer.sidewalkTags"),
       color:     "#9ca3af",
       color2:    "#15803d",
       items:     SIDEWALK_STATUSES,
@@ -1053,11 +1055,11 @@ function initMap(style) {
       updateFn:  updateSidewalkFilter,
     });
 
-    addSection("Réseau de base");
+    addSection(i18n.t("legend.section.network"));
     HIGHWAY_LAYERS.forEach(l => legendEl.appendChild(makeItem({ layerId: `highway-${l.id}`, label: l.label, color: l.color, dashed: l.dash })));
     legendEl.appendChild(makeItem({
       layerId: ELEVATOR_LAYER_IDS[0], linkedLayerIds: ELEVATOR_LAYER_IDS.slice(1),
-      label: "Ascenseur", color: ELEVATOR_COLOR, swatchType: "dot",
+      label: i18n.t("layer.elevator"), color: ELEVATOR_COLOR, swatchType: "dot",
     }));
 
     const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, maxWidth: "280px" });

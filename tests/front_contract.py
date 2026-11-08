@@ -216,10 +216,10 @@ def layer_props(src: str) -> dict:
                 found |= gets
         props.setdefault(m.group(2), set()).update(found)
 
-    funcs = {m.group(1): _block(src, m.end()) for m in re.finditer(r"function\s+(\w+)\s*\(p\)\s*\{", src)}
+    funcs = {m.group(1): _block(src, m.end()) for m in re.finditer(r"function\s+(\w+)\s*\(p\b[^)]*\)\s*\{", src)}
     for m in re.finditer(r"ids:\s*\[([^\]]*)\],\s*format:", src):
         body = _block(src, m.end())
-        for name in re.findall(r"\b(\w+)\(p\)", body):
+        for name in re.findall(r"\b(\w+)\(p\b[^)]*\)", body):
             body += funcs.get(name, "")
         found = set(re.findall(r"\bp\.(\w+)", body)) | set(re.findall(r'\bp\["([^"]+)"\]', body))
         for layer_id in re.findall(r'"([^"]+)"', m.group(1)):
@@ -281,6 +281,7 @@ _HISTORY_PREFIXES = ("road_", "sidewalk_", "km_by", "footway_", "crossing_", "pe
 def history_reads(src: str) -> set:
     keys = set(re.findall(r"series\('(\w+)'\)", src))
     keys |= set(re.findall(r"\[\s*'[^']*',\s*'(\w+)',\s*'[^']*'\s*\]", src))
+    keys |= set(re.findall(r"\bkey:\s*'(\w+)'", src))
     keys |= set(re.findall(r"\b(?:entry|last|first|lastSnapshot|dailyEntry)\.(\w+)", src))
     keys |= {k for k in re.findall(r"\bd\.(\w+)", src) if k.startswith(_HISTORY_PREFIXES)}
     return keys - {"date", "type"}

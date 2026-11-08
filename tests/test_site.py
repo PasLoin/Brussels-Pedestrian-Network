@@ -88,3 +88,42 @@ def test_unpublished_languages_stay_out_of_the_sitemap(site):
     for conf in config["languages"].values():
         if not conf["published"] and conf["path"]:
             assert SITE_URL + conf["path"] not in sitemap
+
+
+FRENCH_LETTERS = re.compile(r"[àâçéèêëîïôûùüœ]", re.IGNORECASE)
+
+
+def _visible_text(html):
+    html = re.sub(r"<(script|style)\b.*?</\1>", "", html, flags=re.S)
+    texts = re.findall(r">([^<]+)<", html)
+    texts += re.findall(r'\s(?:title|aria-label|alt)="([^"]*)"', html)
+    texts += re.findall(r'<meta (?:name="description"|property="og:\w+") content="([^"]*)"', html)
+    return [" ".join(t.split()) for t in texts if t.strip()]
+
+
+def test_english_pages_have_no_french_left(site):
+    _, _, pages = site
+    for (lang, page), path in pages.items():
+        if lang != "en":
+            continue
+        leftovers = [t for t in _visible_text(_html(path)) if FRENCH_LETTERS.search(t)]
+        assert leftovers == [], (page, leftovers)
+
+
+def test_links_to_methodology_anchors_resolve_in_every_language(site):
+    out, config, pages = site
+    sources = [build_site.ROOT / name for name in build_site.STATIC if name.endswith(".js")]
+    sources += [path for path in pages.values()]
+    anchors = set()
+    for source in sources:
+        anchors |= set(re.findall(r"about\.html#([\w-]+)", source.read_text(encoding="utf-8")))
+    assert "indicators" in anchors
+    for lang in config["languages"]:
+        ids = set(re.findall(r'\sid="([^"]+)"', _html(pages[(lang, "about.html")])))
+        assert anchors <= ids, (lang, anchors - ids)
+
+
+def test_methodology_is_written_in_each_language(site):
+    _, _, pages = site
+    assert "<h1>Methodology</h1>" in _html(pages[("en", "about.html")])
+    assert "<h1>Méthodologie</h1>" in _html(pages[("fr", "about.html")])

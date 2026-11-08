@@ -1,1 +1,420 @@
-{}
+{
+  "meta": {
+    "index": {
+      "title": "Simulated pedestrian flows and OpenStreetMap QA in Brussels",
+      "description": "Map of simulated pedestrian flows in Brussels built from OpenStreetMap, with quality-control layers to fix sidewalks and crossings."
+    },
+    "stats": {
+      "title": "Brussels Pedestrian Network statistics",
+      "description": "Completeness statistics for the Brussels pedestrian network in OpenStreetMap: documented sidewalks and connected crossings."
+    },
+    "evolution": {
+      "title": "Brussels Pedestrian Network trends",
+      "description": "Monthly evolution of pedestrian mapping in Brussels on OpenStreetMap: network, documented sidewalks and crossings over time."
+    },
+    "about": {
+      "title": "Brussels Pedestrian Network methodology",
+      "description": "Routing costs, criteria of the quality-control layers and calculation of the Brussels Pedestrian Network indicators."
+    }
+  },
+  "common": {
+    "loading": "Loading…",
+    "nav": {
+      "stats": "Statistics",
+      "evolution": "Trends",
+      "about": "Methodology",
+      "statsShort": "Stats",
+      "map": "Map",
+      "backToMap": "Back to the map"
+    },
+    "footer": {
+      "data": "Data:",
+      "source": "Source"
+    },
+    "error": "Error: {{message}}",
+    "chart": {
+      "tooltip": "{{label}}: {{value}}"
+    }
+  },
+  "header": {
+    "subtitle": "Simulated pedestrian flows and OpenStreetMap quality control in Brussels",
+    "flowThreshold": "Road flow, minimum",
+    "editInOsm": "Edit in OSM",
+    "editHint": "Available from zoom {{zoom}}",
+    "osmDate": "OSM data: {{date}}",
+    "osmDateUnknown": "OSM data: unknown date",
+    "buildDate": "Computed: {{date}}",
+    "simulatedTrips": "Simulated trips:",
+    "averageDistance": "Average distance:"
+  },
+  "nav": {
+    "loadingGraph": "Loading the graph…",
+    "start": "Navigation",
+    "unavailable": "Navigation (unavailable)",
+    "exit": "Exit navigation",
+    "placeStart": "Click on the map to set the start",
+    "placeEnd": "Click to set the destination",
+    "computing": "Computing…",
+    "noRoute": "No route found",
+    "computedIn": "Computed in {{ms}} ms"
+  },
+  "route": {
+    "title": "Route",
+    "walkTime": "≈ {{minutes}} min walk",
+    "pedestrian": "Pedestrian",
+    "roadway": "Roadway",
+    "cyclewayNoFoot": "Cycle track without foot=yes",
+    "clear": "Clear route"
+  },
+  "map": {
+    "zoom": "zoom"
+  },
+  "basemap": {
+    "menu": "Base map",
+    "blackWhite": {
+      "label": "Zinneke B&W",
+      "title": "ZinnekeTiles black and white"
+    }
+  },
+  "legend": {
+    "title": "Legend",
+    "filterByType": "Filter by type",
+    "selectAll": "Select all",
+    "deselectAll": "Deselect all",
+    "section": {
+      "routing": "Simulated routing",
+      "quality": "Spatial analysis and quality",
+      "network": "Base network"
+    }
+  },
+  "layer": {
+    "flow": {
+      "pedestrian": "Pedestrian flow",
+      "cycleway": "Flow on cycle tracks",
+      "road": "Flow on roads"
+    },
+    "sidewalkGaps": "Sidewalk on one side only",
+    "crossingCandidates": "Crossing without footway=crossing?",
+    "tactilePaving": "Inconsistent tactile paving",
+    "missingCrossings": "Missing crossing",
+    "islands": "Island disconnected from the network",
+    "sidewalkTags": "Sidewalk tags",
+    "elevator": "Lift",
+    "highway": {
+      "livingStreet": "Living street",
+      "pedestrian": "Pedestrian zone",
+      "footway": "Sidewalk / footpath",
+      "cycleway": "Cycle track",
+      "path": "Path",
+      "steps": "Steps",
+      "track": "Rural / forest track",
+      "platform": "Stop platform"
+    },
+    "sidewalk": {
+      "documented": "documented (both)",
+      "partial": "partial (1 side)",
+      "unknown": "no tag"
+    },
+    "missingCrossing": {
+      "missingWay": "Way not mapped",
+      "missingTag": "footway=crossing tag missing",
+      "wrongTag": "Tagged footway=sidewalk"
+    },
+    "kerb": {
+      "missing": "Kerb missing",
+      "untagged": "Kerb without tactile_paving"
+    },
+    "island": {
+      "unjoined": "Missing junction (≤ 2 m)",
+      "isolated": "Isolated island",
+      "level": "Level discontinuity"
+    }
+  },
+  "popup": {
+    "label": {
+      "street": "Street",
+      "crossedStreet": "Crossed street",
+      "length": "Length",
+      "problem": "Problem",
+      "node": "Node",
+      "way": "Way",
+      "ways": "Ways",
+      "edit": "Edit",
+      "status": "Status",
+      "infrastructure": "Infrastructure",
+      "relativeFlow": "Relative flow",
+      "types": "Types",
+      "levels": "Levels",
+      "gapToNetwork": "Gap to the network",
+      "crossing": "Crossing",
+      "kerb": "Kerb",
+      "crossingNode": "Crossing node",
+      "crossingWay": "Crossing way",
+      "adjacentWay": "Adjacent way",
+      "kerbSide": "Kerb, side {{side}}",
+      "nearestCrossing": "Nearest footway=crossing"
+    },
+    "note": {
+      "sameCrossing": "(same crossing as the previous one)",
+      "radius": "(radius {{radius}} m)",
+      "notChecked": "not checked: the way ends at the crossing node"
+    },
+    "value": {
+      "absent": "missing"
+    },
+    "sidewalk": {
+      "yes": "sidewalk=yes, to be mapped as separate",
+      "documented": "Both sides documented",
+      "partial": "Only one side documented",
+      "unknown": "No sidewalk tag"
+    },
+    "flow": {
+      "title": "Simulated flow"
+    },
+    "infra": {
+      "pedestrian": "Pedestrian",
+      "road": "Roadway",
+      "cyclewayFootYes": "Cycle track, pedestrians allowed",
+      "cyclewayNoFoot": "Cycle track without foot=yes"
+    },
+    "missingCrossing": {
+      "missingWayTitle": "Crossing not mapped",
+      "missingWayProblem": "No footway connected to the node",
+      "missingTagProblem": "Footway connected but without the footway=crossing tag",
+      "wrongTagTitle": "Crossing tagged footway={{value}}",
+      "wrongTagProblem": "The way crossing the road at the crossing node has footway={{value}} instead of footway=crossing"
+    },
+    "crossingCandidate": {
+      "problem": "Connects a sidewalk on each side of a road but lacks the footway=crossing tag"
+    },
+    "tactile": {
+      "reason": {
+        "valueMismatch": "Kerb tactile_paving differs from the crossing's",
+        "incorrectNotMixed": "incorrect expected: one kerb yes + one kerb no"
+      }
+    },
+    "island": {
+      "unjoinedTitle": "Missing junction",
+      "isolatedTitle": "Island isolated from the network",
+      "levelProblem": "Steps whose level=* does not overlap that of a directly connected way: the link is theoretically impassable",
+      "unjoinedProblem": "Almost touches the main network but shares no node with it",
+      "isolatedProblem": "Group of ways with no link to the main network"
+    },
+    "levels": {
+      "untagged": "0 (untagged)",
+      "missing": "{{values}}: level {{level}} not connected"
+    },
+    "kerb": {
+      "missingProblem": "No barrier=kerb or kerb=no node found at this end",
+      "untaggedProblem": "barrier=kerb or kerb=no node present but without a tactile_paving tag"
+    }
+  },
+  "stats": {
+    "infra": {
+      "pedestrian": "Pedestrian",
+      "road": "Road",
+      "cyclewayFootYes": "Cycleway (foot=yes)",
+      "cyclewayNoFoot": "Cycleway (no foot)"
+    },
+    "sidewalk": {
+      "documented": "documented",
+      "partial": "partial",
+      "unknown": "unknown"
+    },
+    "completeness": {
+      "title": "Pedestrian network completeness",
+      "intro": "Average of the five indicators below. The calculation is described in the {{link}}.",
+      "methodologyLink": "methodology",
+      "outOf100": "out of 100"
+    },
+    "indicator": {
+      "sidewalkTags": {
+        "label": "Documented sidewalk tags",
+        "hint": "(separate + yes + documented + ½ partial)"
+      },
+      "sidewalkSeparate": {
+        "label": "Sidewalks mapped separately",
+        "hint": "all existing sidewalks mapped as separate (ideal form)"
+      },
+      "crossingsConnected": {
+        "label": "Connected crossings",
+        "hint": "highway=crossing with a connected footway"
+      },
+      "crossingsTagged": {
+        "label": "Fully tagged crossings",
+        "hint": "footway=crossing present on the connected way"
+      },
+      "continuity": {
+        "label": "Sidewalk continuity",
+        "hint": "roads with a sidewalk on both sides, among those with at least one"
+      }
+    },
+    "crossings": {
+      "title": "Pedestrian crossings",
+      "intro": "Status of the highway=crossing nodes found on the analysable network.",
+      "nodes": "Crossing nodes",
+      "nodesSub": "analysed",
+      "ok": "Way + tag OK",
+      "missingWay": "Missing way",
+      "missingWaySub": "to be mapped",
+      "missingTag": "Missing tag",
+      "missingTagSub": "footway=crossing missing",
+      "wrongTag": "Wrong tag",
+      "wrongTagSub": "tagged footway=sidewalk",
+      "continuous": "Continuous",
+      "excluded": "On an excluded way",
+      "chart": "Crossing status"
+    },
+    "network": {
+      "title": "Network",
+      "totalLength": "Total length",
+      "nodes": "Nodes",
+      "edges": "Edges",
+      "pedestrian": "Dedicated pedestrian",
+      "roads": "Roads",
+      "cycleways": "Cycleways",
+      "cyclewaysSub": "foot=yes: {{footYes}} · no foot: {{noFoot}}",
+      "density": "Pedestrian/road density",
+      "densitySub": "pedestrian km / road km",
+      "chartCategory": "km by category",
+      "chartHighway": "km by highway type"
+    },
+    "sidewalkTags": {
+      "title": "Sidewalk tags",
+      "segments": "Road segments",
+      "documented": "Documented",
+      "documentedSub": "separate + yes + documented",
+      "partial": "Partial",
+      "untagged": "Untagged",
+      "chartCount": "Segments by status",
+      "chartKm": "km by status",
+      "segmentsAxis": "segments"
+    },
+    "spatial": {
+      "title": "Spatial analysis of sidewalks",
+      "analysed": "Roads analysed",
+      "excluded_one": "{{count}} excluded (sidewalk=no documented)",
+      "excluded_other": "{{count}} excluded (sidewalk=no documented)",
+      "bothSides": "Both sides",
+      "oneSide": "One side only",
+      "noSide": "No side",
+      "chartResult": "Result per segment",
+      "chartFootways": "Footways kept (composition)"
+    },
+    "simulation": {
+      "title": "Simulation",
+      "trips": "Routed trips",
+      "avgDistance": "Average distance",
+      "odPoints": "OD points",
+      "computeTime": "Computation time"
+    }
+  },
+  "evolution": {
+    "loading": "Loading history…",
+    "currentStats": "Current statistics",
+    "emptyHistory": "Empty history. Run the \"Compute History\" workflow.",
+    "intro_one": "{{snapshots}} snapshots covering {{count}} year of the Brussels pedestrian network in OpenStreetMap.",
+    "intro_other": "{{snapshots}} snapshots covering {{count}} years of the Brussels pedestrian network in OpenStreetMap.",
+    "meta": {
+      "range": "From {{from}} to {{to}}",
+      "pedKm": "{{now}} km of pedestrian ways now ({{first}} km at the first snapshot)",
+      "daily": "* = latest daily extract ({{date}})",
+      "area": "Area: Brussels-Capital Region (OSM relation 54094)"
+    },
+    "period": {
+      "title": "Analysis period",
+      "from": "From",
+      "to": "to",
+      "last6Months": "Last 6 months",
+      "full": "Full period",
+      "hint": "The vertical scale of the charts adapts to the chosen period, which makes small variations visible. Default: the last 6 months.",
+      "fullInfo_one": "Full period · {{count}} point",
+      "fullInfo_other": "Full period · {{count}} points",
+      "zoomInfo_one": "{{count}} point shown (zoom active)",
+      "zoomInfo_other": "{{count}} points shown (zoom active)"
+    },
+    "deltas": {
+      "title": "Trends",
+      "at": "Change at {{date}}",
+      "range": "Change from {{from}} to {{to}}",
+      "since": "{{delta}} since {{date}}",
+      "points": "{{value}} pts",
+      "pedNetwork": "Pedestrian network",
+      "footwaySidewalk": "footway=sidewalk",
+      "crossingNodes": "Crossing nodes",
+      "crossingWays": "footway=crossing ways",
+      "sidewalksDocumented": "Documented sidewalks",
+      "sidewalksSeparate": "Separate sidewalks",
+      "crossingTagged": "Tagged crossing ratio",
+      "tactilePaving": "Tactile paving"
+    },
+    "compare": {
+      "title": "Since the last monthly snapshot",
+      "hwTitle": "Km by pedestrian infrastructure type: snapshot vs today",
+      "hwSubtitle": "Comparison between the last monthly snapshot ({{snapshot}}) and the most recent daily extract ({{today}}). Only dedicated pedestrian infrastructure is compared: roads (primary, etc.) change very little from one day to the next and are covered below.",
+      "fwTitle": "Footway subtypes: snapshot vs today",
+      "fwSubtitle": "Detail of highway=footway ways by footway=* subtag, same two dates.",
+      "snapshotOf": "Snapshot of {{date}}",
+      "today": "Today ({{date}})"
+    },
+    "network": {
+      "title": "Network length (km)",
+      "pedTitle": "Dedicated pedestrian infrastructure",
+      "allTitle": "Overall network by category",
+      "allSubtitle": "Pedestrian, road, cycleway. “Road” covers ways from residential to primary where pedestrians walk on the carriageway.",
+      "hwTitle": "Detail by highway type",
+      "hwSubtitle": "The six most common types by km."
+    },
+    "quality": {
+      "title": "Pedestrian mapping quality",
+      "swTitle": "Sidewalks: share of documented roads",
+      "swSubtitle": "% of roads (residential → primary) with an explicit sidewalk tag (separate, yes, both, no), and the share still undocumented.",
+      "xingTitle": "Crossings: nodes and ways",
+      "xingSubtitle": "A crossing is correctly mapped when it has both a highway=crossing node and a footway=crossing way. The gap between the two curves is the number of crossings left to complete.",
+      "accTitle": "Accessibility: additional tags",
+      "accSubtitle": "% of footways with surface, % of footways with smoothness, % of crossings with tactile_paving."
+    },
+    "footways": {
+      "title": "Footway composition",
+      "mixTitle": "footway=* subtags (stacked)",
+      "mixSubtitle": "sidewalk / crossing / link / traffic_island / other / no tag. “Other”: a footway=* subtag outside this list; “no tag”: no subtag."
+    },
+    "sidewalks": {
+      "title": "Composition of sidewalk tags on roads",
+      "mixTitle": "Sidewalk tags (stacked)",
+      "mixSubtitle": "separate / yes / partial / no / no tag. When roads move from “yes” to “separate”, their sidewalks have been drawn as separate ways.",
+      "byTypeTitle": "Detail by road type",
+      "byTypeSubtitle": "Same composition (separate / yes / partial / no / no tag), broken down by road type, for the latest point of the selected period.",
+      "noData": "Detail by road type not yet available for {{date}}. It will appear after the next extraction.",
+      "noDataUndated": "Detail by road type not yet available."
+    },
+    "series": {
+      "pedestrian": "Pedestrian",
+      "roads": "Roads",
+      "cycleway": "Cycleway",
+      "documentedAnyTag": "Documented (any tag)",
+      "notDocumented": "Not documented",
+      "crossingNodes": "highway=crossing nodes",
+      "crossingWays": "footway=crossing ways",
+      "continuousCrossings": "Continuous crossings",
+      "other": "other",
+      "otherRecognised": "other (recognised subtag)",
+      "noTag": "no tag",
+      "noExplicit": "no (explicit)",
+      "footwaySurface": "Footway surface=*",
+      "footwaySmoothness": "Footway smoothness=*",
+      "crossingTactilePaving": "Crossing tactile_paving"
+    },
+    "roadType": {
+      "residential": "Residential",
+      "tertiary": "Tertiary",
+      "secondary": "Secondary",
+      "primary": "Primary",
+      "total_one": "{{count}} road in total",
+      "total_other": "{{count}} roads in total"
+    }
+  },
+  "about": {
+    "footer": "Maintained by {{maintainer}}. Data © {{osm}} contributors, ODbL licence."
+  }
+}

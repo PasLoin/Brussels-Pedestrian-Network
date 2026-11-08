@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
-from markupsafe import Markup
+from markupsafe import Markup, escape
 
 ROOT = Path(__file__).resolve().parent
 TEMPLATES_DIR = ROOT / "templates"
@@ -28,6 +28,14 @@ BRANCH_KEY = re.compile(r"[A-Za-z][A-Za-z0-9]*")
 LEAF_KEY = re.compile(r"[A-Za-z][A-Za-z0-9]*(?:_(?:" + "|".join(PLURAL_CATEGORIES) + r"))?")
 PLURAL_SUFFIX = re.compile(r"_(?:" + "|".join(PLURAL_CATEGORIES) + r")$")
 PLACEHOLDER = re.compile(r"\{\{\s*(\w+)\s*\}\}")
+PSEUDO_LANG = "en-XA"
+PSEUDO_CONF = {"path": "pseudo/", "locale": "en-GB", "og": "en_GB", "name": "Pseudo", "published": False}
+PSEUDO_OPEN, PSEUDO_CLOSE = "\u27e6", "\u27e7"
+PSEUDO_LETTERS = str.maketrans(
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
+    "\u00e5\u0180\u00e7\u00f0\u00e9\u0192\u011d\u0125\u00ee\u0135\u0137\u013c\u0271\u00f1\u00f6\u00fe\u01eb\u0155\u0161\u0163\u00fb\u1e7d\u0175\u1e8b\u00fd\u017e"
+    "\u00c5\u0181\u00c7\u00d0\u00c9\u0191\u011c\u0124\u00ce\u0134\u0136\u013b\u1e40\u00d1\u00d6\u00de\u01ea\u0154\u0160\u0162\u00db\u1e7c\u0174\u1e8a\u00dd\u017d",
+)
 
 
 def validate_languages(config):
@@ -105,6 +113,23 @@ def page_dictionary(config, lang, directory=I18N_DIR):
     return with_fallback(reference, load_dictionary(lang, directory))
 
 
+def pseudo_text(text):
+    parts, position = [], 0
+    for match in PLACEHOLDER.finditer(text):
+        parts += [text[position:match.start()].translate(PSEUDO_LETTERS), match.group(0)]
+        position = match.end()
+    parts.append(text[position:].translate(PSEUDO_LETTERS))
+    return PSEUDO_OPEN + "".join(parts) + PSEUDO_CLOSE
+
+
+def pseudo_dictionary(reference):
+    return {key: pseudo_text(value) for key, value in reference.items()}
+
+
+def with_pseudo_language(config):
+    return {**config, "languages": {**config["languages"], PSEUDO_LANG: PSEUDO_CONF}}
+
+
 def dictionary_json(dictionary):
     text = json.dumps(dictionary, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return Markup(text.replace("&", "\\u0026").replace("<", "\\u003c").replace(">", "\\u003e"))
@@ -114,14 +139,16 @@ def translator(dictionary):
     def t(key, **variables):
         if key not in dictionary:
             raise KeyError(f"missing translation key {key!r}")
-
-        def fill(match):
+        text = dictionary[key]
+        parts, position = [], 0
+        for match in PLACEHOLDER.finditer(text):
             name = match.group(1)
             if name not in variables:
                 raise KeyError(f"{key}: missing variable {name!r}")
-            return str(variables[name])
-
-        return PLACEHOLDER.sub(fill, dictionary[key])
+            parts += [escape(text[position:match.start()]), escape(variables[name])]
+            position = match.end()
+        parts.append(escape(text[position:]))
+        return Markup("".join(parts))
 
     return t
 
@@ -152,6 +179,7 @@ def render_page(lang, page, config=None, env=None, dictionary=None):
     conf = config["languages"][lang]
     return env.get_template(f"{page}.j2").render(
         lang=lang,
+        reference=config["reference"],
         locale=conf["locale"],
         time_zone=config["timeZone"],
         root=page_root(conf),
@@ -177,7 +205,7 @@ def write_sitemap(out, lastmod):
     (out / SITEMAP).write_text(text.replace(LASTMOD_PLACEHOLDER, lastmod), encoding="utf-8")
 
 
-def build(out, langs=None, lastmod=None):
+def build(out, langs=None, lastmod=None, pseudo=False):
     out = Path(out).resolve()
     if out == ROOT or out in ROOT.parents:
         raise ValueError(f"refusing to wipe {out}")
@@ -192,6 +220,14 @@ def build(out, langs=None, lastmod=None):
         target.mkdir(parents=True, exist_ok=True)
         for page in PAGES:
             (target / page).write_text(render_page(lang, page, config, env, dictionary), encoding="utf-8")
+    if pseudo:
+        pseudo_config = with_pseudo_language(config)
+        dictionary = pseudo_dictionary(page_dictionary(config, config["reference"]))
+        target = out / PSEUDO_CONF["path"]
+        target.mkdir(parents=True, exist_ok=True)
+        for page in PAGES:
+            (target / page).write_text(render_page(PSEUDO_LANG, page, pseudo_config, env, dictionary), encoding="utf-8")
+        built.append(PSEUDO_LANG)
     for name in STATIC:
         shutil.copy2(ROOT / name, out / name)
     write_sitemap(out, lastmod or datetime.now(timezone.utc).date().isoformat())
@@ -203,9 +239,10 @@ def main(argv=None):
     parser.add_argument("--out", default="_site", help="output folder, wiped before the build")
     parser.add_argument("--lang", action="append", help="language to build, repeatable; default: every published language")
     parser.add_argument("--lastmod", help="sitemap lastmod date (YYYY-MM-DD); default: today in UTC")
+    parser.add_argument("--pseudo", action="store_true", help=f"also render the {PSEUDO_LANG} pseudo-locale in {PSEUDO_CONF['path']}, never published")
     args = parser.parse_args(argv)
     try:
-        built = build(Path(args.out), args.lang, args.lastmod)
+        built = build(Path(args.out), args.lang, args.lastmod, args.pseudo)
     except ValueError as e:
         print(f"[ERROR] {e}", file=sys.stderr)
         return 1

@@ -1,6 +1,6 @@
 {% extends "_base.html.j2" %}
-{% block title %}Évolution du Brussels Pedestrian Network{% endblock %}
-{% block description %}Évolution mensuelle du mapping piéton à Bruxelles sur OpenStreetMap : réseau, trottoirs documentés et traversées au fil du temps.{% endblock %}
+{% block title %}{{ t("meta.evolution.title") }}{% endblock %}
+{% block description %}{{ t("meta.evolution.description") }}{% endblock %}
 {% block head %}
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -209,25 +209,25 @@
 
 <header class="page-header">
   <div class="page-header-inner">
-    <div><a class="home" href="./">Brussels Pedestrian Network</a><h1>Évolution</h1></div>
+    <div><a class="home" href="./">Brussels Pedestrian Network</a><h1>{{ t("common.nav.evolution") }}</h1></div>
     <div class="page-header-right">
-      <a href="./">Carte</a>
-      <a href="./stats.html">Statistiques</a>
-      <a href="./about.html">Méthodologie</a>
+      <a href="./">{{ t("common.nav.map") }}</a>
+      <a href="./stats.html">{{ t("common.nav.stats") }}</a>
+      <a href="./about.html">{{ t("common.nav.about") }}</a>
     </div>
   </div>
 </header>
 
 <main class="container" id="main">
-  <div class="loading" id="loading">Chargement de l'historique…</div>
+  <div class="loading" id="loading">{{ t("evolution.loading") }}</div>
 </main>
 
 <script src="{{ root }}evolution.js"></script>
 <footer class="footer" style="text-align:center; padding: 40px 0; color: #888; font-size: 11px; border-top: 1px solid #ddd; margin-top: 40px;">
-  Données : <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener" style="color: #666; text-decoration: none;">OpenStreetMap</a>
-  · <a href="https://github.com/PasLoin/Brussels-Pedestrian-Network" target="_blank" rel="noopener" style="color: #666; text-decoration: none;">Source</a>
-  · <a href="./stats.html" style="color: #666; text-decoration: none;">Statistiques actuelles</a>
-  · <a href="./" style="color: #666; text-decoration: none;">Retour à la carte</a>
+  {{ t("common.footer.data") }} <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener" style="color: #666; text-decoration: none;">OpenStreetMap</a>
+  · <a href="https://github.com/PasLoin/Brussels-Pedestrian-Network" target="_blank" rel="noopener" style="color: #666; text-decoration: none;">{{ t("common.footer.source") }}</a>
+  · <a href="./stats.html" style="color: #666; text-decoration: none;">{{ t("evolution.currentStats") }}</a>
+  · <a href="./" style="color: #666; text-decoration: none;">{{ t("common.nav.backToMap") }}</a>
 </footer>
 </body>
 </html>

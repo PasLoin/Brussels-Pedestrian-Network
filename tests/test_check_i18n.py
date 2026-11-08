@@ -25,7 +25,7 @@ FR = {
 SOURCE = """
 const label = t("route.noRoute");
 const walk = t('route.walkTime', { minutes });
-const trips = t(`map.trips`, { count });
+const trips = tx(`map.trips`, { count });
 const LAYERS = [{ dataKey: "type", labelKey: "route.noRoute" }];
 """
 
@@ -137,11 +137,21 @@ def test_plain_key_and_plural_family_cannot_share_a_name(project):
     ("$t(route.noRoute)", "nested $t()"),
     ("{{- minutes}} min", "unescaped"),
     ("{{minutes, number}} min", "formatted"),
+    ("<b>{{minutes}}</b> min", "HTML markup"),
+    ("{{minutes}} min <br/>", "HTML markup"),
+    ("{{minutes}}&nbsp;min", "HTML markup"),
 ])
 def test_invalid_values_are_rejected(project, value, reason):
     _, write, run = project
     write(fr={**FR, "route": {**FR["route"], "walkTime": value}})
     assert _one(run().errors, reason)
+
+
+@pytest.mark.parametrize("value", ["≤ 2 m", "a < b and c > d", "Tom & Jerry", "≈ {{minutes}} min"])
+def test_plain_text_with_symbols_is_accepted(project, value):
+    _, write, run = project
+    write(fr={**FR, "route": {**FR["route"], "walkTime": value.replace("{{minutes}}", "") + " {{minutes}}"}})
+    assert not _one(run().errors, "HTML markup")
 
 
 def test_used_keys_must_exist_in_the_reference(project):
