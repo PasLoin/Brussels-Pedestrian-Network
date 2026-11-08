@@ -1,5 +1,5 @@
 {% extends "_base.html.j2" %}
-{% block csp %}default-src 'self'; script-src 'self' https://unpkg.com https://cdn.jsdelivr.net 'unsafe-inline'; style-src 'self' https://unpkg.com 'unsafe-inline'; img-src 'self' https://tiles.openfreemap.org https://www.openstreetmap.org https://pasloin.github.io data: blob:; connect-src 'self' https://tiles.openfreemap.org https://unpkg.com https://pasloin.github.io https://protomaps.github.io; worker-src blob:; child-src blob:; font-src https://tiles.openfreemap.org; object-src 'none'; base-uri 'self'; upgrade-insecure-requests;{% endblock %}
+{% block csp %}default-src 'self'; script-src 'self' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' https://unpkg.com 'unsafe-inline'; img-src 'self' https://tiles.openfreemap.org https://www.openstreetmap.org https://pasloin.github.io data: blob:; connect-src 'self' https://tiles.openfreemap.org https://unpkg.com https://pasloin.github.io https://protomaps.github.io; worker-src blob:; child-src blob:; font-src https://tiles.openfreemap.org; object-src 'none'; base-uri 'self'; upgrade-insecure-requests;{% endblock %}
 {% block title %}Flux piétons simulés et QA OpenStreetMap à Bruxelles{% endblock %}
 {% block description %}Carte des flux piétons simulés à Bruxelles à partir d'OpenStreetMap, avec des couches de contrôle qualité pour corriger trottoirs et traversées.{% endblock %}
 {% block head %}
@@ -14,7 +14,7 @@
 <div id="map"></div>
 
 <div id="header" class="open">
-  <button id="header-toggle" onclick="toggleHeader()" aria-expanded="true" aria-controls="header-content">
+  <button id="header-toggle" type="button" aria-expanded="true" aria-controls="header-content">
     <span class="header-brand">
       <img src="{{ root }}favicon.svg" alt="" width="16" height="16" />
       <span>Brussels Pedestrian</span>
@@ -47,11 +47,10 @@
         id="flow-threshold-slider" aria-labelledby="flow-threshold-label"
         type="range"
         min="0" max="95" step="5" value="0"
-        oninput="updateFlowFilter(this.value)"
       />
     </div>
 
-    <button id="nav-btn" class="header-btn loading" onclick="toggleNavMode()" aria-busy="true" aria-live="polite">
+    <button id="nav-btn" type="button" class="header-btn loading" aria-busy="true" aria-live="polite">
       <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <polygon points="3 11 22 2 13 21 11 13 3 11"/>
       </svg>
@@ -99,11 +98,11 @@
       <span class="rpct" id="stat-cyc-pct"></span>
     </div>
   </div>
-  <button id="route-clear" onclick="clearRoute()">✕ Effacer l'itinéraire</button>
+  <button id="route-clear" type="button">✕ Effacer l'itinéraire</button>
 </div>
 
 <div id="legend" class="open">
-  <button id="legend-toggle" onclick="toggleLegend()" aria-expanded="true" aria-controls="legend-content">
+  <button id="legend-toggle" type="button" aria-expanded="true" aria-controls="legend-content">
     Légende
     <svg aria-hidden="true" class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
       <polyline points="6 9 12 15 18 9"/>
