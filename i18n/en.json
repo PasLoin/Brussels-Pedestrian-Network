@@ -1,1 +1,190 @@
-{}
+{
+  "meta": {
+    "index": {
+      "title": "Simulated pedestrian flows and OpenStreetMap QA in Brussels",
+      "description": "Map of simulated pedestrian flows in Brussels built from OpenStreetMap, with quality-control layers to fix sidewalks and crossings."
+    }
+  },
+  "common": {
+    "loading": "Loading…",
+    "nav": {
+      "stats": "Statistics",
+      "evolution": "Trends",
+      "about": "Methodology",
+      "statsShort": "Stats"
+    }
+  },
+  "header": {
+    "subtitle": "Simulated pedestrian flows and OpenStreetMap quality control in Brussels",
+    "flowThreshold": "Road flow, minimum",
+    "editInOsm": "Edit in OSM",
+    "editHint": "Available from zoom {{zoom}}",
+    "osmDate": "OSM data: {{date}}",
+    "osmDateUnknown": "OSM data: unknown date",
+    "buildDate": "Computed: {{date}}",
+    "simulatedTrips": "Simulated trips:",
+    "averageDistance": "Average distance:"
+  },
+  "nav": {
+    "loadingGraph": "Loading the graph…",
+    "start": "Navigation",
+    "unavailable": "Navigation (unavailable)",
+    "exit": "Exit navigation",
+    "placeStart": "Click on the map to set the start",
+    "placeEnd": "Click to set the destination",
+    "computing": "Computing…",
+    "noRoute": "No route found",
+    "computedIn": "Computed in {{ms}} ms"
+  },
+  "route": {
+    "title": "Route",
+    "walkTime": "≈ {{minutes}} min walk",
+    "pedestrian": "Pedestrian",
+    "roadway": "Roadway",
+    "cyclewayNoFoot": "Cycle track without foot=yes",
+    "clear": "Clear route"
+  },
+  "map": {
+    "zoom": "zoom"
+  },
+  "basemap": {
+    "menu": "Base map",
+    "blackWhite": {
+      "label": "Zinneke B&W",
+      "title": "ZinnekeTiles black and white"
+    }
+  },
+  "legend": {
+    "title": "Legend",
+    "filterByType": "Filter by type",
+    "selectAll": "Select all",
+    "deselectAll": "Deselect all",
+    "section": {
+      "routing": "Simulated routing",
+      "quality": "Spatial analysis and quality",
+      "network": "Base network"
+    }
+  },
+  "layer": {
+    "flow": {
+      "pedestrian": "Pedestrian flow",
+      "cycleway": "Flow on cycle tracks",
+      "road": "Flow on roads"
+    },
+    "sidewalkGaps": "Sidewalk on one side only",
+    "crossingCandidates": "Crossing without footway=crossing?",
+    "tactilePaving": "Inconsistent tactile paving",
+    "missingCrossings": "Missing crossing",
+    "islands": "Island disconnected from the network",
+    "sidewalkTags": "Sidewalk tags",
+    "elevator": "Lift",
+    "highway": {
+      "livingStreet": "Living street",
+      "pedestrian": "Pedestrian zone",
+      "footway": "Sidewalk / footpath",
+      "cycleway": "Cycle track",
+      "path": "Path",
+      "steps": "Steps",
+      "track": "Rural / forest track",
+      "platform": "Stop platform"
+    },
+    "sidewalk": {
+      "documented": "documented (both)",
+      "partial": "partial (1 side)",
+      "unknown": "no tag"
+    },
+    "missingCrossing": {
+      "missingWay": "Way not mapped",
+      "missingTag": "footway=crossing tag missing",
+      "wrongTag": "Tagged footway=sidewalk"
+    },
+    "kerb": {
+      "missing": "Kerb missing",
+      "untagged": "Kerb without tactile_paving"
+    },
+    "island": {
+      "unjoined": "Missing junction (≤ 2 m)",
+      "isolated": "Isolated island",
+      "level": "Level discontinuity"
+    }
+  },
+  "popup": {
+    "label": {
+      "street": "Street",
+      "crossedStreet": "Crossed street",
+      "length": "Length",
+      "problem": "Problem",
+      "node": "Node",
+      "way": "Way",
+      "ways": "Ways",
+      "edit": "Edit",
+      "status": "Status",
+      "infrastructure": "Infrastructure",
+      "relativeFlow": "Relative flow",
+      "types": "Types",
+      "levels": "Levels",
+      "gapToNetwork": "Gap to the network",
+      "crossing": "Crossing",
+      "kerb": "Kerb",
+      "crossingNode": "Crossing node",
+      "crossingWay": "Crossing way",
+      "adjacentWay": "Adjacent way",
+      "kerbSide": "Kerb, side {{side}}",
+      "nearestCrossing": "Nearest footway=crossing"
+    },
+    "note": {
+      "sameCrossing": "(same crossing as the previous one)",
+      "radius": "(radius {{radius}} m)",
+      "notChecked": "not checked: the way ends at the crossing node"
+    },
+    "value": {
+      "absent": "missing"
+    },
+    "sidewalk": {
+      "yes": "sidewalk=yes, to be mapped as separate",
+      "documented": "Both sides documented",
+      "partial": "Only one side documented",
+      "unknown": "No sidewalk tag"
+    },
+    "flow": {
+      "title": "Simulated flow"
+    },
+    "infra": {
+      "pedestrian": "Pedestrian",
+      "road": "Roadway",
+      "cyclewayFootYes": "Cycle track, pedestrians allowed",
+      "cyclewayNoFoot": "Cycle track without foot=yes"
+    },
+    "missingCrossing": {
+      "missingWayTitle": "Crossing not mapped",
+      "missingWayProblem": "No footway connected to the node",
+      "missingTagProblem": "Footway connected but without the footway=crossing tag",
+      "wrongTagTitle": "Crossing tagged footway={{value}}",
+      "wrongTagProblem": "The way crossing the road at the crossing node has footway={{value}} instead of footway=crossing"
+    },
+    "crossingCandidate": {
+      "problem": "Connects a sidewalk on each side of a road but lacks the footway=crossing tag"
+    },
+    "tactile": {
+      "reason": {
+        "valueMismatch": "Kerb tactile_paving differs from the crossing's",
+        "incorrectNotMixed": "incorrect expected: one kerb yes + one kerb no"
+      }
+    },
+    "island": {
+      "unjoinedTitle": "Missing junction",
+      "isolatedTitle": "Island isolated from the network",
+      "levelProblem": "Steps whose level=* does not overlap that of a directly connected way: the link is theoretically impassable",
+      "unjoinedProblem": "Almost touches the main network but shares no node with it",
+      "isolatedProblem": "Group of ways with no link to the main network"
+    },
+    "levels": {
+      "untagged": "0 (untagged)",
+      "missing": "{{values}}: level {{level}} not connected"
+    },
+    "kerb": {
+      "missingProblem": "No barrier=kerb or kerb=no node found at this end",
+      "untaggedProblem": "barrier=kerb or kerb=no node present but without a tactile_paving tag"
+    }
+  }
+}

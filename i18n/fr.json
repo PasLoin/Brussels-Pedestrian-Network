@@ -1,1 +1,190 @@
-{}
+{
+  "meta": {
+    "index": {
+      "title": "Flux piétons simulés et QA OpenStreetMap à Bruxelles",
+      "description": "Carte des flux piétons simulés à Bruxelles à partir d'OpenStreetMap, avec des couches de contrôle qualité pour corriger trottoirs et traversées."
+    }
+  },
+  "common": {
+    "loading": "Chargement…",
+    "nav": {
+      "stats": "Statistiques",
+      "evolution": "Évolution",
+      "about": "Méthodologie",
+      "statsShort": "Stats"
+    }
+  },
+  "header": {
+    "subtitle": "Flux piétons simulés et contrôle qualité OpenStreetMap à Bruxelles",
+    "flowThreshold": "Flux sur route, minimum",
+    "editInOsm": "Éditer dans OSM",
+    "editHint": "Disponible à partir du zoom {{zoom}}",
+    "osmDate": "Données OSM : {{date}}",
+    "osmDateUnknown": "Données OSM : date inconnue",
+    "buildDate": "Calcul : {{date}}",
+    "simulatedTrips": "Trajets simulés :",
+    "averageDistance": "Distance moyenne :"
+  },
+  "nav": {
+    "loadingGraph": "Chargement du graphe…",
+    "start": "Navigation",
+    "unavailable": "Navigation (indisponible)",
+    "exit": "Quitter la navigation",
+    "placeStart": "Cliquez sur la carte pour placer le départ",
+    "placeEnd": "Cliquez pour placer l'arrivée",
+    "computing": "Calcul…",
+    "noRoute": "Aucun itinéraire trouvé",
+    "computedIn": "Calculé en {{ms}} ms"
+  },
+  "route": {
+    "title": "Itinéraire",
+    "walkTime": "≈ {{minutes}} min à pied",
+    "pedestrian": "Piéton",
+    "roadway": "Chaussée",
+    "cyclewayNoFoot": "Vélo sans foot=yes",
+    "clear": "Effacer l'itinéraire"
+  },
+  "map": {
+    "zoom": "zoom"
+  },
+  "basemap": {
+    "menu": "Fond de carte",
+    "blackWhite": {
+      "label": "Zinneke N&B",
+      "title": "ZinnekeTiles noir et blanc"
+    }
+  },
+  "legend": {
+    "title": "Légende",
+    "filterByType": "Filtrer par type",
+    "selectAll": "Tout sélectionner",
+    "deselectAll": "Tout désélectionner",
+    "section": {
+      "routing": "Routage simulé",
+      "quality": "Analyse spatiale et qualité",
+      "network": "Réseau de base"
+    }
+  },
+  "layer": {
+    "flow": {
+      "pedestrian": "Flux piéton",
+      "cycleway": "Flux sur piste cyclable",
+      "road": "Flux sur route"
+    },
+    "sidewalkGaps": "Trottoir d'un seul côté",
+    "crossingCandidates": "Traversée sans footway=crossing ?",
+    "tactilePaving": "Bande podotactile incohérente",
+    "missingCrossings": "Traversée manquante",
+    "islands": "Îlot déconnecté du réseau",
+    "sidewalkTags": "Tags sidewalk",
+    "elevator": "Ascenseur",
+    "highway": {
+      "livingStreet": "Rue partagée",
+      "pedestrian": "Zone piétonne",
+      "footway": "Trottoir / allée",
+      "cycleway": "Piste cyclable",
+      "path": "Sentier",
+      "steps": "Escaliers",
+      "track": "Chemin rural / forestier",
+      "platform": "Quai d'arrêt"
+    },
+    "sidewalk": {
+      "documented": "documenté (both)",
+      "partial": "partial (1 côté)",
+      "unknown": "aucun tag"
+    },
+    "missingCrossing": {
+      "missingWay": "Way non mappé",
+      "missingTag": "Tag footway=crossing absent",
+      "wrongTag": "Taguée footway=sidewalk"
+    },
+    "kerb": {
+      "missing": "Kerb absent",
+      "untagged": "Kerb sans tactile_paving"
+    },
+    "island": {
+      "unjoined": "Jonction manquante (≤ 2 m)",
+      "isolated": "Îlot isolé",
+      "level": "Discontinuité de niveau"
+    }
+  },
+  "popup": {
+    "label": {
+      "street": "Rue",
+      "crossedStreet": "Rue traversée",
+      "length": "Longueur",
+      "problem": "Problème",
+      "node": "Nœud",
+      "way": "Way",
+      "ways": "Ways",
+      "edit": "Éditer",
+      "status": "Statut",
+      "infrastructure": "Infrastructure",
+      "relativeFlow": "Flux relatif",
+      "types": "Types",
+      "levels": "Niveaux",
+      "gapToNetwork": "Écart au réseau",
+      "crossing": "Crossing",
+      "kerb": "Kerb",
+      "crossingNode": "Nœud crossing",
+      "crossingWay": "Way crossing",
+      "adjacentWay": "Way contiguë",
+      "kerbSide": "Kerb côté {{side}}",
+      "nearestCrossing": "footway=crossing le plus proche"
+    },
+    "note": {
+      "sameCrossing": "(même traversée que la précédente)",
+      "radius": "(rayon {{radius}} m)",
+      "notChecked": "non vérifié : la way s'arrête au nœud crossing"
+    },
+    "value": {
+      "absent": "absent"
+    },
+    "sidewalk": {
+      "yes": "sidewalk=yes, à mapper en separate",
+      "documented": "Deux côtés documentés",
+      "partial": "Un seul côté documenté",
+      "unknown": "Aucun tag sidewalk"
+    },
+    "flow": {
+      "title": "Flux simulé"
+    },
+    "infra": {
+      "pedestrian": "Piéton",
+      "road": "Chaussée",
+      "cyclewayFootYes": "Piste cyclable, piétons admis",
+      "cyclewayNoFoot": "Piste cyclable sans foot=yes"
+    },
+    "missingCrossing": {
+      "missingWayTitle": "Traversée non mappée",
+      "missingWayProblem": "Aucune footway connectée au nœud",
+      "missingTagProblem": "Footway connectée mais sans tag footway=crossing",
+      "wrongTagTitle": "Traversée taguée footway={{value}}",
+      "wrongTagProblem": "Le way qui traverse la route au nœud crossing porte footway={{value}} au lieu de footway=crossing"
+    },
+    "crossingCandidate": {
+      "problem": "Relie un trottoir de chaque côté d'une route mais n'a pas le tag footway=crossing"
+    },
+    "tactile": {
+      "reason": {
+        "valueMismatch": "tactile_paving du kerb différent de celui du crossing",
+        "incorrectNotMixed": "incorrect attendu : un kerb yes + un kerb no"
+      }
+    },
+    "island": {
+      "unjoinedTitle": "Jonction manquante",
+      "isolatedTitle": "Îlot isolé du réseau",
+      "levelProblem": "Escalier (steps) dont le level=* ne recouvre pas celui d'un chemin directement raccordé : liaison théoriquement non praticable",
+      "unjoinedProblem": "Touche presque le réseau principal mais ne partage aucun nœud avec lui",
+      "isolatedProblem": "Groupe de chemins sans aucune liaison avec le réseau principal"
+    },
+    "levels": {
+      "untagged": "0 (non tagué)",
+      "missing": "{{values}} : niveau {{level}} non raccordé"
+    },
+    "kerb": {
+      "missingProblem": "Aucun nœud barrier=kerb ou kerb=no trouvé à cette extrémité",
+      "untaggedProblem": "Nœud barrier=kerb ou kerb=no présent mais sans tag tactile_paving"
+    }
+  }
+}
