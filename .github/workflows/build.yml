@@ -8,22 +8,11 @@ on:
     paths:
       - ".github/workflows/build.yml"
       - "scripts/**"
-      - "build_site.py"
-      - "templates/**"
-      - "i18n/**"
-      - "robots.txt"
-      - "sitemap.xml"
-      - "favicon.svg"
-      - "i18n.js"
-      - "app.js"
-      - "nav.js"
-      - "filters.js"
-      - "popups.js"
-      - "stats.js"
-      - "evolution.js"
-      - "app.css"
-      - "style.json"
   workflow_dispatch:
+
+concurrency:
+  group: gh-pages-deploy
+  cancel-in-progress: false
 
 env:
   HIGHWAY_TYPES_PED: >-
@@ -366,6 +355,9 @@ jobs:
             echo "No valid history.json in this checkout, using an empty list."
             echo '[]' > history.json
           fi
+
+      - name: Check translations
+        run: python3 check_i18n.py
 
       - name: Prepare site
         run: |
