@@ -19,6 +19,7 @@ from config import (
 )
 
 _MAX_WAY_IDS = 50
+LEVEL_VALUES_SEPARATOR = "|"
 
 _EMPTY_ROW = {
     "geometry": None,
@@ -30,7 +31,8 @@ _EMPTY_ROW = {
     "n_ways": 0,
     "highways": "",
     "way_ids": "",
-    "levels": "",
+    "level_values": "",
+    "level_missing": "",
     "node_id": 0,
     "bbox_w": 0.0,
     "bbox_s": 0.0,
@@ -81,7 +83,6 @@ _LEVEL_UNKNOWN = "?"
 _LEVEL_RANGE_RE = re.compile(r"^(-?\d+(?:\.\d+)?)-(-?\d+(?:\.\d+)?)$")
 _LEVEL_WILDCARD_HIGHWAYS = frozenset({"elevator"})
 _LEVEL_CHECKED_HIGHWAYS = frozenset({"steps"})
-_UNTAGGED_LEVEL_LABEL = "0 (non tagué)"
 
 
 def parse_level(raw: str) -> tuple[float, float] | None:
@@ -213,10 +214,6 @@ def find_level_discontinuities(
     return [(vertex, gs, missing) for vertex, (gs, missing) in sorted(found.items())]
 
 
-def _level_label(raw: str) -> str:
-    return raw if raw else _UNTAGGED_LEVEL_LABEL
-
-
 def _fmt_level(value: float) -> str:
     return str(int(value)) if float(value).is_integer() else str(value)
 
@@ -338,7 +335,7 @@ def detect_graph_islands(
         for vertex, groups, missing in find_level_discontinuities(
             edge_groups, edge_tuples, edge_highways, edge_levels, elevator_vertices,
         ):
-            lines, ways, highways, labels = [], [], set(), []
+            lines, ways, highways, values = [], [], set(), []
             length_m = 0.0
             for g in groups:
                 eid = edge_groups[g][0]
@@ -347,9 +344,9 @@ def detect_graph_islands(
                     lines.append(geom)
                 length_m += float(edge_lengths[eid])
                 highways.add(edge_highways[eid])
-                label = _level_label(edge_levels[eid])
-                if label not in labels:
-                    labels.append(label)
+                value = edge_levels[eid] or ""
+                if value not in values:
+                    values.append(value)
                 for way_id in edge_osm_ids[eid] if eid < len(edge_osm_ids) else ():
                     if way_id not in ways:
                         ways.append(way_id)
@@ -374,10 +371,8 @@ def detect_graph_islands(
                 "n_ways": len(ways),
                 "highways": ", ".join(sorted(highways)),
                 "way_ids": ",".join(str(w) for w in ways[:_MAX_WAY_IDS]),
-                "levels": (
-                    f"{labels[0]} : niveau {_fmt_level(missing)} non raccordé"
-                    if missing is not None else " ≠ ".join(labels)
-                ),
+                "level_values": LEVEL_VALUES_SEPARATOR.join(values[:1] if missing is not None else values),
+                "level_missing": _fmt_level(missing) if missing is not None else "",
                 "node_id": node_id,
             })
 
