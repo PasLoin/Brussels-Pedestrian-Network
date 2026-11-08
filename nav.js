@@ -22,7 +22,8 @@ class MinHeap {
   _down(i) {
     const d = this.d, n = d.length;
     while (true) {
-      let m = i, l = 2 * i + 1, r = 2 * i + 2;
+      const l = 2 * i + 1, r = 2 * i + 2;
+      let m = i;
       if (l < n && d[l][0] < d[m][0]) m = l;
       if (r < n && d[r][0] < d[m][0]) m = r;
       if (m === i) break;

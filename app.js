@@ -735,7 +735,7 @@ async function setBasemap(id) {
     currentBasemap = id;
     if (bm.url) mapRef.once("style.load", () => loadBasemapPatterns(mapRef, style, bm.url));
     mapRef.setStyle(style, { diff: false, transformStyle: keepOverlays });
-    try { localStorage.setItem(BASEMAP_STORAGE_KEY, id); } catch (e) {}
+    try { localStorage.setItem(BASEMAP_STORAGE_KEY, id); } catch {}
     renderBasemapMenu();
   } catch (err) {
     console.error("Fond de carte indisponible :", err);
@@ -768,7 +768,7 @@ function setupBasemapControl() {
 
 (async () => {
   let saved = null;
-  try { saved = localStorage.getItem(BASEMAP_STORAGE_KEY); } catch (e) {}
+  try { saved = localStorage.getItem(BASEMAP_STORAGE_KEY); } catch {}
   let bm = BASEMAPS.find(b => b.id === saved) || BASEMAPS[0];
   let style;
   try {

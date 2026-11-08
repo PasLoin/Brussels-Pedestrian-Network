@@ -2,11 +2,11 @@
   const STORAGE_KEY = "bpn-lang";
 
   function readChoice(storage) {
-    try { return storage.getItem(STORAGE_KEY); } catch (e) { return null; }
+    try { return storage.getItem(STORAGE_KEY); } catch { return null; }
   }
 
   function saveChoice(storage, lang) {
-    try { storage.setItem(STORAGE_KEY, lang); } catch (e) {}
+    try { storage.setItem(STORAGE_KEY, lang); } catch {}
   }
 
   function primaryBrowserLang(languages) {

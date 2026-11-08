@@ -62,7 +62,6 @@ function computeCompleteness(s) {
   const swPct  = swRoad.pct_by_status || {};
   const gaps   = s.sidewalk_gaps || {};
   const mc     = s.missing_crossings || {};
-  const net    = s.network || {};
 
   const sidewalkDocPct = clamp(
     (swPct.separate || 0) + (swPct.yes || 0) + (swPct.documented || 0) + (swPct.partial || 0) * 0.5,
@@ -249,7 +248,6 @@ function render(s) {
       </div>
     </div>`;
 
-  const byS = swRoad.by_status || {};
   const pctS = swRoad.pct_by_status || {};
   const docPct = (pctS.separate || 0) + (pctS.yes || 0) + (pctS.documented || 0);
 
