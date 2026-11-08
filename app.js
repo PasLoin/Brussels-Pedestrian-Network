@@ -1,3 +1,5 @@
+const i18n = I18N.fromDocument();
+
 const SMALL_SCREEN_QUERY = "(max-width: 600px)";
 let legendAutoCollapsed = false;
 
@@ -112,7 +114,7 @@ let mainComponent = null;
 let groundEdges = null;
 let graphReady = false;
 
-fetch("./graph.json")
+fetch(i18n.dataUrl("graph.json"))
   .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
   .then(data => {
     graphData = data;
@@ -220,7 +222,7 @@ function handleNavClick(e) {
   }
 }
 
-fetch("./state.txt")
+fetch(i18n.dataUrl("state.txt"))
   .then(r => r.text())
   .then(txt => {
     const fmtOpts = { dateStyle: "short", timeStyle: "short" };
@@ -242,7 +244,7 @@ fetch("./state.txt")
   })
   .catch(() => { document.getElementById("osm-date").textContent = "Données OSM : date inconnue"; });
 
-fetch("./stats.json")
+fetch(i18n.dataUrl("stats.json"))
   .then(r => r.json())
   .then(s => {
     const routing = s.routing || {};
@@ -256,7 +258,7 @@ fetch("./stats.json")
 
 const protocol = new pmtiles.Protocol();
 maplibregl.addProtocol("pmtiles", protocol.tile.bind(protocol));
-const PMTILES_URL = new URL("./pedestrian.pmtiles", window.location.href).href;
+const PMTILES_URL = new URL(i18n.dataUrl("pedestrian.pmtiles"), window.location.href).href;
 const EDIT_MIN_ZOOM = 16;
 
 const ROAD_GRAY   = "#d5d5d5";
@@ -595,7 +597,7 @@ async function loadLibertyStyle() {
   }
   let localPaintById = new Map();
   try {
-    const localStyle = await (await fetch("./style.json")).json();
+    const localStyle = await (await fetch(i18n.dataUrl("style.json"))).json();
     const allowedIds = new Set(Object.keys(BASE_STYLE_OVERRIDES));
     localPaintById = new Map(
       (localStyle.layers || []).filter(l => allowedIds.has(l.id)).map(l => [l.id, l.paint || {}])
