@@ -1,0 +1,7 @@
+{% if alternates|length > 1 %}
+<span class="lang-switch" role="group" aria-label="{{ t("lang.label") }}">
+{% for alt in alternates %}
+  <a href="{{ alt.href }}" lang="{{ alt.lang }}" hreflang="{{ alt.lang }}" data-lang="{{ alt.lang }}" title="{{ alt.name }}"{% if alt.lang == lang %} aria-current="true"{% endif %}>{{ alt.lang|upper }}</a>
+{% endfor %}
+</span>
+{% endif %}

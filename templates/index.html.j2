@@ -10,6 +10,7 @@
 {% endblock %}
 {% block body %}
 <body>
+{% include "_lang_banner.html.j2" %}
 
 <div id="map"></div>
 
@@ -37,6 +38,7 @@
       <a href="./stats.html">{{ t("common.nav.stats") }}</a>
       <a href="./evolution.html">{{ t("common.nav.evolution") }}</a>
       <a href="./about.html">{{ t("common.nav.about") }}</a>
+{% include "_lang_switch.html.j2" %}
     </nav>
 
     <div class="flow-filter-wrap">

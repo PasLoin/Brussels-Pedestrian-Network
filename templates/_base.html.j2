@@ -11,11 +11,32 @@
   <meta property="og:description" content="{{ self.description() }}" />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="{{ canonical }}" />
+  <meta property="og:locale" content="{{ og }}" />
+{% for alt in alternates if alt.lang != lang %}
+  <meta property="og:locale:alternate" content="{{ alt.og }}" />
+{% endfor %}
   <meta name="twitter:card" content="summary_large_image" />
 
   <link rel="icon" type="image/svg+xml" href="{{ root }}favicon.svg" />
+  <link rel="canonical" href="{{ canonical }}" />
+{% for alt in alternates %}
+  <link rel="alternate" hreflang="{{ alt.lang }}" href="{{ alt.url }}" />
+{% endfor %}
+  <link rel="alternate" hreflang="x-default" href="{{ x_default }}" />
+  <style>
+    .lang-switch { display: inline-flex; gap: 0.45em; margin-left: 0.2em; padding-left: 0.6em; border-left: 1px solid rgba(128, 128, 128, 0.4); }
+    .lang-switch a:not([aria-current]) { opacity: 0.6; }
+    .lang-switch a:not([aria-current]):hover { opacity: 1; }
+    .lang-switch a[aria-current] { font-weight: 700; text-decoration: none; pointer-events: none; }
+    #lang-banner { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 10000; display: flex; align-items: center; gap: 12px; box-sizing: border-box; width: max-content; max-width: calc(100vw - 24px); padding: 10px 12px 10px 16px; background: #1f2937; color: #fff; border-radius: 10px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25); font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
+    #lang-banner[hidden] { display: none; }
+    #lang-banner a { color: #93c5fd; font-weight: 600; white-space: nowrap; }
+    #lang-banner button { background: none; border: 0; color: inherit; font-size: 20px; line-height: 1; cursor: pointer; padding: 2px 6px; }
+  </style>
   <script type="application/json" id="i18n-dict">{{ dictionary_json }}</script>
+  <script type="application/json" id="i18n-languages">{{ languages_json }}</script>
   <script src="{{ root }}i18n.js"></script>
+  <script src="{{ root }}lang.js"></script>
 
 {% block head %}{% endblock %}
 </head>
