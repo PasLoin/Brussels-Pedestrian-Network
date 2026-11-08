@@ -1,7 +1,7 @@
 {
   "meta": {
     "index": {
-      "title": "Flux piétons simulés et QA OpenStreetMap à Bruxelles",
+      "title": "Flux piétons simulés et contrôle qualité OpenStreetMap à Bruxelles",
       "description": "Carte des flux piétons simulés à Bruxelles à partir d'OpenStreetMap, avec des couches de contrôle qualité pour corriger trottoirs et traversées."
     },
     "stats": {
@@ -10,7 +10,7 @@
     },
     "evolution": {
       "title": "Évolution du Brussels Pedestrian Network",
-      "description": "Évolution mensuelle du mapping piéton à Bruxelles sur OpenStreetMap : réseau, trottoirs documentés et traversées au fil du temps."
+      "description": "Évolution mensuelle de la cartographie piétonne à Bruxelles sur OpenStreetMap : réseau, trottoirs documentés et traversées au fil du temps."
     },
     "about": {
       "title": "Méthodologie du Brussels Pedestrian Network",
@@ -111,18 +111,18 @@
       "platform": "Quai d'arrêt"
     },
     "sidewalk": {
-      "documented": "documenté (both)",
-      "partial": "partial (1 côté)",
+      "documented": "documenté des deux côtés",
+      "partial": "documenté d'un seul côté",
       "unknown": "aucun tag"
     },
     "missingCrossing": {
-      "missingWay": "Way non mappé",
+      "missingWay": "Way non cartographié",
       "missingTag": "Tag footway=crossing absent",
       "wrongTag": "Taguée footway=sidewalk"
     },
     "kerb": {
-      "missing": "Kerb absent",
-      "untagged": "Kerb sans tactile_paving"
+      "missing": "Bordure absente",
+      "untagged": "Bordure sans tactile_paving"
     },
     "island": {
       "unjoined": "Jonction manquante (≤ 2 m)",
@@ -146,24 +146,24 @@
       "types": "Types",
       "levels": "Niveaux",
       "gapToNetwork": "Écart au réseau",
-      "crossing": "Crossing",
-      "kerb": "Kerb",
-      "crossingNode": "Nœud crossing",
-      "crossingWay": "Way crossing",
-      "adjacentWay": "Way contiguë",
-      "kerbSide": "Kerb côté {{side}}",
+      "crossing": "Traversée",
+      "kerb": "Bordure",
+      "crossingNode": "Nœud de traversée",
+      "crossingWay": "Way de traversée",
+      "adjacentWay": "Way contigu",
+      "kerbSide": "Bordure, côté {{side}}",
       "nearestCrossing": "footway=crossing le plus proche"
     },
     "note": {
       "sameCrossing": "(même traversée que la précédente)",
       "radius": "(rayon {{radius}} m)",
-      "notChecked": "non vérifié : la way s'arrête au nœud crossing"
+      "notChecked": "non vérifié : le way s'arrête au nœud de traversée"
     },
     "value": {
       "absent": "absent"
     },
     "sidewalk": {
-      "yes": "sidewalk=yes, à mapper en separate",
+      "yes": "sidewalk=yes, à cartographier en separate",
       "documented": "Deux côtés documentés",
       "partial": "Un seul côté documenté",
       "unknown": "Aucun tag sidewalk"
@@ -178,19 +178,19 @@
       "cyclewayNoFoot": "Piste cyclable sans foot=yes"
     },
     "missingCrossing": {
-      "missingWayTitle": "Traversée non mappée",
-      "missingWayProblem": "Aucune footway connectée au nœud",
-      "missingTagProblem": "Footway connectée mais sans tag footway=crossing",
+      "missingWayTitle": "Traversée non cartographiée",
+      "missingWayProblem": "Aucun chemin piéton relié au nœud",
+      "missingTagProblem": "Chemin piéton relié mais sans tag footway=crossing",
       "wrongTagTitle": "Traversée taguée footway={{value}}",
-      "wrongTagProblem": "Le way qui traverse la route au nœud crossing porte footway={{value}} au lieu de footway=crossing"
+      "wrongTagProblem": "Le way qui traverse la route au nœud de traversée porte footway={{value}} au lieu de footway=crossing"
     },
     "crossingCandidate": {
       "problem": "Relie un trottoir de chaque côté d'une route mais n'a pas le tag footway=crossing"
     },
     "tactile": {
       "reason": {
-        "valueMismatch": "tactile_paving du kerb différent de celui du crossing",
-        "incorrectNotMixed": "incorrect attendu : un kerb yes + un kerb no"
+        "valueMismatch": "tactile_paving de la bordure différent de celui de la traversée",
+        "incorrectNotMixed": "incorrect attend une bordure yes et une bordure no"
       }
     },
     "island": {
@@ -213,8 +213,8 @@
     "infra": {
       "pedestrian": "Piéton",
       "road": "Route",
-      "cyclewayFootYes": "Cycleway (foot=yes)",
-      "cyclewayNoFoot": "Cycleway (no foot)"
+      "cyclewayFootYes": "Piste cyclable (foot=yes)",
+      "cyclewayNoFoot": "Piste cyclable (sans foot=yes)"
     },
     "sidewalk": {
       "documented": "documenté",
@@ -230,15 +230,15 @@
     "indicator": {
       "sidewalkTags": {
         "label": "Tags trottoir documentés",
-        "hint": "(separate + yes + documenté + ½ partial)"
+        "hint": "(separate + yes + deux côtés + ½ un seul côté)"
       },
       "sidewalkSeparate": {
-        "label": "Trottoirs mappés séparément",
-        "hint": "tous les trottoirs existants mappés en separate (forme idéale)"
+        "label": "Trottoirs cartographiés séparément",
+        "hint": "tous les trottoirs existants cartographiés en separate (forme idéale)"
       },
       "crossingsConnected": {
         "label": "Traversées connectées",
-        "hint": "highway=crossing ayant une footway connectée"
+        "hint": "highway=crossing relié à un chemin piéton"
       },
       "crossingsTagged": {
         "label": "Traversées entièrement taguées",
@@ -252,27 +252,27 @@
     "crossings": {
       "title": "Traversées piétonnes",
       "intro": "État des nœuds highway=crossing repérés sur le réseau analysable.",
-      "nodes": "Nœuds crossing",
+      "nodes": "Nœuds de traversée",
       "nodesSub": "analysés",
-      "ok": "Way + tag OK",
+      "ok": "Way et tag corrects",
       "missingWay": "Way manquant",
-      "missingWaySub": "à mapper",
+      "missingWaySub": "à cartographier",
       "missingTag": "Tag manquant",
       "missingTagSub": "footway=crossing absent",
       "wrongTag": "Tag erroné",
       "wrongTagSub": "taguée footway=sidewalk",
       "continuous": "Continus",
-      "excluded": "Sur way exclue",
-      "chart": "État des crossings"
+      "excluded": "Sur un way exclu",
+      "chart": "État des traversées"
     },
     "network": {
       "title": "Réseau",
       "totalLength": "Longueur totale",
-      "nodes": "Noeuds",
+      "nodes": "Nœuds",
       "edges": "Arêtes",
       "pedestrian": "Piéton dédié",
       "roads": "Routes",
-      "cycleways": "Cycleways",
+      "cycleways": "Pistes cyclables",
       "cyclewaysSub": "foot=yes : {{footYes}} · no foot : {{noFoot}}",
       "density": "Densité piéton/route",
       "densitySub": "km piéton / km route",
@@ -283,7 +283,7 @@
       "title": "Tags sidewalk",
       "segments": "Segments routiers",
       "documented": "Documentés",
-      "documentedSub": "separate + yes + documenté",
+      "documentedSub": "separate + yes + deux côtés",
       "partial": "Partiels",
       "untagged": "Sans tag",
       "chartCount": "Segments par statut",
@@ -299,7 +299,7 @@
       "oneSide": "Un seul côté",
       "noSide": "Aucun côté",
       "chartResult": "Résultat par segment",
-      "chartFootways": "Footways retenus (composition)"
+      "chartFootways": "Chemins piétons retenus (composition)"
     },
     "simulation": {
       "title": "Simulation",
@@ -341,41 +341,41 @@
       "points": "{{value}} pts",
       "pedNetwork": "Réseau piéton",
       "footwaySidewalk": "footway=sidewalk",
-      "crossingNodes": "Nœuds crossing",
+      "crossingNodes": "Nœuds de traversée",
       "crossingWays": "Ways footway=crossing",
       "sidewalksDocumented": "Trottoirs documentés",
       "sidewalksSeparate": "Trottoirs séparés",
-      "crossingTagged": "Ratio crossing tagged",
-      "tactilePaving": "Tactile paving"
+      "crossingTagged": "Traversées correctement taguées",
+      "tactilePaving": "Bandes podotactiles"
     },
     "compare": {
-      "title": "Depuis le dernier snapshot mensuel",
-      "hwTitle": "Km par type d'infrastructure piétonne : snapshot vs aujourd'hui",
-      "hwSubtitle": "Comparaison entre le dernier snapshot mensuel ({{snapshot}}) et l'extrait quotidien le plus récent ({{today}}). Seule l'infrastructure piétonne dédiée est comparée : les routes (primary, etc.) varient très peu d'un jour à l'autre et sont couvertes plus bas.",
-      "fwTitle": "Sous-types de footway : snapshot vs aujourd'hui",
+      "title": "Depuis le dernier relevé mensuel",
+      "hwTitle": "Km par type d'infrastructure piétonne : dernier relevé et aujourd'hui",
+      "hwSubtitle": "Comparaison entre le dernier relevé mensuel ({{snapshot}}) et l'extrait quotidien le plus récent ({{today}}). Seule l'infrastructure piétonne dédiée est comparée : les routes (primary, etc.) varient très peu d'un jour à l'autre et sont couvertes plus bas.",
+      "fwTitle": "Sous-tags footway=* : dernier relevé et aujourd'hui",
       "fwSubtitle": "Détail des ways highway=footway par sous-tag footway=*, mêmes deux dates.",
-      "snapshotOf": "Snapshot du {{date}}",
+      "snapshotOf": "Relevé du {{date}}",
       "today": "Aujourd'hui ({{date}})"
     },
     "network": {
       "title": "Longueur du réseau (km)",
       "pedTitle": "Infrastructure piétonne dédiée",
       "allTitle": "Réseau global par catégorie",
-      "allSubtitle": "Piéton, route, cycleway. « Route » regroupe les voies de residential à primary où les piétons marchent sur la chaussée.",
+      "allSubtitle": "Piéton, route, piste cyclable. « Route » regroupe les voies de residential à primary où les piétons marchent sur la chaussée.",
       "hwTitle": "Détail par type highway",
       "hwSubtitle": "Six types les plus présents en km."
     },
     "quality": {
-      "title": "Qualité de mapping piéton",
+      "title": "Qualité de la cartographie piétonne",
       "swTitle": "Trottoirs : ratio des routes documentées",
       "swSubtitle": "% de routes (résidentielles → primaires) avec un tag sidewalk explicite (separate, yes, both, no), et part restant non documentée.",
       "xingTitle": "Traversées : nœuds et ways",
-      "xingSubtitle": "Un crossing est correctement mappé quand il a à la fois un nœud highway=crossing et un way footway=crossing. L'écart entre les deux courbes donne le nombre de traversées à compléter.",
+      "xingSubtitle": "Une traversée est correctement cartographiée quand elle a à la fois un nœud highway=crossing et un way footway=crossing. L'écart entre les deux courbes donne le nombre de traversées à compléter.",
       "accTitle": "Accessibilité : tags annexes",
-      "accSubtitle": "% de footways avec surface, % de footways avec smoothness, % de crossings avec tactile_paving."
+      "accSubtitle": "% de chemins piétons avec surface=*, % de chemins piétons avec smoothness=*, % de traversées avec tactile_paving=*."
     },
     "footways": {
-      "title": "Composition des footways",
+      "title": "Composition des chemins piétons",
       "mixTitle": "Sous-tags footway=* (empilés)",
       "mixSubtitle": "sidewalk / crossing / link / traffic_island / autre / sans tag. « Autre » : un sous-tag footway=* hors de cette liste ; « sans tag » : aucun sous-tag."
     },
@@ -391,19 +391,19 @@
     "series": {
       "pedestrian": "Piéton",
       "roads": "Routes",
-      "cycleway": "Cycleway",
-      "documentedAnyTag": "Documenté (any tag)",
+      "cycleway": "Pistes cyclables",
+      "documentedAnyTag": "Documenté (tout tag)",
       "notDocumented": "Non documenté",
       "crossingNodes": "Nœuds highway=crossing",
       "crossingWays": "Ways footway=crossing",
-      "continuousCrossings": "Crossings continus",
+      "continuousCrossings": "Traversées continues",
       "other": "autre",
       "otherRecognised": "autre (sous-tag reconnu)",
       "noTag": "sans tag",
       "noExplicit": "no (explicite)",
-      "footwaySurface": "Footway surface=*",
-      "footwaySmoothness": "Footway smoothness=*",
-      "crossingTactilePaving": "Crossing tactile_paving"
+      "footwaySurface": "Chemins piétons avec surface=*",
+      "footwaySmoothness": "Chemins piétons avec smoothness=*",
+      "crossingTactilePaving": "Traversées avec tactile_paving=*"
     },
     "roadType": {
       "residential": "Résidentiel",
