@@ -400,7 +400,10 @@
       "other": "autre",
       "otherRecognised": "autre (sous-tag reconnu)",
       "noTag": "sans tag",
-      "noExplicit": "no (explicite)"
+      "noExplicit": "no (explicite)",
+      "footwaySurface": "Footway surface=*",
+      "footwaySmoothness": "Footway smoothness=*",
+      "crossingTactilePaving": "Crossing tactile_paving"
     },
     "roadType": {
       "residential": "Résidentiel",
