@@ -1,0 +1,90 @@
+name: Build & Deploy site pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/site.yml"
+      - "build_site.py"
+      - "check_i18n.py"
+      - "templates/**"
+      - "i18n/**"
+      - "robots.txt"
+      - "sitemap.xml"
+      - "favicon.svg"
+      - "i18n.js"
+      - "app.js"
+      - "nav.js"
+      - "filters.js"
+      - "popups.js"
+      - "stats.js"
+      - "evolution.js"
+      - "app.css"
+      - "style.json"
+  workflow_dispatch:
+
+concurrency:
+  group: gh-pages-deploy
+  cancel-in-progress: false
+
+jobs:
+  site:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install site build dependencies
+        run: pip install "jinja2>=3.1"
+
+      - name: Check translations
+        run: python3 check_i18n.py
+
+      - name: Render pages
+        run: python3 build_site.py --out _site --lastmod "$(date -u +%Y-%m-%d)"
+
+      - name: Fetch published data
+        uses: actions/checkout@v5
+        with:
+          ref: gh-pages
+          path: published
+          fetch-depth: 1
+          sparse-checkout: |
+            state.txt
+            stats.json
+            graph.json
+            pedestrian.pmtiles
+          sparse-checkout-cone-mode: false
+
+      - name: Reuse published data
+        run: |
+          for f in state.txt stats.json graph.json pedestrian.pmtiles; do
+            if [[ ! -s "published/$f" ]]; then
+              echo "::error::published/$f is missing: run the Build & Deploy PMTiles workflow first."
+              exit 1
+            fi
+            cp "published/$f" _site/
+          done
+          if [[ -f history.json ]] && jq empty history.json 2>/dev/null; then
+            cp history.json _site/
+          else
+            echo '[]' > _site/history.json
+          fi
+          ls -lh _site
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./_site
+          publish_branch: gh-pages
+          force_orphan: true
+          commit_message: "deploy: update site pages"
