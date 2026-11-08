@@ -1,0 +1,94 @@
+  <h1>Methodology</h1>
+  <p class="lede">How flows are simulated, what each quality-control layer reports and how the indicators are calculated.</p>
+
+  <p>
+    The site simulates walking trips in Brussels on OpenStreetMap data. The flows show where incomplete mapping weighs most on the simulated trips. The quality-control layers point to topology errors or missing tags on specific objects, with a link to the editor.
+  </p>
+
+  <h2 id="routing-costs">Routing costs</h2>
+  <p>
+    The router (Dijkstra, igraph) looks for the path with the lowest weight. The weight of a segment is its length multiplied by a factor that depends on the type of way: the higher the factor, the more readily the router takes a detour.
+  </p>
+  <div class="table-wrap">
+  <table>
+    <tr><th>highway tag</th><th>Cost</th><th>Reason</th></tr>
+    <tr><td><code>pedestrian</code>, <code>footway</code></td><td class="num">1.0</td><td>Pedestrian infrastructure.</td></tr>
+    <tr><td><code>cycleway</code> with <code>foot=yes</code>, <code>designated</code> or <code>permissive</code></td><td class="num">1.0</td><td>Open to pedestrians.</td></tr>
+    <tr><td><code>living_street</code>, <code>path</code>, <code>track</code>, <code>bridleway</code></td><td class="num">1.2</td><td>Mixed use or unsurfaced path.</td></tr>
+    <tr><td><code>steps</code></td><td class="num">1.5</td><td>Hard with a pushchair or a wheelchair.</td></tr>
+    <tr><td><code>cycleway</code> without explicit pedestrian access</td><td class="num">1.8</td><td>Used only when there is nothing better.</td></tr>
+    <tr><td><code>residential</code>, <code>service</code></td><td class="num">2.0</td><td>Roadway shared with cars.</td></tr>
+    <tr><td><code>unclassified</code></td><td class="num">2.2</td><td></td></tr>
+    <tr><td><code>tertiary</code></td><td class="num">3.5</td><td>Heavier traffic.</td></tr>
+    <tr><td><code>secondary</code></td><td class="num">5.0</td><td></td></tr>
+    <tr><td><code>primary</code></td><td class="num">8.0</td><td>Busy road, poorly suited to walking without a separate sidewalk.</td></tr>
+  </table>
+  </div>
+
+  <h2 id="quality-layers">Quality-control layers</h2>
+
+  <h3 id="road-flows">Flows on roads</h3>
+  <p>
+    Roadway segments where the simulation sends many pedestrians although no pedestrian infrastructure is recorded (mapped sidewalk or <code>sidewalk</code> tag). Check on the ground or on imagery whether a sidewalk exists, then add the tag or the geometry.
+  </p>
+
+  <h3 id="sidewalk-one-side">Sidewalk on one side only</h3>
+  <p>
+    For each road segment, roughly parallel <code>highway=footway</code> ways are looked for on either side. A <code>highway=cycleway</code> track with <code>foot=yes</code>, <code>designated</code> or <code>permissive</code> also counts as a sidewalk. The segment is flagged when a separate sidewalk is found on one side only.
+  </p>
+
+  <h3 id="sidewalk-tags">Sidewalk tags</h3>
+  <p>
+    Status of the <code>sidewalk</code>, <code>sidewalk:left</code>, <code>sidewalk:right</code> and <code>sidewalk:both</code> tags on each road: <code>separate</code>, <code>yes</code>, documented on both sides, on one side only, or no tag.
+  </p>
+
+  <h3 id="missing-crossings">Missing crossings</h3>
+  <p>
+    <code>highway=crossing</code> nodes on a road that has a parallel <code>footway=sidewalk</code> on both sides, but that are not connected to these sidewalks by a <code>footway=crossing</code> way. Three cases:
+  </p>
+  <ul>
+    <li><code>missing_way</code>: no footway touches the node;</li>
+    <li><code>missing_tag</code>: a footway touches the node but lacks <code>footway=crossing</code>;</li>
+    <li><code>wrong_tag</code>: the crossing way is tagged <code>footway=sidewalk</code>.</li>
+  </ul>
+  <p>
+    In all three cases the sidewalks are mapped but the routing graph is cut at this point. Nodes on <code>service</code>, <code>cycleway</code> or <code>track</code>, and <code>crossing:continuous=yes</code> crossings, are not flagged as <code>missing_tag</code>.
+  </p>
+
+  <h3 id="crossing-candidates">Crossing without footway=crossing</h3>
+  <p>
+    Short footways that connect a sidewalk on each side of a road without carrying <code>footway=crossing</code>. These are candidates: check them before editing.
+  </p>
+
+  <h3 id="kerbs-tactile-paving">Kerbs and tactile paving</h3>
+  <p>
+    On each crossing, the <code>barrier=kerb</code> nodes at both ends of the <code>footway=crossing</code> way are examined. A point is placed when the kerb is missing or has no <code>tactile_paving</code>. An inconsistency is flagged when the crossing's <code>tactile_paving</code> contradicts that of the kerbs: <code>yes</code> or <code>no</code> expects the same value on both sides, <code>incorrect</code> expects one side <code>yes</code> and the other <code>no</code>. Two <code>footway=crossing</code> ways end to end are treated as a single crossing.
+  </p>
+
+  <h3 id="network-islands">Disconnected islands</h3>
+  <p>
+    Parts of the pedestrian network with no link to the main network. A “missing junction” almost touches the network (2 m at most) and probably lacks a shared node. An “isolated island” has nothing nearby, often because of private access, a gate or incomplete mapping. The layer also flags steps whose <code>level</code> does not overlap that of a connected way; in multi-level stations this sometimes produces false positives.
+  </p>
+
+  <h2 id="indicators">Indicators</h2>
+  <p>
+    The completeness score on the Statistics page is the average of five shares, as percentages:
+  </p>
+  <ul>
+    <li>road segments whose sidewalks are documented by a tag (<code>separate</code>, <code>yes</code> or both sides; one side only counts for half);</li>
+    <li>road segments whose sidewalks are mapped as separate ways;</li>
+    <li><code>highway=crossing</code> nodes connected to a footway;</li>
+    <li><code>highway=crossing</code> nodes connected to a way correctly tagged <code>footway=crossing</code>;</li>
+    <li>length of road with a sidewalk detected on both sides, among roads with at least one.</li>
+  </ul>
+  <p>
+    The Trends page also tracks the presence of <code>surface</code> and <code>smoothness</code> on footways and of <code>tactile_paving</code> on crossings.
+  </p>
+
+  <h2 id="contributing">Contributing</h2>
+  <ol>
+    <li>Spot a red segment (flow on a road) or a point from a quality-control layer.</li>
+    <li>Click it to open the object in iD or JOSM, or use “Edit in OSM” from zoom 16.</li>
+    <li>Fix the tags or the geometry.</li>
+    <li>The map is recomputed every night from the day's OSM extract.</li>
+  </ol>
