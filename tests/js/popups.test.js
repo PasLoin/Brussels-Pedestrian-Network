@@ -1,6 +1,10 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const P = require("../../popups.js");
+const { LANGUAGES, i18nFor } = require("./dictionaries.js");
+
+const fr = i18nFor("fr");
+const en = i18nFor("en");
 
 const palette = {
   flowColors: { pedestrian: "#16a34a", road: "#ef4444" },
@@ -10,7 +14,7 @@ const palette = {
   elevatorLayerIds: ["highway-elevator", "highway-elevator-line"],
 };
 
-const { hover, click } = P.makePopupLayers(palette);
+const { hover, click } = P.makePopupLayers(palette, fr);
 const entries = [...hover.map(e => ["hover", e]), ...click.map(e => ["click", e])];
 const clickFormat = id => click.find(c => c.ids.includes(id)).format;
 const hoverFormat = id => hover.find(h => h.ids.includes(id)).format;
@@ -95,12 +99,12 @@ test("missing crossing popup dispatches wrong_tag to its own formatter", () => {
   const html = clickFormat("missing-crossings")({ type: "wrong_tag", osm_id: 5, way_osm_id: 7, footway_value: "sidewalk", name: "Rue A" });
   assert.match(html, /Traversée taguée footway=sidewalk/);
   assert.match(html, /load_object\?objects=n5,w7/);
-  assert.equal(html, P.formatWrongTagCrossing({ type: "wrong_tag", osm_id: 5, way_osm_id: 7, footway_value: "sidewalk", name: "Rue A" }));
+  assert.equal(html, P.formatWrongTagCrossing({ type: "wrong_tag", osm_id: 5, way_osm_id: 7, footway_value: "sidewalk", name: "Rue A" }, fr));
 });
 
 test("nearest footway=crossing distance is shown for missing tags only", () => {
   const format = clickFormat("missing-crossings");
-  assert.match(format({ type: "missing_tag", nearest_tag_m: 2.4, detect_radius: 3, osm_id: 1 }), /2\.4 m.*rayon 3 m/s);
+  assert.match(format({ type: "missing_tag", nearest_tag_m: 2.4, detect_radius: 3, osm_id: 1 }), /2,4 m.*rayon 3 m/s);
   assert.doesNotMatch(format({ type: "missing_way", nearest_tag_m: 2.4, osm_id: 1 }), /le plus proche/);
   assert.doesNotMatch(format({ type: "missing_tag", nearest_tag_m: -1, osm_id: 1 }), /le plus proche/);
 });
@@ -128,7 +132,7 @@ test("graph island popup builds a JOSM zoom on the bbox with the ways selected",
   assert.match(html, /Îlot isolé du réseau/);
   assert.match(html, /load_and_zoom\?left=4\.349500&right=4\.360500&top=50\.860500&bottom=50\.849500&select=w1,w2,w3,w4,w5,w6,w7/);
   assert.match(html, /\+2/);
-  assert.match(html, /12\.5 m/);
+  assert.match(html, /12,5 m/);
   assert.match(html, /40 m/);
 });
 
@@ -157,8 +161,8 @@ test("highway popup hides technical keys and colours elevators", () => {
 
 test("flow popup reads infra_type, highway and flow_pct", () => {
   const html = hoverFormat("flow-road")({ infra_type: "cycleway_no_foot", highway: "cycleway", flow_pct: 0 });
-  assert.match(html, /cycleway no foot/);
-  assert.match(html, /0 %/);
+  assert.match(html, /Piste cyclable sans foot=yes/);
+  assert.match(html, new RegExp(fr.percent(0)));
 });
 
 test("sidewalk status popup translates the status", () => {
@@ -168,23 +172,81 @@ test("sidewalk status popup translates the status", () => {
 });
 
 test("formatLevels describes a level that the connected way does not reach", () => {
-  assert.equal(P.formatLevels({ level_values: "1;2", level_missing: "1" }), "1;2 : niveau 1 non raccordé");
-  assert.equal(P.formatLevels({ level_values: "-2;-1", level_missing: -2 }), "-2;-1 : niveau -2 non raccordé");
+  assert.equal(P.formatLevels({ level_values: "1;2", level_missing: "1" }, fr), "1;2 : niveau 1 non raccordé");
+  assert.equal(P.formatLevels({ level_values: "-2;-1", level_missing: -2 }, fr), "-2;-1 : niveau -2 non raccordé");
 });
 
 test("formatLevels lists mismatched levels and names untagged ones", () => {
-  assert.equal(P.formatLevels({ level_values: "-1|1", level_missing: "" }), "-1 ≠ 1");
-  assert.equal(P.formatLevels({ level_values: "|1", level_missing: "" }), "0 (non tagué) ≠ 1");
-  assert.equal(P.formatLevels({ level_values: "", level_missing: "0.5" }), "0 (non tagué) : niveau 0.5 non raccordé");
+  assert.equal(P.formatLevels({ level_values: "-1|1", level_missing: "" }, fr), "-1 ≠ 1");
+  assert.equal(P.formatLevels({ level_values: "|1", level_missing: "" }, fr), "0 (non tagué) ≠ 1");
+  assert.equal(P.formatLevels({ level_values: "", level_missing: "0.5" }, fr), "0 (non tagué) : niveau 0.5 non raccordé");
 });
 
 test("formatLevels shows a dash when the feature carries no level data", () => {
-  assert.equal(P.formatLevels({}), "—");
-  assert.equal(P.formatLevels({ level_values: null }), "—");
+  assert.equal(P.formatLevels({}, fr), "—");
+  assert.equal(P.formatLevels({ level_values: null }, fr), "—");
 });
 
 test("graph island popup escapes level values", () => {
   const html = clickFormat("graph-islands")({ type: "level", level_values: "<b>1</b>", level_missing: "" });
   assert.ok(!html.includes("<b>1</b>"));
   assert.ok(html.includes("&lt;b&gt;1&lt;/b&gt;"));
+});
+
+const SAMPLES = [
+  ["hover", "sidewalk-gaps", { name: "Rue A" }],
+  ["hover", "footway-crossing-candidates", { name: "Rue A", length_m: 12.34 }],
+  ...["separate", "yes", "documented", "partial", "unknown"].map(sw => ["hover", "sidewalk-roads", { sw, name: "Rue A" }]),
+  ...["pedestrian", "road", "cycleway_foot_yes", "cycleway_no_foot"].map(infra => ["hover", "flow-road", { infra_type: infra, highway: "footway", flow_pct: 42.5 }]),
+  ["hover", "highway-footway", { highway: "footway" }],
+  ["hover", "highway-elevator", {}],
+  ...["missing_way", "missing_tag", "wrong_tag"].map(type => ["click", "missing-crossings", { type, osm_id: 1, way_osm_id: 2, nearest_tag_m: 2.4, detect_radius: 3, name: "Rue A" }]),
+  ["click", "footway-crossing-candidates", { osm_id: 3, length_m: 8, name: "Rue A" }],
+  ...[1, 2].map(sides => ["click", "tactile-paving-issues", { osm_id: 3, way_osm_id: 4, partner_way_osm_id: 5, sides_checked: sides, crossing_tp: "yes", reason: "value_mismatch" }]),
+  ["click", "tactile-paving-issues", { osm_id: 3, reason: "incorrect_not_mixed" }],
+  ...["unjoined", "isolated"].map(type => ["click", "graph-islands", { type, way_ids: "1,2", gap_m: 1.5, length_m: 30, bbox_w: 4.35, bbox_s: 50.85, bbox_e: 4.36, bbox_n: 50.86 }]),
+  ["click", "graph-islands", { type: "level", level_values: "|1", level_missing: "", node_id: 9, way_ids: "4" }],
+  ["click", "graph-islands", { type: "level", level_values: "1;2", level_missing: "1", node_id: 9, way_ids: "4" }],
+  ...["kerb_missing", "kerb_untagged"].map(type => ["click", "kerb-issues", { type, crossing_osm_id: 1, kerb_osm_id: 2, way_osm_id: 3, partner_way_osm_id: 4 }]),
+];
+
+for (const lang of Object.keys(LANGUAGES.languages)) {
+  test(`every popup renders in ${lang} without a missing key`, () => {
+    const warnings = [];
+    const i18n = i18nFor(lang, warnings);
+    const layers = P.makePopupLayers(palette, i18n);
+    for (const [kind, id, props] of SAMPLES) {
+      const entry = layers[kind].find(e => e.ids.includes(id));
+      assert.ok(entry, `${kind} ${id}`);
+      const html = entry.format(props);
+      assert.doesNotMatch(html, /\b(?:popup|layer)\.[a-z]+\.[A-Za-z.]+/, `${kind} ${id} shows a raw key`);
+    }
+    assert.deepEqual(warnings, []);
+  });
+}
+
+test("popups speak English with English number formats", () => {
+  const layers = P.makePopupLayers(palette, en);
+  const island = layers.click.find(c => c.ids.includes("graph-islands")).format;
+  const html = island({ type: "isolated", gap_m: 1234.5, length_m: 40.4, way_ids: "1" });
+  assert.match(html, /Island isolated from the network/);
+  assert.match(html, /Gap to the network/);
+  assert.match(html, /1,234\.5 m/);
+  assert.equal(P.formatLevels({ level_values: "1;2", level_missing: "1" }, en), "1;2: level 1 not connected");
+  assert.equal(P.formatLevels({ level_values: "|1", level_missing: "" }, en), "0 (untagged) ≠ 1");
+});
+
+test("translated wording is escaped like OSM values", () => {
+  const layers = P.makePopupLayers(palette, { ...en, t: () => "<img src=x onerror=alert(1)>" });
+  const html = layers.hover.find(h => h.ids.includes("sidewalk-gaps")).format({ name: "Rue A" });
+  assert.doesNotMatch(html, /<img/);
+});
+
+test("measures and shares fall back to the raw value when it is not a number", () => {
+  assert.equal(P.formatMeasure(en, "12.345"), "12.3");
+  assert.equal(P.formatMeasure(en, "<b>"), "&lt;b&gt;");
+  assert.equal(P.formatMeasure(en, undefined), undefined);
+  assert.equal(P.formatShare(en, 42.5), "42.5%");
+  assert.equal(P.formatShare(en, undefined), "0%");
+  assert.equal(P.formatShare(en, "<b>"), "&lt;b&gt; %");
 });
