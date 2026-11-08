@@ -68,7 +68,7 @@ def test_every_local_script_is_deployed_and_triggers_a_site_deploy():
 
 def test_every_site_source_triggers_a_site_deploy():
     triggers = push_trigger_paths(read_text(".github/workflows/site.yml"))
-    sources = {"build_site.py", "check_i18n.py", "templates/**", "i18n/**", "sitemap.xml", *deployed_files()}
+    sources = {"build_site.py", "check_i18n.py", "templates/**", "i18n/**", *deployed_files()}
     assert sources <= triggers
 
 

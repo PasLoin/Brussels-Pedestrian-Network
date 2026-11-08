@@ -158,8 +158,8 @@ def test_page_renders_fully_translated(server, browser, lang, page):
 
 
 def test_stats_numbers_follow_the_page_locale(server, browser):
-    fr_text = _render(browser, server + "stats.html")[0]
-    en_text = _render(browser, server + "en/stats.html")[0]
+    fr_text = _render(browser, server + "fr/stats.html")[0]
+    en_text = _render(browser, server + "stats.html")[0]
     assert re.search(r"4\s321,5", fr_text)
     assert "4,321.5" in en_text
     assert re.search(r"10,0\s%", fr_text)
@@ -168,8 +168,8 @@ def test_stats_numbers_follow_the_page_locale(server, browser):
 
 
 def test_evolution_dates_and_plurals_follow_the_page_locale(server, browser):
-    fr_text = _render(browser, server + "evolution.html")[0]
-    en_text = _render(browser, server + "en/evolution.html")[0]
+    fr_text = _render(browser, server + "fr/evolution.html")[0]
+    en_text = _render(browser, server + "evolution.html")[0]
     assert "4 relevés couvrant" in fr_text
     assert "4 snapshots covering" in en_text
     assert "1 Aug 2026" in en_text

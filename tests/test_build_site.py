@@ -34,7 +34,8 @@ def _attr(html, pattern):
 def test_languages_config_is_valid():
     config = build_site.load_languages()
     assert config["reference"] == "en"
-    assert build_site.root_language(config) == "fr"
+    assert build_site.root_language(config) == "en"
+    assert build_site.published_languages(config) == ["en", "fr"]
 
 
 @pytest.mark.parametrize("config, message", [
@@ -61,10 +62,11 @@ def test_invalid_languages_config_is_rejected(config, message):
         build_site.validate_languages(config)
 
 
-def test_only_published_languages_are_built_by_default(site):
-    assert not (site / "en").exists()
+def test_published_languages_are_built_by_default(site):
     for page in PAGES:
         assert (site / page).is_file()
+        assert (site / "fr" / page).is_file()
+    assert (site / build_site.NOT_FOUND).is_file()
 
 
 @pytest.mark.parametrize("page", PAGES)
@@ -78,7 +80,7 @@ def test_page_has_no_template_syntax_left(site, page):
 def test_page_language_and_url(site, page):
     html = (site / page).read_text(encoding="utf-8")
     assert html.startswith(
-        '<!DOCTYPE html>\n<html lang="fr" data-locale="fr-BE" data-time-zone="Europe/Brussels" data-root="./">\n'
+        '<!DOCTYPE html>\n<html lang="en" data-locale="en-GB" data-time-zone="Europe/Brussels" data-root="./">\n'
     )
     expected = SITE_URL + ("" if page == "index.html" else page)
     assert _attr(html, r'<meta property="og:url" content="([^"]*)"') == expected
@@ -196,17 +198,21 @@ def test_static_files_are_copied_unchanged(site):
         assert (site / name).read_bytes() == (ROOT / name).read_bytes(), name
 
 
-def test_sitemap_gets_its_lastmod(site):
+def test_sitemap_lists_every_page_in_every_language_with_alternates(site):
     sitemap = (site / "sitemap.xml").read_text(encoding="utf-8")
-    assert build_site.LASTMOD_PLACEHOLDER not in sitemap
-    assert sitemap.count(f"<lastmod>{LASTMOD}</lastmod>") == len(PAGES)
+    langs = build_site.published_languages(build_site.load_languages())
+    assert sitemap.count(f"<lastmod>{LASTMOD}</lastmod>") == len(PAGES) * len(langs)
+    assert sitemap.count("<url>") == len(PAGES) * len(langs)
+    assert sitemap.count('hreflang="x-default"') == len(PAGES) * len(langs)
+    assert f"<loc>{SITE_URL}fr/stats.html</loc>" in sitemap
+    assert f'<xhtml:link rel="alternate" hreflang="fr" href="{SITE_URL}fr/"/>' in sitemap
 
 
-def test_unpublished_language_is_built_on_request(tmp_path):
-    assert build_site.build(tmp_path, langs=["en"]) == ["en"]
-    html = (tmp_path / "en" / "stats.html").read_text(encoding="utf-8")
-    assert '<html lang="en" data-locale="en-GB" data-time-zone="Europe/Brussels" data-root="../">' in html
-    assert f'content="{SITE_URL}en/stats.html"' in html
+def test_a_single_language_can_be_built_on_request(tmp_path):
+    assert build_site.build(tmp_path, langs=["fr"]) == ["fr"]
+    html = (tmp_path / "fr" / "stats.html").read_text(encoding="utf-8")
+    assert '<html lang="fr" data-locale="fr-BE" data-time-zone="Europe/Brussels" data-root="../">' in html
+    assert f'content="{SITE_URL}fr/stats.html"' in html
     assert not (tmp_path / "index.html").exists()
 
 
