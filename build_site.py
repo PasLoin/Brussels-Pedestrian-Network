@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
-from markupsafe import Markup
+from markupsafe import Markup, escape
 
 ROOT = Path(__file__).resolve().parent
 TEMPLATES_DIR = ROOT / "templates"
@@ -114,14 +114,16 @@ def translator(dictionary):
     def t(key, **variables):
         if key not in dictionary:
             raise KeyError(f"missing translation key {key!r}")
-
-        def fill(match):
+        text = dictionary[key]
+        parts, position = [], 0
+        for match in PLACEHOLDER.finditer(text):
             name = match.group(1)
             if name not in variables:
                 raise KeyError(f"{key}: missing variable {name!r}")
-            return str(variables[name])
-
-        return PLACEHOLDER.sub(fill, dictionary[key])
+            parts += [escape(text[position:match.start()]), escape(variables[name])]
+            position = match.end()
+        parts.append(escape(text[position:]))
+        return Markup("".join(parts))
 
     return t
 
@@ -152,6 +154,7 @@ def render_page(lang, page, config=None, env=None, dictionary=None):
     conf = config["languages"][lang]
     return env.get_template(f"{page}.j2").render(
         lang=lang,
+        reference=config["reference"],
         locale=conf["locale"],
         time_zone=config["timeZone"],
         root=page_root(conf),
