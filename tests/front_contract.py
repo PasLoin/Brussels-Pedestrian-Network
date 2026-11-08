@@ -2,6 +2,8 @@ import json
 import re
 from pathlib import Path
 
+import build_site
+
 ROOT = Path(__file__).resolve().parent.parent
 
 STATS_HTML_PATHS = frozenset({
@@ -101,7 +103,12 @@ def read_text(name: str) -> str:
 
 FRONT_JS = ("app.js", "popups.js")
 
-PAGES = ("index.html", "stats.html", "evolution.html", "about.html")
+PAGES = build_site.PAGES
+
+
+def page_text(name: str) -> str:
+    config = build_site.load_languages()
+    return build_site.render_page(build_site.root_language(config), name, config)
 
 
 def front_js() -> str:
@@ -112,10 +119,8 @@ def local_scripts(html: str) -> set:
     return set(re.findall(r'<script\s+src="\./([\w.-]+\.js)"', html))
 
 
-def deployed_files(workflow: str) -> set:
-    start = workflow.index("cp ", workflow.index("name: Prepare site"))
-    command = workflow[start:workflow.index("_site/", start)]
-    return set(command.replace("\\", " ").split()[1:])
+def deployed_files() -> set:
+    return set(build_site.STATIC)
 
 
 def build_trigger_paths(workflow: str) -> set:

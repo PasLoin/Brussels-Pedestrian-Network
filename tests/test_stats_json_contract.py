@@ -9,7 +9,7 @@ from clean_osm import clean_osm
 from detect_missing_crossings import detect_missing_crossings
 from export import compute_graph_stats, compute_network_stats, save_stats, undirected_edge_groups
 from export_sidewalk_roads import export_sidewalk_roads
-from front_contract import APP_STATS_PATHS, ROOT, STATS_HTML_PATHS, get_path
+from front_contract import APP_STATS_PATHS, STATS_HTML_PATHS, get_path, page_text
 from sidewalk_gap import detect_sidewalk_gaps
 
 _TO_WGS = Transformer.from_crs("EPSG:31370", "EPSG:4326", always_xy=True)
@@ -169,7 +169,7 @@ def _numbers(node):
 
 
 def test_stats_page_renders_without_broken_values(stats):
-    text, charts, errors = _render((ROOT / "stats.html").read_text(encoding="utf-8"), stats)
+    text, charts, errors = _render(page_text("stats.html"), stats)
     assert errors == []
     assert "Erreur" not in text
     for bad in _BAD_TEXT:
