@@ -16,18 +16,18 @@ const C = {
   grayLine: '#9ca3af',
 };
 
-const fmt  = v => v != null ? v.toLocaleString('fr-BE') : '—';
-const fkm  = v => v != null ? v.toLocaleString('fr-BE', { maximumFractionDigits: 1 }) : '—';
-const fpct = v => v != null ? v.toFixed(1) + ' %' : '—';
+const ONE_DECIMAL = { minimumFractionDigits: 1, maximumFractionDigits: 1 };
+const fmt  = v => v != null ? i18n.number(v) : '—';
+const fkm  = v => v != null ? i18n.number(v, { maximumFractionDigits: 1 }) : '—';
+const fpct = v => v != null ? i18n.percent(v, ONE_DECIMAL) : '—';
+const fsigned = v => i18n.number(v, { maximumFractionDigits: 1, signDisplay: 'exceptZero' });
 
-const fmonth = (iso, isDaily = false) => {
-  const [y, m, d] = iso.split('-');
-  const months = ['jan','fév','mar','avr','mai','jun','jul','aoû','sep','oct','nov','déc'];
-  if (isDaily) {
-    return `${d} ${months[parseInt(m,10)-1]} ${y.slice(2)} *`;
-  }
-  return months[parseInt(m,10)-1] + ' ' + y.slice(2);
-};
+const isoDay = iso => iso + 'T00:00:00Z';
+const fdate = iso => i18n.date(isoDay(iso), { dateStyle: 'medium', timeZone: 'UTC' });
+
+const fmonth = (iso, isDaily = false) => isDaily
+  ? i18n.date(isoDay(iso), { day: 'numeric', month: 'short', year: '2-digit', timeZone: 'UTC' }) + ' *'
+  : i18n.date(isoDay(iso), { month: 'short', year: '2-digit', timeZone: 'UTC' });
 
 const monthsBefore = (iso, n) => {
   const d = new Date(iso + 'T00:00:00Z');
@@ -45,20 +45,23 @@ function escapeHTML(str) {
     .replace(/'/g, "&#039;");
 }
 
+const tx = (key, vars) => escapeHTML(i18n.t(key, vars));
+const tooltip = (label, value) => i18n.t('common.chart.tooltip', { label, value });
+
 const chartInstances = {};
 
 fetch(i18n.dataUrl('history.json') + '?t=' + Date.now(), { cache: 'no-store' })
   .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
   .then(data => {
     if (!Array.isArray(data) || data.length === 0) {
-      throw new Error('Historique vide. Lancez le workflow "Compute History".');
+      throw new Error(i18n.t('evolution.emptyHistory'));
     }
     data.sort((a, b) => a.date.localeCompare(b.date));
     render(data);
   })
   .catch(e => {
-    document.getElementById('loading').innerHTML =
-      'Erreur : ' + escapeHTML(String(e.message || e));
+    document.getElementById('loading').textContent =
+      i18n.t('common.error', { message: String(e.message || e) });
   });
 
 
@@ -75,18 +78,16 @@ function render(data) {
   const showComparison = !!(dailyEntry && lastSnapshot && dailyEntry.date !== lastSnapshot.date);
 
   const months = data.length;
-  const yearsCovered = ((new Date(last.date) - new Date(first.date)) / (1000 * 60 * 60 * 24 * 365.25)).toFixed(1);
+  const yearsCovered = Number(((new Date(last.date) - new Date(first.date)) / (1000 * 60 * 60 * 24 * 365.25)).toFixed(1));
 
   el.innerHTML += `
     <div class="intro">
-      ${months} relevés couvrant ${yearsCovered} an${yearsCovered > 1 ? 's' : ''}
-      du réseau piéton bruxellois dans OpenStreetMap.
+      ${tx('evolution.intro', { snapshots: months, count: yearsCovered })}
       <div class="meta">
-        Du ${escapeHTML(first.date)} au ${escapeHTML(last.date)}
-        · ${escapeHTML(fkm(last.ped_km))} km piéton actuellement
-        (${escapeHTML(fkm(first.ped_km))} km au premier relevé)
-        ${dailyEntry ? `· * = dernière extraction quotidienne (${escapeHTML(dailyEntry.date)})` : ''}
-        · Zone : Région de Bruxelles-Capitale (relation OSM 54094)
+        ${tx('evolution.meta.range', { from: fdate(first.date), to: fdate(last.date) })}
+        · ${tx('evolution.meta.pedKm', { now: fkm(last.ped_km), first: fkm(first.ped_km) })}
+        ${dailyEntry ? `· ${tx('evolution.meta.daily', { date: fdate(dailyEntry.date) })}` : ''}
+        · ${tx('evolution.meta.area')}
       </div>
     </div>`;
 
@@ -97,44 +98,40 @@ function render(data) {
 
   el.innerHTML += `
     <div class="section">
-      <div class="section-title">Période d'analyse</div>
+      <div class="section-title">${tx('evolution.period.title')}</div>
       <div class="period-controls">
-        <label>Du <input type="date" id="period-start" min="${first.date}" max="${last.date}" value="${defaultStart}"></label>
-        <label>au <input type="date" id="period-end" min="${first.date}" max="${last.date}" value="${last.date}"></label>
-        <button type="button" id="period-6m">6 derniers mois</button>
-        <button type="button" id="period-reset">Période complète</button>
+        <label>${tx('evolution.period.from')} <input type="date" id="period-start" min="${first.date}" max="${last.date}" value="${defaultStart}"></label>
+        <label>${tx('evolution.period.to')} <input type="date" id="period-end" min="${first.date}" max="${last.date}" value="${last.date}"></label>
+        <button type="button" id="period-6m">${tx('evolution.period.last6Months')}</button>
+        <button type="button" id="period-reset">${tx('evolution.period.full')}</button>
         <span class="period-info" id="period-info"></span>
         <div class="period-hint">
-          L'échelle verticale des graphiques s'ajuste à la période choisie, ce qui rend visibles
-          les petites variations. Par défaut : les 6 derniers mois.
+          ${tx('evolution.period.hint')}
         </div>
       </div>
     </div>`;
 
   el.innerHTML += `
     <div class="section">
-      <div class="section-title" id="deltas-title">Évolution</div>
+      <div class="section-title" id="deltas-title">${tx('evolution.deltas.title')}</div>
       <div class="delta-grid" id="deltas"></div>
     </div>`;
 
   if (showComparison) {
     el.innerHTML += `
       <div class="section" id="compare-section">
-        <div class="section-title">Depuis le dernier snapshot mensuel</div>
+        <div class="section-title">${tx('evolution.compare.title')}</div>
         <div class="chart-card">
-          <h3>Km par type d'infrastructure piétonne : snapshot vs aujourd'hui</h3>
+          <h3>${tx('evolution.compare.hwTitle')}</h3>
           <div class="subtitle">
-            Comparaison entre le dernier snapshot mensuel (${escapeHTML(lastSnapshot.date)})
-            et l'extrait quotidien le plus récent (${escapeHTML(dailyEntry.date)}).
-            Seule l'infrastructure piétonne dédiée est comparée : les routes (primary, etc.)
-            varient très peu d'un jour à l'autre et sont couvertes plus bas.
+            ${tx('evolution.compare.hwSubtitle', { snapshot: fdate(lastSnapshot.date), today: fdate(dailyEntry.date) })}
           </div>
           <div class="chart-wrap"><canvas id="c-compare-hw"></canvas></div>
         </div>
         <div class="chart-card">
-          <h3>Sous-types de footway : snapshot vs aujourd'hui</h3>
+          <h3>${tx('evolution.compare.fwTitle')}</h3>
           <div class="subtitle">
-            Détail des ways highway=footway par sous-tag footway=*, mêmes deux dates.
+            ${tx('evolution.compare.fwSubtitle')}
           </div>
           <div class="chart-wrap"><canvas id="c-compare-fw"></canvas></div>
         </div>
@@ -144,59 +141,58 @@ function render(data) {
 
   el.innerHTML += `
     <div class="section">
-      <div class="section-title">Longueur du réseau (km)</div>
+      <div class="section-title">${tx('evolution.network.title')}</div>
 
       <div class="chart-card">
-        <h3>Infrastructure piétonne dédiée</h3>
+        <h3>${tx('evolution.network.pedTitle')}</h3>
         <div class="subtitle">footway + pedestrian + path + living_street + steps + elevator</div>
         <div class="chart-wrap"><canvas id="c-ped-km"></canvas></div>
       </div>
 
       <div class="chart-card">
-        <h3>Réseau global par catégorie</h3>
-        <div class="subtitle">Piéton, route, cycleway. « Route » regroupe les voies de residential à primary où les piétons marchent sur la chaussée.</div>
+        <h3>${tx('evolution.network.allTitle')}</h3>
+        <div class="subtitle">${tx('evolution.network.allSubtitle')}</div>
         <div class="chart-wrap"><canvas id="c-all-km"></canvas></div>
       </div>
 
       <div class="chart-card">
-        <h3>Détail par type highway</h3>
-        <div class="subtitle">Six types les plus présents en km.</div>
+        <h3>${tx('evolution.network.hwTitle')}</h3>
+        <div class="subtitle">${tx('evolution.network.hwSubtitle')}</div>
         <div class="chart-wrap"><canvas id="c-hw-km"></canvas></div>
       </div>
     </div>`;
 
   el.innerHTML += `
     <div class="section">
-      <div class="section-title">Qualité de mapping piéton</div>
+      <div class="section-title">${tx('evolution.quality.title')}</div>
 
       <div class="chart-card">
-        <h3>Trottoirs : ratio des routes documentées</h3>
-        <div class="subtitle">% de routes (résidentielles → primaires) avec un tag sidewalk explicite (separate, yes, both, no), et part restant non documentée.</div>
+        <h3>${tx('evolution.quality.swTitle')}</h3>
+        <div class="subtitle">${tx('evolution.quality.swSubtitle')}</div>
         <div class="chart-wrap"><canvas id="c-sw-pct"></canvas></div>
       </div>
 
       <div class="chart-card">
-        <h3>Traversées : nœuds et ways</h3>
-        <div class="subtitle">Un crossing est correctement mappé quand il a à la fois un nœud highway=crossing et un way footway=crossing. L'écart entre les deux courbes donne le nombre de traversées à compléter.</div>
+        <h3>${tx('evolution.quality.xingTitle')}</h3>
+        <div class="subtitle">${tx('evolution.quality.xingSubtitle')}</div>
         <div class="chart-wrap"><canvas id="c-xing"></canvas></div>
       </div>
 
       <div class="chart-card">
-        <h3>Accessibilité : tags annexes</h3>
-        <div class="subtitle">% de footways avec surface, % de footways avec smoothness, % de crossings avec tactile_paving.</div>
+        <h3>${tx('evolution.quality.accTitle')}</h3>
+        <div class="subtitle">${tx('evolution.quality.accSubtitle')}</div>
         <div class="chart-wrap"><canvas id="c-acc"></canvas></div>
       </div>
     </div>`;
 
   el.innerHTML += `
     <div class="section">
-      <div class="section-title">Composition des footways</div>
+      <div class="section-title">${tx('evolution.footways.title')}</div>
 
       <div class="chart-card">
-        <h3>Sous-tags footway=* (empilés)</h3>
+        <h3>${tx('evolution.footways.mixTitle')}</h3>
         <div class="subtitle">
-          sidewalk / crossing / link / traffic_island / autre / sans tag.
-          « Autre » : un sous-tag footway=* hors de cette liste ; « sans tag » : aucun sous-tag.
+          ${tx('evolution.footways.mixSubtitle')}
         </div>
         <div class="chart-wrap"><canvas id="c-fw-mix"></canvas></div>
       </div>
@@ -204,19 +200,18 @@ function render(data) {
 
   el.innerHTML += `
     <div class="section">
-      <div class="section-title">Composition des tags sidewalk sur les routes</div>
+      <div class="section-title">${tx('evolution.sidewalks.title')}</div>
 
       <div class="chart-card">
-        <h3>Tags sidewalk (empilés)</h3>
-        <div class="subtitle">separate / yes / partial / no / sans tag. Quand des routes passent de « yes » à « separate », leurs trottoirs ont été dessinés comme ways séparés.</div>
+        <h3>${tx('evolution.sidewalks.mixTitle')}</h3>
+        <div class="subtitle">${tx('evolution.sidewalks.mixSubtitle')}</div>
         <div class="chart-wrap"><canvas id="c-sw-mix"></canvas></div>
       </div>
 
       <div class="chart-card">
-        <h3>Détail par type de route</h3>
+        <h3>${tx('evolution.sidewalks.byTypeTitle')}</h3>
         <div class="subtitle" id="sw-by-type-subtitle">
-          Même composition (separate / yes / partial / no / sans tag), ventilée par type de route,
-          pour le point le plus récent de la période sélectionnée.
+          ${tx('evolution.sidewalks.byTypeSubtitle')}
         </div>
         <div class="chart-wrap" id="sw-by-type-chartwrap"><canvas id="c-sw-by-type"></canvas></div>
         <p id="sw-by-type-note" style="display:none; color:var(--text-muted); font-size:11px; padding: 8px 0 0;"></p>
@@ -258,13 +253,13 @@ function renderComparison(lastSnapshot, dailyEntry) {
       labels: allTypes,
       datasets: [
         {
-          label: `Snapshot du ${lastSnapshot.date}`,
+          label: i18n.t('evolution.compare.snapshotOf', { date: fdate(lastSnapshot.date) }),
           data: allTypes.map(t => kmA[t] || 0),
           backgroundColor: C.gray,
           borderRadius: 3,
         },
         {
-          label: `Aujourd'hui (${dailyEntry.date})`,
+          label: i18n.t('evolution.compare.today', { date: fdate(dailyEntry.date) }),
           data: allTypes.map(t => kmB[t] || 0),
           backgroundColor: C.green,
           borderRadius: 3,
@@ -278,7 +273,7 @@ function renderComparison(lastSnapshot, dailyEntry) {
         legend: { position: 'bottom' },
         tooltip: {
           callbacks: {
-            label: c => `${c.dataset.label} : ${fkm(c.parsed.y)} km`,
+            label: c => tooltip(c.dataset.label, `${fkm(c.parsed.y)} km`),
           },
         },
       },
@@ -295,7 +290,7 @@ function renderComparison(lastSnapshot, dailyEntry) {
 
   const fwA = footwaySubtypeCounts(lastSnapshot);
   const fwB = footwaySubtypeCounts(dailyEntry);
-  const fwLabels = ['sidewalk', 'crossing', 'link', 'traffic_island', 'autre', 'sans tag'];
+  const fwLabels = ['sidewalk', 'crossing', 'link', 'traffic_island', i18n.t('evolution.series.other'), i18n.t('evolution.series.noTag')];
   const fwKeys   = ['sidewalk', 'crossing', 'link', 'island', 'other', 'noTag'];
 
   new Chart(document.getElementById('c-compare-fw'), {
@@ -304,13 +299,13 @@ function renderComparison(lastSnapshot, dailyEntry) {
       labels: fwLabels,
       datasets: [
         {
-          label: `Snapshot du ${lastSnapshot.date}`,
+          label: i18n.t('evolution.compare.snapshotOf', { date: fdate(lastSnapshot.date) }),
           data: fwKeys.map(k => fwA[k]),
           backgroundColor: C.gray,
           borderRadius: 3,
         },
         {
-          label: `Aujourd'hui (${dailyEntry.date})`,
+          label: i18n.t('evolution.compare.today', { date: fdate(dailyEntry.date) }),
           data: fwKeys.map(k => fwB[k]),
           backgroundColor: C.cyan,
           borderRadius: 3,
@@ -324,7 +319,7 @@ function renderComparison(lastSnapshot, dailyEntry) {
         legend: { position: 'bottom' },
         tooltip: {
           callbacks: {
-            label: c => `${c.dataset.label} : ${fmt(c.parsed.y)} ways`,
+            label: c => tooltip(c.dataset.label, `${fmt(c.parsed.y)} ways`),
           },
         },
       },
@@ -350,13 +345,13 @@ function renderComparison(lastSnapshot, dailyEntry) {
     if (delta > 0.05) cls = 'pos';
     else if (delta < -0.05) cls = 'neg';
 
-    const showDelta = (delta >= 0 ? '+' : '') + fkm(delta) + ' km';
+    const showDelta = fsigned(delta) + ' km';
 
     grid.insertAdjacentHTML('beforeend', `
       <div class="delta ${cls}">
         <div class="delta-label">${escapeHTML(t)}</div>
         <div class="delta-val">${escapeHTML(fkm(after))} km</div>
-        <div class="delta-sub">${escapeHTML(showDelta)} depuis le ${escapeHTML(lastSnapshot.date)}</div>
+        <div class="delta-sub">${tx('evolution.deltas.since', { delta: showDelta, date: fdate(lastSnapshot.date) })}</div>
       </div>
     `);
   }
@@ -416,8 +411,8 @@ function applyPeriod(data, minDate, maxDate) {
   const info = document.getElementById('period-info');
   if (info) {
     info.textContent = isFullRange
-      ? `Période complète · ${filtered.length} point${filtered.length > 1 ? 's' : ''}`
-      : `${filtered.length} point${filtered.length > 1 ? 's' : ''} affiché${filtered.length > 1 ? 's' : ''} (zoom actif)`;
+      ? i18n.t('evolution.period.fullInfo', { count: filtered.length })
+      : i18n.t('evolution.period.zoomInfo', { count: filtered.length });
   }
 
   renderDeltas(filtered[0], filtered[filtered.length - 1]);
@@ -438,25 +433,25 @@ function renderDeltas(first, last) {
   const titleEl = document.getElementById('deltas-title');
   if (titleEl) {
     titleEl.textContent = first.date === last.date
-      ? `Évolution au ${first.date}`
-      : `Évolution du ${first.date} au ${last.date}`;
+      ? i18n.t('evolution.deltas.at', { date: fdate(first.date) })
+      : i18n.t('evolution.deltas.range', { from: fdate(first.date), to: fdate(last.date) });
   }
 
   const target = document.getElementById('deltas');
   target.innerHTML = '';
 
   const items = [
-    ['Réseau piéton',         'ped_km',           'km'],
-    ['footway=sidewalk',       'footway_sidewalk',  ''],
-    ['Nœuds crossing',          'crossing_nodes',    ''],
-    ['Ways footway=crossing',  'footway_crossing',  ''],
-    ['Trottoirs documentés',  'sidewalk_documented_pct', '%'],
-    ['Trottoirs séparés',      'sidewalk_separate_pct',   '%'],
-    ['Ratio crossing tagged',  'crossing_tagged_pct',     '%'],
-    ['Tactile paving',          'tactile_paving_pct',      '%'],
+    { labelKey: 'evolution.deltas.pedNetwork',          key: 'ped_km',                  unit: 'km' },
+    { labelKey: 'evolution.deltas.footwaySidewalk',     key: 'footway_sidewalk',        unit: '' },
+    { labelKey: 'evolution.deltas.crossingNodes',       key: 'crossing_nodes',          unit: '' },
+    { labelKey: 'evolution.deltas.crossingWays',        key: 'footway_crossing',        unit: '' },
+    { labelKey: 'evolution.deltas.sidewalksDocumented', key: 'sidewalk_documented_pct', unit: '%' },
+    { labelKey: 'evolution.deltas.sidewalksSeparate',   key: 'sidewalk_separate_pct',   unit: '%' },
+    { labelKey: 'evolution.deltas.crossingTagged',      key: 'crossing_tagged_pct',     unit: '%' },
+    { labelKey: 'evolution.deltas.tactilePaving',       key: 'tactile_paving_pct',      unit: '%' },
   ];
 
-  for (const [label, key, unit] of items) {
+  for (const { labelKey, key, unit } of items) {
     const before = first[key];
     const after  = last[key];
     if (before == null || after == null) continue;
@@ -466,15 +461,17 @@ function renderDeltas(first, last) {
     else if (delta < 0) cls = 'neg';
 
     const showAfter = unit === '%'
-      ? after.toFixed(1) + ' %'
+      ? fpct(after)
       : fkm(after) + (unit ? ' ' + unit : '');
-    const showDelta = (delta > 0 ? '+' : '') + (unit === '%' ? delta.toFixed(1) + ' pts' : fkm(delta) + (unit ? ' ' + unit : ''));
+    const showDelta = unit === '%'
+      ? i18n.t('evolution.deltas.points', { value: i18n.number(delta, { ...ONE_DECIMAL, signDisplay: 'exceptZero' }) })
+      : fsigned(delta) + (unit ? ' ' + unit : '');
 
     target.insertAdjacentHTML('beforeend', `
       <div class="delta ${cls}">
-        <div class="delta-label">${escapeHTML(label)}</div>
+        <div class="delta-label">${tx(labelKey)}</div>
         <div class="delta-val">${escapeHTML(showAfter)}</div>
-        <div class="delta-sub">${escapeHTML(showDelta)} depuis le ${escapeHTML(first.date)}</div>
+        <div class="delta-sub">${tx('evolution.deltas.since', { delta: showDelta, date: fdate(first.date) })}</div>
       </div>
     `);
   }
@@ -498,7 +495,7 @@ function lineOpts({ yTitle, percent, zoomed }) {
       legend: { position: 'bottom' },
       tooltip: {
         callbacks: {
-          label: c => `${c.dataset.label} : ${percent ? c.parsed.y.toFixed(1) + ' %' : fkm(c.parsed.y) + (yTitle ? ' ' + yTitle : '')}`,
+          label: c => tooltip(c.dataset.label, percent ? fpct(c.parsed.y) : fkm(c.parsed.y) + (yTitle ? ' ' + yTitle : '')),
         },
       },
     },
@@ -541,7 +538,7 @@ function renderCharts(data, labels, zoomed = false) {
     data: {
       labels,
       datasets: [{
-        label: 'Réseau piéton',
+        label: i18n.t('evolution.deltas.pedNetwork'),
         data: series('ped_km'),
         borderColor: C.green,
         backgroundColor: C.green + '22',
@@ -557,9 +554,9 @@ function renderCharts(data, labels, zoomed = false) {
     data: {
       labels,
       datasets: [
-        { label: 'Piéton',    data: series('ped_km'),      borderColor: C.green,  backgroundColor: C.green + '22', fill: false, ...pointStyles(data, C.green) },
-        { label: 'Routes',     data: series('road_km'),     borderColor: C.red,    backgroundColor: C.red + '22',   fill: false, ...pointStyles(data, C.red) },
-        { label: 'Cycleway',   data: series('cycleway_km'), borderColor: C.blue,   backgroundColor: C.blue + '22',  fill: false, ...pointStyles(data, C.blue) },
+        { label: i18n.t('evolution.series.pedestrian'), data: series('ped_km'),      borderColor: C.green,  backgroundColor: C.green + '22', fill: false, ...pointStyles(data, C.green) },
+        { label: i18n.t('evolution.series.roads'), data: series('road_km'),     borderColor: C.red,    backgroundColor: C.red + '22',   fill: false, ...pointStyles(data, C.red) },
+        { label: i18n.t('evolution.series.cycleway'), data: series('cycleway_km'), borderColor: C.blue,   backgroundColor: C.blue + '22',  fill: false, ...pointStyles(data, C.blue) },
       ],
     },
     options: lineOpts({ yTitle: 'km', zoomed }),
@@ -592,9 +589,9 @@ function renderCharts(data, labels, zoomed = false) {
     data: {
       labels,
       datasets: [
-        { label: 'Documenté (any tag)', data: series('sidewalk_documented_pct'), borderColor: C.cyan,  backgroundColor: C.cyan  + '22', fill: false, ...pointStyles(data, C.cyan) },
+        { label: i18n.t('evolution.series.documentedAnyTag'), data: series('sidewalk_documented_pct'), borderColor: C.cyan,  backgroundColor: C.cyan  + '22', fill: false, ...pointStyles(data, C.cyan) },
         { label: 'Sidewalk:both=separate', data: series('sidewalk_separate_pct'), borderColor: C.green, backgroundColor: C.green + '22', fill: false, ...pointStyles(data, C.green) },
-        { label: 'Non documenté', data: notDocumented, borderColor: C.grayLine, backgroundColor: C.grayLine + '22', borderDash: [4, 3], fill: false, ...pointStyles(data, C.grayLine) },
+        { label: i18n.t('evolution.series.notDocumented'), data: notDocumented, borderColor: C.grayLine, backgroundColor: C.grayLine + '22', borderDash: [4, 3], fill: false, ...pointStyles(data, C.grayLine) },
       ],
     },
     options: lineOpts({ percent: true, zoomed }),
@@ -605,9 +602,9 @@ function renderCharts(data, labels, zoomed = false) {
     data: {
       labels,
       datasets: [
-        { label: 'Nœuds highway=crossing', data: series('crossing_nodes'),    borderColor: C.cyan,   backgroundColor: C.cyan   + '22', fill: false, ...pointStyles(data, C.cyan) },
-        { label: 'Ways footway=crossing',   data: series('footway_crossing'),  borderColor: C.green,  backgroundColor: C.green  + '22', fill: false, ...pointStyles(data, C.green) },
-        { label: 'Crossings continus',       data: series('crossing_continuous'), borderColor: C.purple, backgroundColor: C.purple + '22', fill: false, ...pointStyles(data, C.purple) },
+        { label: i18n.t('evolution.series.crossingNodes'), data: series('crossing_nodes'),    borderColor: C.cyan,   backgroundColor: C.cyan   + '22', fill: false, ...pointStyles(data, C.cyan) },
+        { label: i18n.t('evolution.series.crossingWays'), data: series('footway_crossing'),  borderColor: C.green,  backgroundColor: C.green  + '22', fill: false, ...pointStyles(data, C.green) },
+        { label: i18n.t('evolution.series.continuousCrossings'), data: series('crossing_continuous'), borderColor: C.purple, backgroundColor: C.purple + '22', fill: false, ...pointStyles(data, C.purple) },
       ],
     },
     options: lineOpts({ zoomed }),
@@ -638,8 +635,8 @@ function renderCharts(data, labels, zoomed = false) {
         { label: 'footway=crossing',        data: series('footway_crossing'), backgroundColor: C.cyan,   borderColor: C.cyan,   fill: true },
         { label: 'footway=link',             data: series('footway_link'),     backgroundColor: C.purple, borderColor: C.purple, fill: true },
         { label: 'footway=traffic_island',   data: series('footway_traffic_island'), backgroundColor: C.orange, borderColor: C.orange, fill: true },
-        { label: 'autre (sous-tag reconnu)', data: fwOtherArr,                 backgroundColor: '#999',   borderColor: '#888',  fill: true },
-        { label: 'sans tag',                  data: fwNoTagArr,                backgroundColor: '#ddd',   borderColor: '#ccc',  fill: true },
+        { label: i18n.t('evolution.series.otherRecognised'), data: fwOtherArr,                 backgroundColor: '#999',   borderColor: '#888',  fill: true },
+        { label: i18n.t('evolution.series.noTag'), data: fwNoTagArr,                backgroundColor: '#ddd',   borderColor: '#ccc',  fill: true },
       ],
     },
     options: stackedOpts(),
@@ -662,9 +659,9 @@ function renderCharts(data, labels, zoomed = false) {
       datasets: [
         { label: 'separate',        data: swSepArr,  backgroundColor: C.green,  borderColor: C.green,  fill: true },
         { label: 'yes / both',       data: swYesArr,  backgroundColor: C.cyan,   borderColor: C.cyan,   fill: true },
-        { label: 'partial (1 côté)', data: swPartArr, backgroundColor: C.orange, borderColor: C.orange, fill: true },
-        { label: 'no (explicite)',   data: swNoArr,   backgroundColor: C.red,    borderColor: C.red,    fill: true },
-        { label: 'sans tag',          data: swNoneArr, backgroundColor: '#bbb',   borderColor: '#aaa',  fill: true },
+        { label: i18n.t('layer.sidewalk.partial'), data: swPartArr, backgroundColor: C.orange, borderColor: C.orange, fill: true },
+        { label: i18n.t('evolution.series.noExplicit'), data: swNoArr,   backgroundColor: C.red,    borderColor: C.red,    fill: true },
+        { label: i18n.t('evolution.series.noTag'), data: swNoneArr, backgroundColor: '#bbb',   borderColor: '#aaa',  fill: true },
       ],
     },
     options: stackedOpts(),
@@ -672,10 +669,10 @@ function renderCharts(data, labels, zoomed = false) {
 }
 
 const ROAD_TYPE_GROUPS = [
-  { label: 'Résidentiel', keys: ['residential', 'unclassified'] },
-  { label: 'Tertiaire',   keys: ['tertiary', 'tertiary_link'] },
-  { label: 'Secondaire',  keys: ['secondary', 'secondary_link'] },
-  { label: 'Primaire',    keys: ['primary', 'primary_link'] },
+  { labelKey: 'evolution.roadType.residential', keys: ['residential', 'unclassified'] },
+  { labelKey: 'evolution.roadType.tertiary',    keys: ['tertiary', 'tertiary_link'] },
+  { labelKey: 'evolution.roadType.secondary',   keys: ['secondary', 'secondary_link'] },
+  { labelKey: 'evolution.roadType.primary',     keys: ['primary', 'primary_link'] },
 ];
 
 function renderSidewalkByType(point) {
@@ -694,8 +691,8 @@ function renderSidewalkByType(point) {
     wrap.style.display = 'none';
     note.style.display = 'block';
     note.textContent = point
-      ? `Détail par type de route pas encore disponible pour le ${point.date}. Il apparaîtra après la prochaine extraction.`
-      : 'Détail par type de route pas encore disponible.';
+      ? i18n.t('evolution.sidewalks.noData', { date: fdate(point.date) })
+      : i18n.t('evolution.sidewalks.noDataUndated');
     return;
   }
 
@@ -713,7 +710,7 @@ function renderSidewalkByType(point) {
       agg.partial      += b.partial      || 0;
       agg.no_explicit += b.no_explicit || 0;
     }
-    return { label: g.label, ...agg };
+    return { label: i18n.t(g.labelKey), ...agg };
   });
 
   const pct = (n, d) => d > 0 ? +(n / d * 100).toFixed(1) : 0;
@@ -731,9 +728,9 @@ function renderSidewalkByType(point) {
       datasets: [
         { label: 'separate',        data: sepPct,   backgroundColor: C.green,  stack: 'sw' },
         { label: 'yes / both',       data: yesPct,   backgroundColor: C.cyan,   stack: 'sw' },
-        { label: 'partial (1 côté)', data: partPct,  backgroundColor: C.orange, stack: 'sw' },
-        { label: 'no (explicite)',   data: noPct,    backgroundColor: C.red,    stack: 'sw' },
-        { label: 'sans tag',          data: noTagPct, backgroundColor: '#bbb',   stack: 'sw' },
+        { label: i18n.t('layer.sidewalk.partial'), data: partPct,  backgroundColor: C.orange, stack: 'sw' },
+        { label: i18n.t('evolution.series.noExplicit'), data: noPct,    backgroundColor: C.red,    stack: 'sw' },
+        { label: i18n.t('evolution.series.noTag'), data: noTagPct, backgroundColor: '#bbb',   stack: 'sw' },
       ],
     },
     options: {
@@ -743,10 +740,10 @@ function renderSidewalkByType(point) {
         legend: { position: 'bottom' },
         tooltip: {
           callbacks: {
-            label: c => `${c.dataset.label} : ${c.parsed.y.toFixed(1)} %`,
+            label: c => tooltip(c.dataset.label, fpct(c.parsed.y)),
             afterBody: items => {
               const g = groups[items[0].dataIndex];
-              return `${fmt(g.total)} routes au total`;
+              return i18n.t('evolution.roadType.total', { count: g.total });
             },
           },
         },
