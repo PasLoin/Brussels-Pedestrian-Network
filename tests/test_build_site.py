@@ -274,3 +274,41 @@ def test_page_without_its_own_fragment_falls_back_to_the_reference():
 
 def test_pages_live_in_templates_only():
     assert sorted(p.name for p in ROOT.glob("*.html")) == []
+
+
+def test_pseudo_text_marks_every_letter_and_keeps_placeholders():
+    text = build_site.pseudo_text("Computed in {{ms}} ms, {{ count }} trips")
+    assert text.startswith(build_site.PSEUDO_OPEN) and text.endswith(build_site.PSEUDO_CLOSE)
+    assert "{{ms}}" in text and "{{ count }}" in text
+    assert not re.search(r"[A-Za-z]", build_site.PLACEHOLDER.sub("", text))
+
+
+def test_pseudo_dictionary_covers_every_reference_key():
+    config = build_site.load_languages()
+    reference = build_site.page_dictionary(config, config["reference"])
+    pseudo = build_site.pseudo_dictionary(reference)
+    assert pseudo.keys() == reference.keys()
+    for key, value in pseudo.items():
+        assert build_site.PLACEHOLDER.findall(value) == build_site.PLACEHOLDER.findall(reference[key])
+
+
+def test_pseudo_locale_is_built_on_request_and_never_published(tmp_path):
+    built = build_site.build(tmp_path, pseudo=True, lastmod=LASTMOD)
+    assert built[-1] == build_site.PSEUDO_LANG
+    folder = tmp_path / build_site.PSEUDO_CONF["path"]
+    for page in PAGES:
+        html = (folder / page).read_text(encoding="utf-8")
+        assert f'<html lang="{build_site.PSEUDO_LANG}"' in html
+        assert 'data-root="../"' in html
+    assert build_site.PSEUDO_CONF["path"] not in (tmp_path / "sitemap.xml").read_text(encoding="utf-8")
+    assert build_site.PSEUDO_LANG not in build_site.load_languages()["languages"]
+
+
+def test_default_build_has_no_pseudo_locale(site):
+    assert not (site / build_site.PSEUDO_CONF["path"]).exists()
+
+
+def test_cli_builds_the_pseudo_locale(tmp_path, capsys):
+    assert build_site.main(["--out", str(tmp_path / "site"), "--pseudo", "--lastmod", LASTMOD]) == 0
+    assert build_site.PSEUDO_LANG in capsys.readouterr().out
+    assert (tmp_path / "site" / build_site.PSEUDO_CONF["path"] / "index.html").is_file()
