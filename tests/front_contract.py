@@ -281,6 +281,7 @@ _HISTORY_PREFIXES = ("road_", "sidewalk_", "km_by", "footway_", "crossing_", "pe
 def history_reads(src: str) -> set:
     keys = set(re.findall(r"series\('(\w+)'\)", src))
     keys |= set(re.findall(r"\[\s*'[^']*',\s*'(\w+)',\s*'[^']*'\s*\]", src))
+    keys |= set(re.findall(r"\bkey:\s*'(\w+)'", src))
     keys |= set(re.findall(r"\b(?:entry|last|first|lastSnapshot|dailyEntry)\.(\w+)", src))
     keys |= {k for k in re.findall(r"\bd\.(\w+)", src) if k.startswith(_HISTORY_PREFIXES)}
     return keys - {"date", "type"}
