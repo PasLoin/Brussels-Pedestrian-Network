@@ -141,6 +141,11 @@ let startSnap = null, endSnap = null;
 let mapRef = null;
 
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && navMode) toggleNavMode(); });
+document.getElementById("header-toggle").addEventListener("click", () => toggleHeader());
+document.getElementById("legend-toggle").addEventListener("click", () => toggleLegend());
+document.getElementById("nav-btn").addEventListener("click", () => toggleNavMode());
+document.getElementById("route-clear").addEventListener("click", () => clearRoute());
+document.getElementById("flow-threshold-slider").addEventListener("input", (e) => updateFlowFilter(e.target.value));
 
 function toggleNavMode() {
   if (!graphReady) return;
