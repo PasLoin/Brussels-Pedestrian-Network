@@ -8,10 +8,9 @@ on:
     paths:
       - ".github/workflows/build.yml"
       - "scripts/**"
-      - "index.html"
-      - "stats.html"
-      - "evolution.html"
-      - "about.html"
+      - "build_site.py"
+      - "templates/**"
+      - "i18n/**"
       - "robots.txt"
       - "sitemap.xml"
       - "favicon.svg"
@@ -101,7 +100,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends osmium-tool tippecanoe jq
 
       - name: Install Python dependencies
-        run: pip install "shapely>=2" osmnx geopandas igraph numpy pyproj --break-system-packages
+        run: pip install "shapely>=2" osmnx geopandas igraph numpy pyproj "jinja2>=3.1" --break-system-packages
 
       - name: Download OSM PBF
         run: |
@@ -365,19 +364,10 @@ jobs:
             echo '[]' > history.json
           fi
 
-      - name: Update sitemap lastmod dates
-        run: |
-          TODAY=$(date -u +%Y-%m-%d)
-          sed -i "s#__LASTMOD__#${TODAY}#g" sitemap.xml
-          echo "sitemap.xml lastmod set to ${TODAY}"
-
       - name: Prepare site
         run: |
-          mkdir -p _site
-          cp index.html stats.html evolution.html about.html robots.txt favicon.svg app.js nav.js filters.js popups.js app.css \
-             style.json state.txt sitemap.xml stats.json graph.json \
-             pedestrian.pmtiles history.json \
-             _site/
+          python3 build_site.py --out _site --lastmod "$(date -u +%Y-%m-%d)"
+          cp state.txt stats.json graph.json pedestrian.pmtiles history.json _site/
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
