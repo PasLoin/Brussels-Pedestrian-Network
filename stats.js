@@ -139,7 +139,7 @@ function render(s) {
   el.innerHTML += `
     <div class="section">
       <div class="section-title">${tx('stats.completeness.title')}</div>
-      <div class="section-intro">${withLink(i18n.t('stats.completeness.intro', { link: LINK_SLOT }), `<a href="./about.html#indicateurs">${tx('stats.completeness.methodologyLink')}</a>`)}</div>
+      <div class="section-intro">${withLink(i18n.t('stats.completeness.intro', { link: LINK_SLOT }), `<a href="./about.html#indicators">${tx('stats.completeness.methodologyLink')}</a>`)}</div>
       <div class="completeness">
         <div class="gauge">
           <svg viewBox="0 0 140 140">
