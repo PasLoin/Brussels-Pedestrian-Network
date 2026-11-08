@@ -295,9 +295,9 @@ def test_level_rows_written_to_islands_layer(bundle, groups, tmp_path):
         for f in features if f["properties"]["type"] == "level"
     }
     assert set(level) == {2, 62}
-    assert level[62]["levels"] == "1;2 : niveau 1 non raccordé"
+    assert (level[62]["level_values"], level[62]["level_missing"]) == ("1;2", "1")
     assert set(level[62]["way_ids"].split(",")) == {"601", "602"}
-    assert level[2]["levels"] == "-2;-1 : niveau -2 non raccordé"
+    assert (level[2]["level_values"], level[2]["level_missing"]) == ("-2;-1", "-2")
     assert set(level[2]["way_ids"].split(",")) == {"101", "496286153"}
 
 

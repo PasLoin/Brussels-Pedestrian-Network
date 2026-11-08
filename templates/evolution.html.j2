@@ -1,0 +1,234 @@
+{% extends "_base.html.j2" %}
+{% block title %}Évolution du Brussels Pedestrian Network{% endblock %}
+{% block description %}Évolution mensuelle du mapping piéton à Bruxelles sur OpenStreetMap : réseau, trottoirs documentés et traversées au fil du temps.{% endblock %}
+{% block head %}
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f4f5f6;
+      --surface: #fff;
+      --border: #d4d6d9;
+      --text: #22252a;
+      --text-dim: #4a4f55;
+      --text-muted: #6b7077;
+      --green: #557d68;
+      --red: #c0392b;
+      --orange: #c27d2a;
+      --blue: #2563eb;
+      --purple: #6c3bbd;
+      --cyan: #0e7490;
+    }
+
+    body {
+      font-family: system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+      font-size: 13px;
+    }
+
+    .page-header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 0;
+    }
+    .page-header-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 20px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .page-header h1 { font-size: 18px; font-weight: 650; }
+    .page-header .home { font-size: 13px; color: var(--text-dim); text-decoration: none; display: block; }
+    .page-header .home:hover { text-decoration: underline; }
+    .page-header-right {
+      display: flex; align-items: baseline; gap: 16px;
+      font-size: 11px; color: var(--text-muted);
+    }
+    .page-header-right a { color: var(--text-dim); text-decoration: none; }
+    .page-header-right a:hover { text-decoration: underline; }
+
+    main a { color: #1d5fa8; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 20px 20px 48px; }
+
+    .intro {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 14px 16px;
+      margin-bottom: 24px;
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+    .intro strong { color: var(--text); }
+    .intro .meta {
+      margin-top: 8px;
+      font-size: 11px;
+      color: var(--text-muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .section { margin-bottom: 28px; }
+    .section-title {
+      font-size: 15px;
+      font-weight: 650;
+      color: var(--text);
+      margin-bottom: 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .chart-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .chart-card h3 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+    .chart-card .subtitle {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+    .chart-wrap { position: relative; height: 280px; }
+    .chart-wrap canvas { max-height: 280px; }
+
+    .delta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .delta {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 10px 12px;
+    }
+    .delta-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 2px;
+    }
+    .delta-val {
+      font-size: 18px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+    .delta-sub {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 1px;
+      font-variant-numeric: tabular-nums;
+    }
+    .delta.pos .delta-val { color: var(--green); }
+    .delta.neg .delta-val { color: var(--red); }
+    .delta.neutral .delta-val { color: var(--text); }
+
+    .period-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 10px 14px;
+    }
+    .period-controls label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+    .period-controls input[type="date"] {
+      font-family: inherit;
+      font-size: 12px;
+      padding: 4px 6px;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .period-controls button {
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 5px 10px;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      background: var(--bg);
+      color: var(--text-dim);
+      cursor: pointer;
+    }
+    .period-controls button:hover { background: #eee; color: var(--text); }
+    .period-controls .period-info {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-left: auto;
+    }
+    .period-controls .period-hint {
+      font-size: 11px;
+      color: var(--text-muted);
+      flex-basis: 100%;
+    }
+
+    .loading { text-align: center; padding: 48px 20px; color: var(--text-muted); }
+
+    .footer {
+      text-align: center;
+      padding: 16px 20px;
+      font-size: 10px;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border);
+    }
+    .footer a { color: var(--text-dim); text-decoration: none; }
+
+    @media (max-width: 600px) {
+      .delta-grid { grid-template-columns: repeat(2, 1fr); }
+      .delta-val { font-size: 16px; }
+      .chart-wrap { height: 220px; }
+      .period-controls .period-info { margin-left: 0; }
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+{% endblock %}
+{% block body %}
+<body>
+
+<header class="page-header">
+  <div class="page-header-inner">
+    <div><a class="home" href="./">Brussels Pedestrian Network</a><h1>Évolution</h1></div>
+    <div class="page-header-right">
+      <a href="./">Carte</a>
+      <a href="./stats.html">Statistiques</a>
+      <a href="./about.html">Méthodologie</a>
+    </div>
+  </div>
+</header>
+
+<main class="container" id="main">
+  <div class="loading" id="loading">Chargement de l'historique…</div>
+</main>
+
+<script src="{{ root }}evolution.js"></script>
+<footer class="footer" style="text-align:center; padding: 40px 0; color: #888; font-size: 11px; border-top: 1px solid #ddd; margin-top: 40px;">
+  Données : <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener" style="color: #666; text-decoration: none;">OpenStreetMap</a>
+  · <a href="https://github.com/PasLoin/Brussels-Pedestrian-Network" target="_blank" rel="noopener" style="color: #666; text-decoration: none;">Source</a>
+  · <a href="./stats.html" style="color: #666; text-decoration: none;">Statistiques actuelles</a>
+  · <a href="./" style="color: #666; text-decoration: none;">Retour à la carte</a>
+</footer>
+</body>
+</html>
+{% endblock %}

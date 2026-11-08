@@ -1,3 +1,13 @@
+const LEVEL_VALUES_SEPARATOR = "|";
+const UNTAGGED_LEVEL_LABEL = "0 (non tagué)";
+
+function formatLevels(p) {
+  if (p.level_values == null) return "—";
+  const values = String(p.level_values).split(LEVEL_VALUES_SEPARATOR).map(v => v || UNTAGGED_LEVEL_LABEL);
+  const missing = String(p.level_missing ?? "");
+  return missing ? `${values[0]} : niveau ${missing} non raccordé` : values.join(" ≠ ");
+}
+
 function popupTitle(color, text) {
   const sw = color ? `<span class="popup-swatch" style="--c:${color}"></span>` : "";
   return `<div class="popup-title">${sw}${text}</div>`;
@@ -200,7 +210,7 @@ function makePopupLayers({ flowColors, sidewalkStatuses, highwayLayers, elevator
               : "Groupe de chemins sans aucune liaison avec le réseau principal"
           }</span></div>
           ${isLevel
-            ? `<div class="popup-row"><span class="label">Niveaux</span><span class="value">${escapeHTML(p.levels || "—")}</span></div>
+            ? `<div class="popup-row"><span class="label">Niveaux</span><span class="value">${escapeHTML(formatLevels(p))}</span></div>
           ${nodeId > 0 ? `<div class="popup-row"><span class="label">Nœud</span><span class="value"><a href="https://www.openstreetmap.org/node/${nodeId}" target="_blank" rel="noopener">n${nodeId}</a></span></div>` : ""}`
             : `<div class="popup-row"><span class="label">Écart au réseau</span><span class="value">${gap !== null ? gap + " m" : "—"}</span></div>`
           }
@@ -259,5 +269,5 @@ function makePopupLayers({ flowColors, sidewalkStatuses, highwayLayers, elevator
 }
 
 if (typeof module !== "undefined") {
-  module.exports = { escapeHTML, popupTitle, formatWrongTagCrossing, makePopupLayers };
+  module.exports = { escapeHTML, popupTitle, formatWrongTagCrossing, formatLevels, makePopupLayers };
 }

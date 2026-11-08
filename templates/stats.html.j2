@@ -1,0 +1,273 @@
+{% extends "_base.html.j2" %}
+{% block title %}Statistiques du Brussels Pedestrian Network{% endblock %}
+{% block description %}Statistiques de complétude du réseau piéton bruxellois sur OpenStreetMap : trottoirs documentés et traversées connectées.{% endblock %}
+{% block head %}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f4f5f6;
+      --surface: #fff;
+      --border: #d4d6d9;
+      --text: #22252a;
+      --text-dim: #4a4f55;
+      --text-muted: #6b7077;
+      --green: #557d68;
+      --red: #c0392b;
+      --orange: #c27d2a;
+      --yellow: #eab308;
+      --blue: #2563eb;
+      --purple: #6c3bbd;
+      --cyan: #0e7490;
+    }
+
+    body {
+      font-family: system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+      font-size: 13px;
+    }
+
+    .page-header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 0;
+    }
+    .page-header-inner {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 20px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .page-header h1 { font-size: 18px; font-weight: 650; }
+    .page-header .home { font-size: 13px; color: var(--text-dim); text-decoration: none; display: block; }
+    .page-header .home:hover { text-decoration: underline; }
+    .page-header-right {
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .page-header-right a {
+      color: var(--text-dim);
+      text-decoration: none;
+    }
+    .page-header-right a:hover { text-decoration: underline; }
+
+    main a { color: #1d5fa8; }
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 20px 20px 48px;
+    }
+
+    .section { margin-bottom: 28px; }
+    .section-title {
+      font-size: 15px;
+      font-weight: 650;
+      color: var(--text);
+      margin-bottom: 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-intro {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      margin-top: -4px;
+    }
+
+    .completeness {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 18px 18px;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 22px;
+      align-items: center;
+    }
+    .gauge {
+      position: relative;
+      width: 140px;
+      height: 140px;
+    }
+    .gauge svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+    .gauge-bg, .gauge-fg {
+      fill: none;
+      stroke-width: 12;
+      stroke-linecap: round;
+    }
+    .gauge-bg { stroke: #eee; }
+    .gauge-fg { stroke: var(--green); transition: stroke-dasharray 0.8s ease; }
+    .gauge-num {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .gauge-num .v {
+      font-size: 30px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+    .gauge-num .u {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .sub-scores { display: flex; flex-direction: column; gap: 10px; }
+    .sub-score {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: baseline;
+    }
+    .sub-score .row-top {
+      display: flex;
+      justify-content: space-between;
+      grid-column: 1 / -1;
+      font-size: 12px;
+    }
+    .sub-score .label { color: var(--text-dim); }
+    .sub-score .v {
+      color: var(--text);
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+    .sub-score .bar {
+      grid-column: 1 / -1;
+      background: #eee;
+      height: 6px;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .sub-score .bar-fill {
+      height: 100%;
+      background: var(--cyan);
+      transition: width 0.7s ease;
+    }
+    .sub-score .bar-fill.good { background: var(--green); }
+    .sub-score .bar-fill.warn { background: var(--orange); }
+    .sub-score .bar-fill.bad  { background: var(--red); }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: 8px;
+    }
+    .kpi {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 10px 12px;
+    }
+    .kpi-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 2px;
+    }
+    .kpi-val {
+      font-size: 20px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+    .kpi-unit {
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--text-dim);
+    }
+    .kpi-sub {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 1px;
+      font-variant-numeric: tabular-nums;
+    }
+    .kpi-val .small {
+      font-size: 14px;
+      color: var(--text-dim);
+    }
+
+    .charts {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .chart-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 14px;
+    }
+    .chart-card h3 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-dim);
+      margin-bottom: 10px;
+    }
+    .chart-wrap { position: relative; max-height: 260px; }
+    .chart-wrap canvas { width: 100% !important; max-height: 260px; }
+
+    .loading {
+      text-align: center;
+      padding: 48px 20px;
+      color: var(--text-muted);
+    }
+
+    .footer {
+      text-align: center;
+      padding: 16px 20px;
+      font-size: 10px;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border);
+    }
+    .footer a { color: var(--text-dim); text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+
+    @media (max-width: 600px) {
+      .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+      .charts { grid-template-columns: 1fr; }
+      .kpi-val { font-size: 17px; }
+      .completeness { grid-template-columns: 1fr; }
+      .gauge { width: 110px; height: 110px; margin: 0 auto; }
+    }
+  </style>
+{% endblock %}
+{% block body %}
+<body>
+
+<header class="page-header">
+  <div class="page-header-inner">
+    <div><a class="home" href="./">Brussels Pedestrian Network</a><h1>Statistiques</h1></div>
+    <div class="page-header-right">
+      <span id="build-date"></span>
+      <a href="./">Carte</a>
+      <a href="./evolution.html">Évolution</a>
+      <a href="./about.html">Méthodologie</a>
+    </div>
+  </div>
+</header>
+
+<main class="container" id="main">
+  <div class="loading" id="loading">Chargement…</div>
+</main>
+
+<footer class="footer">
+  Données : <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>
+  · <a href="https://github.com/PasLoin/Brussels-Pedestrian-Network" target="_blank" rel="noopener">Source</a>
+  · <a href="./evolution.html">Évolution</a>
+</footer>
+
+<script src="{{ root }}stats.js"></script>
+</body>
+</html>
+{% endblock %}

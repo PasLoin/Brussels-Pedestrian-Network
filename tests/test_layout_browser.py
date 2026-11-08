@@ -2,9 +2,10 @@ import functools
 import http.server
 import os
 import threading
-from pathlib import Path
 
 import pytest
+
+import build_site
 
 try:
     from playwright.sync_api import sync_playwright
@@ -16,7 +17,6 @@ if sync_playwright is None:
         raise RuntimeError("REQUIRE_BROWSER_TESTS=1 but playwright is not installed")
     pytest.skip("playwright not installed", allow_module_level=True)
 
-_ROOT = Path(__file__).resolve().parent.parent
 
 _VIEWPORTS = [
     (1920, 1080), (1366, 768), (1280, 720), (1024, 640),
@@ -60,8 +60,10 @@ _RECTS = """
 
 
 @pytest.fixture(scope="module")
-def server():
-    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(_ROOT))
+def server(tmp_path_factory):
+    site = tmp_path_factory.mktemp("site")
+    build_site.build(site)
+    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(site))
     httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     thread.start()
@@ -190,3 +192,36 @@ def test_desktop_legend_shows_its_last_item(page):
 """)
     assert sizes["client"] >= sizes["scroll"]
     assert sizes["last"] <= sizes["legend"]
+
+
+_COLLECT_CSP_VIOLATIONS = """
+window.__cspViolations = [];
+document.addEventListener("securitypolicyviolation", e => window.__cspViolations.push(`${e.violatedDirective} ${e.blockedURI}`));
+"""
+
+
+def test_controls_work_without_inline_scripts(page, server):
+    pg = page.context.browser.new_page(viewport={"width": 1280, "height": 720})
+    pg.add_init_script(_COLLECT_CSP_VIOLATIONS)
+    pg.goto(server, wait_until="domcontentloaded")
+    pg.wait_for_function("() => typeof toggleLegend === 'function'")
+
+    legend_before = pg.evaluate(_LEGEND_STATE)
+    pg.dispatch_event("#legend-toggle", "click")
+    assert pg.evaluate(_LEGEND_STATE)["open"] != legend_before["open"]
+
+    header_open = "() => document.getElementById('header').classList.contains('open')"
+    header_before = pg.evaluate(header_open)
+    pg.dispatch_event("#header-toggle", "click")
+    assert pg.evaluate(header_open) != header_before
+
+    pg.eval_on_selector("#flow-threshold-slider", "el => { el.value = '50'; el.dispatchEvent(new Event('input')); }")
+    assert pg.inner_text("#flow-threshold-val") == "50 %"
+
+    pg.evaluate(_SHOW)
+    pg.dispatch_event("#route-clear", "click")
+    assert not pg.evaluate("() => document.getElementById('route-panel').classList.contains('visible')")
+
+    violations = [v for v in pg.evaluate("window.__cspViolations") if v.startswith("script-src")]
+    assert violations == []
+    pg.close()

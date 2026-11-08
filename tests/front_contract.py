@@ -2,6 +2,8 @@ import json
 import re
 from pathlib import Path
 
+import build_site
+
 ROOT = Path(__file__).resolve().parent.parent
 
 STATS_HTML_PATHS = frozenset({
@@ -70,7 +72,7 @@ LAYER_PROPS = {
     "footway_crossing_candidates": frozenset({"length_m", "name", "osm_id"}),
     "graph_islands": frozenset({
         "bbox_e", "bbox_n", "bbox_s", "bbox_w", "gap_m", "highways",
-        "length_m", "levels", "node_id", "type", "way_ids",
+        "length_m", "level_missing", "level_values", "node_id", "type", "way_ids",
     }),
     "kerb_issues": frozenset({
         "crossing_osm_id", "kerb_osm_id", "partner_way_osm_id", "type", "way_osm_id",
@@ -101,7 +103,12 @@ def read_text(name: str) -> str:
 
 FRONT_JS = ("app.js", "popups.js")
 
-PAGES = ("index.html", "stats.html", "evolution.html", "about.html")
+PAGES = build_site.PAGES
+
+
+def page_text(name: str) -> str:
+    config = build_site.load_languages()
+    return build_site.render_page(build_site.root_language(config), name, config)
 
 
 def front_js() -> str:
@@ -112,13 +119,11 @@ def local_scripts(html: str) -> set:
     return set(re.findall(r'<script\s+src="\./([\w.-]+\.js)"', html))
 
 
-def deployed_files(workflow: str) -> set:
-    start = workflow.index("cp ", workflow.index("name: Prepare site"))
-    command = workflow[start:workflow.index("_site/", start)]
-    return set(command.replace("\\", " ").split()[1:])
+def deployed_files() -> set:
+    return set(build_site.STATIC)
 
 
-def build_trigger_paths(workflow: str) -> set:
+def push_trigger_paths(workflow: str) -> set:
     start = workflow.index("paths:", workflow.index("push:"))
     block = workflow[start:workflow.index("workflow_dispatch", start)]
     return set(re.findall(r'-\s*"([^"]+)"', block))
@@ -169,7 +174,7 @@ def stats_reads(src: str, root: str = "s") -> set:
 
 
 def app_stats_block(src: str) -> str:
-    start = src.index('fetch("./stats.json")')
+    start = src.index('fetch(i18n.dataUrl("stats.json"))')
     return src[start:src.index(".catch(", start)]
 
 

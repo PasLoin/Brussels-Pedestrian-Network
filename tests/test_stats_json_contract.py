@@ -9,7 +9,7 @@ from clean_osm import clean_osm
 from detect_missing_crossings import detect_missing_crossings
 from export import compute_graph_stats, compute_network_stats, save_stats, undirected_edge_groups
 from export_sidewalk_roads import export_sidewalk_roads
-from front_contract import APP_STATS_PATHS, ROOT, STATS_HTML_PATHS, get_path
+from front_contract import APP_STATS_PATHS, ROOT, STATS_HTML_PATHS, get_path, page_text
 from sidewalk_gap import detect_sidewalk_gaps
 
 _TO_WGS = Transformer.from_crs("EPSG:31370", "EPSG:4326", always_xy=True)
@@ -145,6 +145,8 @@ def _render(page_html: str, stats_json: dict):
         page.route("**/stats.json", lambda r: r.fulfill(body=json.dumps(stats_json), content_type="application/json"))
         page.route("**/state.txt", lambda r: r.fulfill(body="build_timestamp=2026-11-02T00:00:00Z\n"))
         page.route("**/page.html", lambda r: r.fulfill(body=page_html, content_type="text/html"))
+        page.route("**/i18n.js", lambda r: r.fulfill(path=ROOT / "i18n.js", content_type="text/javascript"))
+        page.route("**/stats.js", lambda r: r.fulfill(path=ROOT / "stats.js", content_type="text/javascript"))
         page.route("**/*.svg", lambda r: r.fulfill(body="", content_type="image/svg+xml"))
         page.goto("http://contract.test/page.html")
         page.wait_for_function(
@@ -169,7 +171,7 @@ def _numbers(node):
 
 
 def test_stats_page_renders_without_broken_values(stats):
-    text, charts, errors = _render((ROOT / "stats.html").read_text(encoding="utf-8"), stats)
+    text, charts, errors = _render(page_text("stats.html"), stats)
     assert errors == []
     assert "Erreur" not in text
     for bad in _BAD_TEXT:
