@@ -17,7 +17,7 @@ SITE_URL = "https://pasloin.github.io/Brussels-Pedestrian-Network/"
 PAGES = ("index.html", "stats.html", "evolution.html", "about.html")
 STATIC = (
     "robots.txt", "favicon.svg", "app.css", "style.json",
-    "i18n.js", "app.js", "nav.js", "filters.js", "popups.js",
+    "i18n.js", "app.js", "nav.js", "filters.js", "popups.js", "stats.js", "evolution.js",
 )
 SITEMAP = "sitemap.xml"
 LASTMOD_PLACEHOLDER = "__LASTMOD__"
