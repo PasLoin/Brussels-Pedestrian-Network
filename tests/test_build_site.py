@@ -1,5 +1,6 @@
 import json
 import re
+from html import unescape as html_unescape
 
 import pytest
 from markupsafe import Markup
@@ -318,3 +319,41 @@ def test_cli_builds_the_pseudo_locale(tmp_path, capsys):
     assert build_site.main(["--out", str(tmp_path / "site"), "--pseudo", "--lastmod", LASTMOD]) == 0
     assert build_site.PSEUDO_LANG in capsys.readouterr().out
     assert (tmp_path / "site" / build_site.PSEUDO_CONF["path"] / "index.html").is_file()
+
+
+def _directives(policy):
+    parsed = {}
+    for part in policy.rstrip(";").split(";"):
+        name, *sources = part.split()
+        assert name not in parsed, name
+        parsed[name] = sources
+    return parsed
+
+
+@pytest.mark.parametrize("page", PAGES)
+def test_page_policy_comes_from_the_single_table(site, page):
+    html = (site / page).read_text(encoding="utf-8")
+    csp = html_unescape(_attr(html, r'http-equiv="Content-Security-Policy" content="([^"]*)"'))
+    assert csp == build_site.content_security_policy(page)
+
+
+def test_map_policy_only_adds_sources_to_the_shared_policy():
+    shared = _directives(build_site.content_security_policy("stats.html"))
+    page = _directives(build_site.content_security_policy("index.html"))
+    assert page.keys() == shared.keys()
+    for name, sources in shared.items():
+        assert page[name][:len(sources)] == sources
+    assert "https://protomaps.github.io" in page["connect-src"]
+
+
+def test_policy_additions_are_not_duplicated():
+    policy = build_site.content_security_policy(
+        "x", base={"img-src": ["'self'"]}, additions={"x": {"img-src": ["'self'", "data:"], "media-src": ["blob:"]}})
+    assert policy == "img-src 'self' data:; media-src blob:;"
+
+
+def test_not_found_policy_is_locked_down(site):
+    html = (site / build_site.NOT_FOUND).read_text(encoding="utf-8")
+    csp = _directives(html_unescape(_attr(html, r'http-equiv="Content-Security-Policy" content="([^"]*)"')))
+    assert csp["default-src"] == ["'none'"]
+    assert "script-src" not in csp
