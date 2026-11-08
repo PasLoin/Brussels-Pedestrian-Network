@@ -615,9 +615,9 @@ function renderCharts(data, labels, zoomed = false) {
     data: {
       labels,
       datasets: [
-        { label: 'Footway surface=*',      data: series('footway_surface_pct'),    borderColor: C.cyan,   backgroundColor: C.cyan + '22',   fill: false, ...pointStyles(data, C.cyan) },
-        { label: 'Footway smoothness=*',   data: series('footway_smoothness_pct'), borderColor: C.blue,   backgroundColor: C.blue + '22',   fill: false, ...pointStyles(data, C.blue) },
-        { label: 'Crossing tactile_paving', data: series('tactile_paving_pct'),     borderColor: C.green,  backgroundColor: C.green + '22',  fill: false, ...pointStyles(data, C.green) },
+        { label: i18n.t('evolution.series.footwaySurface'), data: series('footway_surface_pct'),    borderColor: C.cyan,   backgroundColor: C.cyan + '22',   fill: false, ...pointStyles(data, C.cyan) },
+        { label: i18n.t('evolution.series.footwaySmoothness'), data: series('footway_smoothness_pct'), borderColor: C.blue,   backgroundColor: C.blue + '22',   fill: false, ...pointStyles(data, C.blue) },
+        { label: i18n.t('evolution.series.crossingTactilePaving'), data: series('tactile_paving_pct'),     borderColor: C.green,  backgroundColor: C.green + '22',  fill: false, ...pointStyles(data, C.green) },
       ],
     },
     options: lineOpts({ percent: true, zoomed }),
