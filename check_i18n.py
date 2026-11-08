@@ -8,7 +8,7 @@ import build_site
 from build_site import I18N_DIR, PLACEHOLDER, ROOT, TEMPLATES_DIR, base_key
 
 DOTTED_KEY = r"[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)+"
-KEY_CALL = re.compile(r"""\bt\(\s*(["'`])(""" + DOTTED_KEY + r""")\1""")
+KEY_CALL = re.compile(r"""\b(?:t|tx)\(\s*(["'`])(""" + DOTTED_KEY + r""")\1""")
 KEY_PROPERTY = re.compile(r"""\b[a-z]\w*Key\s*:\s*(["'`])(""" + DOTTED_KEY + r""")\1""")
 UNSUPPORTED = (
     (re.compile(r"\$t\("), "nested $t() calls are not supported"),
