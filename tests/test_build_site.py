@@ -228,3 +228,10 @@ def test_cli_builds_the_site(tmp_path, capsys):
     assert build_site.main(["--out", str(tmp_path / "site"), "--lastmod", LASTMOD]) == 0
     assert "[OK]" in capsys.readouterr().out
     assert json.loads((tmp_path / "site" / "style.json").read_text(encoding="utf-8"))
+
+
+@pytest.mark.parametrize("page", PAGES)
+def test_page_runs_no_inline_script(site, page):
+    html = (site / page).read_text(encoding="utf-8")
+    inline = re.findall(r"<script(?![^>]*\bsrc=)([^>]*)>", html)
+    assert all('type="application/json"' in attrs for attrs in inline), inline

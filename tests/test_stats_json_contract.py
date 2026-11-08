@@ -146,6 +146,7 @@ def _render(page_html: str, stats_json: dict):
         page.route("**/state.txt", lambda r: r.fulfill(body="build_timestamp=2026-11-02T00:00:00Z\n"))
         page.route("**/page.html", lambda r: r.fulfill(body=page_html, content_type="text/html"))
         page.route("**/i18n.js", lambda r: r.fulfill(path=ROOT / "i18n.js", content_type="text/javascript"))
+        page.route("**/stats.js", lambda r: r.fulfill(path=ROOT / "stats.js", content_type="text/javascript"))
         page.route("**/*.svg", lambda r: r.fulfill(body="", content_type="image/svg+xml"))
         page.goto("http://contract.test/page.html")
         page.wait_for_function(

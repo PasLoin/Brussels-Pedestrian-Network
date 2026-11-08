@@ -72,7 +72,7 @@ LAYER_PROPS = {
     "footway_crossing_candidates": frozenset({"length_m", "name", "osm_id"}),
     "graph_islands": frozenset({
         "bbox_e", "bbox_n", "bbox_s", "bbox_w", "gap_m", "highways",
-        "length_m", "levels", "node_id", "type", "way_ids",
+        "length_m", "level_missing", "level_values", "node_id", "type", "way_ids",
     }),
     "kerb_issues": frozenset({
         "crossing_osm_id", "kerb_osm_id", "partner_way_osm_id", "type", "way_osm_id",

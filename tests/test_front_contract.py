@@ -25,7 +25,7 @@ from front_contract import (
 
 
 def test_stats_html_reads_match_contract():
-    assert stats_reads(page_text("stats.html")) == STATS_HTML_PATHS
+    assert stats_reads(read_text("stats.js")) == STATS_HTML_PATHS
 
 
 def test_app_js_stats_reads_match_contract():
@@ -51,17 +51,17 @@ def test_highways_slim_keeps_properties_read_by_app_js():
 
 
 def test_evolution_history_reads_match_contract():
-    assert history_reads(page_text("evolution.html")) == HISTORY_PATHS
+    assert history_reads(read_text("evolution.js")) == HISTORY_PATHS
 
 
 def test_evolution_pedestrian_types_match_config():
-    assert evolution_ped_types(page_text("evolution.html")) == PED_HIGHWAY_TYPES
+    assert evolution_ped_types(read_text("evolution.js")) == PED_HIGHWAY_TYPES
 
 
 def test_every_local_script_is_deployed_and_triggers_a_rebuild():
     workflow = read_text(".github/workflows/build.yml")
     scripts = set().union(*(local_scripts(page_text(page)) for page in PAGES))
-    assert {"app.js", "popups.js"} <= scripts
+    assert {"i18n.js", "app.js", "popups.js", "stats.js", "evolution.js"} <= scripts
     assert scripts <= deployed_files()
     assert scripts <= build_trigger_paths(workflow)
 
