@@ -2,6 +2,7 @@ import json
 import re
 
 import pytest
+from markupsafe import Markup
 
 import build_site
 from build_site import PAGES, ROOT, SITE_URL, STATIC
@@ -252,3 +253,24 @@ def test_script_policy_forbids_inline_code(site, page):
     assert "'self'" in script_src
     assert "'unsafe-inline'" not in script_src
     assert "'unsafe-eval'" not in script_src
+
+
+def test_template_translator_escapes_text_and_keeps_markup_variables():
+    t = build_site.translator({"footer": "Kept by {{who}} & {{link}}"})
+    html = t("footer", who="<b>me</b>", link=Markup('<a href="https://example.org">site</a>'))
+    assert isinstance(html, Markup)
+    assert html == 'Kept by &lt;b&gt;me&lt;/b&gt; &amp; <a href="https://example.org">site</a>'
+
+
+def test_page_without_its_own_fragment_falls_back_to_the_reference():
+    config = build_site.load_languages()
+    config = {**config, "languages": {**config["languages"], "nl": {
+        "path": "nl/", "locale": "nl-BE", "og": "nl_BE", "name": "Nederlands", "published": False}}}
+    reference = build_site.page_dictionary(config, config["reference"])
+    html = build_site.render_page("nl", "about.html", config, dictionary=reference)
+    assert '<html lang="nl"' in html
+    assert "<h1>Methodology</h1>" in html
+
+
+def test_pages_live_in_templates_only():
+    assert sorted(p.name for p in ROOT.glob("*.html")) == []
