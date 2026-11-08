@@ -17,7 +17,7 @@ SITE_URL = "https://pasloin.github.io/Brussels-Pedestrian-Network/"
 PAGES = ("index.html", "stats.html", "evolution.html", "about.html")
 STATIC = (
     "robots.txt", "favicon.svg", "app.css", "style.json",
-    "i18n.js", "lang.js", "app.js", "nav.js", "filters.js", "popups.js", "stats.js", "evolution.js",
+    "i18n.js", "lang.js", "html.js", "app.js", "nav.js", "filters.js", "popups.js", "stats.js", "evolution.js",
 )
 SITEMAP_ENTRIES = {
     "index.html": ("daily", "1.0"),
@@ -26,6 +26,32 @@ SITEMAP_ENTRIES = {
     "about.html": ("monthly", "0.7"),
 }
 NOT_FOUND = "404.html"
+CSP = {
+    "default-src": ["'self'"],
+    "script-src": ["'self'", "https://unpkg.com", "https://cdn.jsdelivr.net"],
+    "style-src": ["'self'", "https://unpkg.com", "'unsafe-inline'"],
+    "img-src": ["'self'", "https://tiles.openfreemap.org", "https://www.openstreetmap.org", "data:"],
+    "connect-src": ["'self'", "https://tiles.openfreemap.org", "https://unpkg.com"],
+    "worker-src": ["blob:"],
+    "child-src": ["blob:"],
+    "font-src": ["https://tiles.openfreemap.org"],
+    "object-src": ["'none'"],
+    "base-uri": ["'self'"],
+    "upgrade-insecure-requests": [],
+}
+CSP_ADDITIONS = {
+    "index.html": {
+        "img-src": ["https://pasloin.github.io", "blob:"],
+        "connect-src": ["https://pasloin.github.io", "https://protomaps.github.io"],
+    },
+}
+CSP_NOT_FOUND = {
+    "default-src": ["'none'"],
+    "img-src": ["'self'"],
+    "style-src": ["'unsafe-inline'"],
+    "base-uri": ["'none'"],
+    "form-action": ["'none'"],
+}
 SITEMAP = "sitemap.xml"
 LANGUAGE_FIELDS = {"path", "locale", "og", "name", "published"}
 LANG_PATH = re.compile(r"[a-z]{2}/")
@@ -167,6 +193,14 @@ def page_url(conf, page):
     return SITE_URL + conf["path"] + ("" if page == "index.html" else page)
 
 
+def content_security_policy(page=None, base=CSP, additions=CSP_ADDITIONS):
+    directives = {name: list(sources) for name, sources in base.items()}
+    for name, sources in additions.get(page, {}).items():
+        directives.setdefault(name, [])
+        directives[name] += [s for s in sources if s not in directives[name]]
+    return "; ".join(" ".join([name, *sources]) for name, sources in directives.items()) + ";"
+
+
 def published_languages(config):
     return [lang for lang, conf in config["languages"].items() if conf["published"]]
 
@@ -224,6 +258,7 @@ def render_page(lang, page, config=None, env=None, dictionary=None, dictionaries
         root=page_root(conf),
         page=page,
         canonical=page_url(conf, page),
+        csp=Markup(content_security_policy(page)),
         alternates=links,
         x_default=page_url(config["languages"][root_language(config)], page),
         t=translator(dictionary),
@@ -247,6 +282,7 @@ def render_not_found(config=None, env=None, dictionaries=None):
     ]
     return env.get_template(f"{NOT_FOUND}.j2").render(
         lang=reference,
+        csp=Markup(content_security_policy(base=CSP_NOT_FOUND, additions={})),
         site_url=SITE_URL,
         sections=sections,
         t=translator(dictionaries[reference]),

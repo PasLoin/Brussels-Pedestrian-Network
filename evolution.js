@@ -35,17 +35,7 @@ const monthsBefore = (iso, n) => {
   return d.toISOString().slice(0, 10);
 };
 
-function escapeHTML(str) {
-  if (!str) return str;
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
 
-const tx = (key, vars) => escapeHTML(i18n.t(key, vars));
 const tooltip = (label, value) => i18n.t('common.chart.tooltip', { label, value });
 
 const chartInstances = {};
@@ -80,14 +70,14 @@ function render(data) {
   const months = data.length;
   const yearsCovered = Number(((new Date(last.date) - new Date(first.date)) / (1000 * 60 * 60 * 24 * 365.25)).toFixed(1));
 
-  el.innerHTML += `
+  el.innerHTML += html`
     <div class="intro">
-      ${tx('evolution.intro', { snapshots: months, count: yearsCovered })}
+      ${i18n.t('evolution.intro', { snapshots: months, count: yearsCovered })}
       <div class="meta">
-        ${tx('evolution.meta.range', { from: fdate(first.date), to: fdate(last.date) })}
-        · ${tx('evolution.meta.pedKm', { now: fkm(last.ped_km), first: fkm(first.ped_km) })}
-        ${dailyEntry ? `· ${tx('evolution.meta.daily', { date: fdate(dailyEntry.date) })}` : ''}
-        · ${tx('evolution.meta.area')}
+        ${i18n.t('evolution.meta.range', { from: fdate(first.date), to: fdate(last.date) })}
+        · ${i18n.t('evolution.meta.pedKm', { now: fkm(last.ped_km), first: fkm(first.ped_km) })}
+        ${dailyEntry ? `· ${i18n.t('evolution.meta.daily', { date: fdate(dailyEntry.date) })}` : ''}
+        · ${i18n.t('evolution.meta.area')}
       </div>
     </div>`;
 
@@ -96,42 +86,42 @@ function render(data) {
     return sixMonthsAgo > first.date ? sixMonthsAgo : first.date;
   })();
 
-  el.innerHTML += `
+  el.innerHTML += html`
     <div class="section">
-      <div class="section-title">${tx('evolution.period.title')}</div>
+      <div class="section-title">${i18n.t('evolution.period.title')}</div>
       <div class="period-controls">
-        <label>${tx('evolution.period.from')} <input type="date" id="period-start" min="${first.date}" max="${last.date}" value="${defaultStart}"></label>
-        <label>${tx('evolution.period.to')} <input type="date" id="period-end" min="${first.date}" max="${last.date}" value="${last.date}"></label>
-        <button type="button" id="period-6m">${tx('evolution.period.last6Months')}</button>
-        <button type="button" id="period-reset">${tx('evolution.period.full')}</button>
+        <label>${i18n.t('evolution.period.from')} <input type="date" id="period-start" min="${first.date}" max="${last.date}" value="${defaultStart}"></label>
+        <label>${i18n.t('evolution.period.to')} <input type="date" id="period-end" min="${first.date}" max="${last.date}" value="${last.date}"></label>
+        <button type="button" id="period-6m">${i18n.t('evolution.period.last6Months')}</button>
+        <button type="button" id="period-reset">${i18n.t('evolution.period.full')}</button>
         <span class="period-info" id="period-info"></span>
         <div class="period-hint">
-          ${tx('evolution.period.hint')}
+          ${i18n.t('evolution.period.hint')}
         </div>
       </div>
     </div>`;
 
-  el.innerHTML += `
+  el.innerHTML += html`
     <div class="section">
-      <div class="section-title" id="deltas-title">${tx('evolution.deltas.title')}</div>
+      <div class="section-title" id="deltas-title">${i18n.t('evolution.deltas.title')}</div>
       <div class="delta-grid" id="deltas"></div>
     </div>`;
 
   if (showComparison) {
-    el.innerHTML += `
+    el.innerHTML += html`
       <div class="section" id="compare-section">
-        <div class="section-title">${tx('evolution.compare.title')}</div>
+        <div class="section-title">${i18n.t('evolution.compare.title')}</div>
         <div class="chart-card">
-          <h3>${tx('evolution.compare.hwTitle')}</h3>
+          <h3>${i18n.t('evolution.compare.hwTitle')}</h3>
           <div class="subtitle">
-            ${tx('evolution.compare.hwSubtitle', { snapshot: fdate(lastSnapshot.date), today: fdate(dailyEntry.date) })}
+            ${i18n.t('evolution.compare.hwSubtitle', { snapshot: fdate(lastSnapshot.date), today: fdate(dailyEntry.date) })}
           </div>
           <div class="chart-wrap"><canvas id="c-compare-hw"></canvas></div>
         </div>
         <div class="chart-card">
-          <h3>${tx('evolution.compare.fwTitle')}</h3>
+          <h3>${i18n.t('evolution.compare.fwTitle')}</h3>
           <div class="subtitle">
-            ${tx('evolution.compare.fwSubtitle')}
+            ${i18n.t('evolution.compare.fwSubtitle')}
           </div>
           <div class="chart-wrap"><canvas id="c-compare-fw"></canvas></div>
         </div>
@@ -139,79 +129,79 @@ function render(data) {
       </div>`;
   }
 
-  el.innerHTML += `
+  el.innerHTML += html`
     <div class="section">
-      <div class="section-title">${tx('evolution.network.title')}</div>
+      <div class="section-title">${i18n.t('evolution.network.title')}</div>
 
       <div class="chart-card">
-        <h3>${tx('evolution.network.pedTitle')}</h3>
+        <h3>${i18n.t('evolution.network.pedTitle')}</h3>
         <div class="subtitle">footway + pedestrian + path + living_street + steps + elevator</div>
         <div class="chart-wrap"><canvas id="c-ped-km"></canvas></div>
       </div>
 
       <div class="chart-card">
-        <h3>${tx('evolution.network.allTitle')}</h3>
-        <div class="subtitle">${tx('evolution.network.allSubtitle')}</div>
+        <h3>${i18n.t('evolution.network.allTitle')}</h3>
+        <div class="subtitle">${i18n.t('evolution.network.allSubtitle')}</div>
         <div class="chart-wrap"><canvas id="c-all-km"></canvas></div>
       </div>
 
       <div class="chart-card">
-        <h3>${tx('evolution.network.hwTitle')}</h3>
-        <div class="subtitle">${tx('evolution.network.hwSubtitle')}</div>
+        <h3>${i18n.t('evolution.network.hwTitle')}</h3>
+        <div class="subtitle">${i18n.t('evolution.network.hwSubtitle')}</div>
         <div class="chart-wrap"><canvas id="c-hw-km"></canvas></div>
       </div>
     </div>`;
 
-  el.innerHTML += `
+  el.innerHTML += html`
     <div class="section">
-      <div class="section-title">${tx('evolution.quality.title')}</div>
+      <div class="section-title">${i18n.t('evolution.quality.title')}</div>
 
       <div class="chart-card">
-        <h3>${tx('evolution.quality.swTitle')}</h3>
-        <div class="subtitle">${tx('evolution.quality.swSubtitle')}</div>
+        <h3>${i18n.t('evolution.quality.swTitle')}</h3>
+        <div class="subtitle">${i18n.t('evolution.quality.swSubtitle')}</div>
         <div class="chart-wrap"><canvas id="c-sw-pct"></canvas></div>
       </div>
 
       <div class="chart-card">
-        <h3>${tx('evolution.quality.xingTitle')}</h3>
-        <div class="subtitle">${tx('evolution.quality.xingSubtitle')}</div>
+        <h3>${i18n.t('evolution.quality.xingTitle')}</h3>
+        <div class="subtitle">${i18n.t('evolution.quality.xingSubtitle')}</div>
         <div class="chart-wrap"><canvas id="c-xing"></canvas></div>
       </div>
 
       <div class="chart-card">
-        <h3>${tx('evolution.quality.accTitle')}</h3>
-        <div class="subtitle">${tx('evolution.quality.accSubtitle')}</div>
+        <h3>${i18n.t('evolution.quality.accTitle')}</h3>
+        <div class="subtitle">${i18n.t('evolution.quality.accSubtitle')}</div>
         <div class="chart-wrap"><canvas id="c-acc"></canvas></div>
       </div>
     </div>`;
 
-  el.innerHTML += `
+  el.innerHTML += html`
     <div class="section">
-      <div class="section-title">${tx('evolution.footways.title')}</div>
+      <div class="section-title">${i18n.t('evolution.footways.title')}</div>
 
       <div class="chart-card">
-        <h3>${tx('evolution.footways.mixTitle')}</h3>
+        <h3>${i18n.t('evolution.footways.mixTitle')}</h3>
         <div class="subtitle">
-          ${tx('evolution.footways.mixSubtitle')}
+          ${i18n.t('evolution.footways.mixSubtitle')}
         </div>
         <div class="chart-wrap"><canvas id="c-fw-mix"></canvas></div>
       </div>
     </div>`;
 
-  el.innerHTML += `
+  el.innerHTML += html`
     <div class="section">
-      <div class="section-title">${tx('evolution.sidewalks.title')}</div>
+      <div class="section-title">${i18n.t('evolution.sidewalks.title')}</div>
 
       <div class="chart-card">
-        <h3>${tx('evolution.sidewalks.mixTitle')}</h3>
-        <div class="subtitle">${tx('evolution.sidewalks.mixSubtitle')}</div>
+        <h3>${i18n.t('evolution.sidewalks.mixTitle')}</h3>
+        <div class="subtitle">${i18n.t('evolution.sidewalks.mixSubtitle')}</div>
         <div class="chart-wrap"><canvas id="c-sw-mix"></canvas></div>
       </div>
 
       <div class="chart-card">
-        <h3>${tx('evolution.sidewalks.byTypeTitle')}</h3>
+        <h3>${i18n.t('evolution.sidewalks.byTypeTitle')}</h3>
         <div class="subtitle" id="sw-by-type-subtitle">
-          ${tx('evolution.sidewalks.byTypeSubtitle')}
+          ${i18n.t('evolution.sidewalks.byTypeSubtitle')}
         </div>
         <div class="chart-wrap" id="sw-by-type-chartwrap"><canvas id="c-sw-by-type"></canvas></div>
         <p id="sw-by-type-note" style="display:none; color:var(--text-muted); font-size:11px; padding: 8px 0 0;"></p>
@@ -347,11 +337,11 @@ function renderComparison(lastSnapshot, dailyEntry) {
 
     const showDelta = fsigned(delta) + ' km';
 
-    grid.insertAdjacentHTML('beforeend', `
+    grid.insertAdjacentHTML('beforeend', html`
       <div class="delta ${cls}">
-        <div class="delta-label">${escapeHTML(t)}</div>
-        <div class="delta-val">${escapeHTML(fkm(after))} km</div>
-        <div class="delta-sub">${tx('evolution.deltas.since', { delta: showDelta, date: fdate(lastSnapshot.date) })}</div>
+        <div class="delta-label">${t}</div>
+        <div class="delta-val">${fkm(after)} km</div>
+        <div class="delta-sub">${i18n.t('evolution.deltas.since', { delta: showDelta, date: fdate(lastSnapshot.date) })}</div>
       </div>
     `);
   }
@@ -467,11 +457,11 @@ function renderDeltas(first, last) {
       ? i18n.t('evolution.deltas.points', { value: i18n.number(delta, { ...ONE_DECIMAL, signDisplay: 'exceptZero' }) })
       : fsigned(delta) + (unit ? ' ' + unit : '');
 
-    target.insertAdjacentHTML('beforeend', `
+    target.insertAdjacentHTML('beforeend', html`
       <div class="delta ${cls}">
-        <div class="delta-label">${tx(labelKey)}</div>
-        <div class="delta-val">${escapeHTML(showAfter)}</div>
-        <div class="delta-sub">${tx('evolution.deltas.since', { delta: showDelta, date: fdate(first.date) })}</div>
+        <div class="delta-label">${i18n.t(labelKey)}</div>
+        <div class="delta-val">${showAfter}</div>
+        <div class="delta-sub">${i18n.t('evolution.deltas.since', { delta: showDelta, date: fdate(first.date) })}</div>
       </div>
     `);
   }
