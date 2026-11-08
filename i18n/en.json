@@ -11,6 +11,10 @@
     "evolution": {
       "title": "Brussels Pedestrian Network trends",
       "description": "Monthly evolution of pedestrian mapping in Brussels on OpenStreetMap: network, documented sidewalks and crossings over time."
+    },
+    "about": {
+      "title": "Brussels Pedestrian Network methodology",
+      "description": "Routing costs, criteria of the quality-control layers and calculation of the Brussels Pedestrian Network indicators."
     }
   },
   "common": {
@@ -406,5 +410,8 @@
       "total_one": "{{count}} road in total",
       "total_other": "{{count}} roads in total"
     }
+  },
+  "about": {
+    "footer": "Maintained by {{maintainer}}. Data © {{osm}} contributors, ODbL licence."
   }
 }

@@ -11,6 +11,10 @@
     "evolution": {
       "title": "Évolution du Brussels Pedestrian Network",
       "description": "Évolution mensuelle du mapping piéton à Bruxelles sur OpenStreetMap : réseau, trottoirs documentés et traversées au fil du temps."
+    },
+    "about": {
+      "title": "Méthodologie du Brussels Pedestrian Network",
+      "description": "Coûts de routage, critères des couches de contrôle qualité et calcul des indicateurs du Brussels Pedestrian Network."
     }
   },
   "common": {
@@ -406,5 +410,8 @@
       "total_one": "{{count}} route au total",
       "total_other": "{{count}} routes au total"
     }
+  },
+  "about": {
+    "footer": "Maintenu par {{maintainer}}. Données © contributeurs {{osm}}, licence ODbL."
   }
 }
