@@ -174,7 +174,7 @@ def stats_reads(src: str, root: str = "s") -> set:
 
 
 def app_stats_block(src: str) -> str:
-    start = src.index('fetch("./stats.json")')
+    start = src.index('fetch(i18n.dataUrl("stats.json"))')
     return src[start:src.index(".catch(", start)]
 
 
