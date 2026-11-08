@@ -4,7 +4,7 @@
 {% block description %}Carte des flux piétons simulés à Bruxelles à partir d'OpenStreetMap, avec des couches de contrôle qualité pour corriger trottoirs et traversées.{% endblock %}
 {% block head %}
   <link href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css" rel="stylesheet" />
-  <link href="./app.css" rel="stylesheet" />
+  <link href="{{ root }}app.css" rel="stylesheet" />
   <script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/pmtiles@3/dist/pmtiles.js"></script>
 {% endblock %}
@@ -16,7 +16,7 @@
 <div id="header" class="open">
   <button id="header-toggle" onclick="toggleHeader()" aria-expanded="true" aria-controls="header-content">
     <span class="header-brand">
-      <img src="./favicon.svg" alt="" width="16" height="16" />
+      <img src="{{ root }}favicon.svg" alt="" width="16" height="16" />
       <span>Brussels Pedestrian</span>
     </span>
     <svg aria-hidden="true" class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -124,10 +124,10 @@
   <div id="basemap-menu" role="radiogroup" aria-label="Fond de carte"></div>
 </div>
 
-<script src="./nav.js"></script>
-<script src="./filters.js"></script>
-<script src="./popups.js"></script>
-<script src="./app.js"></script>
+<script src="{{ root }}nav.js"></script>
+<script src="{{ root }}filters.js"></script>
+<script src="{{ root }}popups.js"></script>
+<script src="{{ root }}app.js"></script>
 </body>
 </html>
 {% endblock %}

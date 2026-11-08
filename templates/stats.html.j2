@@ -268,6 +268,7 @@
 </footer>
 
 <script>
+const i18n = I18N.fromDocument();
 Chart.defaults.color = '#6b7077';
 Chart.defaults.borderColor = '#d4d6d9';
 Chart.defaults.font.family = "system-ui, sans-serif";
@@ -300,7 +301,7 @@ function escapeHTML(str) {
     .replace(/'/g, "&#039;");
 }
 
-fetch('./state.txt').then(r => r.text()).then(txt => {
+fetch(i18n.dataUrl('state.txt')).then(r => r.text()).then(txt => {
   const m = txt.match(/build_timestamp=(.+)/);
   if (m) {
     const d = new Date(m[1].trim());
@@ -309,7 +310,7 @@ fetch('./state.txt').then(r => r.text()).then(txt => {
   }
 }).catch(() => {});
 
-fetch('./stats.json')
+fetch(i18n.dataUrl('stats.json'))
   .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
   .then(render)
   .catch(e => { document.getElementById('loading').textContent = 'Erreur : ' + e; });
