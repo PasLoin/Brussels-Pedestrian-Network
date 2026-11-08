@@ -19,6 +19,8 @@ on:
       - "nav.js"
       - "filters.js"
       - "popups.js"
+      - "stats.js"
+      - "evolution.js"
       - "app.css"
       - "style.json"
   workflow_dispatch:
