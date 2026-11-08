@@ -133,7 +133,7 @@ test("graph island popup builds a JOSM zoom on the bbox with the ways selected",
 });
 
 test("level discontinuity popup shows the levels and the node", () => {
-  const html = clickFormat("graph-islands")({ type: "level", levels: "0 ≠ 1", node_id: 9, way_ids: "4" });
+  const html = clickFormat("graph-islands")({ type: "level", level_values: "0|1", level_missing: "", node_id: 9, way_ids: "4" });
   assert.match(html, /Discontinuité de niveau/);
   assert.match(html, /0 ≠ 1/);
   assert.match(html, /node\/9/);
@@ -165,4 +165,26 @@ test("sidewalk status popup translates the status", () => {
   const html = hoverFormat("sidewalk-roads")({ sw: "partial", name: "Rue B" });
   assert.match(html, /Un seul côté documenté/);
   assert.match(html, /--c:#f5700b/);
+});
+
+test("formatLevels describes a level that the connected way does not reach", () => {
+  assert.equal(P.formatLevels({ level_values: "1;2", level_missing: "1" }), "1;2 : niveau 1 non raccordé");
+  assert.equal(P.formatLevels({ level_values: "-2;-1", level_missing: -2 }), "-2;-1 : niveau -2 non raccordé");
+});
+
+test("formatLevels lists mismatched levels and names untagged ones", () => {
+  assert.equal(P.formatLevels({ level_values: "-1|1", level_missing: "" }), "-1 ≠ 1");
+  assert.equal(P.formatLevels({ level_values: "|1", level_missing: "" }), "0 (non tagué) ≠ 1");
+  assert.equal(P.formatLevels({ level_values: "", level_missing: "0.5" }), "0 (non tagué) : niveau 0.5 non raccordé");
+});
+
+test("formatLevels shows a dash when the feature carries no level data", () => {
+  assert.equal(P.formatLevels({}), "—");
+  assert.equal(P.formatLevels({ level_values: null }), "—");
+});
+
+test("graph island popup escapes level values", () => {
+  const html = clickFormat("graph-islands")({ type: "level", level_values: "<b>1</b>", level_missing: "" });
+  assert.ok(!html.includes("<b>1</b>"));
+  assert.ok(html.includes("&lt;b&gt;1&lt;/b&gt;"));
 });
