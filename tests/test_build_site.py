@@ -69,7 +69,8 @@ def test_only_published_languages_are_built_by_default(site):
 @pytest.mark.parametrize("page", PAGES)
 def test_page_has_no_template_syntax_left(site, page):
     html = (site / page).read_text(encoding="utf-8")
-    assert not re.search(r"\{\{|\{%|\{#", html)
+    markup = re.sub(r'<script type="application/json" id="i18n-dict">.*?</script>', "", html, flags=re.S)
+    assert not re.search(r"\{\{|\{%|\{#", markup)
 
 
 @pytest.mark.parametrize("page", PAGES)

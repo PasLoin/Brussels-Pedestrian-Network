@@ -25,7 +25,7 @@ FR = {
 SOURCE = """
 const label = t("route.noRoute");
 const walk = t('route.walkTime', { minutes });
-const trips = t(`map.trips`, { count });
+const trips = tx(`map.trips`, { count });
 const LAYERS = [{ dataKey: "type", labelKey: "route.noRoute" }];
 """
 

@@ -216,10 +216,10 @@ def layer_props(src: str) -> dict:
                 found |= gets
         props.setdefault(m.group(2), set()).update(found)
 
-    funcs = {m.group(1): _block(src, m.end()) for m in re.finditer(r"function\s+(\w+)\s*\(p\)\s*\{", src)}
+    funcs = {m.group(1): _block(src, m.end()) for m in re.finditer(r"function\s+(\w+)\s*\(p\b[^)]*\)\s*\{", src)}
     for m in re.finditer(r"ids:\s*\[([^\]]*)\],\s*format:", src):
         body = _block(src, m.end())
-        for name in re.findall(r"\b(\w+)\(p\)", body):
+        for name in re.findall(r"\b(\w+)\(p\b[^)]*\)", body):
             body += funcs.get(name, "")
         found = set(re.findall(r"\bp\.(\w+)", body)) | set(re.findall(r'\bp\["([^"]+)"\]', body))
         for layer_id in re.findall(r'"([^"]+)"', m.group(1)):

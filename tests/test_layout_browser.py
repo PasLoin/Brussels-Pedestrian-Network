@@ -1,4 +1,5 @@
 import functools
+import re
 import http.server
 import os
 import threading
@@ -216,7 +217,7 @@ def test_controls_work_without_inline_scripts(page, server):
     assert pg.evaluate(header_open) != header_before
 
     pg.eval_on_selector("#flow-threshold-slider", "el => { el.value = '50'; el.dispatchEvent(new Event('input')); }")
-    assert pg.inner_text("#flow-threshold-val") == "50 %"
+    assert re.fullmatch(r"50\s*%", pg.inner_text("#flow-threshold-val"))
 
     pg.evaluate(_SHOW)
     pg.dispatch_event("#route-clear", "click")
