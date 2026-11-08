@@ -1,3 +1,6 @@
+import json
+import re
+
 from config import PED_HIGHWAY_TYPES
 from front_contract import (
     APP_STATS_PATHS,
@@ -99,3 +102,14 @@ def test_site_deploy_republishes_every_data_file():
     assert set(copied) == {"state.txt", "stats.json", "graph.json", "pedestrian.pmtiles", "history.json"}
     for name in copied:
         assert name in site
+
+
+def test_javascript_tooling_is_pinned_and_run_in_ci():
+    package = json.loads(read_text("package.json"))
+    lock = json.loads(read_text("package-lock.json"))
+    for name, version in package["devDependencies"].items():
+        assert re.fullmatch(r"\d+\.\d+\.\d+", version), (name, version)
+        assert lock["packages"][f"node_modules/{name}"]["version"] == version, name
+    workflow = read_text(".github/workflows/tests.yml")
+    assert workflow.index("npm ci") < workflow.index("npm run lint") < workflow.index("node --test tests/js/*.test.js")
+    assert {"package.json", "package-lock.json", "eslint.config.mjs"} <= push_trigger_paths(workflow)
