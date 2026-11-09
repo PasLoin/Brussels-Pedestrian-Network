@@ -1,5 +1,6 @@
 import { i18n } from "./i18n.js";
 import { store } from "./store.js";
+import { pedestrianSource } from "./basemap-styles.js";
 import { bindPopups } from "./interactions.js";
 import { PEDESTRIAN_LAYERS } from "./layers.js";
 import { buildLegend } from "./legend.js";
@@ -36,7 +37,7 @@ export function initMap(style) {
   window.addEventListener("resize", updateLegendClearance);
 
   map.on("load", () => {
-    map.addSource("pedestrian", { type: "vector", url: `pmtiles://${PMTILES_URL}` });
+    map.addSource("pedestrian", pedestrianSource(`pmtiles://${PMTILES_URL}`));
     PEDESTRIAN_LAYERS.forEach(layer => map.addLayer(layer));
 
     map.addSource("nav-route", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
