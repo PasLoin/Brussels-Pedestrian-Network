@@ -191,6 +191,7 @@ jobs:
             -o roads_sidewalk.osm.pbf --overwrite
           osmium export roads_sidewalk.osm.pbf \
             --geometry-types=linestring \
+            --attributes=type,id \
             -o sidewalk_roads_raw.geojson --overwrite
 
       - name: Export footways for sidewalk gap detection
