@@ -142,6 +142,8 @@ def test_hreflang_alternates_are_complete_and_reciprocal(site):
     langs = build_site.published_languages(config)
     root = config["languages"][build_site.root_language(config)]
     for (lang, page), path in pages.items():
+        if lang not in langs:
+            continue
         html = _html(path)
         links = _alternates(html)
         assert set(links) == {*langs, "x-default"}
@@ -172,10 +174,23 @@ def test_language_switch_and_banner_targets_open_the_same_page(site):
 
 
 def test_current_language_is_marked_in_the_switch(site):
-    _, _, pages = site
+    _, config, pages = site
+    published = build_site.published_languages(config)
     for (lang, _), path in pages.items():
         current = re.findall(r'data-lang="([^"]+)"[^>]*aria-current="true"', _html(path))
-        assert current == [lang]
+        assert current == ([lang] if lang in published else [])
+
+
+def test_unpublished_languages_are_never_offered(site):
+    _, config, pages = site
+    published = build_site.published_languages(config)
+    hidden = [lang for lang in config["languages"] if lang not in published]
+    for (lang, page), path in pages.items():
+        html = _html(path)
+        for other in hidden:
+            assert f'hreflang="{other}"' not in html, (lang, page, other)
+            assert f'data-lang="{other}"' not in html, (lang, page, other)
+            assert f'"lang":"{other}"' not in _attr(html, r'id="i18n-languages">(.*?)</script>'), (lang, page, other)
 
 
 def test_not_found_page_works_from_any_depth(site):

@@ -3,6 +3,7 @@
   "timeZone": "Europe/Brussels",
   "languages": {
     "en": { "path": "", "locale": "en-GB", "og": "en_GB", "name": "English", "published": true },
-    "fr": { "path": "fr/", "locale": "fr-BE", "og": "fr_BE", "name": "Français", "published": true }
+    "fr": { "path": "fr/", "locale": "fr-BE", "og": "fr_BE", "name": "Français", "published": true },
+    "nl": { "path": "nl/", "locale": "nl-BE", "og": "nl_BE", "name": "Nederlands", "published": false }
   }
 }
