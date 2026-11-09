@@ -4,7 +4,7 @@ import re
 import pytest
 
 import build_site
-from build_site import DEV_API, DEVTEST_LAND, DEVTEST_PAGE, ROOT, SITE_URL
+from build_site import DEV_API, DEVTEST_LAND, DEVTEST_PAGE, ROOT, SITE_URL, devtest_path, edit_pages
 
 OSM_API_SHA256 = "abcb97866313a82a4975b54e547a6fdf7f12d0d564feee544794450b5981e417"
 PROD_HOSTS = ("https://api.openstreetmap.org", "https://www.openstreetmap.org")
@@ -126,3 +126,24 @@ def test_every_basemap_names_its_imagery_for_changesets():
     assert ids and len(names) == len(ids)
     assert len(set(names)) == len(names)
     assert all("i18n" not in n for n in names)
+
+
+
+def test_devtest_exists_in_every_published_language_with_a_working_switch(site):
+    config = build_site.load_languages()
+    pages = edit_pages(config)
+    langs = build_site.published_languages(config)
+    assert sorted(spec["lang"] for spec in pages.values()) == sorted(langs)
+    assert devtest_path(build_site.DEVTEST_LANG) == DEVTEST_PAGE
+    for path, spec in pages.items():
+        html = _html(site / path)
+        assert f'<html lang="{spec["lang"]}"' in html
+        assert 'class="lang-switch"' in html
+        assert re.search(rf'href="[^"]+" lang="{spec["lang"]}"[^>]*aria-current="true"', html)
+        for other in pages:
+            href = "./" + other.rsplit("/", 1)[-1]
+            assert f'href="{href}"' in html
+            assert (site / path).parent.joinpath(href).resolve().is_file()
+        assert _csp(html) == _csp(_html(site / DEVTEST_PAGE))
+        assert 'data-edit-env="dev"' in html
+        assert '<meta name="robots" content="noindex, nofollow" />' in html
