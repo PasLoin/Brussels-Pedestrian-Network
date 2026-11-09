@@ -335,3 +335,18 @@ body { font-family: system-ui, sans-serif; background: #1a1a1a; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
 }
+
+#edit-panel { margin-top: 12px; padding-top: 10px; border-top: 1px solid #e5e7eb; font-size: 13px; }
+#edit-panel h2 { margin: 0 0 6px; font-size: 14px; }
+#edit-panel .edit-env { display: inline-block; margin-left: 4px; padding: 0 6px; border-radius: 4px; background: #c026d3; color: #fff; font-size: 11px; text-transform: uppercase; vertical-align: middle; }
+#edit-panel p { margin: 4px 0; }
+#edit-panel .edit-note { color: #92400e; }
+#edit-panel .edit-ok { color: #166534; }
+#edit-status { margin: 6px 0; color: #4b5563; }
+#edit-detail .edit-tags { width: 100%; margin-top: 6px; border-collapse: collapse; font-size: 12px; }
+#edit-detail .edit-tags th, #edit-detail .edit-tags td { padding: 2px 4px; border-bottom: 1px solid #f3f4f6; text-align: left; vertical-align: top; word-break: break-word; }
+#edit-detail .edit-tags th { font-weight: 600; color: #374151; }
+#edit-detail .edit-row { display: flex; justify-content: space-between; gap: 12px; }
+#edit-detail .edit-row .label { color: #6b7280; flex-shrink: 0; }
+#edit-detail .edit-row .value { color: #111827; font-weight: 600; text-align: right; word-break: break-word; }
+#edit-detail .edit-row .value a { color: #0369a1; }

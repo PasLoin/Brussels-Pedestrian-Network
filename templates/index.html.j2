@@ -34,9 +34,9 @@
     </div>
 
     <nav class="header-nav">
-      <a href="./stats.html">{{ t("common.nav.stats") }}</a>
-      <a href="./evolution.html">{{ t("common.nav.evolution") }}</a>
-      <a href="./about.html">{{ t("common.nav.about") }}</a>
+      <a href="{{ home }}stats.html">{{ t("common.nav.stats") }}</a>
+      <a href="{{ home }}evolution.html">{{ t("common.nav.evolution") }}</a>
+      <a href="{{ home }}about.html">{{ t("common.nav.about") }}</a>
 {% include "_lang_switch.html.j2" %}
     </nav>
 
@@ -67,6 +67,15 @@
       {{ t("header.editInOsm") }}
     </a>
     <div id="edit-hint">{{ t("header.editHint", zoom=16) }}</div>
+{% if edit_env %}
+
+    <section id="edit-panel" aria-labelledby="edit-panel-title">
+      <h2 id="edit-panel-title">{{ t("edit.panel.title") }} <span class="edit-env">{{ edit_env }}</span></h2>
+      <div id="edit-auth" aria-live="polite"></div>
+      <div id="edit-status" aria-live="polite"></div>
+      <div id="edit-detail"></div>
+    </section>
+{% endif %}
   </div>
 </div>
 
@@ -128,6 +137,10 @@
 <script src="{{ root }}filters.js"></script>
 <script src="{{ root }}html.js"></script>
 <script src="{{ root }}popups.js"></script>
+{% if edit_env %}
+<script src="{{ root }}vendor/osm-api-4.0.1.min.js"></script>
+<script type="module" src="{{ root }}edit/main.js"></script>
+{% endif %}
 <script type="module" src="{{ root }}map/main.js"></script>
 </body>
 </html>

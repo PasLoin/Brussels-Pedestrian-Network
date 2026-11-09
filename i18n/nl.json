@@ -432,5 +432,47 @@
   "notFound": {
     "title": "Pagina niet gevonden",
     "text": "Deze pagina bestaat niet of is verplaatst."
+  },
+  "edit": {
+    "panel": {
+      "title": "Stoepen bewerken"
+    },
+    "auth": {
+      "login": "Aanmelden bij OSM",
+      "logout": "Afmelden",
+      "loggedAs": "Aangemeld als {{name}}",
+      "pending": "Er loopt al een aanmelding in een ander tabblad.",
+      "waiting": "Rond de aanmelding af in het OSM-venster.",
+      "retry": "Aanmelding opnieuw starten",
+      "failed": "Aanmelden mislukt of geannuleerd.",
+      "expired": "Sessie verlopen, meld je opnieuw aan.",
+      "unconfigured": "OAuth-client niet ingesteld voor deze omgeving (zie edit/TESTING.md).",
+      "disabled": "Bewerken is uitgeschakeld."
+    },
+    "status": {
+      "zoomIn": "Zoom in tot niveau {{zoom}} om kandidaten te laden.",
+      "loading": "Kandidaten laden…",
+      "candidates_one": "{{count}} kandidaat in beeld.",
+      "candidates_other": "{{count}} kandidaten in beeld.",
+      "error": "Kandidaten konden niet geladen worden: {{message}}"
+    },
+    "detail": {
+      "loading": "Live way lezen…",
+      "error": "Way kon niet gelezen worden: {{message}}",
+      "version": "Versie",
+      "lastEdit": "Laatste wijziging",
+      "editable": "Voldoet nog aan de witte lijst: bewerkbaar.",
+      "alreadyFixed": "Voldoet niet meer aan de witte lijst: intussen al verbeterd."
+    },
+    "land": {
+      "title": "Aanmelden bij OpenStreetMap",
+      "working": "Aanmelding controleren…",
+      "ok": "Aanmelding voltooid, je kunt dit venster sluiten.",
+      "missing": "Er is geen aanmelding gestart vanaf deze site. Sluit dit venster en begin opnieuw.",
+      "expired": "De aanmelding duurde te lang. Sluit dit venster en begin opnieuw.",
+      "mismatch": "Deze aanmelding is gestart voor een andere OSM-server. Sluit dit venster en begin opnieuw.",
+      "denied": "De toegang werd geweigerd op OpenStreetMap.",
+      "nocode": "Deze pagina rondt alleen een OpenStreetMap-aanmelding af."
+    }
   }
 }

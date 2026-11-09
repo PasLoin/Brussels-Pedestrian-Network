@@ -432,5 +432,47 @@
   "notFound": {
     "title": "Page not found",
     "text": "This page does not exist or has moved."
+  },
+  "edit": {
+    "panel": {
+      "title": "Sidewalk editing"
+    },
+    "auth": {
+      "login": "Log in to OSM",
+      "logout": "Log out",
+      "loggedAs": "Logged in as {{name}}",
+      "pending": "A login is already in progress in another tab.",
+      "waiting": "Finish logging in in the OSM window.",
+      "retry": "Restart login",
+      "failed": "Login failed or cancelled.",
+      "expired": "Session expired, please log in again.",
+      "unconfigured": "OAuth client not configured for this environment (see edit/TESTING.md).",
+      "disabled": "Editing is disabled."
+    },
+    "status": {
+      "zoomIn": "Zoom in to level {{zoom}} to load candidates.",
+      "loading": "Loading candidates…",
+      "candidates_one": "{{count}} candidate in view.",
+      "candidates_other": "{{count}} candidates in view.",
+      "error": "Could not load candidates: {{message}}"
+    },
+    "detail": {
+      "loading": "Loading the live way…",
+      "error": "Could not read the way: {{message}}",
+      "version": "Version",
+      "lastEdit": "Last edit",
+      "editable": "Still matches the whitelist: editable.",
+      "alreadyFixed": "No longer matches the whitelist: already fixed since."
+    },
+    "land": {
+      "title": "OpenStreetMap login",
+      "working": "Checking the login…",
+      "ok": "Login complete, you can close this window.",
+      "missing": "No login was started from this site. Close this window and start again.",
+      "expired": "The login took too long. Close this window and start again.",
+      "mismatch": "This login was started for another OSM server. Close this window and start again.",
+      "denied": "Access was refused on OpenStreetMap.",
+      "nocode": "This page only completes an OpenStreetMap login."
+    }
   }
 }

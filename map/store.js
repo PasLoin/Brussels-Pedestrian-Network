@@ -1,1 +1,1 @@
-export const store = { map: null };
+export const store = { map: null, mapReady: false };

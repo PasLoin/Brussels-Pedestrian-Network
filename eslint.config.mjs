@@ -34,7 +34,7 @@ const UNSAFE_HTML = [
 ];
 
 export default [
-  { ignores: ["_site/**", "node_modules/**", "coverage/**"] },
+  { ignores: ["_site/**", "node_modules/**", "coverage/**", "vendor/**"] },
   js.configs.recommended,
   {
     files: ["*.js"],
@@ -53,7 +53,15 @@ export default [
     },
   },
   {
-    files: ["*.js", "map/**/*.js"],
+    files: ["edit/**/*.js"],
+    languageOptions: {
+      ecmaVersion: 2023,
+      sourceType: "module",
+      globals: { ...globals.browser, ...PAGE_RUNTIME, ...readonly(["OSM", "maplibregl"]) },
+    },
+  },
+  {
+    files: ["*.js", "map/**/*.js", "edit/**/*.js"],
     rules: {
       "no-restricted-syntax": ["error", ...UNSAFE_HTML],
       "no-empty": ["error", { allowEmptyCatch: true }],

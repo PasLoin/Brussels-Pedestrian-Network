@@ -432,5 +432,47 @@
   "notFound": {
     "title": "Page introuvable",
     "text": "Cette page n'existe pas ou a été déplacée."
+  },
+  "edit": {
+    "panel": {
+      "title": "Édition des trottoirs"
+    },
+    "auth": {
+      "login": "Se connecter à OSM",
+      "logout": "Se déconnecter",
+      "loggedAs": "Connecté en tant que {{name}}",
+      "pending": "Une connexion est déjà en cours dans un autre onglet.",
+      "waiting": "Terminez la connexion dans la fenêtre OSM.",
+      "retry": "Relancer la connexion",
+      "failed": "Connexion échouée ou annulée.",
+      "expired": "Session expirée, reconnectez-vous.",
+      "unconfigured": "Client OAuth non configuré pour cet environnement (voir edit/TESTING.md).",
+      "disabled": "L'édition est désactivée."
+    },
+    "status": {
+      "zoomIn": "Zoomez au niveau {{zoom}} pour charger les candidats.",
+      "loading": "Chargement des candidats…",
+      "candidates_one": "{{count}} candidat dans la vue.",
+      "candidates_other": "{{count}} candidats dans la vue.",
+      "error": "Impossible de charger les candidats : {{message}}"
+    },
+    "detail": {
+      "loading": "Lecture du way en direct…",
+      "error": "Impossible de lire le way : {{message}}",
+      "version": "Version",
+      "lastEdit": "Dernière modification",
+      "editable": "Correspond toujours à la liste blanche : éditable.",
+      "alreadyFixed": "Ne correspond plus à la liste blanche : déjà corrigé depuis."
+    },
+    "land": {
+      "title": "Connexion OpenStreetMap",
+      "working": "Vérification de la connexion…",
+      "ok": "Connexion terminée, vous pouvez fermer cette fenêtre.",
+      "missing": "Aucune connexion n'a été lancée depuis ce site. Fermez cette fenêtre et recommencez.",
+      "expired": "La connexion a pris trop de temps. Fermez cette fenêtre et recommencez.",
+      "mismatch": "Cette connexion a été lancée pour un autre serveur OSM. Fermez cette fenêtre et recommencez.",
+      "denied": "L'accès a été refusé sur OpenStreetMap.",
+      "nocode": "Cette page sert uniquement à terminer une connexion OpenStreetMap."
+    }
   }
 }

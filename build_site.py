@@ -19,8 +19,8 @@ STATIC = (
     "robots.txt", "favicon.svg", "app.css", "style.json",
     "i18n.js", "lang.js", "html.js", "nav.js", "filters.js", "popups.js", "stats.js", "evolution.js",
 )
-STATIC_DIRS = ("map",)
-STATIC_DIR_IGNORE = ("package.json",)
+STATIC_DIRS = ("map", "edit", "vendor")
+STATIC_DIR_IGNORE = ("package.json", "*.md")
 SITEMAP_ENTRIES = {
     "index.html": ("daily", "1.0"),
     "stats.html": ("daily", "0.8"),
@@ -46,6 +46,28 @@ CSP_ADDITIONS = {
         "img-src": ["https://pasloin.github.io", "https://geoservices-urbis.irisnet.be", "blob:"],
         "connect-src": ["https://pasloin.github.io", "https://protomaps.github.io", "https://geoservices-urbis.irisnet.be"],
     },
+}
+DEV_API = "https://master.apis.dev.openstreetmap.org"
+DEVTEST_PAGE = "test-api/devtest.html"
+DEVTEST_LAND = "test-api/land.html"
+DEVTEST_LANG = "fr"
+EDIT_PAGES = {
+    DEVTEST_PAGE: {"template": "index.html", "lang": DEVTEST_LANG, "edit_env": "dev"},
+}
+LAND_PAGES = {
+    DEVTEST_LAND: {"lang": DEVTEST_LANG, "edit_env": "dev"},
+}
+CSP_ADDITIONS[DEVTEST_PAGE] = {
+    name: [*sources, *([DEV_API] if name == "connect-src" else [])]
+    for name, sources in CSP_ADDITIONS["index.html"].items()
+}
+CSP_LAND = {
+    "default-src": ["'none'"],
+    "script-src": ["'self'"],
+    "style-src": ["'unsafe-inline'"],
+    "img-src": ["'self'"],
+    "base-uri": ["'none'"],
+    "form-action": ["'none'"],
 }
 CSP_NOT_FOUND = {
     "default-src": ["'none'"],
@@ -187,7 +209,11 @@ def translator(dictionary):
 
 
 def page_root(conf):
-    depth = conf["path"].count("/")
+    return path_root(conf["path"])
+
+
+def path_root(path):
+    depth = path.count("/")
     return "../" * depth if depth else "./"
 
 
@@ -270,6 +296,50 @@ def render_page(lang, page, config=None, env=None, dictionary=None, dictionaries
             "isRoot": is_root,
             "languages": [{key: alt[key] for key in ("lang", "name", "href", "banner")} for alt in links],
         }),
+        home="./",
+        edit_env=None,
+        noindex=False,
+    )
+
+
+def render_edit_page(path, spec, config=None, env=None, dictionary=None):
+    config = config or load_languages()
+    env = env or environment()
+    lang = spec["lang"]
+    dictionary = page_dictionary(config, lang) if dictionary is None else dictionary
+    conf = config["languages"][lang]
+    root = path_root(path)
+    return env.get_template(f"{spec['template']}.j2").render(
+        lang=lang,
+        reference=config["reference"],
+        locale=conf["locale"],
+        og=conf["og"],
+        time_zone=config["timeZone"],
+        root=root,
+        page=path,
+        canonical=SITE_URL + path,
+        csp=Markup(content_security_policy(path)),
+        alternates=[],
+        x_default=SITE_URL + path,
+        t=translator(dictionary),
+        dictionary_json=dictionary_json(dictionary),
+        languages_json=embedded_json({"current": lang, "isRoot": False, "languages": []}),
+        home=root + conf["path"],
+        edit_env=spec["edit_env"],
+        noindex=True,
+    )
+
+
+def render_land_page(path, spec, config=None, env=None):
+    config = config or load_languages()
+    env = env or environment()
+    lang = spec["lang"]
+    return env.get_template("land.html.j2").render(
+        lang=lang,
+        root=path_root(path),
+        csp=Markup(content_security_policy(path, base=CSP_LAND, additions={})),
+        edit_env=spec["edit_env"],
+        t=translator(page_dictionary(config, lang)),
     )
 
 
@@ -354,6 +424,12 @@ def build(out, langs=None, lastmod=None, pseudo=False):
         for page in PAGES:
             (target / page).write_text(render_page(PSEUDO_LANG, page, pseudo_config, env, dictionary, dictionaries), encoding="utf-8")
         built.append(PSEUDO_LANG)
+    for path, spec in EDIT_PAGES.items():
+        (out / path).parent.mkdir(parents=True, exist_ok=True)
+        (out / path).write_text(render_edit_page(path, spec, config, env), encoding="utf-8")
+    for path, spec in LAND_PAGES.items():
+        (out / path).parent.mkdir(parents=True, exist_ok=True)
+        (out / path).write_text(render_land_page(path, spec, config, env), encoding="utf-8")
     for name in STATIC:
         shutil.copy2(ROOT / name, out / name)
     for name in STATIC_DIRS:

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}" data-edit-env="{{ edit_env }}">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="{{ csp }}" />
+  <meta name="Referrer-Policy" content="no-referrer" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ t("edit.land.title") }}</title>
+  <style>
+    body { font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; margin: 2rem auto; max-width: 32rem; padding: 0 1rem; color: #1f2937; }
+    [hidden] { display: none; }
+  </style>
+</head>
+<body>
+  <h1>{{ t("edit.land.title") }}</h1>
+  <p id="land-working">{{ t("edit.land.working") }}</p>
+  <p id="land-ok" hidden>{{ t("edit.land.ok") }}</p>
+  <p id="land-missing" hidden>{{ t("edit.land.missing") }}</p>
+  <p id="land-expired" hidden>{{ t("edit.land.expired") }}</p>
+  <p id="land-mismatch" hidden>{{ t("edit.land.mismatch") }}</p>
+  <p id="land-denied" hidden>{{ t("edit.land.denied") }}</p>
+  <p id="land-nocode" hidden>{{ t("edit.land.nocode") }}</p>
+  <script type="module" src="{{ root }}edit/land.js"></script>
+</body>
+</html>

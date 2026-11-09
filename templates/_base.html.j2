@@ -1,10 +1,13 @@
 <!DOCTYPE html>
-<html lang="{{ lang }}" data-locale="{{ locale }}" data-time-zone="{{ time_zone }}" data-root="{{ root }}">
+<html lang="{{ lang }}" data-locale="{{ locale }}" data-time-zone="{{ time_zone }}" data-root="{{ root }}"{% if edit_env %} data-edit-env="{{ edit_env }}"{% endif %}>
 <head>
   <meta charset="utf-8" />
   <meta http-equiv="Content-Security-Policy" content="{{ csp }}" />
   <meta name="Referrer-Policy" content="strict-origin-when-cross-origin" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+{% if noindex %}
+  <meta name="robots" content="noindex, nofollow" />
+{% endif %}
   <title>{% block title %}{% endblock %}</title>
   <meta name="description" content="{% block description %}{% endblock %}" />
   <meta property="og:title" content="{{ self.title() }}" />
