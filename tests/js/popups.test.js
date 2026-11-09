@@ -203,6 +203,7 @@ const SAMPLES = [
   ["hover", "highway-elevator", {}],
   ...["missing_way", "missing_tag", "wrong_tag"].map(type => ["click", "missing-crossings", { type, osm_id: 1, way_osm_id: 2, nearest_tag_m: 2.4, detect_radius: 3, name: "Rue A" }]),
   ["click", "footway-crossing-candidates", { osm_id: 3, length_m: 8, name: "Rue A" }],
+  ...["separate", "yes", "documented", "partial", "unknown"].map(sw => ["click", "sidewalk-roads", { sw, name: "Rue A", osm_id: 12, highway: "residential", length_m: 87.4 }]),
   ...[1, 2].map(sides => ["click", "tactile-paving-issues", { osm_id: 3, way_osm_id: 4, partner_way_osm_id: 5, sides_checked: sides, crossing_tp: "yes", reason: "value_mismatch" }]),
   ["click", "tactile-paving-issues", { osm_id: 3, reason: "incorrect_not_mixed" }],
   ...["unjoined", "isolated"].map(type => ["click", "graph-islands", { type, way_ids: "1,2", gap_m: 1.5, length_m: 30, bbox_w: 4.35, bbox_s: 50.85, bbox_e: 4.36, bbox_n: 50.86 }]),
@@ -266,5 +267,33 @@ test("popup links are real anchors to OSM, iD and JOSM", () => {
   const html = clickFormat("kerb-issues")({ type: "kerb_untagged", crossing_osm_id: 1, kerb_osm_id: 2, way_osm_id: 3, partner_way_osm_id: 4 });
   assert.match(html, /<a href="https:\/\/www\.openstreetmap\.org\/node\/1" target="_blank" rel="noopener">n1<\/a>/);
   assert.match(html, /<a href="http:\/\/127\.0\.0\.1:8111\/load_object\?objects=w3,w4" target="_blank" rel="noopener">JOSM<\/a>/);
-  assert.match(html, /<a href="https:\/\/www\.openstreetmap\.org\/edit\?node=2" target="_blank" rel="noopener">iD<\/a>/);
+  assert.match(html, /<a href="https:\/\/www\.openstreetmap\.org\/edit\?editor=id&amp;node=2" target="_blank" rel="noopener">iD<\/a>/);
+});
+
+test("the sidewalk road popup links the way to OSM, JOSM and iD", () => {
+  const html = clickFormat("sidewalk-roads")({ sw: "unknown", name: "Rue A", osm_id: 4242, highway: "residential", length_m: 87.4 });
+  assert.match(html, /href="https:\/\/www\.openstreetmap\.org\/way\/4242"/);
+  assert.match(html, /href="https:\/\/www\.openstreetmap\.org\/edit\?editor=id&amp;way=4242"/);
+  assert.match(html, /load_object\?objects=w4242/);
+  assert.match(html, />residential</);
+  assert.match(html, /87 m/);
+});
+
+test("the sidewalk road popup shows no edit link without a way id", () => {
+  const html = clickFormat("sidewalk-roads")({ sw: "unknown", name: "Rue A", osm_id: 0, highway: "residential", length_m: 0 });
+  assert.doesNotMatch(html, /openstreetmap\.org\/way\//);
+  assert.doesNotMatch(html, /edit\?editor=id/);
+});
+
+test("every iD link forces the iD editor whatever the user's OSM preference", () => {
+  const layers = P.makePopupLayers(palette, fr);
+  let checked = 0;
+  for (const [kind, id, props] of SAMPLES) {
+    const html = layers[kind].find(e => e.ids.includes(id)).format(props);
+    for (const [, href] of html.matchAll(/<a href="([^"]+)"[^>]*>iD<\/a>/g)) {
+      assert.match(href, /^https:\/\/www\.openstreetmap\.org\/edit\?editor=id(?:&amp;(?:node|way)=\d+|#map=)/, href);
+      checked += 1;
+    }
+  }
+  assert.ok(checked > 0);
 });

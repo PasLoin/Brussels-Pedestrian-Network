@@ -5,7 +5,7 @@ export const OVERLAY_SOURCES = ["pedestrian", "nav-route"];
 export const WMS_SOURCE_PREFIX = "wms-";
 
 export function pedestrianSource(url) {
-  return { type: "vector", url, attribution: OSM_ATTRIBUTION };
+  return { type: "vector", url, attribution: OSM_ATTRIBUTION, promoteId: { sidewalk_roads: "osm_id" } };
 }
 
 export function wmsTileUrl(endpoint, layer, size = 256) {

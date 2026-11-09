@@ -57,7 +57,7 @@ def _write_roads(path, roads):
         "features": [
             {
                 "type": "Feature",
-                "properties": props,
+                "properties": {"@type": "way", "@id": 1000 + i, **props},
                 "geometry": {"type": "LineString", "coordinates": _line(i * 50, length)},
             }
             for i, (length, props) in enumerate(roads)
@@ -124,6 +124,32 @@ def test_written_layer(exported):
         "separate", "documented", "documented", "partial", "unknown", "documented", "yes",
     ]
     assert list(gdf["name"]) == ["rue a", "rue a", "rue b", "rue b", "rue c", "rue d", ""]
+
+
+def test_written_layer_carries_way_identity(exported):
+    _, gdf = exported
+    assert list(gdf["osm_id"]) == [1000, 1001, 1002, 1003, 1004, 1005, 1006]
+    assert list(gdf["highway"]) == [
+        "residential", "residential", "tertiary", "residential", "secondary", "residential", "residential",
+    ]
+    assert list(gdf["length_m"]) == pytest.approx([100, 100, 200, 50, 80, 60, 100], abs=0.1)
+
+
+def test_missing_osm_id_falls_back_to_zero(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    path = tmp_path / "roads.geojson"
+    path.write_text(json.dumps({
+        "type": "FeatureCollection",
+        "features": [{
+            "type": "Feature",
+            "properties": {"highway": "residential", "name": "Rue Z"},
+            "geometry": {"type": "LineString", "coordinates": _line(0, 40)},
+        }],
+    }))
+    export_sidewalk_roads(str(path))
+    gdf = gpd.read_file(tmp_path / "sidewalk_roads.geojson")
+    assert list(gdf["osm_id"]) == [0]
+    assert list(gdf["sw"]) == ["unknown"]
 
 
 def test_empty_input_writes_placeholder(tmp_path, monkeypatch):
