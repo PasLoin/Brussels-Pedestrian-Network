@@ -59,3 +59,44 @@ test("switching base map keeps the overlay sources and layers on top", async () 
   assert.deepEqual(merged.layers.map(l => l.id), ["bg", "flow", "route"]);
   assert.deepEqual(keepOverlays(null, next).layers.map(l => l.id), ["bg"]);
 });
+
+test("WMS base map stacks its layers in order over a background", async () => {
+  const { buildWmsStyle, wmsTileUrl, WMS_SOURCE_PREFIX } = await load();
+  const bm = {
+    title: "UrbIS", attribution: "UrbIS", bounds: [4.2, 50.7, 4.5, 50.9],
+    wms: [
+      { id: "ortho", endpoint: "https://example.org/grid/wms", layer: "Ortho" },
+      { id: "topo", endpoint: "https://example.org/topo/wms", layer: "TopoLines", minzoom: 14 },
+    ],
+  };
+  const style = buildWmsStyle(bm);
+  assert.equal(style.version, 8);
+  assert.deepEqual(style.layers.map(l => l.id), ["wms-background", `${WMS_SOURCE_PREFIX}ortho`, `${WMS_SOURCE_PREFIX}topo`]);
+  const topo = style.sources[`${WMS_SOURCE_PREFIX}topo`];
+  assert.equal(topo.type, "raster");
+  assert.equal(topo.minzoom, 14);
+  assert.deepEqual(topo.bounds, bm.bounds);
+  assert.equal(style.sources[`${WMS_SOURCE_PREFIX}ortho`].minzoom, undefined);
+  const url = new URL(topo.tiles[0].replace("{bbox-epsg-3857}", "1,2,3,4"));
+  assert.equal(url.searchParams.get("LAYERS"), "TopoLines");
+  assert.equal(url.searchParams.get("CRS"), "EPSG:3857");
+  assert.equal(url.searchParams.get("BBOX"), "1,2,3,4");
+  assert.ok(wmsTileUrl("https://x/wms", "Ortho").endsWith("&BBOX={bbox-epsg-3857}"));
+});
+
+test("the pedestrian network credits OpenStreetMap whatever the base map", async () => {
+  const { pedestrianSource, keepOverlays, buildWmsStyle, OSM_ATTRIBUTION } = await load();
+  const source = pedestrianSource("pmtiles://https://example.org/pedestrian.pmtiles");
+  assert.equal(source.attribution, OSM_ATTRIBUTION);
+  assert.match(OSM_ATTRIBUTION, /https:\/\/www\.openstreetmap\.org\/copyright/);
+  const prev = { sources: { pedestrian: source }, layers: [{ id: "flow", source: "pedestrian" }] };
+  const next = buildWmsStyle({ title: "WMS", attribution: "Other", wms: [{ id: "a", endpoint: "https://x/wms", layer: "A" }] });
+  const merged = keepOverlays(prev, next);
+  const credits = Object.values(merged.sources).map(s => s.attribution || "");
+  assert.ok(credits.some(c => c.includes(OSM_ATTRIBUTION)));
+});
+
+test("Zinneke credit contains the OpenStreetMap credit so MapLibre shows it once", async () => {
+  const { ZINNEKE_ATTRIBUTION, OSM_ATTRIBUTION } = await load();
+  assert.ok(ZINNEKE_ATTRIBUTION.includes(OSM_ATTRIBUTION));
+});

@@ -74,6 +74,10 @@
     "blackWhite": {
       "label": "Zinneke B&W",
       "title": "ZinnekeTiles black and white"
+    },
+    "urbisOrtho": {
+      "label": "UrbIS Ortho",
+      "title": "UrbIS orthophoto + topographic lines"
     }
   },
   "legend": {

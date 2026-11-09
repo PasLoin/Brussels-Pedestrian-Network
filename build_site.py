@@ -43,8 +43,8 @@ CSP = {
 }
 CSP_ADDITIONS = {
     "index.html": {
-        "img-src": ["https://pasloin.github.io", "blob:"],
-        "connect-src": ["https://pasloin.github.io", "https://protomaps.github.io"],
+        "img-src": ["https://pasloin.github.io", "https://geoservices-urbis.irisnet.be", "blob:"],
+        "connect-src": ["https://pasloin.github.io", "https://protomaps.github.io", "https://geoservices-urbis.irisnet.be"],
     },
 }
 CSP_NOT_FOUND = {
