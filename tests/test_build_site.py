@@ -271,11 +271,11 @@ def test_template_translator_escapes_text_and_keeps_markup_variables():
 
 def test_page_without_its_own_fragment_falls_back_to_the_reference():
     config = build_site.load_languages()
-    config = {**config, "languages": {**config["languages"], "nl": {
-        "path": "nl/", "locale": "nl-BE", "og": "nl_BE", "name": "Nederlands", "published": False}}}
+    config = {**config, "languages": {**config["languages"], "xx": {
+        "path": "xx/", "locale": "en-GB", "og": "en_GB", "name": "Test", "published": False}}}
     reference = build_site.page_dictionary(config, config["reference"])
-    html = build_site.render_page("nl", "about.html", config, dictionary=reference)
-    assert '<html lang="nl"' in html
+    html = build_site.render_page("xx", "about.html", config, dictionary=reference)
+    assert '<html lang="xx"' in html
     assert "<h1>Methodology</h1>" in html
 
 
@@ -357,3 +357,10 @@ def test_not_found_policy_is_locked_down(site):
     csp = _directives(html_unescape(_attr(html, r'http-equiv="Content-Security-Policy" content="([^"]*)"')))
     assert csp["default-src"] == ["'none'"]
     assert "script-src" not in csp
+
+
+def test_default_build_never_publishes_an_unpublished_language(site):
+    config = build_site.load_languages()
+    for lang, conf in config["languages"].items():
+        if not conf["published"]:
+            assert not (site / conf["path"]).exists(), lang
