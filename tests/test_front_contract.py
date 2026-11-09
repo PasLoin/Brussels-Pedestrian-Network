@@ -1,3 +1,4 @@
+import fnmatch
 import json
 import re
 
@@ -32,7 +33,7 @@ def test_stats_html_reads_match_contract():
 
 
 def test_app_js_stats_reads_match_contract():
-    assert stats_reads(app_stats_block(read_text("app.js"))) == APP_STATS_PATHS
+    assert stats_reads(app_stats_block(read_text("map/header-data.js"))) == APP_STATS_PATHS
 
 
 def test_app_js_layer_properties_match_contract():
@@ -64,15 +65,18 @@ def test_evolution_pedestrian_types_match_config():
 def test_every_local_script_is_deployed_and_triggers_a_site_deploy():
     workflow = read_text(".github/workflows/site.yml")
     scripts = set().union(*(local_scripts(page_text(page)) for page in PAGES))
-    assert {"i18n.js", "app.js", "popups.js", "stats.js", "evolution.js"} <= scripts
+    assert {"i18n.js", "map/main.js", "popups.js", "stats.js", "evolution.js"} <= scripts
     assert scripts <= deployed_files()
-    assert scripts <= push_trigger_paths(workflow)
+    triggers = push_trigger_paths(workflow)
+    for script in scripts:
+        assert any(fnmatch.fnmatch(script, pattern) for pattern in triggers), script
 
 
 def test_every_site_source_triggers_a_site_deploy():
     triggers = push_trigger_paths(read_text(".github/workflows/site.yml"))
     sources = {"build_site.py", "check_i18n.py", "templates/**", "i18n/**", *deployed_files()}
-    assert sources <= triggers
+    for source in sources:
+        assert any(source == pattern or fnmatch.fnmatch(source, pattern) for pattern in triggers), source
 
 
 def test_data_pipeline_is_not_triggered_by_site_sources():
