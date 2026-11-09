@@ -15,6 +15,8 @@ on:
       - "lang.js"
       - "html.js"
       - "map/**"
+      - "edit/**"
+      - "vendor/**"
       - "nav.js"
       - "filters.js"
       - "popups.js"
