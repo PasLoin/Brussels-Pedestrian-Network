@@ -52,7 +52,7 @@ body { font-family: system-ui, sans-serif; background: #1a1a1a; }
   transition: max-height 0.3s ease, opacity 0.2s ease;
   padding: 0 14px 12px;
 }
-#header.open #header-content { max-height: 700px; opacity: 1; }
+#header.open #header-content { max-height: calc(100vh - 136px); overflow-y: auto; overscroll-behavior: contain; opacity: 1; }
 #header.closed #header-content { max-height: 0; opacity: 0; padding: 0 14px; }
 
 #header h1 { font-size: 14px; font-weight: 700; color: #111; line-height: 1.2; }
