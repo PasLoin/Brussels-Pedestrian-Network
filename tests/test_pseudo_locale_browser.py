@@ -53,7 +53,12 @@ EMPTY_STYLE = json.dumps({"version": 8, "sources": {}, "layers": []})
 COLLECT_TEXT = """
 () => {
   const out = [];
-  const skipped = el => !el || el.closest("script, style, [data-i18n-fragment]");
+  const pageLang = document.documentElement.lang;
+  const skipped = el => {
+    if (!el || el.closest("script, style, [data-i18n-fragment]")) return true;
+    const scope = el.closest("[lang]");
+    return Boolean(scope && scope.lang !== pageLang);
+  };
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
     const text = node.textContent.replace(/\\s+/g, " ").trim();

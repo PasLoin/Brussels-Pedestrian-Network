@@ -2,7 +2,7 @@
   "reference": "en",
   "timeZone": "Europe/Brussels",
   "languages": {
-    "fr": { "path": "", "locale": "fr-BE", "og": "fr_BE", "name": "Français", "published": true },
-    "en": { "path": "en/", "locale": "en-GB", "og": "en_GB", "name": "English", "published": false }
+    "en": { "path": "", "locale": "en-GB", "og": "en_GB", "name": "English", "published": true },
+    "fr": { "path": "fr/", "locale": "fr-BE", "og": "fr_BE", "name": "Français", "published": true }
   }
 }

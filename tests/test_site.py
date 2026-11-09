@@ -1,3 +1,4 @@
+import json
 import re
 
 import pytest
@@ -78,7 +79,9 @@ def test_sitemap_lists_only_rendered_pages(site):
     assert locations
     for loc in locations:
         assert loc.startswith(SITE_URL)
-        relative = loc[len(SITE_URL):] or "index.html"
+        relative = loc[len(SITE_URL):]
+        if relative == "" or relative.endswith("/"):
+            relative += "index.html"
         assert (out / relative).is_file(), loc
 
 
@@ -93,8 +96,9 @@ def test_unpublished_languages_stay_out_of_the_sitemap(site):
 FRENCH_LETTERS = re.compile(r"[àâçéèêëîïôûùüœ]", re.IGNORECASE)
 
 
-def _visible_text(html):
+def _visible_text(html, lang="en"):
     html = re.sub(r"<(script|style)\b.*?</\1>", "", html, flags=re.S)
+    html = re.sub(r'<(\w+)\b[^>]*\slang="(?!' + lang + r'")[^"]+"[^>]*>[^<]*</\1>', "", html)
     texts = re.findall(r">([^<]+)<", html)
     texts += re.findall(r'\s(?:title|aria-label|alt)="([^"]*)"', html)
     texts += re.findall(r'<meta (?:name="description"|property="og:\w+") content="([^"]*)"', html)
@@ -127,3 +131,58 @@ def test_methodology_is_written_in_each_language(site):
     _, _, pages = site
     assert "<h1>Methodology</h1>" in _html(pages[("en", "about.html")])
     assert "<h1>Méthodologie</h1>" in _html(pages[("fr", "about.html")])
+
+
+def _alternates(html):
+    return dict(re.findall(r'<link rel="alternate" hreflang="([^"]+)" href="([^"]+)" />', html))
+
+
+def test_hreflang_alternates_are_complete_and_reciprocal(site):
+    _, config, pages = site
+    langs = build_site.published_languages(config)
+    root = config["languages"][build_site.root_language(config)]
+    for (lang, page), path in pages.items():
+        html = _html(path)
+        links = _alternates(html)
+        assert set(links) == {*langs, "x-default"}
+        assert links["x-default"] == build_site.page_url(root, page)
+        own = _attr(html, r'<meta property="og:url" content="([^"]*)"')
+        assert links[lang] == own
+        assert _attr(html, r'<link rel="canonical" href="([^"]+)"') == own
+        for other in langs:
+            assert _alternates(_html(pages[(other, page)]))[lang] == own
+
+
+def test_language_switch_and_banner_targets_open_the_same_page(site):
+    out, config, pages = site
+    for (lang, page), path in pages.items():
+        html = _html(path)
+        switch = re.findall(r'<a href="([^"]+)" lang="([^"]+)" hreflang="[^"]+" data-lang="[^"]+"', html)
+        settings = json.loads(_attr(html, r'<script type="application/json" id="i18n-languages">(.*?)</script>'))
+        assert settings["current"] == lang
+        assert settings["isRoot"] == (config["languages"][lang]["path"] == "")
+        targets = {l["lang"]: l["href"] for l in settings["languages"]}
+        assert dict((target, href) for href, target in switch) == targets
+        for target, href in targets.items():
+            resolved = (path.parent / href).resolve()
+            if href.endswith("/"):
+                resolved = resolved / "index.html"
+            assert resolved == pages[(target, page)].resolve(), (lang, page, target, href)
+            assert settings["languages"][list(targets).index(target)]["banner"]["text"]
+
+
+def test_current_language_is_marked_in_the_switch(site):
+    _, _, pages = site
+    for (lang, _), path in pages.items():
+        current = re.findall(r'data-lang="([^"]+)"[^>]*aria-current="true"', _html(path))
+        assert current == [lang]
+
+
+def test_not_found_page_works_from_any_depth(site):
+    out, config, _ = site
+    html = (out / build_site.NOT_FOUND).read_text(encoding="utf-8")
+    assert 'name="robots" content="noindex"' in html
+    assert f'href="{SITE_URL}favicon.svg"' in html
+    for lang in build_site.published_languages(config):
+        assert f'<a href="{build_site.page_url(config["languages"][lang], "index.html")}" hreflang="{lang}">' in html
+    assert not re.search(r'(?:href|src)="\.', html)

@@ -416,5 +416,17 @@
   },
   "about": {
     "footer": "Maintained by {{maintainer}}. Data © {{osm}} contributors, ODbL licence."
+  },
+  "lang": {
+    "label": "Language",
+    "banner": {
+      "text": "This page is also available in English.",
+      "switch": "Switch to English",
+      "dismiss": "Dismiss"
+    }
+  },
+  "notFound": {
+    "title": "Page not found",
+    "text": "This page does not exist or has moved."
   }
 }

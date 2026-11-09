@@ -60,23 +60,37 @@ _RECTS = """
 """
 
 
+_CONFIG = build_site.load_languages()
+_LANGS = build_site.published_languages(_CONFIG)
+
+
 @pytest.fixture(scope="module")
-def server(tmp_path_factory):
+def site_root(tmp_path_factory):
     site = tmp_path_factory.mktemp("site")
     build_site.build(site)
     handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(site))
     httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
     thread.start()
-    yield f"http://127.0.0.1:{httpd.server_address[1]}/index.html"
+    yield f"http://127.0.0.1:{httpd.server_address[1]}/"
     httpd.shutdown()
 
 
+@pytest.fixture(scope="module", params=_LANGS)
+def lang(request):
+    return request.param
+
+
 @pytest.fixture(scope="module")
-def page(server):
+def server(site_root, lang):
+    return f"{site_root}{_CONFIG['languages'][lang]['path']}index.html"
+
+
+@pytest.fixture(scope="module")
+def page(server, lang):
     with sync_playwright() as p:
         browser = p.chromium.launch()
-        pg = browser.new_page()
+        pg = browser.new_page(locale=_CONFIG["languages"][lang]["locale"])
         pg.goto(server, wait_until="domcontentloaded")
         yield pg
         browser.close()
@@ -202,7 +216,7 @@ document.addEventListener("securitypolicyviolation", e => window.__cspViolations
 
 
 def test_controls_work_without_inline_scripts(page, server):
-    pg = page.context.browser.new_page(viewport={"width": 1280, "height": 720})
+    pg = page.context.browser.new_page(viewport={"width": 1280, "height": 720}, locale=page.evaluate("navigator.language"))
     pg.add_init_script(_COLLECT_CSP_VIOLATIONS)
     pg.goto(server, wait_until="domcontentloaded")
     pg.wait_for_function("() => typeof toggleLegend === 'function'")

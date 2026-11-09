@@ -1,0 +1,17 @@
+{
+  "name": "brussels-pedestrian-network",
+  "private": true,
+  "description": "Front-end tooling for the Brussels Pedestrian Network site",
+  "scripts": {
+    "lint": "eslint .",
+    "test": "node --test tests/js/*.test.js"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.13.0",
+    "globals": "17.13.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

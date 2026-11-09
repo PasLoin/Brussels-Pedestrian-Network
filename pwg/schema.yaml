@@ -2,17 +2,15 @@ format_version: 1
 source:
   wiki: https://wiki.openstreetmap.org
   page: Foundation/Local Chapters/United States/Pedestrian Working Group/Schema
-  revision: 2971851
-  url: https://wiki.openstreetmap.org/w/index.php?oldid=2971851
-  pwg_version: 1.0.1
+  revision: 3111749
+  url: https://wiki.openstreetmap.org/w/index.php?oldid=3111749
+  pwg_version: 1.1.0
 tiers:
 - bronze
 - silver
 - gold
 - diamond
-warnings:
-- 'Islands: la ligne highway=footway + footway=traffic_island couvre 5 colonnes sur 6, le tier déduit peut être décalé'
-- 'Islands: la ligne surface=* couvre 5 colonnes sur 6, le tier déduit peut être décalé'
+warnings: []
 features:
   sidewalks:
     title: Sidewalks
@@ -251,9 +249,9 @@ features:
       tier: silver
       levels:
         silver:
-          description: 'Indicate presence: yes or no'
+          description: 'Indicate presence: separate or no'
           values:
-          - 'yes'
+          - separate
           - 'no'
     - id: crossings.crossing:signed
       tag: crossing:signed=*
@@ -297,6 +295,51 @@ features:
           values:
           - 'yes'
           - 'no'
+    - id: crossings.flashing_lights
+      tag: flashing_lights=*
+      keys:
+      - flashing_lights
+      value: '*'
+      elements:
+      - way
+      - node
+      tier: gold
+      levels:
+        gold:
+          description: 'Indicate presence: yes or no'
+          values:
+          - 'yes'
+          - 'no'
+        diamond:
+          description: |-
+            In the Diamond tier, this tag becomes more specific, ex:
+            always - Lights flash continuously
+            button - Lights flash only for a period of time after a button is pressed
+            sensor - Lights flash only when pedestrian/cyclist motion is detected
+            button;sensor - Lights flash for a period of time after either a button is pressed or pedestrian/cyclist motion is detected
+          values:
+          - always
+          - button
+          - sensor
+          - button;sensor
+    - id: crossings.crossing_ref
+      tag: crossing_ref=*
+      keys:
+      - crossing_ref
+      value: '*'
+      elements:
+      - way
+      - node
+      tier: gold
+      levels:
+        gold:
+          description: |-
+            Is a specific type of standardized crossing present?
+            hawk - HAWK beacon is present
+            rrfb - RRFB is present
+          values:
+          - hawk
+          - rrfb
     - id: crossings.traffic_signals:arrow
       tag: traffic_signals:arrow=*
       keys:
@@ -496,7 +539,7 @@ features:
         footway: traffic_island
       elements:
       - way
-      tier: bronze
+      tier: silver
       description: Indicate a traffic island mapped as a way
     criteria:
     - id: islands.surface
@@ -506,9 +549,9 @@ features:
       value: '*'
       elements:
       - way
-      tier: bronze
+      tier: silver
       levels:
-        bronze:
+        silver:
           description: |-
             Required in the Silver tier. Example values include:
             concrete
@@ -746,6 +789,162 @@ features:
         diamond:
           description: Specify the tactile paving color.
           values: []
+  stairs:
+    title: Stairs
+    selectors:
+    - tags:
+        highway: steps
+      elements:
+      - way
+      tier: bronze
+      description: Indicate the location of stairs as a way
+    criteria:
+    - id: stairs.surface
+      tag: surface=*
+      keys:
+      - surface
+      value: '*'
+      elements:
+      - way
+      tier: silver
+      levels:
+        silver:
+          description: |-
+            Specify the surface material of the steps. Example values include:
+            concrete
+            asphalt
+          values:
+          - concrete
+          - asphalt
+    - id: stairs.incline
+      tag: incline=*
+      keys:
+      - incline
+      value: '*'
+      elements:
+      - way
+      tier: silver
+      levels:
+        silver:
+          description: 'Incline along the way, specified as: up or down'
+          values:
+          - up
+          - down
+    - id: stairs.step_count
+      tag: step_count=*
+      keys:
+      - step_count
+      value: '*'
+      elements:
+      - way
+      tier: gold
+      levels:
+        gold:
+          description: Indicate the number of steps
+          values: []
+    - id: stairs.ramp
+      tag: ramp=*
+      keys:
+      - ramp
+      value: '*'
+      elements:
+      - way
+      tier: silver
+      levels:
+        silver:
+          description: Indicate ramp presence as yes or no
+          values:
+          - 'yes'
+          - 'no'
+        gold:
+          description: Indicate if a ramp has been separately mapped as seperate
+          values:
+          - seperate
+    - id: stairs.tactile_paving
+      tag: tactile_paving=*
+      keys:
+      - tactile_paving
+      value: '*'
+      elements:
+      - way
+      tier: gold
+      levels:
+        gold:
+          description: |-
+            Is tactile paving present?:
+            yes - Tactile paving is present at the top and bottom of the staircase
+            no - Tactile paving is not present at the top and bottom of the staircase
+          values:
+          - 'yes'
+          - 'no'
+    - id: stairs.tactile_paving:colour
+      tag: tactile_paving:colour=*
+      keys:
+      - tactile_paving:colour
+      value: '*'
+      elements:
+      - way
+      tier: diamond
+      levels:
+        diamond:
+          description: Specify the tactile paving color.
+          values: []
+    - id: stairs.handrail
+      tag: handrail=*
+      keys:
+      - handrail
+      value: '*'
+      elements:
+      - way
+      tier: silver
+      levels:
+        silver:
+          description: Indicate any handrail presence
+          values: []
+    - id: stairs.handrail:(left|right|both)
+      tag: handrail:(left|right|both)=*
+      keys:
+      - handrail:left
+      - handrail:right
+      - handrail:both
+      value: '*'
+      elements:
+      - way
+      tier: diamond
+      levels:
+        diamond:
+          description: Indicate specific handrail location presence
+          values: []
+    - id: stairs.lit
+      tag: lit=*
+      keys:
+      - lit
+      value: '*'
+      elements:
+      - way
+      tier: gold
+      levels:
+        gold:
+          description: |-
+            Indicate whether the way is lit. Example values include:
+            yes, or
+            no, or
+            any other valid value
+          values:
+          - 'yes'
+          - 'no'
+    - id: stairs.width
+      tag: width=*
+      keys:
+      - width
+      value: '*'
+      elements:
+      - way
+      tier: gold
+      levels:
+        gold:
+          description: Specify the width of the stairs
+          values: []
   roadways:
     title: Roadways
     selectors:
@@ -788,3 +987,17 @@ features:
         gold:
           description: Indicate the highway speed limit
           values: []
+  traffic_signs:
+    title: Traffic Signs
+    selectors:
+    - tags:
+        traffic_sign: '*'
+      elements:
+      - node
+      tier: gold
+      description: |-
+        Node at the physical location of a traffic sign.
+        Sign type values:
+        stop - a stop sign
+        give_way - a yield sign
+    criteria: []

@@ -65,8 +65,9 @@ test("escapeHTML keeps empty values and stringifies numbers", () => {
 });
 
 test("popupTitle only draws a swatch when a colour is given", () => {
-  assert.match(P.popupTitle("#123456", "T"), /popup-swatch" style="--c:#123456"/);
-  assert.doesNotMatch(P.popupTitle(undefined, "T"), /popup-swatch/);
+  assert.match(String(P.popupTitle("#123456", "T")), /popup-swatch" style="--c:#123456"/);
+  assert.doesNotMatch(String(P.popupTitle(undefined, "T")), /popup-swatch/);
+  assert.equal(String(P.popupTitle(undefined, "<b>")), '<div class="popup-title">&lt;b&gt;</div>');
 });
 
 test("each layer id has at most one hover and one click popup", () => {
@@ -99,7 +100,7 @@ test("missing crossing popup dispatches wrong_tag to its own formatter", () => {
   const html = clickFormat("missing-crossings")({ type: "wrong_tag", osm_id: 5, way_osm_id: 7, footway_value: "sidewalk", name: "Rue A" });
   assert.match(html, /Traversée taguée footway=sidewalk/);
   assert.match(html, /load_object\?objects=n5,w7/);
-  assert.equal(html, P.formatWrongTagCrossing({ type: "wrong_tag", osm_id: 5, way_osm_id: 7, footway_value: "sidewalk", name: "Rue A" }, fr));
+  assert.equal(html, String(P.formatWrongTagCrossing({ type: "wrong_tag", osm_id: 5, way_osm_id: 7, footway_value: "sidewalk", name: "Rue A" }, fr)));
 });
 
 test("nearest footway=crossing distance is shown for missing tags only", () => {
@@ -130,7 +131,7 @@ test("graph island popup builds a JOSM zoom on the bbox with the ways selected",
     bbox_w: 4.35, bbox_s: 50.85, bbox_e: 4.36, bbox_n: 50.86, highways: "footway",
   });
   assert.match(html, /Îlot isolé du réseau/);
-  assert.match(html, /load_and_zoom\?left=4\.349500&right=4\.360500&top=50\.860500&bottom=50\.849500&select=w1,w2,w3,w4,w5,w6,w7/);
+  assert.match(html, /load_and_zoom\?left=4\.349500&amp;right=4\.360500&amp;top=50\.860500&amp;bottom=50\.849500&amp;select=w1,w2,w3,w4,w5,w6,w7/);
   assert.match(html, /\+2/);
   assert.match(html, /12,5 m/);
   assert.match(html, /40 m/);
@@ -242,11 +243,28 @@ test("translated wording is escaped like OSM values", () => {
   assert.doesNotMatch(html, /<img/);
 });
 
-test("measures and shares fall back to the raw value when it is not a number", () => {
+test("measures and shares return plain text and fall back to the raw value", () => {
   assert.equal(P.formatMeasure(en, "12.345"), "12.3");
-  assert.equal(P.formatMeasure(en, "<b>"), "&lt;b&gt;");
+  assert.equal(P.formatMeasure(en, "<b>"), "<b>");
   assert.equal(P.formatMeasure(en, undefined), undefined);
   assert.equal(P.formatShare(en, 42.5), "42.5%");
   assert.equal(P.formatShare(en, undefined), "0%");
-  assert.equal(P.formatShare(en, "<b>"), "&lt;b&gt; %");
+  assert.equal(P.formatShare(en, "<b>"), "<b> %");
+});
+
+test("benign data never produces escaped markup, so no template is double-escaped", () => {
+  for (const lang of Object.keys(LANGUAGES.languages)) {
+    const layers = P.makePopupLayers(palette, i18nFor(lang));
+    for (const [kind, id, props] of SAMPLES) {
+      const html = layers[kind].find(e => e.ids.includes(id)).format(props);
+      assert.doesNotMatch(html, /&lt;|&gt;|&amp;lt;|&amp;quot;/, `${lang} ${kind} ${id}`);
+    }
+  }
+});
+
+test("popup links are real anchors to OSM, iD and JOSM", () => {
+  const html = clickFormat("kerb-issues")({ type: "kerb_untagged", crossing_osm_id: 1, kerb_osm_id: 2, way_osm_id: 3, partner_way_osm_id: 4 });
+  assert.match(html, /<a href="https:\/\/www\.openstreetmap\.org\/node\/1" target="_blank" rel="noopener">n1<\/a>/);
+  assert.match(html, /<a href="http:\/\/127\.0\.0\.1:8111\/load_object\?objects=w3,w4" target="_blank" rel="noopener">JOSM<\/a>/);
+  assert.match(html, /<a href="https:\/\/www\.openstreetmap\.org\/edit\?node=2" target="_blank" rel="noopener">iD<\/a>/);
 });

@@ -160,7 +160,7 @@ test("partialCoords cuts a polyline by length", () => {
 });
 
 test("buildRoute splits lengths by infrastructure with partial legs", () => {
-  const { graph, adj } = makeGraph([[0, 0], [100, 0], [300, 0]], [
+  const { graph } = makeGraph([[0, 0], [100, 0], [300, 0]], [
     { a: 0, b: 1, highway: "footway" }, { a: 1, b: 2, highway: "primary" },
   ]);
   const built = nav.buildRoute(graph, [{ edge: 0, from: 0.5, to: 1 }, { edge: 2, from: 0, to: 0.5 }]);

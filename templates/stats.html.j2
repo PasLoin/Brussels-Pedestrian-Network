@@ -244,6 +244,7 @@
 {% endblock %}
 {% block body %}
 <body>
+{% include "_lang_banner.html.j2" %}
 
 <header class="page-header">
   <div class="page-header-inner">
@@ -253,6 +254,7 @@
       <a href="./">{{ t("common.nav.map") }}</a>
       <a href="./evolution.html">{{ t("common.nav.evolution") }}</a>
       <a href="./about.html">{{ t("common.nav.about") }}</a>
+{% include "_lang_switch.html.j2" %}
     </div>
   </div>
 </header>
@@ -267,6 +269,7 @@
   · <a href="./evolution.html">{{ t("common.nav.evolution") }}</a>
 </footer>
 
+<script src="{{ root }}html.js"></script>
 <script src="{{ root }}stats.js"></script>
 </body>
 </html>

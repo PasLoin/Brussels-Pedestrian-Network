@@ -1,5 +1,4 @@
 {% extends "_base.html.j2" %}
-{% block csp %}default-src 'self'; script-src 'self' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' https://unpkg.com 'unsafe-inline'; img-src 'self' https://tiles.openfreemap.org https://www.openstreetmap.org https://pasloin.github.io data: blob:; connect-src 'self' https://tiles.openfreemap.org https://unpkg.com https://pasloin.github.io https://protomaps.github.io; worker-src blob:; child-src blob:; font-src https://tiles.openfreemap.org; object-src 'none'; base-uri 'self'; upgrade-insecure-requests;{% endblock %}
 {% block title %}{{ t("meta.index.title") }}{% endblock %}
 {% block description %}{{ t("meta.index.description") }}{% endblock %}
 {% block head %}
@@ -10,6 +9,7 @@
 {% endblock %}
 {% block body %}
 <body>
+{% include "_lang_banner.html.j2" %}
 
 <div id="map"></div>
 
@@ -37,6 +37,7 @@
       <a href="./stats.html">{{ t("common.nav.stats") }}</a>
       <a href="./evolution.html">{{ t("common.nav.evolution") }}</a>
       <a href="./about.html">{{ t("common.nav.about") }}</a>
+{% include "_lang_switch.html.j2" %}
     </nav>
 
     <div class="flow-filter-wrap">
@@ -125,6 +126,7 @@
 
 <script src="{{ root }}nav.js"></script>
 <script src="{{ root }}filters.js"></script>
+<script src="{{ root }}html.js"></script>
 <script src="{{ root }}popups.js"></script>
 <script src="{{ root }}app.js"></script>
 </body>

@@ -35,19 +35,12 @@ const fkm = v => v != null ? i18n.number(v, { maximumFractionDigits: 1 }) : '—
 const fpct = v => v != null ? i18n.percent(v, ONE_DECIMAL) : '—';
 const fdec = (v, options) => v != null ? i18n.number(v, options) : '—';
 
-function escapeHTML(str) {
-  if (!str) return str;
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
 
-const tx = (key, vars) => escapeHTML(i18n.t(key, vars));
 const LINK_SLOT = '\u0001';
-const withLink = (text, linkHtml) => escapeHTML(text).replace(LINK_SLOT, linkHtml);
+function withLink(text, link) {
+  const [before, after = ''] = text.split(LINK_SLOT);
+  return html`${before}${link}${after}`;
+}
 const tooltip = (label, value) => i18n.t('common.chart.tooltip', { label, value });
 
 fetch(i18n.dataUrl('state.txt')).then(r => r.text()).then(txt => {
@@ -69,7 +62,6 @@ function computeCompleteness(s) {
   const swPct  = swRoad.pct_by_status || {};
   const gaps   = s.sidewalk_gaps || {};
   const mc     = s.missing_crossings || {};
-  const net    = s.network || {};
 
   const sidewalkDocPct = clamp(
     (swPct.separate || 0) + (swPct.yes || 0) + (swPct.documented || 0) + (swPct.partial || 0) * 0.5,
@@ -136,10 +128,10 @@ function render(s) {
   const comp = computeCompleteness(s);
   const r = 60, circ = 2 * Math.PI * r;
   const filled = (comp.global / 100) * circ;
-  el.innerHTML += `
+  el.innerHTML += html`
     <div class="section">
-      <div class="section-title">${tx('stats.completeness.title')}</div>
-      <div class="section-intro">${withLink(i18n.t('stats.completeness.intro', { link: LINK_SLOT }), `<a href="./about.html#indicators">${tx('stats.completeness.methodologyLink')}</a>`)}</div>
+      <div class="section-title">${i18n.t('stats.completeness.title')}</div>
+      <div class="section-intro">${withLink(i18n.t('stats.completeness.intro', { link: LINK_SLOT }), html`<a href="./about.html#indicators">${i18n.t('stats.completeness.methodologyLink')}</a>`)}</div>
       <div class="completeness">
         <div class="gauge">
           <svg viewBox="0 0 140 140">
@@ -148,8 +140,8 @@ function render(s) {
                     stroke-dasharray="${filled} ${circ}"></circle>
           </svg>
           <div class="gauge-num">
-            <div class="v">${escapeHTML(fdec(comp.global, ONE_DECIMAL))}</div>
-            <div class="u">${tx('stats.completeness.outOf100')}</div>
+            <div class="v">${fdec(comp.global, ONE_DECIMAL)}</div>
+            <div class="u">${i18n.t('stats.completeness.outOf100')}</div>
           </div>
         </div>
         <div class="sub-scores" id="sub-scores"></div>
@@ -159,208 +151,207 @@ function render(s) {
   if (mc.crossing_nodes_found != null) {
     const total = mc.crossing_nodes_found || 0;
     const taggedOk = total - (mc.missing_crossing_way || 0) - (mc.missing_crossing_tag || 0) - (mc.wrong_crossing_tag || 0);
-    el.innerHTML += `
+    el.innerHTML += html`
       <div class="section">
-        <div class="section-title">${tx('stats.crossings.title')}</div>
-        <div class="section-intro">${tx('stats.crossings.intro')}</div>
+        <div class="section-title">${i18n.t('stats.crossings.title')}</div>
+        <div class="section-intro">${i18n.t('stats.crossings.intro')}</div>
         <div class="kpi-grid">
           <div class="kpi">
-            <div class="kpi-label">${tx('stats.crossings.nodes')}</div>
-            <div class="kpi-val">${escapeHTML(fmt(total))}</div>
-            <div class="kpi-sub">${tx('stats.crossings.nodesSub')}</div>
+            <div class="kpi-label">${i18n.t('stats.crossings.nodes')}</div>
+            <div class="kpi-val">${fmt(total)}</div>
+            <div class="kpi-sub">${i18n.t('stats.crossings.nodesSub')}</div>
           </div>
           <div class="kpi">
-            <div class="kpi-label">${tx('stats.crossings.ok')}</div>
-            <div class="kpi-val">${escapeHTML(fmt(taggedOk))}</div>
-            <div class="kpi-sub">${escapeHTML(fpct(total > 0 ? taggedOk / total * 100 : 0))}</div>
+            <div class="kpi-label">${i18n.t('stats.crossings.ok')}</div>
+            <div class="kpi-val">${fmt(taggedOk)}</div>
+            <div class="kpi-sub">${fpct(total > 0 ? taggedOk / total * 100 : 0)}</div>
           </div>
           <div class="kpi">
-            <div class="kpi-label">${tx('stats.crossings.missingWay')}</div>
-            <div class="kpi-val" style="color:#f97316">${escapeHTML(fmt(mc.missing_crossing_way || 0))}</div>
-            <div class="kpi-sub">${tx('stats.crossings.missingWaySub')}</div>
+            <div class="kpi-label">${i18n.t('stats.crossings.missingWay')}</div>
+            <div class="kpi-val" style="color:#f97316">${fmt(mc.missing_crossing_way || 0)}</div>
+            <div class="kpi-sub">${i18n.t('stats.crossings.missingWaySub')}</div>
           </div>
           <div class="kpi">
-            <div class="kpi-label">${tx('stats.crossings.missingTag')}</div>
-            <div class="kpi-val" style="color:#eab308">${escapeHTML(fmt(mc.missing_crossing_tag || 0))}</div>
-            <div class="kpi-sub">${tx('stats.crossings.missingTagSub')}</div>
+            <div class="kpi-label">${i18n.t('stats.crossings.missingTag')}</div>
+            <div class="kpi-val" style="color:#eab308">${fmt(mc.missing_crossing_tag || 0)}</div>
+            <div class="kpi-sub">${i18n.t('stats.crossings.missingTagSub')}</div>
           </div>
           <div class="kpi">
-            <div class="kpi-label">${tx('stats.crossings.wrongTag')}</div>
-            <div class="kpi-val" style="color:#dc2626">${escapeHTML(fmt(mc.wrong_crossing_tag || 0))}</div>
-            <div class="kpi-sub">${tx('stats.crossings.wrongTagSub')}</div>
+            <div class="kpi-label">${i18n.t('stats.crossings.wrongTag')}</div>
+            <div class="kpi-val" style="color:#dc2626">${fmt(mc.wrong_crossing_tag || 0)}</div>
+            <div class="kpi-sub">${i18n.t('stats.crossings.wrongTagSub')}</div>
           </div>
           <div class="kpi">
-            <div class="kpi-label">${tx('stats.crossings.continuous')}</div>
-            <div class="kpi-val">${escapeHTML(fmt(mc.crossing_continuous || 0))}</div>
+            <div class="kpi-label">${i18n.t('stats.crossings.continuous')}</div>
+            <div class="kpi-val">${fmt(mc.crossing_continuous || 0)}</div>
             <div class="kpi-sub">crossing:continuous=yes</div>
           </div>
           <div class="kpi">
-            <div class="kpi-label">${tx('stats.crossings.excluded')}</div>
-            <div class="kpi-val"><span class="small">${escapeHTML(fmt(mc.on_excluded_way || 0))}</span></div>
+            <div class="kpi-label">${i18n.t('stats.crossings.excluded')}</div>
+            <div class="kpi-val"><span class="small">${fmt(mc.on_excluded_way || 0)}</span></div>
             <div class="kpi-sub">service / cycleway / track</div>
           </div>
         </div>
         <div class="charts">
           <div class="chart-card">
-            <h3>${tx('stats.crossings.chart')}</h3>
+            <h3>${i18n.t('stats.crossings.chart')}</h3>
             <div class="chart-wrap"><canvas id="c-mc"></canvas></div>
           </div>
         </div>
       </div>`;
   }
 
-  el.innerHTML += `
+  el.innerHTML += html`
     <div class="section">
-      <div class="section-title">${tx('stats.network.title')}</div>
+      <div class="section-title">${i18n.t('stats.network.title')}</div>
       <div class="kpi-grid">
         <div class="kpi">
-          <div class="kpi-label">${tx('stats.network.totalLength')}</div>
-          <div class="kpi-val">${escapeHTML(fkm(net.total_km))} <span class="kpi-unit">km</span></div>
+          <div class="kpi-label">${i18n.t('stats.network.totalLength')}</div>
+          <div class="kpi-val">${fkm(net.total_km)} <span class="kpi-unit">km</span></div>
         </div>
         <div class="kpi">
-          <div class="kpi-label">${tx('stats.network.nodes')}</div>
-          <div class="kpi-val">${escapeHTML(fmt(graph.nodes))}</div>
+          <div class="kpi-label">${i18n.t('stats.network.nodes')}</div>
+          <div class="kpi-val">${fmt(graph.nodes)}</div>
         </div>
         <div class="kpi">
-          <div class="kpi-label">${tx('stats.network.edges')}</div>
-          <div class="kpi-val">${escapeHTML(fmt(graph.edges))}</div>
+          <div class="kpi-label">${i18n.t('stats.network.edges')}</div>
+          <div class="kpi-val">${fmt(graph.edges)}</div>
         </div>
         <div class="kpi">
-          <div class="kpi-label">${tx('stats.network.pedestrian')}</div>
-          <div class="kpi-val">${escapeHTML(fkm(catD.pedestrian))} <span class="kpi-unit">km</span></div>
+          <div class="kpi-label">${i18n.t('stats.network.pedestrian')}</div>
+          <div class="kpi-val">${fkm(catD.pedestrian)} <span class="kpi-unit">km</span></div>
         </div>
         <div class="kpi">
-          <div class="kpi-label">${tx('stats.network.roads')}</div>
-          <div class="kpi-val">${escapeHTML(fkm(catD.road))} <span class="kpi-unit">km</span></div>
+          <div class="kpi-label">${i18n.t('stats.network.roads')}</div>
+          <div class="kpi-val">${fkm(catD.road)} <span class="kpi-unit">km</span></div>
         </div>
         <div class="kpi">
-          <div class="kpi-label">${tx('stats.network.cycleways')}</div>
-          <div class="kpi-val">${escapeHTML(fkm((catD.cycleway_foot_yes || 0) + (catD.cycleway_no_foot || 0)))} <span class="kpi-unit">km</span></div>
-          <div class="kpi-sub">${tx('stats.network.cyclewaysSub', { footYes: fkm(catD.cycleway_foot_yes), noFoot: fkm(catD.cycleway_no_foot) })}</div>
+          <div class="kpi-label">${i18n.t('stats.network.cycleways')}</div>
+          <div class="kpi-val">${fkm((catD.cycleway_foot_yes || 0) + (catD.cycleway_no_foot || 0))} <span class="kpi-unit">km</span></div>
+          <div class="kpi-sub">${i18n.t('stats.network.cyclewaysSub', { footYes: fkm(catD.cycleway_foot_yes), noFoot: fkm(catD.cycleway_no_foot) })}</div>
         </div>
         <div class="kpi">
-          <div class="kpi-label">${tx('stats.network.density')}</div>
-          <div class="kpi-val">${escapeHTML(catD.road > 0 ? fdec(catD.pedestrian / catD.road, TWO_DECIMALS) : '—')}</div>
-          <div class="kpi-sub">${tx('stats.network.densitySub')}</div>
+          <div class="kpi-label">${i18n.t('stats.network.density')}</div>
+          <div class="kpi-val">${catD.road > 0 ? fdec(catD.pedestrian / catD.road, TWO_DECIMALS) : '—'}</div>
+          <div class="kpi-sub">${i18n.t('stats.network.densitySub')}</div>
         </div>
       </div>
       <div class="charts">
         <div class="chart-card">
-          <h3>${tx('stats.network.chartCategory')}</h3>
+          <h3>${i18n.t('stats.network.chartCategory')}</h3>
           <div class="chart-wrap"><canvas id="c-cat"></canvas></div>
         </div>
         <div class="chart-card">
-          <h3>${tx('stats.network.chartHighway')}</h3>
+          <h3>${i18n.t('stats.network.chartHighway')}</h3>
           <div class="chart-wrap"><canvas id="c-hw"></canvas></div>
         </div>
       </div>
     </div>`;
 
-  const byS = swRoad.by_status || {};
   const pctS = swRoad.pct_by_status || {};
   const docPct = (pctS.separate || 0) + (pctS.yes || 0) + (pctS.documented || 0);
 
-  el.innerHTML += `
+  el.innerHTML += html`
     <div class="section">
-      <div class="section-title">${tx('stats.sidewalkTags.title')}</div>
+      <div class="section-title">${i18n.t('stats.sidewalkTags.title')}</div>
       <div class="kpi-grid">
         <div class="kpi">
-          <div class="kpi-label">${tx('stats.sidewalkTags.segments')}</div>
-          <div class="kpi-val">${escapeHTML(fmt(swRoad.total_road_ways))}</div>
+          <div class="kpi-label">${i18n.t('stats.sidewalkTags.segments')}</div>
+          <div class="kpi-val">${fmt(swRoad.total_road_ways)}</div>
         </div>
         <div class="kpi">
-          <div class="kpi-label">${tx('stats.sidewalkTags.documented')}</div>
-          <div class="kpi-val">${escapeHTML(fpct(docPct))}</div>
-          <div class="kpi-sub">${tx('stats.sidewalkTags.documentedSub')}</div>
+          <div class="kpi-label">${i18n.t('stats.sidewalkTags.documented')}</div>
+          <div class="kpi-val">${fpct(docPct)}</div>
+          <div class="kpi-sub">${i18n.t('stats.sidewalkTags.documentedSub')}</div>
         </div>
         <div class="kpi">
-          <div class="kpi-label">${tx('stats.sidewalkTags.partial')}</div>
-          <div class="kpi-val">${escapeHTML(fpct(pctS.partial))}</div>
+          <div class="kpi-label">${i18n.t('stats.sidewalkTags.partial')}</div>
+          <div class="kpi-val">${fpct(pctS.partial)}</div>
         </div>
         <div class="kpi">
-          <div class="kpi-label">${tx('stats.sidewalkTags.untagged')}</div>
-          <div class="kpi-val">${escapeHTML(fpct(pctS.unknown))}</div>
+          <div class="kpi-label">${i18n.t('stats.sidewalkTags.untagged')}</div>
+          <div class="kpi-val">${fpct(pctS.unknown)}</div>
         </div>
       </div>
       <div class="charts">
         <div class="chart-card">
-          <h3>${tx('stats.sidewalkTags.chartCount')}</h3>
+          <h3>${i18n.t('stats.sidewalkTags.chartCount')}</h3>
           <div class="chart-wrap"><canvas id="c-sw-n"></canvas></div>
         </div>
         <div class="chart-card">
-          <h3>${tx('stats.sidewalkTags.chartKm')}</h3>
+          <h3>${i18n.t('stats.sidewalkTags.chartKm')}</h3>
           <div class="chart-wrap"><canvas id="c-sw-km"></canvas></div>
         </div>
       </div>
     </div>`;
 
-  el.innerHTML += `
+  el.innerHTML += html`
     <div class="section">
-      <div class="section-title">${tx('stats.spatial.title')}</div>
+      <div class="section-title">${i18n.t('stats.spatial.title')}</div>
       <div class="kpi-grid">
         <div class="kpi">
-          <div class="kpi-label">${tx('stats.spatial.analysed')}</div>
-          <div class="kpi-val">${escapeHTML(fmt(gaps.roads_analysed))}</div>
-          <div class="kpi-sub">${tx('stats.spatial.excluded', { count: gaps.skipped_no_sidewalk ?? 0 })}</div>
+          <div class="kpi-label">${i18n.t('stats.spatial.analysed')}</div>
+          <div class="kpi-val">${fmt(gaps.roads_analysed)}</div>
+          <div class="kpi-sub">${i18n.t('stats.spatial.excluded', { count: gaps.skipped_no_sidewalk ?? 0 })}</div>
         </div>
         <div class="kpi">
-          <div class="kpi-label">${tx('stats.spatial.bothSides')}</div>
-          <div class="kpi-val">${escapeHTML(fmt(gaps.both_sides))}</div>
-          <div class="kpi-sub">${escapeHTML(fkm(gaps.both_length_km))} km</div>
+          <div class="kpi-label">${i18n.t('stats.spatial.bothSides')}</div>
+          <div class="kpi-val">${fmt(gaps.both_sides)}</div>
+          <div class="kpi-sub">${fkm(gaps.both_length_km)} km</div>
         </div>
         <div class="kpi">
-          <div class="kpi-label">${tx('stats.spatial.oneSide')}</div>
-          <div class="kpi-val">${escapeHTML(fmt(gaps.one_side_gap))}</div>
-          <div class="kpi-sub">${escapeHTML(fkm(gaps.gap_length_km))} km</div>
+          <div class="kpi-label">${i18n.t('stats.spatial.oneSide')}</div>
+          <div class="kpi-val">${fmt(gaps.one_side_gap)}</div>
+          <div class="kpi-sub">${fkm(gaps.gap_length_km)} km</div>
         </div>
         <div class="kpi">
-          <div class="kpi-label">${tx('stats.spatial.noSide')}</div>
-          <div class="kpi-val">${escapeHTML(fmt(gaps.neither_side))}</div>
-          <div class="kpi-sub">${escapeHTML(fkm(gaps.neither_length_km))} km</div>
+          <div class="kpi-label">${i18n.t('stats.spatial.noSide')}</div>
+          <div class="kpi-val">${fmt(gaps.neither_side)}</div>
+          <div class="kpi-sub">${fkm(gaps.neither_length_km)} km</div>
         </div>
       </div>
       <div class="charts">
         <div class="chart-card">
-          <h3>${tx('stats.spatial.chartResult')}</h3>
+          <h3>${i18n.t('stats.spatial.chartResult')}</h3>
           <div class="chart-wrap"><canvas id="c-gap"></canvas></div>
         </div>
         <div class="chart-card">
-          <h3>${tx('stats.spatial.chartFootways')}</h3>
+          <h3>${i18n.t('stats.spatial.chartFootways')}</h3>
           <div class="chart-wrap"><canvas id="c-fw-filter"></canvas></div>
         </div>
       </div>
     </div>`;
 
-  el.innerHTML += `
+  el.innerHTML += html`
     <div class="section">
-      <div class="section-title">${tx('stats.simulation.title')}</div>
+      <div class="section-title">${i18n.t('stats.simulation.title')}</div>
       <div class="kpi-grid">
         <div class="kpi">
-          <div class="kpi-label">${tx('stats.simulation.trips')}</div>
-          <div class="kpi-val">${escapeHTML(fmt(routing.routed_trips))}</div>
+          <div class="kpi-label">${i18n.t('stats.simulation.trips')}</div>
+          <div class="kpi-val">${fmt(routing.routed_trips)}</div>
         </div>
         <div class="kpi">
-          <div class="kpi-label">${tx('stats.simulation.avgDistance')}</div>
-          <div class="kpi-val">${escapeHTML(routing.avg_distance_m != null ? fdec(routing.avg_distance_m / 1000, TWO_DECIMALS) : '—')} <span class="kpi-unit">km</span></div>
+          <div class="kpi-label">${i18n.t('stats.simulation.avgDistance')}</div>
+          <div class="kpi-val">${routing.avg_distance_m != null ? fdec(routing.avg_distance_m / 1000, TWO_DECIMALS) : '—'} <span class="kpi-unit">km</span></div>
         </div>
         <div class="kpi">
-          <div class="kpi-label">${tx('stats.simulation.odPoints')}</div>
-          <div class="kpi-val">${escapeHTML(fmt(od.od_points))}</div>
+          <div class="kpi-label">${i18n.t('stats.simulation.odPoints')}</div>
+          <div class="kpi-val">${fmt(od.od_points)}</div>
         </div>
         <div class="kpi">
-          <div class="kpi-label">${tx('stats.simulation.computeTime')}</div>
-          <div class="kpi-val">${escapeHTML(routing.routing_time_s != null ? fdec(routing.routing_time_s, ONE_DECIMAL) : '—')} <span class="kpi-unit">s</span></div>
+          <div class="kpi-label">${i18n.t('stats.simulation.computeTime')}</div>
+          <div class="kpi-val">${routing.routing_time_s != null ? fdec(routing.routing_time_s, ONE_DECIMAL) : '—'} <span class="kpi-unit">s</span></div>
         </div>
       </div>
     </div>`;
 
   const subEl = document.getElementById('sub-scores');
   for (const sub of comp.subs) {
-    subEl.insertAdjacentHTML('beforeend', `
+    subEl.insertAdjacentHTML('beforeend', html`
       <div class="sub-score">
         <div class="row-top">
-          <span class="label">${tx(sub.labelKey)} <span style="color:#aaa;font-weight:400">${tx(sub.hintKey)}</span></span>
-          <span class="v">${escapeHTML(fpct(sub.pct))}</span>
+          <span class="label">${i18n.t(sub.labelKey)} <span style="color:#aaa;font-weight:400">${i18n.t(sub.hintKey)}</span></span>
+          <span class="v">${fpct(sub.pct)}</span>
         </div>
         <div class="bar"><div class="bar-fill ${barClass(sub.pct)}" style="width:${sub.pct}%"></div></div>
       </div>
@@ -415,7 +406,7 @@ function renderCharts(s) {
     new Chart(document.getElementById('c-cat'), {
       type: 'doughnut',
       data: {
-        labels: ck.map(k => escapeHTML(INFRA_L[k] || k)),
+        labels: ck.map(k => INFRA_L[k] || k),
         datasets: [{ data: ck.map(k => catD[k]), backgroundColor: ck.map(k => INFRA_C[k] || C.gray), borderWidth: 0 }],
       },
       options: { ...dOpts, plugins: { ...dOpts.plugins, tooltip: { callbacks: { label: c => tooltip(c.label, fkm(c.raw) + ' km') } } } },
@@ -429,7 +420,7 @@ function renderCharts(s) {
     new Chart(document.getElementById('c-hw'), {
       type: 'bar',
       data: {
-        labels: hk.map(k => escapeHTML(k)),
+        labels: hk.map(k => k),
         datasets: [{ data: hk.map(k => hwD[k]), backgroundColor: hk.map(hwC), borderRadius: 3, borderSkipped: false }],
       },
       options: { ...bOpts('km'), indexAxis: 'y' },
@@ -441,7 +432,7 @@ function renderCharts(s) {
   new Chart(document.getElementById('c-sw-n'), {
     type: 'bar',
     data: {
-      labels: swK.map(k => escapeHTML(SW_L[k])),
+      labels: swK.map(k => SW_L[k]),
       datasets: [{ data: swK.map(k => byS[k] || 0), backgroundColor: swK.map(k => SW_C[k]), borderRadius: 3, borderSkipped: false }],
     },
     options: bOpts(i18n.t('stats.sidewalkTags.segmentsAxis')),
@@ -451,7 +442,7 @@ function renderCharts(s) {
   new Chart(document.getElementById('c-sw-km'), {
     type: 'bar',
     data: {
-      labels: swK.map(k => escapeHTML(SW_L[k])),
+      labels: swK.map(k => SW_L[k]),
       datasets: [{ data: swK.map(k => kmS[k] || 0), backgroundColor: swK.map(k => SW_C[k]), borderRadius: 3, borderSkipped: false }],
     },
     options: bOpts('km'),

@@ -1,5 +1,6 @@
 import json
 import re
+from html import unescape as html_unescape
 
 import pytest
 from markupsafe import Markup
@@ -34,7 +35,8 @@ def _attr(html, pattern):
 def test_languages_config_is_valid():
     config = build_site.load_languages()
     assert config["reference"] == "en"
-    assert build_site.root_language(config) == "fr"
+    assert build_site.root_language(config) == "en"
+    assert build_site.published_languages(config) == ["en", "fr"]
 
 
 @pytest.mark.parametrize("config, message", [
@@ -61,10 +63,11 @@ def test_invalid_languages_config_is_rejected(config, message):
         build_site.validate_languages(config)
 
 
-def test_only_published_languages_are_built_by_default(site):
-    assert not (site / "en").exists()
+def test_published_languages_are_built_by_default(site):
     for page in PAGES:
         assert (site / page).is_file()
+        assert (site / "fr" / page).is_file()
+    assert (site / build_site.NOT_FOUND).is_file()
 
 
 @pytest.mark.parametrize("page", PAGES)
@@ -78,7 +81,7 @@ def test_page_has_no_template_syntax_left(site, page):
 def test_page_language_and_url(site, page):
     html = (site / page).read_text(encoding="utf-8")
     assert html.startswith(
-        '<!DOCTYPE html>\n<html lang="fr" data-locale="fr-BE" data-time-zone="Europe/Brussels" data-root="./">\n'
+        '<!DOCTYPE html>\n<html lang="en" data-locale="en-GB" data-time-zone="Europe/Brussels" data-root="./">\n'
     )
     expected = SITE_URL + ("" if page == "index.html" else page)
     assert _attr(html, r'<meta property="og:url" content="([^"]*)"') == expected
@@ -196,17 +199,21 @@ def test_static_files_are_copied_unchanged(site):
         assert (site / name).read_bytes() == (ROOT / name).read_bytes(), name
 
 
-def test_sitemap_gets_its_lastmod(site):
+def test_sitemap_lists_every_page_in_every_language_with_alternates(site):
     sitemap = (site / "sitemap.xml").read_text(encoding="utf-8")
-    assert build_site.LASTMOD_PLACEHOLDER not in sitemap
-    assert sitemap.count(f"<lastmod>{LASTMOD}</lastmod>") == len(PAGES)
+    langs = build_site.published_languages(build_site.load_languages())
+    assert sitemap.count(f"<lastmod>{LASTMOD}</lastmod>") == len(PAGES) * len(langs)
+    assert sitemap.count("<url>") == len(PAGES) * len(langs)
+    assert sitemap.count('hreflang="x-default"') == len(PAGES) * len(langs)
+    assert f"<loc>{SITE_URL}fr/stats.html</loc>" in sitemap
+    assert f'<xhtml:link rel="alternate" hreflang="fr" href="{SITE_URL}fr/"/>' in sitemap
 
 
-def test_unpublished_language_is_built_on_request(tmp_path):
-    assert build_site.build(tmp_path, langs=["en"]) == ["en"]
-    html = (tmp_path / "en" / "stats.html").read_text(encoding="utf-8")
-    assert '<html lang="en" data-locale="en-GB" data-time-zone="Europe/Brussels" data-root="../">' in html
-    assert f'content="{SITE_URL}en/stats.html"' in html
+def test_a_single_language_can_be_built_on_request(tmp_path):
+    assert build_site.build(tmp_path, langs=["fr"]) == ["fr"]
+    html = (tmp_path / "fr" / "stats.html").read_text(encoding="utf-8")
+    assert '<html lang="fr" data-locale="fr-BE" data-time-zone="Europe/Brussels" data-root="../">' in html
+    assert f'content="{SITE_URL}fr/stats.html"' in html
     assert not (tmp_path / "index.html").exists()
 
 
@@ -312,3 +319,41 @@ def test_cli_builds_the_pseudo_locale(tmp_path, capsys):
     assert build_site.main(["--out", str(tmp_path / "site"), "--pseudo", "--lastmod", LASTMOD]) == 0
     assert build_site.PSEUDO_LANG in capsys.readouterr().out
     assert (tmp_path / "site" / build_site.PSEUDO_CONF["path"] / "index.html").is_file()
+
+
+def _directives(policy):
+    parsed = {}
+    for part in policy.rstrip(";").split(";"):
+        name, *sources = part.split()
+        assert name not in parsed, name
+        parsed[name] = sources
+    return parsed
+
+
+@pytest.mark.parametrize("page", PAGES)
+def test_page_policy_comes_from_the_single_table(site, page):
+    html = (site / page).read_text(encoding="utf-8")
+    csp = html_unescape(_attr(html, r'http-equiv="Content-Security-Policy" content="([^"]*)"'))
+    assert csp == build_site.content_security_policy(page)
+
+
+def test_map_policy_only_adds_sources_to_the_shared_policy():
+    shared = _directives(build_site.content_security_policy("stats.html"))
+    page = _directives(build_site.content_security_policy("index.html"))
+    assert page.keys() == shared.keys()
+    for name, sources in shared.items():
+        assert page[name][:len(sources)] == sources
+    assert "https://protomaps.github.io" in page["connect-src"]
+
+
+def test_policy_additions_are_not_duplicated():
+    policy = build_site.content_security_policy(
+        "x", base={"img-src": ["'self'"]}, additions={"x": {"img-src": ["'self'", "data:"], "media-src": ["blob:"]}})
+    assert policy == "img-src 'self' data:; media-src blob:;"
+
+
+def test_not_found_policy_is_locked_down(site):
+    html = (site / build_site.NOT_FOUND).read_text(encoding="utf-8")
+    csp = _directives(html_unescape(_attr(html, r'http-equiv="Content-Security-Policy" content="([^"]*)"')))
+    assert csp["default-src"] == ["'none'"]
+    assert "script-src" not in csp

@@ -258,8 +258,7 @@ fetch(i18n.dataUrl("stats.json"))
     const avgKm = i18n.number((routing.avg_distance_m || 0) / 1000, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const trips = i18n.number(routing.routed_trips || 0);
     document.getElementById("routing-stats").innerHTML =
-      `${escapeHTML(i18n.t("header.simulatedTrips"))} <span>${escapeHTML(trips)}</span><br>` +
-      `${escapeHTML(i18n.t("header.averageDistance"))} <span>${escapeHTML(avgKm)} km</span>`;
+      html`${i18n.t("header.simulatedTrips")} <span>${trips}</span><br>${i18n.t("header.averageDistance")} <span>${avgKm} km</span>`;
   })
   .catch(() => { });
 
@@ -736,7 +735,7 @@ async function setBasemap(id) {
     currentBasemap = id;
     if (bm.url) mapRef.once("style.load", () => loadBasemapPatterns(mapRef, style, bm.url));
     mapRef.setStyle(style, { diff: false, transformStyle: keepOverlays });
-    try { localStorage.setItem(BASEMAP_STORAGE_KEY, id); } catch (e) {}
+    try { localStorage.setItem(BASEMAP_STORAGE_KEY, id); } catch {}
     renderBasemapMenu();
   } catch (err) {
     console.error("Fond de carte indisponible :", err);
@@ -769,7 +768,7 @@ function setupBasemapControl() {
 
 (async () => {
   let saved = null;
-  try { saved = localStorage.getItem(BASEMAP_STORAGE_KEY); } catch (e) {}
+  try { saved = localStorage.getItem(BASEMAP_STORAGE_KEY); } catch {}
   let bm = BASEMAPS.find(b => b.id === saved) || BASEMAPS[0];
   let style;
   try {
@@ -797,7 +796,7 @@ function initMap(style) {
   map.addControl(
     new maplibregl.AttributionControl({
       compact: false,
-      customAttribution: [`<a href="https://github.com/PasLoin/Brussels-Pedestrian-Network" target="_blank" rel="noopener">PasLoin</a> · <a href="./stats.html">${escapeHTML(i18n.t("common.nav.statsShort"))}</a>`]
+      customAttribution: [String(html`<a href="https://github.com/PasLoin/Brussels-Pedestrian-Network" target="_blank" rel="noopener">PasLoin</a> · <a href="./stats.html">${i18n.t("common.nav.statsShort")}</a>`)]
     }),
     "bottom-right"
   );
@@ -917,7 +916,7 @@ function initMap(style) {
     const makeSubFilter = ({ items, activeSet, dataKey, updateFn, parentSub, layerId, parentItem }) => {
       const header = document.createElement("div");
       header.className = "legend-sub-header";
-      header.innerHTML = `<span>${escapeHTML(i18n.t("legend.filterByType"))}</span>`;
+      header.innerHTML = html`<span>${i18n.t("legend.filterByType")}</span>`;
 
       const resetBtn = document.createElement("button");
       resetBtn.className = "legend-sub-reset";

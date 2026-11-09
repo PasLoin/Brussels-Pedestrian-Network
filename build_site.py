@@ -17,10 +17,42 @@ SITE_URL = "https://pasloin.github.io/Brussels-Pedestrian-Network/"
 PAGES = ("index.html", "stats.html", "evolution.html", "about.html")
 STATIC = (
     "robots.txt", "favicon.svg", "app.css", "style.json",
-    "i18n.js", "app.js", "nav.js", "filters.js", "popups.js", "stats.js", "evolution.js",
+    "i18n.js", "lang.js", "html.js", "app.js", "nav.js", "filters.js", "popups.js", "stats.js", "evolution.js",
 )
+SITEMAP_ENTRIES = {
+    "index.html": ("daily", "1.0"),
+    "stats.html": ("daily", "0.8"),
+    "evolution.html": ("daily", "0.8"),
+    "about.html": ("monthly", "0.7"),
+}
+NOT_FOUND = "404.html"
+CSP = {
+    "default-src": ["'self'"],
+    "script-src": ["'self'", "https://unpkg.com", "https://cdn.jsdelivr.net"],
+    "style-src": ["'self'", "https://unpkg.com", "'unsafe-inline'"],
+    "img-src": ["'self'", "https://tiles.openfreemap.org", "https://www.openstreetmap.org", "data:"],
+    "connect-src": ["'self'", "https://tiles.openfreemap.org", "https://unpkg.com"],
+    "worker-src": ["blob:"],
+    "child-src": ["blob:"],
+    "font-src": ["https://tiles.openfreemap.org"],
+    "object-src": ["'none'"],
+    "base-uri": ["'self'"],
+    "upgrade-insecure-requests": [],
+}
+CSP_ADDITIONS = {
+    "index.html": {
+        "img-src": ["https://pasloin.github.io", "blob:"],
+        "connect-src": ["https://pasloin.github.io", "https://protomaps.github.io"],
+    },
+}
+CSP_NOT_FOUND = {
+    "default-src": ["'none'"],
+    "img-src": ["'self'"],
+    "style-src": ["'unsafe-inline'"],
+    "base-uri": ["'none'"],
+    "form-action": ["'none'"],
+}
 SITEMAP = "sitemap.xml"
-LASTMOD_PLACEHOLDER = "__LASTMOD__"
 LANGUAGE_FIELDS = {"path", "locale", "og", "name", "published"}
 LANG_PATH = re.compile(r"[a-z]{2}/")
 PLURAL_CATEGORIES = ("zero", "one", "two", "few", "many", "other")
@@ -131,8 +163,7 @@ def with_pseudo_language(config):
 
 
 def dictionary_json(dictionary):
-    text = json.dumps(dictionary, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-    return Markup(text.replace("&", "\\u0026").replace("<", "\\u003c").replace(">", "\\u003e"))
+    return embedded_json(dictionary)
 
 
 def translator(dictionary):
@@ -162,6 +193,44 @@ def page_url(conf, page):
     return SITE_URL + conf["path"] + ("" if page == "index.html" else page)
 
 
+def content_security_policy(page=None, base=CSP, additions=CSP_ADDITIONS):
+    directives = {name: list(sources) for name, sources in base.items()}
+    for name, sources in additions.get(page, {}).items():
+        directives.setdefault(name, [])
+        directives[name] += [s for s in sources if s not in directives[name]]
+    return "; ".join(" ".join([name, *sources]) for name, sources in directives.items()) + ";"
+
+
+def published_languages(config):
+    return [lang for lang, conf in config["languages"].items() if conf["published"]]
+
+
+def page_dictionaries(config):
+    return {lang: page_dictionary(config, lang) for lang in published_languages(config)}
+
+
+def alternates(config, lang, page, dictionaries):
+    here = config["languages"][lang]
+    result = []
+    for other in published_languages(config):
+        conf = config["languages"][other]
+        t = translator(dictionaries[other])
+        result.append({
+            "lang": other,
+            "name": conf["name"],
+            "og": conf["og"],
+            "href": page_root(here) + conf["path"] + ("" if page == "index.html" else page),
+            "url": page_url(conf, page),
+            "banner": {"text": str(t("lang.banner.text")), "switch": str(t("lang.banner.switch")), "dismiss": str(t("lang.banner.dismiss"))},
+        })
+    return result
+
+
+def embedded_json(value):
+    text = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return Markup(text.replace("&", "\\u0026").replace("<", "\\u003c").replace(">", "\\u003e"))
+
+
 def environment():
     return Environment(
         loader=FileSystemLoader(TEMPLATES_DIR),
@@ -172,21 +241,51 @@ def environment():
     )
 
 
-def render_page(lang, page, config=None, env=None, dictionary=None):
+def render_page(lang, page, config=None, env=None, dictionary=None, dictionaries=None):
     config = config or load_languages()
     env = env or environment()
     dictionary = page_dictionary(config, lang) if dictionary is None else dictionary
+    dictionaries = page_dictionaries(config) if dictionaries is None else dictionaries
     conf = config["languages"][lang]
+    links = alternates(config, lang, page, dictionaries)
+    is_root = conf["path"] == ""
     return env.get_template(f"{page}.j2").render(
         lang=lang,
         reference=config["reference"],
         locale=conf["locale"],
+        og=conf["og"],
         time_zone=config["timeZone"],
         root=page_root(conf),
         page=page,
         canonical=page_url(conf, page),
+        csp=Markup(content_security_policy(page)),
+        alternates=links,
+        x_default=page_url(config["languages"][root_language(config)], page),
         t=translator(dictionary),
         dictionary_json=dictionary_json(dictionary),
+        languages_json=embedded_json({
+            "current": lang,
+            "isRoot": is_root,
+            "languages": [{key: alt[key] for key in ("lang", "name", "href", "banner")} for alt in links],
+        }),
+    )
+
+
+def render_not_found(config=None, env=None, dictionaries=None):
+    config = config or load_languages()
+    env = env or environment()
+    dictionaries = page_dictionaries(config) if dictionaries is None else dictionaries
+    reference = root_language(config)
+    sections = [
+        {"lang": lang, "url": page_url(config["languages"][lang], "index.html"), "t": translator(dictionaries[lang])}
+        for lang in published_languages(config)
+    ]
+    return env.get_template(f"{NOT_FOUND}.j2").render(
+        lang=reference,
+        csp=Markup(content_security_policy(base=CSP_NOT_FOUND, additions={})),
+        site_url=SITE_URL,
+        sections=sections,
+        t=translator(dictionaries[reference]),
     )
 
 
@@ -200,9 +299,33 @@ def selected_languages(config, requested=None):
     return [lang for lang in langs if lang in requested]
 
 
-def write_sitemap(out, lastmod):
-    text = (ROOT / SITEMAP).read_text(encoding="utf-8")
-    (out / SITEMAP).write_text(text.replace(LASTMOD_PLACEHOLDER, lastmod), encoding="utf-8")
+def sitemap_xml(config, lastmod):
+    langs = published_languages(config)
+    root = config["languages"][root_language(config)]
+    lines = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">',
+    ]
+    for page, (changefreq, priority) in SITEMAP_ENTRIES.items():
+        for lang in langs:
+            lines += [
+                "  <url>",
+                f"    <loc>{escape(page_url(config['languages'][lang], page))}</loc>",
+                f"    <lastmod>{escape(lastmod)}</lastmod>",
+                f"    <changefreq>{changefreq}</changefreq>",
+                f"    <priority>{priority}</priority>",
+            ]
+            for other in langs:
+                url = escape(page_url(config["languages"][other], page))
+                lines.append(f'    <xhtml:link rel="alternate" hreflang="{other}" href="{url}"/>')
+            lines.append(f'    <xhtml:link rel="alternate" hreflang="x-default" href="{escape(page_url(root, page))}"/>')
+            lines.append("  </url>")
+    lines.append("</urlset>")
+    return "\n".join(lines) + "\n"
+
+
+def write_sitemap(out, config, lastmod):
+    (out / SITEMAP).write_text(sitemap_xml(config, lastmod), encoding="utf-8")
 
 
 def build(out, langs=None, lastmod=None, pseudo=False):
@@ -214,23 +337,25 @@ def build(out, langs=None, lastmod=None, pseudo=False):
     env = environment()
     shutil.rmtree(out, ignore_errors=True)
     out.mkdir(parents=True)
+    dictionaries = page_dictionaries(config)
     for lang in built:
         dictionary = page_dictionary(config, lang)
         target = out / config["languages"][lang]["path"]
         target.mkdir(parents=True, exist_ok=True)
         for page in PAGES:
-            (target / page).write_text(render_page(lang, page, config, env, dictionary), encoding="utf-8")
+            (target / page).write_text(render_page(lang, page, config, env, dictionary, dictionaries), encoding="utf-8")
     if pseudo:
         pseudo_config = with_pseudo_language(config)
         dictionary = pseudo_dictionary(page_dictionary(config, config["reference"]))
         target = out / PSEUDO_CONF["path"]
         target.mkdir(parents=True, exist_ok=True)
         for page in PAGES:
-            (target / page).write_text(render_page(PSEUDO_LANG, page, pseudo_config, env, dictionary), encoding="utf-8")
+            (target / page).write_text(render_page(PSEUDO_LANG, page, pseudo_config, env, dictionary, dictionaries), encoding="utf-8")
         built.append(PSEUDO_LANG)
     for name in STATIC:
         shutil.copy2(ROOT / name, out / name)
-    write_sitemap(out, lastmod or datetime.now(timezone.utc).date().isoformat())
+    (out / NOT_FOUND).write_text(render_not_found(config, env, dictionaries), encoding="utf-8")
+    write_sitemap(out, config, lastmod or datetime.now(timezone.utc).date().isoformat())
     return built
 
 
