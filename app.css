@@ -350,3 +350,21 @@ body { font-family: system-ui, sans-serif; background: #1a1a1a; }
 #edit-detail .edit-row .label { color: #6b7280; flex-shrink: 0; }
 #edit-detail .edit-row .value { color: #111827; font-weight: 600; text-align: right; word-break: break-word; }
 #edit-detail .edit-row .value a { color: #0369a1; }
+#edit-panel h3 { margin: 10px 0 4px; font-size: 13px; }
+#edit-panel .edit-help { color: #6b7280; font-size: 12px; }
+#edit-panel .edit-warn { color: #b45309; font-weight: 600; }
+#edit-panel .edit-form, #edit-panel .edit-upload { margin: 8px 0; display: flex; flex-direction: column; gap: 6px; }
+#edit-panel .edit-side { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+#edit-panel .edit-side select { flex-basis: 100%; max-width: 100%; font: inherit; padding: 3px 4px; }
+#edit-panel .edit-swatch { display: inline-block; width: 14px; height: 4px; border-radius: 2px; }
+#edit-panel .edit-side-left .edit-swatch { background: #0284c7; }
+#edit-panel .edit-side-right .edit-swatch { background: #ea580c; }
+#edit-panel .edit-field { display: flex; flex-direction: column; gap: 2px; border: 0; padding: 0; margin: 0; }
+#edit-panel .edit-field textarea, #edit-panel .edit-field input[type="text"] { font: inherit; padding: 4px 6px; border: 1px solid #d1d5db; border-radius: 6px; }
+#edit-panel .edit-check { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+#edit-panel .edit-queue { list-style: none; margin: 4px 0; padding: 0; }
+#edit-panel .edit-queue li { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; padding: 4px 0; border-bottom: 1px solid #f3f4f6; }
+#edit-panel .edit-link { background: none; border: 0; padding: 0; color: #0369a1; cursor: pointer; font: inherit; font-size: 12px; text-decoration: underline; }
+#edit-panel .edit-actions { display: flex; flex-direction: column; gap: 6px; }
+#edit-panel .edit-send { background: #16a34a; }
+#edit-panel .edit-result a { color: #0369a1; }

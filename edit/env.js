@@ -20,11 +20,22 @@ export const ENVS = Object.freeze({
   }),
 });
 
+export const APP_NAME = "BrusselsPedestrianNetwork";
+export const APP_VERSION = "0.2.0";
+export const OSM_API_VERSION = "4.0.1";
+export const MAX_WAYS_PER_CHANGESET = 50;
+
 export const SETTINGS = Object.freeze({
   editEnabled: true,
   candidateMinZoom: 17,
   authPendingTtlMs: 5 * 60 * 1000,
   landingPage: "land.html",
+  maxWaysPerChangeset: 50,
+  maxChangesetSpanM: 1000,
+  maxChangesetsPerUpload: 3,
+  longWayWarningM: 200,
+  defaultHashtags: Object.freeze(["#BrusselsPedestrianNetwork"]),
+  sourcePresets: Object.freeze(["survey", "local_knowledge", "streetlevel imagery", "aerial imagery"]),
 });
 
 export function resolveEnv(name, pageUrl, settings = SETTINGS) {
@@ -32,6 +43,7 @@ export function resolveEnv(name, pageUrl, settings = SETTINGS) {
   return Object.freeze({
     ...ENVS[name],
     ...settings,
+    maxWaysPerChangeset: Math.min(settings.maxWaysPerChangeset, MAX_WAYS_PER_CHANGESET),
     redirectUrl: new URL(settings.landingPage, pageUrl).href,
   });
 }

@@ -446,7 +446,7 @@
       "retry": "Relancer la connexion",
       "failed": "Connexion échouée ou annulée.",
       "expired": "Session expirée, reconnectez-vous.",
-      "unconfigured": "Client OAuth non configuré pour cet environnement (voir edit/TESTING.md).",
+      "unconfigured": "Client OAuth non configuré pour cet environnement.",
       "disabled": "L'édition est désactivée."
     },
     "status": {
@@ -473,6 +473,61 @@
       "mismatch": "Cette connexion a été lancée pour un autre serveur OSM. Fermez cette fenêtre et recommencez.",
       "denied": "L'accès a été refusé sur OpenStreetMap.",
       "nocode": "Cette page sert uniquement à terminer une connexion OpenStreetMap."
+    },
+    "form": {
+      "direction": "Gauche et droite suivent le sens du way : bleu à gauche, orange à droite.",
+      "left": "Gauche",
+      "right": "Droite",
+      "choose": "Choisir…",
+      "add": "Ajouter à la file",
+      "update": "Mettre à jour dans la file",
+      "bothSides": "Choisissez une valeur pour les deux côtés.",
+      "longWay": "Ce way mesure {{length}} m : si le trottoir change le long de la rue, découpez-le d'abord dans JOSM ou iD."
+    },
+    "value": {
+      "separate": "separate (cartographié à part)",
+      "yes": "yes (présent, non cartographié à part)",
+      "no": "no (pas de trottoir)"
+    },
+    "queue": {
+      "title_one": "File d'édition ({{count}})",
+      "title_other": "File d'édition ({{count}})",
+      "empty": "Aucune modification en attente.",
+      "remove": "Retirer",
+      "undo": "Annuler la dernière"
+    },
+    "upload": {
+      "comment": "Commentaire du changeset",
+      "source": "Sources (obligatoire)",
+      "sourceOther": "Autres sources, séparées par ;",
+      "hashtags": "Hashtags",
+      "review": "Demander une relecture",
+      "loginFirst": "Connectez-vous pour envoyer.",
+      "prepare": "Préparer l'envoi",
+      "send_one": "Envoyer {{count}} changeset",
+      "send_other": "Envoyer {{count}} changesets",
+      "busy": "Traitement en cours…",
+      "sourceRequired": "Indiquez au moins une source.",
+      "commentRequired": "Écrivez un commentaire de changeset.",
+      "defaultComment_one": "Ajout des tags sidewalk sur {{count}} rue résidentielle",
+      "defaultComment_other": "Ajout des tags sidewalk sur {{count}} rues résidentielles"
+    },
+    "plan": {
+      "deleted": "supprimé sur OSM, retiré de la file.",
+      "alreadyFixed": "déjà corrigé depuis, retiré de la file.",
+      "modifiedMeanwhile": "modifié entre-temps, retiré de la file.",
+      "changesets_one": "{{count}} changeset va être créé pour {{ways}} way(s).",
+      "changesets_other": "{{count}} changesets vont être créés pour {{ways}} way(s).",
+      "tooMany": "La file couvre {{count}} zones, au-delà des {{max}} changesets autorisés : envoyez-en une partie d'abord.",
+      "changed": "La file a changé depuis la préparation : vérifiez le nouveau plan et renvoyez."
+    },
+    "result": {
+      "sent_one": "{{count}} changeset envoyé :",
+      "sent_other": "{{count}} changesets envoyés :",
+      "conflict": "{{way}} a été modifié sur OSM entre-temps : rien n'a été écrit pour son groupe. Il a été retiré de la file ; préparez à nouveau.",
+      "failed": "Envoi impossible : {{message}}",
+      "closedEmpty_one": "{{count}} changeset vide fermé.",
+      "closedEmpty_other": "{{count}} changesets vides fermés."
     }
   }
 }

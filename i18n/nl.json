@@ -446,7 +446,7 @@
       "retry": "Aanmelding opnieuw starten",
       "failed": "Aanmelden mislukt of geannuleerd.",
       "expired": "Sessie verlopen, meld je opnieuw aan.",
-      "unconfigured": "OAuth-client niet ingesteld voor deze omgeving (zie edit/TESTING.md).",
+      "unconfigured": "OAuth-client niet ingesteld voor deze omgeving.",
       "disabled": "Bewerken is uitgeschakeld."
     },
     "status": {
@@ -473,6 +473,61 @@
       "mismatch": "Deze aanmelding is gestart voor een andere OSM-server. Sluit dit venster en begin opnieuw.",
       "denied": "De toegang werd geweigerd op OpenStreetMap.",
       "nocode": "Deze pagina rondt alleen een OpenStreetMap-aanmelding af."
+    },
+    "form": {
+      "direction": "Links en rechts volgen de richting van de way: blauw links, oranje rechts.",
+      "left": "Links",
+      "right": "Rechts",
+      "choose": "Kies…",
+      "add": "Toevoegen aan wachtrij",
+      "update": "Bijwerken in wachtrij",
+      "bothSides": "Kies een waarde voor beide kanten.",
+      "longWay": "Deze way is {{length}} m lang: als de stoep langs de straat verandert, splits hem eerst in JOSM of iD."
+    },
+    "value": {
+      "separate": "separate (apart gekarteerd)",
+      "yes": "yes (aanwezig, niet apart gekarteerd)",
+      "no": "no (geen stoep)"
+    },
+    "queue": {
+      "title_one": "Bewerkingswachtrij ({{count}})",
+      "title_other": "Bewerkingswachtrij ({{count}})",
+      "empty": "Geen wachtende wijzigingen.",
+      "remove": "Verwijderen",
+      "undo": "Laatste ongedaan maken"
+    },
+    "upload": {
+      "comment": "Changeset-opmerking",
+      "source": "Bronnen (verplicht)",
+      "sourceOther": "Andere bronnen, gescheiden door ;",
+      "hashtags": "Hashtags",
+      "review": "Nalezing vragen",
+      "loginFirst": "Meld je aan om te verzenden.",
+      "prepare": "Verzending voorbereiden",
+      "send_one": "{{count}} changeset verzenden",
+      "send_other": "{{count}} changesets verzenden",
+      "busy": "Bezig…",
+      "sourceRequired": "Geef minstens één bron op.",
+      "commentRequired": "Schrijf een changeset-opmerking.",
+      "defaultComment_one": "Sidewalk-tags toegevoegd op {{count}} woonstraat",
+      "defaultComment_other": "Sidewalk-tags toegevoegd op {{count}} woonstraten"
+    },
+    "plan": {
+      "deleted": "verwijderd op OSM, uit de wachtrij gehaald.",
+      "alreadyFixed": "intussen al verbeterd, uit de wachtrij gehaald.",
+      "modifiedMeanwhile": "intussen gewijzigd, uit de wachtrij gehaald.",
+      "changesets_one": "Er wordt {{count}} changeset aangemaakt voor {{ways}} way(s).",
+      "changesets_other": "Er worden {{count}} changesets aangemaakt voor {{ways}} way(s).",
+      "tooMany": "De wachtrij beslaat {{count}} zones, meer dan de toegestane {{max}} changesets: verzend eerst een deel.",
+      "changed": "De wachtrij is gewijzigd sinds de voorbereiding: controleer het nieuwe plan en verzend opnieuw."
+    },
+    "result": {
+      "sent_one": "{{count}} changeset verzonden:",
+      "sent_other": "{{count}} changesets verzonden:",
+      "conflict": "{{way}} werd intussen gewijzigd op OSM: voor zijn groep werd niets geschreven. Hij is uit de wachtrij gehaald; bereid opnieuw voor.",
+      "failed": "Verzenden mislukt: {{message}}",
+      "closedEmpty_one": "{{count}} lege changeset gesloten.",
+      "closedEmpty_other": "{{count}} lege changesets gesloten."
     }
   }
 }

@@ -112,3 +112,17 @@ def test_editor_notes_and_tooling_are_not_published(site):
 def test_vendored_osm_api_is_the_reviewed_build():
     data = (ROOT / "vendor" / "osm-api-4.0.1.min.js").read_bytes()
     assert hashlib.sha256(data).hexdigest() == OSM_API_SHA256
+
+
+def test_devtest_panel_has_a_queue(site):
+    assert 'id="edit-queue"' in _html(site / DEVTEST_PAGE)
+
+
+def test_every_basemap_names_its_imagery_for_changesets():
+    src = (ROOT / "map" / "basemaps.js").read_text(encoding="utf-8")
+    block = src[src.index("export const BASEMAPS = ["):src.index("export const BASEMAP_STORAGE_KEY")]
+    ids = re.findall(r'\bid: "([\w-]+)", label:', block)
+    names = re.findall(r'osmName: "([^"]+)"', block)
+    assert ids and len(names) == len(ids)
+    assert len(set(names)) == len(names)
+    assert all("i18n" not in n for n in names)

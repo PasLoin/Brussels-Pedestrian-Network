@@ -446,7 +446,7 @@
       "retry": "Restart login",
       "failed": "Login failed or cancelled.",
       "expired": "Session expired, please log in again.",
-      "unconfigured": "OAuth client not configured for this environment (see edit/TESTING.md).",
+      "unconfigured": "OAuth client not configured for this environment.",
       "disabled": "Editing is disabled."
     },
     "status": {
@@ -473,6 +473,61 @@
       "mismatch": "This login was started for another OSM server. Close this window and start again.",
       "denied": "Access was refused on OpenStreetMap.",
       "nocode": "This page only completes an OpenStreetMap login."
+    },
+    "form": {
+      "direction": "Left and right follow the way's direction: blue on the left, orange on the right.",
+      "left": "Left",
+      "right": "Right",
+      "choose": "Choose…",
+      "add": "Add to queue",
+      "update": "Update in queue",
+      "bothSides": "Choose a value for both sides.",
+      "longWay": "This way is {{length}} m long: if the sidewalk changes along the street, split it first in JOSM or iD."
+    },
+    "value": {
+      "separate": "separate (mapped as its own way)",
+      "yes": "yes (present, not mapped separately)",
+      "no": "no sidewalk"
+    },
+    "queue": {
+      "title_one": "Edit queue ({{count}})",
+      "title_other": "Edit queue ({{count}})",
+      "empty": "No pending edits.",
+      "remove": "Remove",
+      "undo": "Undo last"
+    },
+    "upload": {
+      "comment": "Changeset comment",
+      "source": "Sources (required)",
+      "sourceOther": "Other sources, separated by ;",
+      "hashtags": "Hashtags",
+      "review": "Ask for a review",
+      "loginFirst": "Log in to send.",
+      "prepare": "Prepare sending",
+      "send_one": "Send {{count}} changeset",
+      "send_other": "Send {{count}} changesets",
+      "busy": "Working…",
+      "sourceRequired": "Give at least one source.",
+      "commentRequired": "Write a changeset comment.",
+      "defaultComment_one": "Add sidewalk tags on {{count}} residential street",
+      "defaultComment_other": "Add sidewalk tags on {{count}} residential streets"
+    },
+    "plan": {
+      "deleted": "deleted on OSM, removed from the queue.",
+      "alreadyFixed": "already fixed since, removed from the queue.",
+      "modifiedMeanwhile": "modified meanwhile, removed from the queue.",
+      "changesets_one": "{{count}} changeset will be created for {{ways}} way(s).",
+      "changesets_other": "{{count}} changesets will be created for {{ways}} way(s).",
+      "tooMany": "The queue spreads over {{count}} areas, more than the {{max}} changesets allowed: send part of it first.",
+      "changed": "The queue changed since it was prepared: check the new plan and send again."
+    },
+    "result": {
+      "sent_one": "{{count}} changeset sent:",
+      "sent_other": "{{count}} changesets sent:",
+      "conflict": "{{way}} was modified on OSM meanwhile: nothing was written for its group. It has been removed from the queue; prepare again.",
+      "failed": "Sending failed: {{message}}",
+      "closedEmpty_one": "{{count}} empty changeset closed.",
+      "closedEmpty_other": "{{count}} empty changesets closed."
     }
   }
 }
