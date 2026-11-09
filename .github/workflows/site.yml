@@ -14,7 +14,7 @@ on:
       - "i18n.js"
       - "lang.js"
       - "html.js"
-      - "app.js"
+      - "map/**"
       - "nav.js"
       - "filters.js"
       - "popups.js"

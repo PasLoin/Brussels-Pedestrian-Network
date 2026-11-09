@@ -96,6 +96,7 @@ def check_translation(name, published, reference, translated, report):
 
 def site_sources(templates_dir=TEMPLATES_DIR, root=ROOT):
     scripts = [Path(root) / name for name in build_site.STATIC if name.endswith(".js")]
+    scripts += sorted(p for folder in build_site.STATIC_DIRS for p in (Path(root) / folder).rglob("*.js"))
     return scripts + [Path(root) / "build_site.py"] + sorted(Path(templates_dir).rglob("*.j2"))
 
 

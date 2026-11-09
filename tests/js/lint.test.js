@@ -15,7 +15,7 @@ const ESLint = loadESLint();
 const ROOT = path.join(__dirname, "..", "..");
 const lint = ESLint && new ESLint({ cwd: ROOT });
 
-async function rules(code, file = "app.js") {
+async function rules(code, file = "map/main.js") {
   const [result] = await lint.lintText(code, { filePath: path.join(ROOT, file) });
   return result.messages.map(m => m.ruleId);
 }
@@ -49,6 +49,7 @@ test("the html tag and empty strings are accepted", options, async () => {
 test("scripts see the globals of the scripts loaded before them", options, async () => {
   assert.deepEqual(await rules("buildRoute(); makePopupLayers(); setFilterIfLayer(); I18N.fromDocument();"), []);
   assert.deepEqual(await rules("Chart.defaults.color = '#000';", "stats.js"), []);
-  assert.deepEqual(await rules("Chart.defaults.color = '#000';", "app.js"), ["no-undef"]);
+  assert.deepEqual(await rules("Chart.defaults.color = '#000';", "map/main.js"), ["no-undef"]);
+  assert.deepEqual(await rules("i18n.t('x');"), ["no-undef"]);
   assert.deepEqual(await rules("notDefinedAnywhere();"), ["no-undef"]);
 });

@@ -101,7 +101,7 @@ def read_text(name: str) -> str:
     return (ROOT / name).read_text(encoding="utf-8")
 
 
-FRONT_JS = ("app.js", "popups.js")
+FRONT_JS = ("popups.js", *sorted(p.relative_to(ROOT).as_posix() for p in (ROOT / "map").glob("*.js")))
 
 PAGES = build_site.PAGES
 
@@ -116,11 +116,14 @@ def front_js() -> str:
 
 
 def local_scripts(html: str) -> set:
-    return set(re.findall(r'<script\s+src="\./([\w.-]+\.js)"', html))
+    return set(re.findall(r'<script\b[^>]*\ssrc="\./([\w./-]+\.js)"', html))
 
 
 def deployed_files() -> set:
-    return set(build_site.STATIC)
+    files = set(build_site.STATIC)
+    for folder in build_site.STATIC_DIRS:
+        files |= {p.relative_to(ROOT).as_posix() for p in (ROOT / folder).rglob("*") if p.is_file() and p.name not in build_site.STATIC_DIR_IGNORE}
+    return files
 
 
 def push_trigger_paths(workflow: str) -> set:
@@ -270,7 +273,7 @@ def assert_layer_contract(geojson_path, layer: str) -> list:
         for (lyr, prop), allowed in FILTER_VALUES.items():
             if lyr == layer:
                 assert feature["properties"][prop] in allowed, (
-                    f"{layer}.{prop}={feature['properties'][prop]!r} not shown by app.js"
+                    f"{layer}.{prop}={feature['properties'][prop]!r} not shown by the map"
                 )
     return real
 
