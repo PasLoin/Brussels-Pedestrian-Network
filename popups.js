@@ -155,6 +155,21 @@ function makePopupLayers({ flowColors, sidewalkStatuses, highwayLayers, elevator
 
   const click = [
     {
+      ids: ["sidewalk-roads"],
+      format: p => {
+        const wid = parseInt(p.osm_id, 10) || 0;
+        const length = Number(p.length_m);
+        return html`
+          ${popupTitle((sidewalkStatuses.find(s => s.value === p.sw) || {}).color, t("layer.sidewalkTags"))}
+          ${popupRow(t("popup.label.street"), p.name || "—")}
+          ${popupRow(t("popup.label.status"), known(sidewalkLabels, p.sw) || p.sw || "?")}
+          ${popupRow("highway", p.highway || "—")}
+          ${Number.isFinite(length) && length > 0 && popupRow(t("popup.label.length"), `${formatMeasure(i18n, Math.round(length))} m`)}
+          ${wid > 0 && popupRow(t("popup.label.way"), wayLinks(wid))}
+        `;
+      }
+    },
+    {
       ids: ["missing-crossings"],
       format: p => {
         if (p.type === "wrong_tag") return formatWrongTagCrossing(p, i18n);

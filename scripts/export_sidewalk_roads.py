@@ -22,6 +22,13 @@ def _safe_str(val) -> str:
     return str(val).strip().lower()
 
 
+def _safe_int(val) -> int:
+    try:
+        return int(val)
+    except (TypeError, ValueError):
+        return 0
+
+
 def _classify_edge_sidewalk(
     sw: str, sw_left: str, sw_right: str, sw_both: str,
 ) -> str:
@@ -101,9 +108,12 @@ def export_sidewalk_roads(
             "geometry": row.geometry,
             "sw": status,
             "name": name,
+            "osm_id": _safe_int(row.get("@id")),
+            "highway": _safe_str(row.get("highway")),
+            "length_m": round(road_length, 1),
         })
 
-    fb = {"geometry": None, "sw": "", "name": ""}
+    fb = {"geometry": None, "sw": "", "name": "", "osm_id": 0, "highway": "", "length_m": 0.0}
     if rows:
         out_gdf = gpd.GeoDataFrame(rows, crs="EPSG:31370").to_crs("EPSG:4326")
     else:

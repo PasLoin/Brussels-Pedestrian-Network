@@ -100,3 +100,9 @@ test("Zinneke credit contains the OpenStreetMap credit so MapLibre shows it once
   const { ZINNEKE_ATTRIBUTION, OSM_ATTRIBUTION } = await load();
   assert.ok(ZINNEKE_ATTRIBUTION.includes(OSM_ATTRIBUTION));
 });
+
+test("sidewalk road features are addressable by their OSM way id", async () => {
+  const { pedestrianSource } = await load();
+  const source = pedestrianSource("pmtiles://https://example.org/pedestrian.pmtiles");
+  assert.deepEqual(source.promoteId, { sidewalk_roads: "osm_id" });
+});

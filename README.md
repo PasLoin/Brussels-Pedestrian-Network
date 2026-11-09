@@ -41,6 +41,18 @@ Les trois dernières couches sont construites dans une archive séparée sans su
 | `flow_pct` | 0 à 100 | Flux relatif, en % du maximum |
 | `highway` | `footway`, `primary`, `residential`… | Tag OSM d'origine |
 
+### Propriétés de `sidewalk_roads`
+
+| Propriété | Valeurs | Description |
+|-----------|---------|-------------|
+| `osm_id` | entier | ID du way OSM (0 si inconnu), aussi utilisé comme `promoteId` de la source |
+| `highway` | `residential`, `tertiary`… | Tag OSM d'origine |
+| `sw` | `separate`, `yes`, `documented`, `partial`, `unknown` | Statut des tags sidewalk |
+| `name` | texte | Nom de la rue, en minuscules |
+| `length_m` | mètres, 1 décimale | Longueur du way |
+
+Un clic sur la couche ouvre un popup avec les liens OSM, JOSM et iD du way.
+
 ## Pipeline de build
 
 ```
