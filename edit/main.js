@@ -377,6 +377,7 @@ async function selectWay(id) {
     state.detail = { kind: "error", message: err && err.message };
   }
   renderDetail();
+  (detailEl.querySelector('[data-edit-action="queue"]') || detailEl).scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
 
 map.on("click", LAYER, (e) => {
