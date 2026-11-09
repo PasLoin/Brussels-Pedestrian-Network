@@ -17,8 +17,10 @@ SITE_URL = "https://pasloin.github.io/Brussels-Pedestrian-Network/"
 PAGES = ("index.html", "stats.html", "evolution.html", "about.html")
 STATIC = (
     "robots.txt", "favicon.svg", "app.css", "style.json",
-    "i18n.js", "lang.js", "html.js", "app.js", "nav.js", "filters.js", "popups.js", "stats.js", "evolution.js",
+    "i18n.js", "lang.js", "html.js", "nav.js", "filters.js", "popups.js", "stats.js", "evolution.js",
 )
+STATIC_DIRS = ("map",)
+STATIC_DIR_IGNORE = ("package.json",)
 SITEMAP_ENTRIES = {
     "index.html": ("daily", "1.0"),
     "stats.html": ("daily", "0.8"),
@@ -354,6 +356,8 @@ def build(out, langs=None, lastmod=None, pseudo=False):
         built.append(PSEUDO_LANG)
     for name in STATIC:
         shutil.copy2(ROOT / name, out / name)
+    for name in STATIC_DIRS:
+        shutil.copytree(ROOT / name, out / name, ignore=shutil.ignore_patterns(*STATIC_DIR_IGNORE))
     (out / NOT_FOUND).write_text(render_not_found(config, env, dictionaries), encoding="utf-8")
     write_sitemap(out, config, lastmod or datetime.now(timezone.utc).date().isoformat())
     return built
