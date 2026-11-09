@@ -78,7 +78,7 @@ COLLECT_TEXT = """
 
 RENDER_POPUPS = """
 samples => samples.flatMap(([kind, id, props]) => {
-  const entry = (kind === "hover" ? HOVER_LAYERS : CLICK_LAYERS).find(e => e.ids.includes(id));
+  const entry = (kind === "hover" ? BPNMap.hoverPopups : BPNMap.clickPopups).find(e => e.ids.includes(id));
   const box = document.createElement("div");
   box.innerHTML = entry.format(props);
   const texts = [];
