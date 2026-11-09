@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-09
+ 
+### Nouveau fond de carte UrbIS Ortho
+ 
+- Ajout d'un fond de carte combinant l'orthophoto UrbIS (`urbisgrid:Ortho`) et les lignes topographiques UrbIS (`urbistopo:TopoLines`) superposées.
+
+### Support multilingue
+
+- Les textes autrefois en "dur" sont désormais gérés via un support i18n. L'application est disponible en français et en anglais. Le néerlandais est en préparation. voir fichier TRANSLATION.md
+
 ## 2026-11-05
  
 ### Kerbs absents : `kerb=no` accepté comme extrémité renseignée (#57)
