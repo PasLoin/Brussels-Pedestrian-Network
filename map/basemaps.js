@@ -1,10 +1,14 @@
 import { i18n } from "./i18n.js";
 import { store } from "./store.js";
-import { adaptZinnekeStyle, keepOverlays, mergeLibertyStyle } from "./basemap-styles.js";
+import { adaptZinnekeStyle, buildWmsStyle, keepOverlays, mergeLibertyStyle, wmsTileUrl } from "./basemap-styles.js";
 import { BASE_STYLE_OVERRIDES } from "./layers.js";
 
 const LIBERTY_URL = "https://tiles.openfreemap.org/styles/liberty";
 const ZINNEKE_BASE = "https://pasloin.github.io/ZinnekeTiles/";
+const URBIS_GRID_WMS = "https://geoservices-urbis.irisnet.be/geoserver/urbisgrid/wms";
+const URBIS_TOPO_WMS = "https://geoservices-urbis.irisnet.be/geoserver/urbistopo/wms";
+const URBIS_ATTRIBUTION = '<a href="https://datastore.brussels/web/urbis-download" target="_blank" rel="noopener">UrbIS</a> © <a href="https://paradigm.brussels" target="_blank" rel="noopener">Paradigm</a>';
+const URBIS_THUMB_BBOX = "484351,6594098,484685,6594433";
 
 const LIBERTY_THUMB = "data:image/svg+xml," + encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80">' +
@@ -32,6 +36,16 @@ export const BASEMAPS = [
     thumb: ZINNEKE_BASE + "assets/img/basemap-nb.png",
     url: ZINNEKE_BASE + "style.nb.json",
     hideLayers: ["man_made-tunnel-*"]
+  },
+  {
+    id: "urbis-ortho", label: i18n.t("basemap.urbisOrtho.label"), title: i18n.t("basemap.urbisOrtho.title"),
+    thumb: wmsTileUrl(URBIS_GRID_WMS, "Ortho", 160).replace("{bbox-epsg-3857}", URBIS_THUMB_BBOX),
+    attribution: URBIS_ATTRIBUTION,
+    bounds: [4.23, 50.75, 4.49, 50.92],
+    wms: [
+      { id: "urbis-ortho", endpoint: URBIS_GRID_WMS, layer: "Ortho" },
+      { id: "urbis-topolines", endpoint: URBIS_TOPO_WMS, layer: "TopoLines" }
+    ]
   }
 ];
 
@@ -67,7 +81,7 @@ async function loadZinnekeStyle(bm) {
 
 async function loadBasemapStyle(bm) {
   if (basemapStyleCache[bm.id]) return basemapStyleCache[bm.id];
-  const style = bm.url ? await loadZinnekeStyle(bm) : await loadLibertyStyle();
+  const style = bm.wms ? buildWmsStyle(bm) : bm.url ? await loadZinnekeStyle(bm) : await loadLibertyStyle();
   basemapStyleCache[bm.id] = style;
   return style;
 }
