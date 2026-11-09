@@ -6,7 +6,7 @@ export const ENVS = Object.freeze({
     name: "dev",
     apiUrl: DEV_API,
     webUrl: DEV_API,
-    clientId: "",
+    clientId: "5KoHVvJ44fBlMmDP5qSQxN5N_UJGWCX18-e5aIfzO0Q",
     scopes: SCOPES,
     candidates: "live",
   }),
