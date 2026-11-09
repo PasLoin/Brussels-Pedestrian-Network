@@ -28,20 +28,20 @@ _PANELS = ["#legend", "#header", "#basemap-control", "#zoom-badge"]
 
 _TALL_LEGEND = """
 () => {
-  hideRoutePanel();
+  BPNMap.hideRoutePanel();
   const content = document.getElementById("legend-content");
   content.innerHTML = Array.from({ length: 40 }, (_, i) =>
     `<div class="legend-item"><div class="legend-line"></div><span class="legend-label">Couche ${i}</span></div>`
   ).join("");
-  setLegendOpen(true);
+  BPNMap.setLegendOpen(true);
   const header = document.getElementById("header");
   header.classList.add("open");
   header.classList.remove("closed");
 }
 """
 
-_SHOW = "() => showRoutePanel()"
-_HIDE = "() => hideRoutePanel()"
+_SHOW = "() => BPNMap.showRoutePanel()"
+_HIDE = "() => BPNMap.hideRoutePanel()"
 _LEGEND_STATE = """
 () => ({
   open: document.getElementById("legend").classList.contains("open"),
@@ -92,6 +92,7 @@ def page(server, lang):
         browser = p.chromium.launch()
         pg = browser.new_page(locale=_CONFIG["languages"][lang]["locale"])
         pg.goto(server, wait_until="domcontentloaded")
+        pg.wait_for_function("() => window.BPNMap !== undefined")
         yield pg
         browser.close()
 
@@ -157,7 +158,7 @@ def test_larger_screens_keep_the_legend_open(page, width, height):
 def test_closed_legend_is_not_reopened_after_the_route(page):
     page.set_viewport_size({"width": 390, "height": 844})
     page.evaluate(_TALL_LEGEND)
-    page.evaluate("() => setLegendOpen(false)")
+    page.evaluate("() => BPNMap.setLegendOpen(false)")
     page.evaluate(_SHOW)
     page.evaluate(_HIDE)
     assert _legend(page)["open"] is False
@@ -167,14 +168,16 @@ def test_user_choice_during_the_route_wins(page):
     page.set_viewport_size({"width": 390, "height": 844})
     page.evaluate(_TALL_LEGEND)
     page.evaluate(_SHOW)
-    page.evaluate("() => toggleLegend()")
-    page.evaluate("() => toggleLegend()")
+    page.evaluate("() => BPNMap.toggleLegend()")
+    page.evaluate("() => BPNMap.toggleLegend()")
     page.evaluate(_HIDE)
     assert _legend(page)["open"] is False
 
 
-def test_popups_js_is_loaded_before_app_js(page):
-    assert page.evaluate("() => [typeof makePopupLayers, typeof escapeHTML]") == ["function", "function"]
+def test_classic_scripts_are_ready_before_the_map_modules(page):
+    assert page.evaluate("() => [typeof makePopupLayers, typeof escapeHTML, typeof html]") == ["function", "function", "function"]
+    assert page.evaluate("() => typeof BPNMap.hoverPopups[0].format") == "function"
+    assert page.evaluate("() => typeof toggleLegend") == "undefined"
 
 
 @pytest.mark.parametrize("width, height", [(600, 900), (414, 896), (390, 844), (375, 667), (360, 740)])
@@ -182,9 +185,9 @@ def test_phone_header_and_legend_never_overlap(page, width, height):
     page.set_viewport_size({"width": width, "height": height})
     page.evaluate(_TALL_LEGEND)
     page.evaluate(_HIDE)
-    page.evaluate("() => { setLegendOpen(false); setHeaderOpen(false); }")
+    page.evaluate("() => { BPNMap.setLegendOpen(false); BPNMap.setHeaderOpen(false); }")
     page.wait_for_timeout(400)
-    for action in ["() => toggleLegend()", "() => toggleHeader()", "() => toggleLegend()", "() => setLegendOpen(false)"]:
+    for action in ["() => BPNMap.toggleLegend()", "() => BPNMap.toggleHeader()", "() => BPNMap.toggleLegend()", "() => BPNMap.setLegendOpen(false)"]:
         page.evaluate(action)
         page.wait_for_timeout(400)
         rects = page.evaluate(_RECTS, ["#header", "#legend"])
@@ -219,7 +222,7 @@ def test_controls_work_without_inline_scripts(page, server):
     pg = page.context.browser.new_page(viewport={"width": 1280, "height": 720}, locale=page.evaluate("navigator.language"))
     pg.add_init_script(_COLLECT_CSP_VIOLATIONS)
     pg.goto(server, wait_until="domcontentloaded")
-    pg.wait_for_function("() => typeof toggleLegend === 'function'")
+    pg.wait_for_function("() => window.BPNMap !== undefined")
 
     legend_before = pg.evaluate(_LEGEND_STATE)
     pg.dispatch_event("#legend-toggle", "click")
