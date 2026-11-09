@@ -3,6 +3,7 @@ if (typeof module !== "undefined" && module.exports) Object.assign(globalThis, r
 const LEVEL_VALUES_SEPARATOR = "|";
 const OSM = "https://www.openstreetmap.org";
 const JOSM = "http://127.0.0.1:8111";
+const ID_EDITOR = `${OSM}/edit?editor=id`;
 
 function formatLevels(p, i18n) {
   if (p.level_values == null) return "—";
@@ -41,11 +42,11 @@ function josmObjects(...objects) {
 }
 
 function nodeLinks(id) {
-  return html`${link(`${OSM}/node/${id}`, `n${id}`)} · ${link(josmObjects(`n${id}`), "JOSM")} · ${link(`${OSM}/edit?node=${id}`, "iD")}`;
+  return html`${link(`${OSM}/node/${id}`, `n${id}`)} · ${link(josmObjects(`n${id}`), "JOSM")} · ${link(`${ID_EDITOR}&node=${id}`, "iD")}`;
 }
 
 function wayLinks(id) {
-  return html`${link(`${OSM}/way/${id}`, `w${id}`)} · ${link(josmObjects(`w${id}`), "JOSM")} · ${link(`${OSM}/edit?way=${id}`, "iD")}`;
+  return html`${link(`${OSM}/way/${id}`, `w${id}`)} · ${link(josmObjects(`w${id}`), "JOSM")} · ${link(`${ID_EDITOR}&way=${id}`, "iD")}`;
 }
 
 function crossingWayLinks(id, partnerId) {
@@ -63,7 +64,7 @@ function formatWrongTagCrossing(p, i18n) {
     ${popupRow(t("popup.label.street"), p.name || "—")}
     ${popupRow(t("popup.label.problem"), t("popup.missingCrossing.wrongTagProblem", { value: val }))}
     ${nid > 0 && popupRow(t("popup.label.node"), link(`${OSM}/node/${nid}`, `n${nid}`))}
-    ${wid > 0 && popupRow(t("popup.label.way"), html`${link(`${OSM}/way/${wid}`, `w${wid}`)} · ${link(`${OSM}/edit?way=${wid}`, "iD")}`)}
+    ${wid > 0 && popupRow(t("popup.label.way"), html`${link(`${OSM}/way/${wid}`, `w${wid}`)} · ${link(`${ID_EDITOR}&way=${wid}`, "iD")}`)}
     ${objs.length > 0 && popupRow(t("popup.label.edit"), link(josmObjects(...objs), "JOSM"))}
   `;
 }
@@ -79,8 +80,8 @@ function islandEditLinks(p, ways, nodeId) {
     ? `${JOSM}/load_and_zoom?left=${w.toFixed(6)}&right=${e.toFixed(6)}&top=${n.toFixed(6)}&bottom=${s.toFixed(6)}${select}`
     : null;
   const idLink = ways.length
-    ? `${OSM}/edit?way=${ways[0]}`
-    : (hasBbox ? `${OSM}/edit#map=19/${((s + n) / 2).toFixed(6)}/${((w + e) / 2).toFixed(6)}` : null);
+    ? `${ID_EDITOR}&way=${ways[0]}`
+    : (hasBbox ? `${ID_EDITOR}#map=19/${((s + n) / 2).toFixed(6)}/${((w + e) / 2).toFixed(6)}` : null);
   return [josm && link(josm, "JOSM"), idLink && link(idLink, "iD")].filter(Boolean);
 }
 
