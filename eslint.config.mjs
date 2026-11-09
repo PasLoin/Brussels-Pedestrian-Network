@@ -43,6 +43,17 @@ export default [
       sourceType: "script",
       globals: { ...globals.browser, ...PAGE_RUNTIME, module: "readonly", require: "readonly" },
     },
+  },
+  {
+    files: ["map/**/*.js"],
+    languageOptions: {
+      ecmaVersion: 2023,
+      sourceType: "module",
+      globals: { ...globals.browser, ...PAGE_RUNTIME, ...MAP_SCRIPTS },
+    },
+  },
+  {
+    files: ["*.js", "map/**/*.js"],
     rules: {
       "no-restricted-syntax": ["error", ...UNSAFE_HTML],
       "no-empty": ["error", { allowEmptyCatch: true }],
@@ -51,7 +62,6 @@ export default [
       "prefer-const": "error",
     },
   },
-  { files: ["app.js"], languageOptions: { globals: MAP_SCRIPTS } },
   { files: ["stats.js", "evolution.js"], languageOptions: { globals: CHART_SCRIPTS } },
   {
     files: ["tests/js/**/*.js"],
