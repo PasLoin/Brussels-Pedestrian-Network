@@ -51,9 +51,6 @@ DEV_API = "https://master.apis.dev.openstreetmap.org"
 DEVTEST_PAGE = "test-api/devtest.html"
 DEVTEST_LAND = "test-api/land.html"
 DEVTEST_LANG = "fr"
-EDIT_PAGES = {
-    DEVTEST_PAGE: {"template": "index.html", "lang": DEVTEST_LANG, "edit_env": "dev"},
-}
 LAND_PAGES = {
     DEVTEST_LAND: {"lang": DEVTEST_LANG, "edit_env": "dev"},
 }
@@ -302,13 +299,42 @@ def render_page(lang, page, config=None, env=None, dictionary=None, dictionaries
     )
 
 
-def render_edit_page(path, spec, config=None, env=None, dictionary=None):
+def devtest_path(lang):
+    return DEVTEST_PAGE if lang == DEVTEST_LANG else f"test-api/devtest.{lang}.html"
+
+
+def edit_pages(config):
+    return {
+        devtest_path(lang): {"template": "index.html", "lang": lang, "edit_env": "dev", "csp": DEVTEST_PAGE}
+        for lang in published_languages(config)
+    }
+
+
+def edit_alternates(config, pages, dictionaries):
+    result = []
+    for path, spec in pages.items():
+        conf = config["languages"][spec["lang"]]
+        t = translator(dictionaries[spec["lang"]])
+        result.append({
+            "lang": spec["lang"],
+            "name": conf["name"],
+            "og": conf["og"],
+            "href": "./" + path.rsplit("/", 1)[-1],
+            "url": SITE_URL + path,
+            "banner": {"text": str(t("lang.banner.text")), "switch": str(t("lang.banner.switch")), "dismiss": str(t("lang.banner.dismiss"))},
+        })
+    return result
+
+
+def render_edit_page(path, spec, config=None, env=None, dictionary=None, dictionaries=None):
     config = config or load_languages()
     env = env or environment()
     lang = spec["lang"]
     dictionary = page_dictionary(config, lang) if dictionary is None else dictionary
+    dictionaries = page_dictionaries(config) if dictionaries is None else dictionaries
     conf = config["languages"][lang]
     root = path_root(path)
+    links = edit_alternates(config, edit_pages(config), dictionaries)
     return env.get_template(f"{spec['template']}.j2").render(
         lang=lang,
         reference=config["reference"],
@@ -318,12 +344,16 @@ def render_edit_page(path, spec, config=None, env=None, dictionary=None):
         root=root,
         page=path,
         canonical=SITE_URL + path,
-        csp=Markup(content_security_policy(path)),
-        alternates=[],
-        x_default=SITE_URL + path,
+        csp=Markup(content_security_policy(spec.get("csp", path))),
+        alternates=links,
+        x_default=SITE_URL + devtest_path(root_language(config)),
         t=translator(dictionary),
         dictionary_json=dictionary_json(dictionary),
-        languages_json=embedded_json({"current": lang, "isRoot": False, "languages": []}),
+        languages_json=embedded_json({
+            "current": lang,
+            "isRoot": False,
+            "languages": [{key: alt[key] for key in ("lang", "name", "href", "banner")} for alt in links],
+        }),
         home=root + conf["path"],
         edit_env=spec["edit_env"],
         noindex=True,
@@ -424,9 +454,9 @@ def build(out, langs=None, lastmod=None, pseudo=False):
         for page in PAGES:
             (target / page).write_text(render_page(PSEUDO_LANG, page, pseudo_config, env, dictionary, dictionaries), encoding="utf-8")
         built.append(PSEUDO_LANG)
-    for path, spec in EDIT_PAGES.items():
+    for path, spec in edit_pages(config).items():
         (out / path).parent.mkdir(parents=True, exist_ok=True)
-        (out / path).write_text(render_edit_page(path, spec, config, env), encoding="utf-8")
+        (out / path).write_text(render_edit_page(path, spec, config, env, dictionaries=dictionaries), encoding="utf-8")
     for path, spec in LAND_PAGES.items():
         (out / path).parent.mkdir(parents=True, exist_ok=True)
         (out / path).write_text(render_land_page(path, spec, config, env), encoding="utf-8")
