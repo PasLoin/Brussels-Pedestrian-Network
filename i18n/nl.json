@@ -1,0 +1,432 @@
+{
+  "meta": {
+    "index": {
+      "title": "Gesimuleerde voetgangersstromen en OpenStreetMap-kwaliteitscontrole in Brussel",
+      "description": "Kaart van gesimuleerde voetgangersstromen in Brussel op basis van OpenStreetMap, met kwaliteitslagen om trottoirs en oversteekplaatsen te verbeteren."
+    },
+    "stats": {
+      "title": "Statistieken van het Brussels Pedestrian Network",
+      "description": "Volledigheidsstatistieken van het Brusselse voetgangersnetwerk in OpenStreetMap: gedocumenteerde trottoirs en verbonden oversteekplaatsen."
+    },
+    "evolution": {
+      "title": "Evolutie van het Brussels Pedestrian Network",
+      "description": "Maandelijkse evolutie van de voetgangerskartering in Brussel op OpenStreetMap: netwerk, gedocumenteerde trottoirs en oversteekplaatsen door de tijd."
+    },
+    "about": {
+      "title": "Methodologie van het Brussels Pedestrian Network",
+      "description": "Routeringskosten, criteria van de kwaliteitslagen en berekening van de indicatoren van het Brussels Pedestrian Network."
+    }
+  },
+  "common": {
+    "loading": "Laden…",
+    "nav": {
+      "stats": "Statistieken",
+      "evolution": "Evolutie",
+      "about": "Methodologie",
+      "statsShort": "Statistieken",
+      "map": "Kaart",
+      "backToMap": "Terug naar de kaart"
+    },
+    "footer": {
+      "data": "Gegevens:",
+      "source": "Broncode"
+    },
+    "error": "Fout: {{message}}",
+    "chart": {
+      "tooltip": "{{label}}: {{value}}"
+    }
+  },
+  "header": {
+    "subtitle": "Gesimuleerde voetgangersstromen en OpenStreetMap-kwaliteitscontrole in Brussel",
+    "flowThreshold": "Stroom op de rijweg, minimum",
+    "editInOsm": "Bewerken in OSM",
+    "editHint": "Beschikbaar vanaf zoom {{zoom}}",
+    "osmDate": "OSM-gegevens: {{date}}",
+    "osmDateUnknown": "OSM-gegevens: datum onbekend",
+    "buildDate": "Berekend: {{date}}",
+    "simulatedTrips": "Gesimuleerde verplaatsingen:",
+    "averageDistance": "Gemiddelde afstand:"
+  },
+  "nav": {
+    "loadingGraph": "Netwerk laden…",
+    "start": "Navigatie",
+    "unavailable": "Navigatie (niet beschikbaar)",
+    "exit": "Navigatie verlaten",
+    "placeStart": "Klik op de kaart om het vertrekpunt te kiezen",
+    "placeEnd": "Klik om de bestemming te kiezen",
+    "computing": "Berekenen…",
+    "noRoute": "Geen route gevonden",
+    "computedIn": "Berekend in {{ms}} ms"
+  },
+  "route": {
+    "title": "Route",
+    "walkTime": "≈ {{minutes}} min te voet",
+    "pedestrian": "Voetganger",
+    "roadway": "Rijweg",
+    "cyclewayNoFoot": "Fietspad zonder foot=yes",
+    "clear": "Route wissen"
+  },
+  "map": {
+    "zoom": "zoom"
+  },
+  "basemap": {
+    "menu": "Achtergrondkaart",
+    "blackWhite": {
+      "label": "Zinneke Z/W",
+      "title": "ZinnekeTiles zwart-wit"
+    }
+  },
+  "legend": {
+    "title": "Legende",
+    "filterByType": "Filteren op type",
+    "selectAll": "Alles selecteren",
+    "deselectAll": "Alles deselecteren",
+    "section": {
+      "routing": "Gesimuleerde routering",
+      "quality": "Ruimtelijke analyse en kwaliteit",
+      "network": "Basisnetwerk"
+    }
+  },
+  "layer": {
+    "flow": {
+      "pedestrian": "Voetgangersstroom",
+      "cycleway": "Stroom op fietspaden",
+      "road": "Stroom op de rijweg"
+    },
+    "sidewalkGaps": "Trottoir aan één kant",
+    "crossingCandidates": "Oversteekplaats zonder footway=crossing?",
+    "tactilePaving": "Inconsistente geleidetegels",
+    "missingCrossings": "Ontbrekende oversteekplaats",
+    "islands": "Van het netwerk losgekoppeld eiland",
+    "sidewalkTags": "Sidewalk-tags",
+    "elevator": "Lift",
+    "highway": {
+      "livingStreet": "Woonerf",
+      "pedestrian": "Voetgangerszone",
+      "footway": "Trottoir / voetpad",
+      "cycleway": "Fietspad",
+      "path": "Pad",
+      "steps": "Trappen",
+      "track": "Landbouw- / bosweg",
+      "platform": "Halteperron"
+    },
+    "sidewalk": {
+      "documented": "gedocumenteerd aan beide kanten",
+      "partial": "gedocumenteerd aan één kant",
+      "unknown": "geen tag"
+    },
+    "missingCrossing": {
+      "missingWay": "Way niet gekarteerd",
+      "missingTag": "Tag footway=crossing ontbreekt",
+      "wrongTag": "Getagd als footway=sidewalk"
+    },
+    "kerb": {
+      "missing": "Stoeprand ontbreekt",
+      "untagged": "Stoeprand zonder tactile_paving"
+    },
+    "island": {
+      "unjoined": "Ontbrekende aansluiting (≤ 2 m)",
+      "isolated": "Geïsoleerd eiland",
+      "level": "Niveauonderbreking"
+    }
+  },
+  "popup": {
+    "label": {
+      "street": "Straat",
+      "crossedStreet": "Overgestoken straat",
+      "length": "Lengte",
+      "problem": "Probleem",
+      "node": "Knoop",
+      "way": "Way",
+      "ways": "Ways",
+      "edit": "Bewerken",
+      "status": "Status",
+      "infrastructure": "Infrastructuur",
+      "relativeFlow": "Relatieve stroom",
+      "types": "Types",
+      "levels": "Niveaus",
+      "gapToNetwork": "Afstand tot het netwerk",
+      "crossing": "Oversteekplaats",
+      "kerb": "Stoeprand",
+      "crossingNode": "Oversteekknoop",
+      "crossingWay": "Oversteekway",
+      "adjacentWay": "Aansluitende way",
+      "kerbSide": "Stoeprand, kant {{side}}",
+      "nearestCrossing": "Dichtstbijzijnde footway=crossing"
+    },
+    "note": {
+      "sameCrossing": "(dezelfde oversteekplaats als de vorige)",
+      "radius": "(straal {{radius}} m)",
+      "notChecked": "niet gecontroleerd: de way eindigt bij de oversteekknoop"
+    },
+    "value": {
+      "absent": "ontbreekt"
+    },
+    "sidewalk": {
+      "yes": "sidewalk=yes, als separate te karteren",
+      "documented": "Beide kanten gedocumenteerd",
+      "partial": "Slechts één kant gedocumenteerd",
+      "unknown": "Geen sidewalk-tag"
+    },
+    "flow": {
+      "title": "Gesimuleerde stroom"
+    },
+    "infra": {
+      "pedestrian": "Voetganger",
+      "road": "Rijweg",
+      "cyclewayFootYes": "Fietspad, voetgangers toegelaten",
+      "cyclewayNoFoot": "Fietspad zonder foot=yes"
+    },
+    "missingCrossing": {
+      "missingWayTitle": "Oversteekplaats niet gekarteerd",
+      "missingWayProblem": "Geen voetpad verbonden met de knoop",
+      "missingTagProblem": "Voetpad verbonden maar zonder de tag footway=crossing",
+      "wrongTagTitle": "Oversteekplaats getagd als footway={{value}}",
+      "wrongTagProblem": "De way die de rijweg kruist bij de oversteekknoop heeft footway={{value}} in plaats van footway=crossing"
+    },
+    "crossingCandidate": {
+      "problem": "Verbindt een trottoir aan elke kant van een straat maar heeft geen tag footway=crossing"
+    },
+    "tactile": {
+      "reason": {
+        "valueMismatch": "tactile_paving van de stoeprand verschilt van die van de oversteekplaats",
+        "incorrectNotMixed": "incorrect verwacht één stoeprand yes en één stoeprand no"
+      }
+    },
+    "island": {
+      "unjoinedTitle": "Ontbrekende aansluiting",
+      "isolatedTitle": "Van het netwerk geïsoleerd eiland",
+      "levelProblem": "Trap waarvan level=* niet overlapt met dat van een rechtstreeks aangesloten way: de verbinding is in theorie onbegaanbaar",
+      "unjoinedProblem": "Raakt het hoofdnetwerk bijna maar deelt er geen knoop mee",
+      "isolatedProblem": "Groep ways zonder enige verbinding met het hoofdnetwerk"
+    },
+    "levels": {
+      "untagged": "0 (niet getagd)",
+      "missing": "{{values}}: niveau {{level}} niet aangesloten"
+    },
+    "kerb": {
+      "missingProblem": "Geen knoop barrier=kerb of kerb=no gevonden aan dit uiteinde",
+      "untaggedProblem": "Knoop barrier=kerb of kerb=no aanwezig maar zonder tag tactile_paving"
+    }
+  },
+  "stats": {
+    "infra": {
+      "pedestrian": "Voetganger",
+      "road": "Rijweg",
+      "cyclewayFootYes": "Fietspad (foot=yes)",
+      "cyclewayNoFoot": "Fietspad (zonder foot=yes)"
+    },
+    "sidewalk": {
+      "documented": "gedocumenteerd",
+      "partial": "gedeeltelijk",
+      "unknown": "onbekend"
+    },
+    "completeness": {
+      "title": "Volledigheid van het voetgangersnetwerk",
+      "intro": "Gemiddelde van de vijf indicatoren hieronder. De berekening staat beschreven in de {{link}}.",
+      "methodologyLink": "methodologie",
+      "outOf100": "op 100"
+    },
+    "indicator": {
+      "sidewalkTags": {
+        "label": "Gedocumenteerde trottoirtags",
+        "hint": "(separate + yes + beide kanten + ½ één kant)"
+      },
+      "sidewalkSeparate": {
+        "label": "Trottoirs apart gekarteerd",
+        "hint": "alle bestaande trottoirs als separate gekarteerd (ideale vorm)"
+      },
+      "crossingsConnected": {
+        "label": "Verbonden oversteekplaatsen",
+        "hint": "highway=crossing verbonden met een voetpad"
+      },
+      "crossingsTagged": {
+        "label": "Volledig getagde oversteekplaatsen",
+        "hint": "footway=crossing aanwezig op de verbonden way"
+      },
+      "continuity": {
+        "label": "Continuïteit van de trottoirs",
+        "hint": "straten met een trottoir aan beide kanten, onder die met minstens één"
+      }
+    },
+    "crossings": {
+      "title": "Oversteekplaatsen",
+      "intro": "Toestand van de highway=crossing-knopen op het analyseerbare netwerk.",
+      "nodes": "Oversteekknopen",
+      "nodesSub": "geanalyseerd",
+      "ok": "Way en tag correct",
+      "missingWay": "Way ontbreekt",
+      "missingWaySub": "te karteren",
+      "missingTag": "Tag ontbreekt",
+      "missingTagSub": "footway=crossing ontbreekt",
+      "wrongTag": "Verkeerde tag",
+      "wrongTagSub": "getagd als footway=sidewalk",
+      "continuous": "Doorlopend",
+      "excluded": "Op een uitgesloten way",
+      "chart": "Toestand van de oversteekplaatsen"
+    },
+    "network": {
+      "title": "Netwerk",
+      "totalLength": "Totale lengte",
+      "nodes": "Knopen",
+      "edges": "Segmenten",
+      "pedestrian": "Voor voetgangers",
+      "roads": "Straten",
+      "cycleways": "Fietspaden",
+      "cyclewaysSub": "foot=yes: {{footYes}} · zonder foot: {{noFoot}}",
+      "density": "Verhouding voetgangers/straten",
+      "densitySub": "km voetganger / km straat",
+      "chartCategory": "km per categorie",
+      "chartHighway": "km per highway-type"
+    },
+    "sidewalkTags": {
+      "title": "Sidewalk-tags",
+      "segments": "Straatsegmenten",
+      "documented": "Gedocumenteerd",
+      "documentedSub": "separate + yes + beide kanten",
+      "partial": "Gedeeltelijk",
+      "untagged": "Zonder tag",
+      "chartCount": "Segmenten per status",
+      "chartKm": "km per status",
+      "segmentsAxis": "segmenten"
+    },
+    "spatial": {
+      "title": "Ruimtelijke analyse van de trottoirs",
+      "analysed": "Geanalyseerde straten",
+      "excluded_one": "{{count}} uitgesloten (sidewalk=no gedocumenteerd)",
+      "excluded_other": "{{count}} uitgesloten (sidewalk=no gedocumenteerd)",
+      "bothSides": "Beide kanten",
+      "oneSide": "Slechts één kant",
+      "noSide": "Geen enkele kant",
+      "chartResult": "Resultaat per segment",
+      "chartFootways": "Weerhouden voetpaden (samenstelling)"
+    },
+    "simulation": {
+      "title": "Simulatie",
+      "trips": "Berekende verplaatsingen",
+      "avgDistance": "Gemiddelde afstand",
+      "odPoints": "HB-punten",
+      "computeTime": "Rekentijd"
+    }
+  },
+  "evolution": {
+    "loading": "Geschiedenis laden…",
+    "currentStats": "Huidige statistieken",
+    "emptyHistory": "Lege geschiedenis. Start de workflow \"Compute History\".",
+    "intro_one": "{{snapshots}} opnames over {{count}} jaar van het Brusselse voetgangersnetwerk in OpenStreetMap.",
+    "intro_other": "{{snapshots}} opnames over {{count}} jaar van het Brusselse voetgangersnetwerk in OpenStreetMap.",
+    "meta": {
+      "range": "Van {{from}} tot {{to}}",
+      "pedKm": "{{now}} km voetgangersnetwerk vandaag ({{first}} km bij de eerste opname)",
+      "daily": "* = laatste dagelijkse extractie ({{date}})",
+      "area": "Gebied: Brussels Hoofdstedelijk Gewest (OSM-relatie 54094)"
+    },
+    "period": {
+      "title": "Analyseperiode",
+      "from": "Van",
+      "to": "tot",
+      "last6Months": "Laatste 6 maanden",
+      "full": "Volledige periode",
+      "hint": "De verticale schaal van de grafieken past zich aan de gekozen periode aan, zodat kleine variaties zichtbaar worden. Standaard: de laatste 6 maanden.",
+      "fullInfo_one": "Volledige periode · {{count}} punt",
+      "fullInfo_other": "Volledige periode · {{count}} punten",
+      "zoomInfo_one": "{{count}} punt getoond (zoom actief)",
+      "zoomInfo_other": "{{count}} punten getoond (zoom actief)"
+    },
+    "deltas": {
+      "title": "Evolutie",
+      "at": "Evolutie op {{date}}",
+      "range": "Evolutie van {{from}} tot {{to}}",
+      "since": "{{delta}} sinds {{date}}",
+      "points": "{{value}} ptn",
+      "pedNetwork": "Voetgangersnetwerk",
+      "footwaySidewalk": "footway=sidewalk",
+      "crossingNodes": "Oversteekknopen",
+      "crossingWays": "Ways footway=crossing",
+      "sidewalksDocumented": "Gedocumenteerde trottoirs",
+      "sidewalksSeparate": "Aparte trottoirs",
+      "crossingTagged": "Correct getagde oversteekplaatsen",
+      "tactilePaving": "Geleidetegels"
+    },
+    "compare": {
+      "title": "Sinds de laatste maandelijkse opname",
+      "hwTitle": "Km per type voetgangersinfrastructuur: laatste opname en vandaag",
+      "hwSubtitle": "Vergelijking tussen de laatste maandelijkse opname ({{snapshot}}) en de meest recente dagelijkse extractie ({{today}}). Alleen de eigen voetgangersinfrastructuur wordt vergeleken: straten (primary enz.) veranderen nauwelijks van dag tot dag en komen verderop aan bod.",
+      "fwTitle": "Subtags footway=*: laatste opname en vandaag",
+      "fwSubtitle": "Detail van de ways highway=footway per subtag footway=*, zelfde twee data.",
+      "snapshotOf": "Opname van {{date}}",
+      "today": "Vandaag ({{date}})"
+    },
+    "network": {
+      "title": "Lengte van het netwerk (km)",
+      "pedTitle": "Eigen voetgangersinfrastructuur",
+      "allTitle": "Volledig netwerk per categorie",
+      "allSubtitle": "Voetganger, rijweg, fietspad. „Rijweg” omvat de straten van residential tot primary waar voetgangers op de rijweg stappen.",
+      "hwTitle": "Detail per highway-type",
+      "hwSubtitle": "De zes meest voorkomende types in km."
+    },
+    "quality": {
+      "title": "Kwaliteit van de voetgangerskartering",
+      "swTitle": "Trottoirs: aandeel gedocumenteerde straten",
+      "swSubtitle": "% straten (residential → primary) met een expliciete sidewalk-tag (separate, yes, both, no), en het aandeel dat nog niet gedocumenteerd is.",
+      "xingTitle": "Oversteekplaatsen: knopen en ways",
+      "xingSubtitle": "Een oversteekplaats is correct gekarteerd wanneer ze zowel een knoop highway=crossing als een way footway=crossing heeft. Het verschil tussen beide curves geeft het aantal nog te vervolledigen oversteekplaatsen.",
+      "accTitle": "Toegankelijkheid: aanvullende tags",
+      "accSubtitle": "% voetpaden met surface=*, % voetpaden met smoothness=*, % oversteekplaatsen met tactile_paving=*."
+    },
+    "footways": {
+      "title": "Samenstelling van de voetpaden",
+      "mixTitle": "Subtags footway=* (gestapeld)",
+      "mixSubtitle": "sidewalk / crossing / link / traffic_island / andere / geen tag. „Andere”: een subtag footway=* buiten deze lijst; „geen tag”: geen subtag."
+    },
+    "sidewalks": {
+      "title": "Samenstelling van de sidewalk-tags op straten",
+      "mixTitle": "Sidewalk-tags (gestapeld)",
+      "mixSubtitle": "separate / yes / partial / no / geen tag. Wanneer straten van „yes” naar „separate” gaan, zijn hun trottoirs als aparte ways getekend.",
+      "byTypeTitle": "Detail per straattype",
+      "byTypeSubtitle": "Zelfde samenstelling (separate / yes / partial / no / geen tag), opgesplitst per straattype, voor het meest recente punt van de gekozen periode.",
+      "noData": "Detail per straattype nog niet beschikbaar voor {{date}}. Het verschijnt na de volgende extractie.",
+      "noDataUndated": "Detail per straattype nog niet beschikbaar."
+    },
+    "series": {
+      "pedestrian": "Voetganger",
+      "roads": "Straten",
+      "cycleway": "Fietspaden",
+      "documentedAnyTag": "Gedocumenteerd (elke tag)",
+      "notDocumented": "Niet gedocumenteerd",
+      "crossingNodes": "Knopen highway=crossing",
+      "crossingWays": "Ways footway=crossing",
+      "continuousCrossings": "Doorlopende oversteekplaatsen",
+      "other": "andere",
+      "otherRecognised": "andere (herkende subtag)",
+      "noTag": "geen tag",
+      "noExplicit": "no (expliciet)",
+      "footwaySurface": "Voetpaden met surface=*",
+      "footwaySmoothness": "Voetpaden met smoothness=*",
+      "crossingTactilePaving": "Oversteekplaatsen met tactile_paving=*"
+    },
+    "roadType": {
+      "residential": "Woonstraat",
+      "tertiary": "Tertiair",
+      "secondary": "Secundair",
+      "primary": "Primair",
+      "total_one": "{{count}} straat in totaal",
+      "total_other": "{{count}} straten in totaal"
+    }
+  },
+  "about": {
+    "footer": "Onderhouden door {{maintainer}}. Gegevens © bijdragers van {{osm}}, ODbL-licentie."
+  },
+  "lang": {
+    "label": "Taal",
+    "banner": {
+      "text": "Deze pagina bestaat ook in het Nederlands.",
+      "switch": "Naar het Nederlands",
+      "dismiss": "Sluiten"
+    }
+  },
+  "notFound": {
+    "title": "Pagina niet gevonden",
+    "text": "Deze pagina bestaat niet of is verplaatst."
+  }
+}
