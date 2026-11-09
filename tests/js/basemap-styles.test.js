@@ -83,3 +83,20 @@ test("WMS base map stacks its layers in order over a background", async () => {
   assert.equal(url.searchParams.get("BBOX"), "1,2,3,4");
   assert.ok(wmsTileUrl("https://x/wms", "Ortho").endsWith("&BBOX={bbox-epsg-3857}"));
 });
+
+test("the pedestrian network credits OpenStreetMap whatever the base map", async () => {
+  const { pedestrianSource, keepOverlays, buildWmsStyle, OSM_ATTRIBUTION } = await load();
+  const source = pedestrianSource("pmtiles://https://example.org/pedestrian.pmtiles");
+  assert.equal(source.attribution, OSM_ATTRIBUTION);
+  assert.match(OSM_ATTRIBUTION, /https:\/\/www\.openstreetmap\.org\/copyright/);
+  const prev = { sources: { pedestrian: source }, layers: [{ id: "flow", source: "pedestrian" }] };
+  const next = buildWmsStyle({ title: "WMS", attribution: "Other", wms: [{ id: "a", endpoint: "https://x/wms", layer: "A" }] });
+  const merged = keepOverlays(prev, next);
+  const credits = Object.values(merged.sources).map(s => s.attribution || "");
+  assert.ok(credits.some(c => c.includes(OSM_ATTRIBUTION)));
+});
+
+test("Zinneke credit contains the OpenStreetMap credit so MapLibre shows it once", async () => {
+  const { ZINNEKE_ATTRIBUTION, OSM_ATTRIBUTION } = await load();
+  assert.ok(ZINNEKE_ATTRIBUTION.includes(OSM_ATTRIBUTION));
+});
