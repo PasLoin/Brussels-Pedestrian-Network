@@ -478,11 +478,14 @@
       "direction": "Gauche et droite suivent le sens du way : bleu à gauche, orange à droite.",
       "left": "Gauche",
       "right": "Droite",
-      "choose": "Choisir…",
       "add": "Ajouter à la file",
       "update": "Mettre à jour dans la file",
-      "bothSides": "Choisissez une valeur pour les deux côtés.",
-      "longWay": "Ce way mesure {{length}} m : si le trottoir change le long de la rue, découpez-le d'abord dans JOSM ou iD."
+      "longWay": "Ce way mesure {{length}} m : si le trottoir change le long de la rue, découpez-le d'abord dans JOSM ou iD.",
+      "both": "Les deux côtés",
+      "differentSides": "Côtés différents…",
+      "sameSides": "Même valeur des deux côtés",
+      "queued": "En file : {{tags}}",
+      "unqueue": "Retirer"
     },
     "value": {
       "separate": "separate (cartographié à part)",

@@ -49,45 +49,49 @@ function dropReason(reason, t) {
   return t("edit.plan.modifiedMeanwhile");
 }
 
-function sideSelect(name, label, selected, i18n) {
+function chips(side, selected, i18n) {
   const { t } = i18n;
   return html`
-    <label class="edit-side edit-side-${name}">
-      <span class="edit-swatch"></span>${label}
-      <select name="sw-${name}">
-        <option value=""${selected ? "" : html` selected`}>${t("edit.form.choose")}</option>
-        ${SIDE_VALUES.map(v => html`<option value="${v}"${v === selected ? html` selected` : ""}>${valueLabel(v, t)}</option>`)}
-      </select>
-    </label>
+    <div class="edit-chips" role="group">
+      ${SIDE_VALUES.map(v => html`<button type="button" class="edit-chip${v === selected ? " active" : ""}" data-edit-action="choose" data-side="${side}" data-value="${v}" aria-pressed="${v === selected ? "true" : "false"}" title="${valueLabel(v, t)}">${v}</button>`)}
+    </div>
   `;
-}
-
-function sidesOf(intent) {
-  if (!intent) return { left: "", right: "" };
-  if (intent.set["sidewalk:both"]) return { left: intent.set["sidewalk:both"], right: intent.set["sidewalk:both"] };
-  return { left: intent.set["sidewalk:left"] || "", right: intent.set["sidewalk:right"] || "" };
 }
 
 export function tagSummary(set) {
   return Object.entries(set).map(([k, v]) => `${k}=${v}`).join(" · ");
 }
 
-export function editFormView(state, i18n) {
+export function editFormView(state, i18n, settings = {}) {
   const { t } = i18n;
-  const { left, right } = sidesOf(state.queued);
+  const choice = state.choice || { mode: "both", both: "", left: "", right: "" };
+  const sides = choice.mode === "sides";
+  const complete = sides ? Boolean(choice.left && choice.right) : Boolean(choice.both);
   return html`
     <div class="edit-form">
       ${state.longWay && html`<p class="edit-warn">${t("edit.form.longWay", { length: Math.round(state.lengthM) })}</p>`}
-      <p class="edit-help">${t("edit.form.direction")}</p>
-      ${sideSelect("left", t("edit.form.left"), left, i18n)}
-      ${sideSelect("right", t("edit.form.right"), right, i18n)}
-      ${state.formError && html`<p class="edit-note">${state.formError}</p>`}
-      <button type="button" class="header-btn" data-edit-action="queue">${state.queued ? t("edit.form.update") : t("edit.form.add")}</button>
+      ${sides
+        ? html`
+          <p class="edit-help">${t("edit.form.direction")}</p>
+          <div class="edit-side edit-side-left"><span class="edit-swatch"></span>${t("edit.form.left")}</div>
+          ${chips("left", choice.left, i18n)}
+          <div class="edit-side edit-side-right"><span class="edit-swatch"></span>${t("edit.form.right")}</div>
+          ${chips("right", choice.right, i18n)}
+          <button type="button" class="edit-link" data-edit-action="mode" data-mode="both">${t("edit.form.sameSides")}</button>`
+        : html`
+          <div class="edit-side">${t("edit.form.both")}</div>
+          ${chips("both", choice.both, i18n)}
+          <button type="button" class="edit-link" data-edit-action="mode" data-mode="sides">${t("edit.form.differentSides")}</button>`}
+      ${!settings.autoQueue && html`
+        <button type="button" class="header-btn" data-edit-action="queue"${complete ? "" : html` disabled`}>${state.queued ? t("edit.form.update") : t("edit.form.add")}</button>`}
+      ${state.queued && html`
+        <p class="edit-ok edit-queued">${t("edit.form.queued", { tags: tagSummary(state.queued.set) })}
+          <button type="button" class="edit-link" data-edit-action="unqueue">${t("edit.form.unqueue")}</button></p>`}
     </div>
   `;
 }
 
-export function detailView(state, i18n, webUrl) {
+export function detailView(state, i18n, webUrl, settings = {}) {
   const { t } = i18n;
   if (!state || state.kind === "none") return html``;
   if (state.kind === "loading") return html`<p>${t("edit.detail.loading")}</p>`;
@@ -100,7 +104,7 @@ export function detailView(state, i18n, webUrl) {
       <div class="edit-row"><span class="label">${t("edit.detail.version")}</span><span class="value">${way.version}</span></div>
       <div class="edit-row"><span class="label">${t("edit.detail.lastEdit")}</span><span class="value">${way.user || "?"} · ${way.timestamp ? i18n.date(way.timestamp, { dateStyle: "short", timeStyle: "short" }) : "?"}</span></div>
       <p class="${state.editable ? "edit-ok" : "edit-note"}">${state.editable ? t("edit.detail.editable") : t("edit.detail.alreadyFixed")}</p>
-      ${state.editable && editFormView(state, i18n)}
+      ${state.editable && editFormView(state, i18n, settings)}
       <table class="edit-tags">
         <tbody>${tags.map(([k, v]) => html`<tr><th scope="row">${k}</th><td>${v}</td></tr>`)}</tbody>
       </table>

@@ -306,19 +306,70 @@ test("lengths and spans are measured in metres", async () => {
   assert.ok(Math.abs(spanM([4.35, 50.85, 4.36, 50.85]) - 703) < 5);
 });
 
-test("the edit form shows the long way warning and preselects a queued choice", async () => {
+test("the edit form offers both sides first, then different sides", async () => {
+  const { detailView } = await load("panel.js");
+  const way5 = { id: 5, version: 2, tags: { highway: "residential" } };
+  const i18n = i18nFor("fr");
+  const first = String(detailView({ kind: "way", editable: true, way: way5, choice: { mode: "both", both: "", left: "", right: "" } }, i18n, "https://dev", { autoQueue: true }));
+  assert.match(first, /Les deux côtés/);
+  assert.match(first, /data-side="both" data-value="separate"/);
+  assert.doesNotMatch(first, /data-side="left"/);
+  assert.match(first, /data-mode="sides"/);
+  assert.doesNotMatch(first, /data-edit-action="queue"/);
+  const sides = String(detailView({ kind: "way", editable: true, way: way5, choice: { mode: "sides", both: "", left: "yes", right: "" } }, i18n, "https://dev", { autoQueue: true }));
+  assert.match(sides, /data-side="left" data-value="yes" aria-pressed="true"/);
+  assert.match(sides, /data-side="right" data-value="yes" aria-pressed="false"/);
+  assert.match(sides, /bleu à gauche/);
+  assert.match(sides, /data-mode="both"/);
+});
+
+test("without automatic queueing the add button waits for a complete choice", async () => {
+  const { detailView } = await load("panel.js");
+  const way5 = { id: 5, version: 2, tags: { highway: "residential" } };
+  const i18n = i18nFor("fr");
+  const empty = String(detailView({ kind: "way", editable: true, way: way5, choice: { mode: "both", both: "", left: "", right: "" } }, i18n, "https://dev", { autoQueue: false }));
+  assert.match(empty, /data-edit-action="queue" disabled/);
+  const done = String(detailView({ kind: "way", editable: true, way: way5, choice: { mode: "both", both: "no", left: "no", right: "no" } }, i18n, "https://dev", { autoQueue: false }));
+  assert.match(done, /data-edit-action="queue">/);
+});
+
+test("a queued way shows its tags, the long way warning and a remove button", async () => {
   const { detailView } = await load("panel.js");
   const intent = await intentFor(way(5, { highway: "residential" }), "separate", "no");
   const out = String(detailView({
     kind: "way", editable: true, longWay: true, lengthM: 412.4, queued: intent,
+    choice: { mode: "sides", both: "", left: "separate", right: "no" },
     way: { id: 5, version: 2, tags: { highway: "residential" } },
-  }, i18nFor("fr"), "https://dev"));
+  }, i18nFor("fr"), "https://dev", { autoQueue: true }));
   assert.match(out, /412 m/);
-  assert.match(out, /<option value="separate" selected>/);
-  assert.match(out, /name="sw-right"[\s\S]*<option value="no" selected>/);
-  assert.match(out, /Mettre à jour dans la file/);
-  const fixed = String(detailView({ kind: "way", editable: false, way: { id: 5, version: 2, tags: {} } }, i18nFor("fr"), "https://dev"));
-  assert.doesNotMatch(fixed, /sw-left/);
+  assert.match(out, /En file : sidewalk:left=separate · sidewalk:right=no/);
+  assert.match(out, /data-edit-action="unqueue"/);
+  const fixed = String(detailView({ kind: "way", editable: false, way: { id: 5, version: 2, tags: {} } }, i18nFor("fr"), "https://dev", { autoQueue: true }));
+  assert.doesNotMatch(fixed, /data-edit-action="choose"/);
+});
+
+test("choosing both sides first, switching to sides and back keeps a coherent choice", async () => {
+  const { EMPTY_CHOICE, chooseValue, completeChoice, switchMode, choiceFromIntent } = await load("intent.js");
+  let c = chooseValue(EMPTY_CHOICE, "both", "separate");
+  assert.deepEqual(completeChoice(c), { left: "separate", right: "separate" });
+  c = switchMode(c, "sides");
+  assert.deepEqual([c.mode, c.left, c.right], ["sides", "separate", "separate"]);
+  c = chooseValue(c, "right", "no");
+  assert.deepEqual(completeChoice(c), { left: "separate", right: "no" });
+  assert.deepEqual(switchMode(c, "both"), { mode: "both", both: "", left: "", right: "" });
+  assert.equal(completeChoice(chooseValue(c, "left", "separate")), null);
+  assert.equal(completeChoice(chooseValue(chooseValue(EMPTY_CHOICE, "both", "yes"), "both", "yes")), null);
+  assert.throws(() => chooseValue(EMPTY_CHOICE, "both", "maybe"), /invalid-choice/);
+  assert.throws(() => chooseValue(EMPTY_CHOICE, "top", "yes"), /invalid-side/);
+  assert.deepEqual(choiceFromIntent(await intentFor(way(1, { highway: "residential" }), "no", "no")), { mode: "both", both: "no", left: "no", right: "no" });
+  assert.deepEqual(choiceFromIntent(await intentFor(way(1, { highway: "residential" }), "yes", "no")), { mode: "sides", both: "", left: "yes", right: "no" });
+  assert.equal(choiceFromIntent(null), EMPTY_CHOICE);
+});
+
+test("automatic queueing is on by default and can be turned off in the settings", async () => {
+  const { SETTINGS, resolveEnv } = await load("env.js");
+  assert.equal(SETTINGS.autoQueue, true);
+  assert.equal(resolveEnv("dev", "https://x/test-api/devtest.html", { ...SETTINGS, autoQueue: false }).autoQueue, false);
 });
 
 test("the queue view escapes names and only offers sending once a plan exists and the user is logged in", async () => {
@@ -361,7 +412,8 @@ test("the P2 panel speaks every published language without a missing key", async
     const i18n = i18nFor(lang, warnings);
     const form = { comment: "", sources: [], sourceOther: "", hashtags: "", review: false };
     const outs = [
-      detailView({ kind: "way", editable: true, longWay: true, lengthM: 300, queued: null, formError: "x", way: { id: 5, version: 1, tags: {} } }, i18n, "https://x"),
+      detailView({ kind: "way", editable: true, longWay: true, lengthM: 300, queued: intent, choice: { mode: "sides", both: "", left: "no", right: "yes" }, way: { id: 5, version: 1, tags: {} } }, i18n, "https://x", { autoQueue: false }),
+      detailView({ kind: "way", editable: true, longWay: false, lengthM: 30, queued: null, choice: { mode: "both", both: "", left: "", right: "" }, way: { id: 5, version: 1, tags: {} } }, i18n, "https://x", { autoQueue: true }),
       queueView({ items: [], form, plan: null, result: null, busy: false, loggedIn: false }, i18n, "https://x", { sourcePresets: ["survey"] }),
       queueView({ items: [intent], form, busy: true, loggedIn: true,
         plan: { ready: [{}], groups: [{}], tooMany: false, max: 3, dropped: ["deleted", "already_fixed", "modified_meanwhile"].map(reason => ({ intent, reason })) },

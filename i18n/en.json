@@ -478,11 +478,14 @@
       "direction": "Left and right follow the way's direction: blue on the left, orange on the right.",
       "left": "Left",
       "right": "Right",
-      "choose": "Choose…",
       "add": "Add to queue",
       "update": "Update in queue",
-      "bothSides": "Choose a value for both sides.",
-      "longWay": "This way is {{length}} m long: if the sidewalk changes along the street, split it first in JOSM or iD."
+      "longWay": "This way is {{length}} m long: if the sidewalk changes along the street, split it first in JOSM or iD.",
+      "both": "Both sides",
+      "differentSides": "Different sides…",
+      "sameSides": "Same value on both sides",
+      "queued": "In queue: {{tags}}",
+      "unqueue": "Remove"
     },
     "value": {
       "separate": "separate (mapped as its own way)",

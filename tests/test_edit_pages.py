@@ -147,3 +147,13 @@ def test_devtest_exists_in_every_published_language_with_a_working_switch(site):
         assert _csp(html) == _csp(_html(site / DEVTEST_PAGE))
         assert 'data-edit-env="dev"' in html
         assert '<meta name="robots" content="noindex, nofollow" />' in html
+
+
+
+def test_editing_lives_in_its_own_panel_outside_the_header(site):
+    html = _html(site / DEVTEST_PAGE)
+    header = html[html.index('<div id="header"'):html.index('<div id="route-panel"')]
+    assert 'id="edit-panel"' not in header
+    dock = html[html.index('<aside id="edit-dock"'):html.index("</aside>")]
+    for part in ("edit-dock-toggle", "edit-auth", "edit-status", "edit-detail", "edit-queue"):
+        assert f'id="{part}"' in dock

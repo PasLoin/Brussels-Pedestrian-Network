@@ -5,7 +5,7 @@ import { EMPTY_COLLECTION, bboxString, candidatesFromMapData } from "./candidate
 import { buildChangesetTags, splitList } from "./changeset.js";
 import { APP_NAME, APP_VERSION, envFromDocument } from "./env.js";
 import { bboxOf, lineLengthM } from "./geo.js";
-import { makeIntent } from "./intent.js";
+import { chooseValue, choiceFromIntent, completeChoice, makeIntent, switchMode } from "./intent.js";
 import { closeEmptyChangesets, planUpload, uploadGroups } from "./osm.js";
 import { authView, detailView, queueView, statusView } from "./panel.js";
 import { createQueue } from "./queue.js";
@@ -64,7 +64,18 @@ function showStatus(view) {
 }
 
 function renderDetail() {
-  detailEl.innerHTML = html`${detailView(state.detail, i18n, env.webUrl)}`;
+  detailEl.innerHTML = html`${detailView(state.detail, i18n, env.webUrl, env)}`;
+  showSideLines();
+}
+
+function showSideLines() {
+  if (!map || !map.getLayer(SIDE_LEFT)) return;
+  const d = state.detail;
+  const filter = d.kind === "way" && d.editable && d.choice && d.choice.mode === "sides"
+    ? ["==", ["get", "osm_id"], d.way.id]
+    : NO_SELECTION;
+  map.setFilter(SIDE_LEFT, filter);
+  map.setFilter(SIDE_RIGHT, filter);
 }
 
 function renderQueue() {
@@ -121,24 +132,47 @@ authEl.addEventListener("click", async (e) => {
   }
 });
 
-detailEl.addEventListener("click", (e) => {
-  if (e.target.closest("[data-edit-action]")?.dataset.editAction !== "queue") return;
+function queueChoice() {
   const d = state.detail;
-  if (d.kind !== "way" || !d.editable) return;
-  const left = detailEl.querySelector('select[name="sw-left"]').value;
-  const right = detailEl.querySelector('select[name="sw-right"]').value;
-  if (!left || !right) {
-    state.detail = { ...d, formError: i18n.t("edit.form.bothSides") };
-    return renderDetail();
-  }
-  const intent = makeIntent({ way: d.way, left, right, bbox: d.bbox, lengthM: d.lengthM });
+  const sides = completeChoice(d.choice);
+  if (!sides) return;
+  const intent = makeIntent({ way: d.way, left: sides.left, right: sides.right, bbox: d.bbox, lengthM: d.lengthM });
   queue.put(intent);
   state.plan = null;
   state.result = null;
-  state.detail = { ...d, queued: intent, formError: null };
-  renderDetail();
+  state.detail = { ...d, queued: intent };
   renderQueue();
   syncQueuedState();
+}
+
+function unqueueSelected(choice) {
+  const d = state.detail;
+  queue.remove(d.way.id);
+  state.plan = null;
+  state.detail = { ...d, queued: null, choice };
+  renderQueue();
+  syncQueuedState();
+}
+
+detailEl.addEventListener("click", (e) => {
+  const button = e.target.closest("[data-edit-action]");
+  const d = state.detail;
+  if (!button || d.kind !== "way" || !d.editable) return;
+  const action = button.dataset.editAction;
+  if (action === "choose") {
+    state.detail = { ...d, choice: chooseValue(d.choice, button.dataset.side, button.dataset.value) };
+    if (env.autoQueue && completeChoice(state.detail.choice)) queueChoice();
+    else if (env.autoQueue && d.queued) unqueueSelected(state.detail.choice);
+  } else if (action === "mode") {
+    state.detail = { ...d, choice: switchMode(d.choice, button.dataset.mode) };
+  } else if (action === "queue") {
+    queueChoice();
+  } else if (action === "unqueue") {
+    unqueueSelected({ mode: d.choice.mode, both: "", left: "", right: "" });
+  } else {
+    return;
+  }
+  renderDetail();
 });
 
 queueEl.addEventListener("input", (e) => {
@@ -272,17 +306,31 @@ queueEl.addEventListener("click", async (e) => {
   } else {
     return;
   }
-  if (state.detail.kind === "way") state.detail = { ...state.detail, queued: queue.get(state.detail.way.id) };
+  if (state.detail.kind === "way") {
+    const queued = queue.get(state.detail.way.id);
+    state.detail = { ...state.detail, queued, choice: queued ? choiceFromIntent(queued) : state.detail.choice };
+  }
   renderDetail();
   renderQueue();
   syncQueuedState();
 });
+
+const dock = document.getElementById("edit-dock");
+const dockToggle = document.getElementById("edit-dock-toggle");
+function setDockOpen(open) {
+  dock.classList.toggle("open", open);
+  dock.classList.toggle("closed", !open);
+  dockToggle.setAttribute("aria-expanded", open ? "true" : "false");
+}
+dockToggle.addEventListener("click", () => setDockOpen(!dock.classList.contains("open")));
 
 refreshAuth();
 
 map = store.mapReady
   ? store.map
   : await new Promise(resolve => window.addEventListener("bpn:map-ready", e => resolve(e.detail), { once: true }));
+
+window.BPNMap?.setLegendOpen(false);
 
 const WIDTH = ["interpolate", ["linear"], ["zoom"], 16, 4, 19, 9];
 map.addSource(SOURCE, { type: "geojson", data: EMPTY_COLLECTION, promoteId: "osm_id" });
@@ -356,8 +404,8 @@ async function geometryOf(id) {
 }
 
 async function selectWay(id) {
-  const filter = ["==", ["get", "osm_id"], id];
-  for (const layer of [SELECTED, SIDE_LEFT, SIDE_RIGHT]) map.setFilter(layer, filter);
+  map.setFilter(SELECTED, ["==", ["get", "osm_id"], id]);
+  setDockOpen(true);
   state.detail = { kind: "loading" };
   renderDetail();
   try {
@@ -372,12 +420,13 @@ async function selectWay(id) {
       lengthM,
       longWay: lengthM > env.longWayWarningM,
       queued: queue.get(id),
+      choice: choiceFromIntent(queue.get(id)),
     };
   } catch (err) {
     state.detail = { kind: "error", message: err && err.message };
   }
   renderDetail();
-  (detailEl.querySelector('[data-edit-action="queue"]') || detailEl).scrollIntoView({ block: "nearest", behavior: "smooth" });
+  (detailEl.querySelector(".edit-form") || detailEl).scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
 
 map.on("click", LAYER, (e) => {

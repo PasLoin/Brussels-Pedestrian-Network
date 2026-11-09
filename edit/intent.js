@@ -38,3 +38,33 @@ export function applyIntent(tags, intent) {
   Object.assign(out, intent.set);
   return out;
 }
+
+export const EMPTY_CHOICE = Object.freeze({ mode: "both", both: "", left: "", right: "" });
+
+export function choiceFromIntent(intent) {
+  if (!intent) return EMPTY_CHOICE;
+  const both = intent.set["sidewalk:both"];
+  if (both) return { mode: "both", both, left: both, right: both };
+  return { mode: "sides", both: "", left: intent.set["sidewalk:left"] || "", right: intent.set["sidewalk:right"] || "" };
+}
+
+export function switchMode(choice, mode) {
+  if (mode === "sides") return { ...choice, mode, left: choice.left || choice.both, right: choice.right || choice.both, both: "" };
+  const both = choice.left && choice.left === choice.right ? choice.left : "";
+  return { mode: "both", both, left: both, right: both };
+}
+
+export function chooseValue(choice, side, value) {
+  if (!SIDEWALK_VALUES.includes(value)) throw new Error("invalid-choice");
+  if (side === "both") {
+    const next = choice.both === value ? "" : value;
+    return { mode: "both", both: next, left: next, right: next };
+  }
+  if (side !== "left" && side !== "right") throw new Error("invalid-side");
+  return { ...choice, mode: "sides", both: "", [side]: choice[side] === value ? "" : value };
+}
+
+export function completeChoice(choice) {
+  if (choice.mode === "both") return choice.both ? { left: choice.both, right: choice.both } : null;
+  return choice.left && choice.right ? { left: choice.left, right: choice.right } : null;
+}

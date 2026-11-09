@@ -67,16 +67,6 @@
       {{ t("header.editInOsm") }}
     </a>
     <div id="edit-hint">{{ t("header.editHint", zoom=16) }}</div>
-{% if edit_env %}
-
-    <section id="edit-panel" aria-labelledby="edit-panel-title">
-      <h2 id="edit-panel-title">{{ t("edit.panel.title") }} <span class="edit-env">{{ edit_env }}</span></h2>
-      <div id="edit-auth" aria-live="polite"></div>
-      <div id="edit-status" aria-live="polite"></div>
-      <div id="edit-detail"></div>
-      <div id="edit-queue"></div>
-    </section>
-{% endif %}
   </div>
 </div>
 
@@ -121,6 +111,22 @@
   </button>
   <div id="legend-content"></div>
 </div>
+{% if edit_env %}
+<aside id="edit-dock" class="open" aria-labelledby="edit-panel-title">
+  <button id="edit-dock-toggle" type="button" aria-expanded="true" aria-controls="edit-panel">
+    <span id="edit-panel-title">{{ t("edit.panel.title") }} <span class="edit-env">{{ edit_env }}</span></span>
+    <svg aria-hidden="true" class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="6 9 12 15 18 9"/>
+    </svg>
+  </button>
+  <section id="edit-panel">
+    <div id="edit-auth" aria-live="polite"></div>
+    <div id="edit-status" aria-live="polite"></div>
+    <div id="edit-detail"></div>
+    <div id="edit-queue"></div>
+  </section>
+</aside>
+{% endif %}
 <div id="zoom-badge">{{ t("map.zoom") }} <span id="zoom-val"></span></div>
 
 <div id="basemap-control">

@@ -27,6 +27,7 @@ export const MAX_WAYS_PER_CHANGESET = 50;
 
 export const SETTINGS = Object.freeze({
   editEnabled: true,
+  autoQueue: true,
   candidateMinZoom: 17,
   authPendingTtlMs: 5 * 60 * 1000,
   landingPage: "land.html",

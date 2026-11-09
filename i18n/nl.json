@@ -478,11 +478,14 @@
       "direction": "Links en rechts volgen de richting van de way: blauw links, oranje rechts.",
       "left": "Links",
       "right": "Rechts",
-      "choose": "Kies…",
       "add": "Toevoegen aan wachtrij",
       "update": "Bijwerken in wachtrij",
-      "bothSides": "Kies een waarde voor beide kanten.",
-      "longWay": "Deze way is {{length}} m lang: als de stoep langs de straat verandert, splits hem eerst in JOSM of iD."
+      "longWay": "Deze way is {{length}} m lang: als de stoep langs de straat verandert, splits hem eerst in JOSM of iD.",
+      "both": "Beide kanten",
+      "differentSides": "Verschillende kanten…",
+      "sameSides": "Zelfde waarde aan beide kanten",
+      "queued": "In wachtrij: {{tags}}",
+      "unqueue": "Verwijderen"
     },
     "value": {
       "separate": "separate (apart gekarteerd)",
