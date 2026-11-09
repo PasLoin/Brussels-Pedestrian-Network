@@ -1,0 +1,94 @@
+  <h1>Methodologie</h1>
+  <p class="lede">Hoe de stromen worden gesimuleerd, wat elke kwaliteitslaag aangeeft en hoe de indicatoren worden berekend.</p>
+
+  <p>
+    De site simuleert verplaatsingen te voet in Brussel op basis van OpenStreetMap-gegevens. De stromen tonen waar een onvolledige kartering het zwaarst doorweegt op de gesimuleerde verplaatsingen. De kwaliteitslagen wijzen op topologische fouten of ontbrekende tags op specifieke objecten, met een link naar de editor.
+  </p>
+
+  <h2 id="routing-costs">Routeringskosten</h2>
+  <p>
+    De routeplanner (Dijkstra, igraph) zoekt het pad met het laagste gewicht. Het gewicht van een segment is zijn lengte vermenigvuldigd met een factor die afhangt van het type weg: hoe hoger de factor, hoe makkelijker de routeplanner een omweg maakt.
+  </p>
+  <div class="table-wrap">
+  <table>
+    <tr><th>highway-tag</th><th>Kost</th></tr>
+    <tr><td><code>pedestrian</code>, <code>footway</code></td><td class="num">1,0</td></tr>
+    <tr><td><code>cycleway</code> met <code>foot=yes</code>, <code>designated</code> of <code>permissive</code></td><td class="num">1,0</td></tr>
+    <tr><td><code>living_street</code>, <code>path</code>, <code>track</code>, <code>bridleway</code></td><td class="num">1,2</td></tr>
+    <tr><td><code>steps</code></td><td class="num">1,5</td></tr>
+    <tr><td><code>cycleway</code> zonder uitdrukkelijke toegang voor voetgangers</td><td class="num">1,8</td></tr>
+    <tr><td><code>residential</code>, <code>service</code></td><td class="num">2,0</td></tr>
+    <tr><td><code>unclassified</code></td><td class="num">2,2</td></tr>
+    <tr><td><code>tertiary</code></td><td class="num">3,5</td></tr>
+    <tr><td><code>secondary</code></td><td class="num">5,0</td></tr>
+    <tr><td><code>primary</code></td><td class="num">8,0</td></tr>
+  </table>
+  </div>
+
+  <h2 id="quality-layers">Kwaliteitslagen</h2>
+
+  <h3 id="road-flows">Stroom op de rijweg</h3>
+  <p>
+    Segmenten van de rijweg waar de simulatie veel voetgangers langs stuurt, hoewel er geen voetgangersinfrastructuur geregistreerd is (gekarteerd trottoir of tag <code>sidewalk</code>). Controleer ter plaatse of op luchtfoto's of er een trottoir is, en voeg dan de tag of de geometrie toe.
+  </p>
+
+  <h3 id="sidewalk-one-side">Trottoir aan één kant</h3>
+  <p>
+    Voor elk straatsegment worden aan beide kanten ongeveer evenwijdige ways <code>highway=footway</code> gezocht. Een fietspad <code>highway=cycleway</code> met <code>foot=yes</code>, <code>designated</code> of <code>permissive</code> telt ook als trottoir. Het segment wordt gemarkeerd wanneer er slechts aan één kant een apart trottoir gevonden wordt.
+  </p>
+
+  <h3 id="sidewalk-tags">Sidewalk-tags</h3>
+  <p>
+    Toestand van de tags <code>sidewalk</code>, <code>sidewalk:left</code>, <code>sidewalk:right</code> en <code>sidewalk:both</code> op elke straat: <code>separate</code>, <code>yes</code>, gedocumenteerd aan beide kanten, aan één kant, of geen tag.
+  </p>
+
+  <h3 id="missing-crossings">Ontbrekende oversteekplaatsen</h3>
+  <p>
+    Knopen <code>highway=crossing</code> op een straat met aan beide kanten een evenwijdige <code>footway=sidewalk</code>, die niet met die trottoirs verbonden zijn door een way <code>footway=crossing</code>. Drie gevallen:
+  </p>
+  <ul>
+    <li><code>missing_way</code>: geen enkel voetpad raakt de knoop;</li>
+    <li><code>missing_tag</code>: een voetpad raakt de knoop maar heeft geen <code>footway=crossing</code>;</li>
+    <li><code>wrong_tag</code>: de oversteekway is getagd als <code>footway=sidewalk</code>.</li>
+  </ul>
+  <p>
+    In alle drie de gevallen zijn de trottoirs gekarteerd, maar is het routeringsnetwerk op dit punt onderbroken. Knopen op <code>service</code>, <code>cycleway</code> of <code>track</code>, en oversteekplaatsen met <code>crossing:continuous=yes</code>, worden niet als <code>missing_tag</code> gemarkeerd.
+  </p>
+
+  <h3 id="crossing-candidates">Oversteekplaats zonder footway=crossing</h3>
+  <p>
+    Korte voetpaden die een trottoir aan elke kant van een straat verbinden zonder <code>footway=crossing</code>. Dit zijn kandidaten: controleer ze voor je iets bewerkt.
+  </p>
+
+  <h3 id="kerbs-tactile-paving">Stoepranden en geleidetegels</h3>
+  <p>
+    Bij elke oversteekplaats worden de knopen <code>barrier=kerb</code> aan beide uiteinden van de way <code>footway=crossing</code> onderzocht. Er wordt een punt geplaatst wanneer de stoeprand ontbreekt of geen <code>tactile_paving</code> heeft. Een inconsistentie wordt gemeld wanneer de <code>tactile_paving</code> van de oversteekplaats die van de stoepranden tegenspreekt: <code>yes</code> of <code>no</code> verwacht dezelfde waarde aan beide kanten, <code>incorrect</code> verwacht <code>yes</code> aan de ene kant en <code>no</code> aan de andere. Twee ways <code>footway=crossing</code> die op elkaar aansluiten, worden als één oversteekplaats behandeld.
+  </p>
+
+  <h3 id="network-islands">Losgekoppelde eilanden</h3>
+  <p>
+    Delen van het voetgangersnetwerk zonder verbinding met het hoofdnetwerk. Een „ontbrekende aansluiting” raakt het netwerk bijna (hoogstens 2 m) en mist waarschijnlijk een gedeelde knoop. Een „geïsoleerd eiland” heeft niets in de buurt, vaak door private toegang, een hek of onvolledige kartering. De laag meldt ook trappen waarvan het <code>level</code> niet overlapt met dat van een aangesloten way; in stations met meerdere niveaus geeft dat soms valse meldingen.
+  </p>
+
+  <h2 id="indicators">Indicatoren</h2>
+  <p>
+    De volledigheidsscore op de pagina Statistieken is het gemiddelde van vijf aandelen, in procent:
+  </p>
+  <ul>
+    <li>straatsegmenten waarvan de trottoirs met een tag gedocumenteerd zijn (<code>separate</code>, <code>yes</code> of beide kanten; één kant telt voor de helft);</li>
+    <li>straatsegmenten waarvan de trottoirs als aparte ways gekarteerd zijn;</li>
+    <li>knopen <code>highway=crossing</code> verbonden met een voetpad;</li>
+    <li>knopen <code>highway=crossing</code> verbonden met een way die correct als <code>footway=crossing</code> getagd is;</li>
+    <li>straatlengte met een trottoir aan beide kanten, onder de straten met minstens één.</li>
+  </ul>
+  <p>
+    De pagina Evolutie volgt ook de aanwezigheid van <code>surface</code> en <code>smoothness</code> op voetpaden en van <code>tactile_paving</code> op oversteekplaatsen.
+  </p>
+
+  <h2 id="contributing">Bijdragen</h2>
+  <ol>
+    <li>Zoek een rood segment (stroom op de rijweg) of een punt van een kwaliteitslaag.</li>
+    <li>Klik erop om het object in iD of JOSM te openen, of gebruik „Bewerken in OSM” vanaf zoom 16.</li>
+    <li>Verbeter de tags of de geometrie.</li>
+    <li>De kaart wordt elke nacht opnieuw berekend op basis van de OSM-extractie van die dag.</li>
+  </ol>
