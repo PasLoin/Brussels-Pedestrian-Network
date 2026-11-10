@@ -7,10 +7,14 @@ import { APP_NAME, APP_VERSION, envFromDocument } from "./env.js";
 import { errorKind, errorMessage } from "./errors.js";
 import { bboxOf, lineLengthM } from "./geo.js";
 import { chooseValue, choiceFromIntent, completeChoice, makeIntent, switchMode } from "./intent.js";
+import { nextCandidate } from "./next.js";
 import { closeEmptyChangesets, planUpload, uploadGroups } from "./osm.js";
-import { authView, detailView, queueView, statusView } from "./panel.js";
+import { authView, detailView, navView, queueView, statusView } from "./panel.js";
 import { composeComment, describeGroup, indexCommunes } from "./places.js";
 import { createQueue } from "./queue.js";
+import { shortcutFor, sideForValue } from "./shortcuts.js";
+import { createSkipList } from "./skipped.js";
+import { DOCK_KEY, DOCK_POSITIONS, freeRect, readDockPosition, recenterOffset } from "./viewport.js";
 import { isEditableCandidate } from "./whitelist.js";
 
 const SOURCE = "edit-candidates";
@@ -29,6 +33,10 @@ guardEnvironment({ env: env.name, storage, osm });
 osm.configure({ apiUrl: env.apiUrl });
 
 const queue = createQueue({ storage, env: env.name });
+const skipped = createSkipList({ storage, env: env.name });
+const visited = new Set();
+const navEl = document.getElementById("edit-nav");
+let navHint = "";
 const authEl = document.getElementById("edit-auth");
 const statusEl = document.getElementById("edit-status");
 const detailEl = document.getElementById("edit-detail");
@@ -117,7 +125,73 @@ function renderQueue() {
 
 function syncQueuedState() {
   if (!map || !map.getSource(SOURCE)) return;
-  for (const id of liveFeatures.keys()) map.setFeatureState({ source: SOURCE, id }, { queued: queue.has(id) });
+  for (const id of liveFeatures.keys()) map.setFeatureState({ source: SOURCE, id }, { queued: queue.has(id), skipped: skipped.has(id) });
+}
+
+function renderNav() {
+  navEl.innerHTML = html`${navView({
+    candidates: liveFeatures.size,
+    skipped: skipped.size(),
+    selected: state.detail.kind === "way",
+    hint: navHint,
+  }, i18n)}`;
+}
+
+function selectNext() {
+  if (!map) return false;
+  const current = state.detail.kind === "way" ? state.detail.way.id : null;
+  const here = map.getCenter();
+  const from = current && state.detail.bbox
+    ? [(state.detail.bbox[0] + state.detail.bbox[2]) / 2, (state.detail.bbox[1] + state.detail.bbox[3]) / 2]
+    : [here.lng, here.lat];
+  const pool = [...liveFeatures.values()];
+  const base = new Set([...skipped.list(), ...queue.list().map(i => i.wayId)]);
+  if (current) base.add(current);
+  let next = nextCandidate(pool, from, new Set([...base, ...visited]));
+  if (!next && visited.size) {
+    visited.clear();
+    next = nextCandidate(pool, from, base);
+  }
+  if (!next) {
+    navHint = i18n.t("edit.nav.none");
+    renderNav();
+    return false;
+  }
+  navHint = "";
+  selectWay(next.properties.osm_id);
+  return true;
+}
+
+function deselect() {
+  state.detail = { kind: "none" };
+  if (map && map.getLayer(SELECTED)) map.setFilter(SELECTED, NO_SELECTION);
+  renderDetail();
+  renderNav();
+}
+
+function skipSelected() {
+  const d = state.detail;
+  if (d.kind !== "way") return;
+  skipped.add(d.way.id);
+  if (queue.has(d.way.id)) {
+    queue.remove(d.way.id);
+    state.plan = null;
+    renderQueue();
+  }
+  syncQueuedState();
+  if (!selectNext()) deselect();
+}
+
+function recenterOn(bbox) {
+  const canvas = { width: map.getCanvas().clientWidth, height: map.getCanvas().clientHeight };
+  const narrow = window.matchMedia("(max-width: 600px)").matches;
+  const rect = dock.classList.contains("open") ? dock.getBoundingClientRect() : null;
+  const free = freeRect(canvas, rect, narrow ? "bottom" : dock.dataset.position);
+  const a = map.project([bbox[0], bbox[1]]);
+  const b = map.project([bbox[2], bbox[3]]);
+  const box = { minX: Math.min(a.x, b.x), maxX: Math.max(a.x, b.x), minY: Math.min(a.y, b.y), maxY: Math.max(a.y, b.y) };
+  const offset = recenterOffset(canvas, free, box);
+  if (offset) map.easeTo({ center: [(bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2], offset, duration: 250 });
 }
 
 async function refreshAuth(message) {
@@ -160,14 +234,27 @@ authEl.addEventListener("click", async (e) => {
 function queueChoice() {
   const d = state.detail;
   const sides = completeChoice(d.choice);
-  if (!sides) return;
+  if (!sides) return false;
   const intent = makeIntent({ way: d.way, left: sides.left, right: sides.right, bbox: d.bbox, lengthM: d.lengthM, coords: d.coords });
   queue.put(intent);
+  skipped.remove(intent.wayId);
   state.plan = null;
   state.result = null;
   state.detail = { ...d, queued: intent };
   renderQueue();
   syncQueuedState();
+  return true;
+}
+
+function applyValue(side, value) {
+  const d = state.detail;
+  state.detail = { ...d, choice: chooseValue(d.choice, side, value) };
+  if (env.autoQueue && completeChoice(state.detail.choice)) {
+    if (queueChoice() && env.autoAdvance && selectNext()) return;
+  } else if (env.autoQueue && d.queued) {
+    unqueueSelected(state.detail.choice);
+  }
+  renderDetail();
 }
 
 function unqueueSelected(choice) {
@@ -185,13 +272,16 @@ detailEl.addEventListener("click", (e) => {
   if (!button || d.kind !== "way" || !d.editable) return;
   const action = button.dataset.editAction;
   if (action === "choose") {
-    state.detail = { ...d, choice: chooseValue(d.choice, button.dataset.side, button.dataset.value) };
-    if (env.autoQueue && completeChoice(state.detail.choice)) queueChoice();
-    else if (env.autoQueue && d.queued) unqueueSelected(state.detail.choice);
+    return applyValue(button.dataset.side, button.dataset.value);
+  } else if (action === "skip") {
+    return skipSelected();
+  } else if (action === "next") {
+    selectNext();
+    return;
   } else if (action === "mode") {
     state.detail = { ...d, choice: switchMode(d.choice, button.dataset.mode) };
   } else if (action === "queue") {
-    queueChoice();
+    if (queueChoice() && env.autoAdvance && selectNext()) return;
   } else if (action === "unqueue") {
     unqueueSelected({ mode: d.choice.mode, both: "", left: "", right: "" });
   } else {
@@ -362,8 +452,61 @@ queueEl.addEventListener("click", async (e) => {
   syncQueuedState();
 });
 
+navEl.addEventListener("click", (e) => {
+  const action = e.target.closest("[data-edit-action]")?.dataset.editAction;
+  if (action === "next") selectNext();
+  else if (action === "reset-skipped") {
+    skipped.clear();
+    visited.clear();
+    navHint = "";
+    syncQueuedState();
+    renderNav();
+  }
+});
+
+document.addEventListener("keydown", (e) => {
+  const action = shortcutFor(e);
+  if (!action) return;
+  const d = state.detail;
+  const editing = d.kind === "way" && d.editable;
+  if (action.type === "next") {
+    e.preventDefault();
+    e.stopPropagation();
+    selectNext();
+  } else if (action.type === "deselect") {
+    if (d.kind !== "none") deselect();
+  } else if (action.type === "skip") {
+    if (d.kind === "way") skipSelected();
+  } else if (action.type === "value" && editing) {
+    applyValue(sideForValue(d.choice), action.value);
+  } else if (action.type === "mode" && editing) {
+    state.detail = { ...d, choice: switchMode(d.choice, action.mode) };
+    renderDetail();
+  }
+}, true);
+
 const dock = document.getElementById("edit-dock");
 const dockToggle = document.getElementById("edit-dock-toggle");
+const dockButtons = [...document.querySelectorAll("#edit-dock-position [data-dock]")];
+
+function foldSidePanel(position) {
+  if (position === "left" && window.BPNMap) window.BPNMap.setHeaderOpen(false);
+  if (position === "right" && window.BPNMap) window.BPNMap.setLegendOpen(false);
+}
+
+function setDockPosition(position, persist) {
+  const value = DOCK_POSITIONS.includes(position) ? position : "right";
+  dock.dataset.position = value;
+  for (const button of dockButtons) button.setAttribute("aria-pressed", button.dataset.dock === value ? "true" : "false");
+  if (persist) {
+    try { storage.setItem(DOCK_KEY, value); } catch {}
+  }
+  foldSidePanel(value);
+  if (map && state.detail.kind === "way") recenterOn(state.detail.bbox);
+}
+
+for (const button of dockButtons) button.addEventListener("click", () => setDockPosition(button.dataset.dock, true));
+setDockPosition(readDockPosition(storage), false);
 function setDockOpen(open) {
   dock.classList.toggle("open", open);
   dock.classList.toggle("closed", !open);
@@ -377,7 +520,7 @@ map = store.mapReady
   ? store.map
   : await new Promise(resolve => window.addEventListener("bpn:map-ready", e => resolve(e.detail), { once: true }));
 
-window.BPNMap?.setLegendOpen(false);
+foldSidePanel(dock.dataset.position);
 
 const WIDTH = ["interpolate", ["linear"], ["zoom"], 16, 4, 19, 9];
 map.addSource(SOURCE, { type: "geojson", data: EMPTY_COLLECTION, promoteId: "osm_id" });
@@ -385,7 +528,7 @@ map.addLayer({
   id: LAYER, type: "line", source: SOURCE,
   layout: { "line-cap": "round", "line-join": "round" },
   paint: {
-    "line-color": ["case", ["boolean", ["feature-state", "queued"], false], "#16a34a", "#c026d3"],
+    "line-color": ["case", ["boolean", ["feature-state", "queued"], false], "#16a34a", ["boolean", ["feature-state", "skipped"], false], "#9ca3af", "#c026d3"],
     "line-width": WIDTH,
     "line-opacity": 0.85,
   },
@@ -417,6 +560,7 @@ async function loadCandidates() {
     controller = null;
     liveFeatures.clear();
     map.getSource(SOURCE)?.setData(EMPTY_COLLECTION);
+    renderNav();
     return showStatus({ kind: blocked, minZoom: env.candidateMinZoom });
   }
   const current = new AbortController();
@@ -431,11 +575,13 @@ async function loadCandidates() {
     map.getSource(SOURCE)?.setData(collection);
     syncQueuedState();
     showStatus({ kind: "ready", count: collection.features.length });
+    renderNav();
   } catch (err) {
     if (current.signal.aborted) return;
     liveFeatures.clear();
     map.getSource(SOURCE)?.setData(EMPTY_COLLECTION);
     showStatus({ kind: "error", message: errorMessage(err, i18n.t) });
+    renderNav();
   }
 }
 
@@ -447,6 +593,7 @@ function scheduleCandidates() {
 async function selectWay(id) {
   map.setFilter(SELECTED, ["==", ["get", "osm_id"], id]);
   setDockOpen(true);
+  visited.add(id);
   state.detail = { kind: "loading" };
   renderDetail();
   try {
@@ -473,7 +620,9 @@ async function selectWay(id) {
     if (gone) map.setFilter(SELECTED, NO_SELECTION);
   }
   renderDetail();
+  renderNav();
   (detailEl.querySelector(".edit-form") || detailEl).scrollIntoView({ block: "nearest", behavior: "smooth" });
+  if (state.detail.kind === "way") recenterOn(state.detail.bbox);
 }
 
 map.on("click", LAYER, (e) => {

@@ -28,6 +28,7 @@ export const MAX_WAYS_PER_CHANGESET = 50;
 export const SETTINGS = Object.freeze({
   editEnabled: true,
   autoQueue: true,
+  autoAdvance: true,
   candidateMinZoom: 17,
   maxCandidateAreaDeg2: 0.001,
   authPendingTtlMs: 5 * 60 * 1000,

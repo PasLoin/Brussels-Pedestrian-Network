@@ -57,7 +57,7 @@ function chips(side, selected, i18n) {
   const { t } = i18n;
   return html`
     <div class="edit-chips" role="group">
-      ${SIDE_VALUES.map(v => html`<button type="button" class="edit-chip${v === selected ? " active" : ""}" data-edit-action="choose" data-side="${side}" data-value="${v}" aria-pressed="${v === selected ? "true" : "false"}" title="${valueLabel(v, t)}">${v}</button>`)}
+      ${SIDE_VALUES.map(v => html`<button type="button" class="edit-chip${v === selected ? " active" : ""}" data-edit-action="choose" data-side="${side}" data-value="${v}" aria-pressed="${v === selected ? "true" : "false"}" title="${valueLabel(v, t)}"><u>${v[0]}</u>${v.slice(1)}</button>`)}
     </div>
   `;
 }
@@ -81,16 +81,33 @@ export function editFormView(state, i18n, settings = {}) {
           ${chips("left", choice.left, i18n)}
           <div class="edit-side edit-side-right"><span class="edit-swatch"></span>${t("edit.form.right")}</div>
           ${chips("right", choice.right, i18n)}
-          <button type="button" class="edit-link" data-edit-action="mode" data-mode="both">${t("edit.form.sameSides")}</button>`
+          <button type="button" class="edit-link" data-edit-action="mode" data-mode="both">${t("edit.form.sameSides")} <kbd>b</kbd></button>`
         : html`
           <div class="edit-side">${t("edit.form.both")}</div>
           ${chips("both", choice.both, i18n)}
-          <button type="button" class="edit-link" data-edit-action="mode" data-mode="sides">${t("edit.form.differentSides")}</button>`}
+          <button type="button" class="edit-link" data-edit-action="mode" data-mode="sides">${t("edit.form.differentSides")} <kbd>d</kbd></button>`}
       ${!settings.autoQueue && html`
         <button type="button" class="header-btn" data-edit-action="queue"${complete ? "" : html` disabled`}>${state.queued ? t("edit.form.update") : t("edit.form.add")}</button>`}
       ${state.queued && html`
         <p class="edit-ok edit-queued">${t("edit.form.queued", { tags: tagSummary(state.queued.set) })}
           <button type="button" class="edit-link" data-edit-action="unqueue">${t("edit.form.unqueue")}</button></p>`}
+      <div class="edit-step">
+        <button type="button" class="edit-link" data-edit-action="skip">${t("edit.form.skip")} <kbd>p</kbd></button>
+        <button type="button" class="edit-link" data-edit-action="next">${t("edit.form.next")} <kbd>→</kbd></button>
+      </div>
+      <p class="edit-help">${t("edit.form.shortcuts")}</p>
+    </div>
+  `;
+}
+
+export function navView(state, i18n) {
+  const { t } = i18n;
+  return html`
+    <div class="edit-nav">
+      ${state.candidates > 0 && !state.selected && html`<button type="button" class="edit-link" data-edit-action="next">${t("edit.nav.next")} <kbd>→</kbd></button>`}
+      ${state.skipped > 0 && html`<span class="edit-help">${t("edit.nav.skipped", { count: state.skipped })}
+        <button type="button" class="edit-link" data-edit-action="reset-skipped">${t("edit.nav.resetSkipped")}</button></span>`}
+      ${state.hint && html`<p class="edit-help">${state.hint}</p>`}
     </div>
   `;
 }

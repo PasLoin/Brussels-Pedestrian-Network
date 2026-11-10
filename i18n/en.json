@@ -486,7 +486,10 @@
       "differentSides": "Different sides…",
       "sameSides": "Same value on both sides",
       "queued": "In queue: {{tags}}",
-      "unqueue": "Remove"
+      "unqueue": "Remove",
+      "skip": "Skip",
+      "next": "Next",
+      "shortcuts": "Keys: s, y, n set the value · d different sides · b both sides · → next · p skip · Esc deselect"
     },
     "value": {
       "separate": "separate (mapped as its own way)",
@@ -547,6 +550,19 @@
       "tooBig": "the area is too large or too dense to load the candidates: zoom in.",
       "server": "the OSM server returned an error. Try again later; your queue is kept.",
       "unknown": "{{message}}"
+    },
+    "dock": {
+      "position": "Panel position",
+      "left": "Panel on the left",
+      "bottom": "Panel at the bottom",
+      "right": "Panel on the right"
+    },
+    "nav": {
+      "next": "Next candidate",
+      "none": "Every candidate in view has been visited.",
+      "skipped_one": "{{count}} street skipped.",
+      "skipped_other": "{{count}} streets skipped.",
+      "resetSkipped": "Show again"
     }
   }
 }

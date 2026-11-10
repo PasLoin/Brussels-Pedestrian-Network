@@ -486,7 +486,10 @@
       "differentSides": "Côtés différents…",
       "sameSides": "Même valeur des deux côtés",
       "queued": "En file : {{tags}}",
-      "unqueue": "Retirer"
+      "unqueue": "Retirer",
+      "skip": "Passer",
+      "next": "Suivant",
+      "shortcuts": "Touches : s, y, n posent la valeur · d côtés différents · b les deux côtés · → suivant · p passer · Échap désélectionner"
     },
     "value": {
       "separate": "separate (cartographié à part)",
@@ -547,6 +550,19 @@
       "tooBig": "la zone est trop grande ou trop dense pour charger les candidats : zoomez.",
       "server": "le serveur OSM a renvoyé une erreur. Réessayez plus tard ; votre file est conservée.",
       "unknown": "{{message}}"
+    },
+    "dock": {
+      "position": "Position du panneau",
+      "left": "Panneau à gauche",
+      "bottom": "Panneau en bas",
+      "right": "Panneau à droite"
+    },
+    "nav": {
+      "next": "Candidat suivant",
+      "none": "Tous les candidats de la vue ont été parcourus.",
+      "skipped_one": "{{count}} rue passée.",
+      "skipped_other": "{{count}} rues passées.",
+      "resetSkipped": "Réafficher"
     }
   }
 }

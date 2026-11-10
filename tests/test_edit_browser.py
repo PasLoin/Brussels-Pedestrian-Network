@@ -683,3 +683,146 @@ def test_each_changeset_carries_its_own_comment_and_reviewer_tags(session, fake)
     assert tags["host"].endswith("/test-api/devtest.html")
     assert "imagery_used" not in tags
     assert "bpn:osm-api-js" not in tags
+
+
+def selected_way(page):
+    return page.evaluate("() => { const m = document.getElementById('edit-detail').textContent.match(/w(\\d+)/); return m ? Number(m[1]) : null; }")
+
+
+def wait_selected(page, way_id):
+    wait(page, f"() => document.getElementById('edit-detail').textContent.includes('w{way_id}') && !!document.querySelector('[data-edit-action=choose]')")
+
+
+def three_streets(fake):
+    fake.add_way(101, line_at(CENTER), street("Rue A", "Astraat"))
+    fake.add_way(102, line_at(CENTER, dy=-0.0004), street("Rue B", "Bstraat"))
+    fake.add_way(103, line_at(CENTER, dy=-0.0009), street("Rue C", "Cstraat"))
+
+
+def test_a_neighbourhood_is_tagged_from_the_keyboard_alone(session, fake):
+    three_streets(fake)
+    s = session()
+    wait_candidates(s.page, 3)
+    s.page.keyboard.press("ArrowRight")
+    wait_selected(s.page, 101)
+    s.page.keyboard.press("s")
+    wait_selected(s.page, 102)
+    assert queue_ids(s.page) == [101]
+    s.page.keyboard.press("p")
+    wait_selected(s.page, 103)
+    assert json.loads(s.page.evaluate("localStorage.getItem('bpn.skipped.dev')")) == [102]
+    s.page.keyboard.press("d")
+    s.page.keyboard.press("y")
+    assert queue_ids(s.page) == [101]
+    s.page.keyboard.press("n")
+    wait(s.page, "() => document.getElementById('edit-nav').textContent.includes('Tous les candidats de la vue ont été parcourus')")
+    stored = json.loads(s.page.evaluate("localStorage.getItem('bpn.queue.dev')"))
+    assert [(i["wayId"], i["set"]) for i in stored] == [(101, {"sidewalk:both": "separate"}), (103, {"sidewalk:left": "yes", "sidewalk:right": "no"})]
+    s.page.keyboard.press("Escape")
+    wait(s.page, "() => !document.querySelector('[data-edit-action=choose]')")
+    assert "1 rue passée" in s.page.inner_text("#edit-nav")
+
+
+def test_tab_and_typing_never_trigger_an_edit(session, fake):
+    three_streets(fake)
+    s = session(queue=[])
+    wait_candidates(s.page, 3)
+    s.page.keyboard.press("Tab")
+    s.page.keyboard.press("Tab")
+    time.sleep(0.3)
+    assert selected_way(s.page) is None
+    s.page.keyboard.press("ArrowRight")
+    wait_selected(s.page, 101)
+    s.page.keyboard.press("s")
+    wait_selected(s.page, 102)
+    s.page.fill('input[name="cs-remark"]', "")
+    s.page.focus('input[name="cs-remark"]')
+    s.page.keyboard.type("syn dp")
+    s.page.keyboard.press("ArrowRight")
+    time.sleep(0.3)
+    assert s.page.input_value('input[name="cs-remark"]') == "syn dp"
+    assert queue_ids(s.page) == [101]
+    assert selected_way(s.page) == 102
+    assert s.page.evaluate("localStorage.getItem('bpn.skipped.dev')") in (None, "[]")
+
+
+def test_skipped_streets_are_left_out_until_shown_again(session, fake):
+    three_streets(fake)
+    s = session()
+    wait_candidates(s.page, 3)
+    s.page.keyboard.press("ArrowRight")
+    wait_selected(s.page, 101)
+    s.page.click('[data-edit-action="skip"]')
+    wait_selected(s.page, 102)
+    s.page.keyboard.press("Escape")
+    s.page.reload()
+    wait_candidates(s.page, 3)
+    s.page.keyboard.press("ArrowRight")
+    wait_selected(s.page, 102)
+    s.page.keyboard.press("Escape")
+    s.page.click('[data-edit-action="reset-skipped"]')
+    assert s.page.evaluate("localStorage.getItem('bpn.skipped.dev')") == "[]"
+    s.page.keyboard.press("ArrowRight")
+    wait_selected(s.page, 101)
+
+
+def test_the_panel_can_be_docked_left_or_at_the_bottom_and_stays_there(session, fake):
+    fake.add_way(101, line_at(CENTER), street("Rue A", "Astraat"))
+    s = session()
+    wait_candidates(s.page, 1)
+    box = lambda: s.page.evaluate("(() => { const r = document.getElementById('edit-dock').getBoundingClientRect(); return [r.left, r.top, r.right, r.bottom]; })()")
+    assert box()[0] > 700
+    s.page.click('#edit-dock-position [data-dock="left"]')
+    assert s.page.get_attribute("#edit-dock", "data-position") == "left"
+    assert box()[2] < 400
+    assert s.page.evaluate("document.getElementById('header').classList.contains('closed')")
+    assert s.page.evaluate("localStorage.getItem('bpn.dockPosition')") == "left"
+    s.page.reload()
+    wait_candidates(s.page, 1)
+    assert s.page.get_attribute("#edit-dock", "data-position") == "left"
+    assert s.page.get_attribute('#edit-dock-position [data-dock="left"]', "aria-pressed") == "true"
+    s.page.click('#edit-dock-position [data-dock="bottom"]')
+    left, top, right, bottom = box()
+    assert top > 300 and 200 < left and right < 934
+    basemap = s.page.evaluate("document.getElementById('basemap-control').getBoundingClientRect().right")
+    assert left > basemap
+    s.page.focus('#edit-dock-position [data-dock="right"]')
+    s.page.keyboard.press("Enter")
+    assert s.page.get_attribute("#edit-dock", "data-position") == "right"
+
+
+@pytest.mark.parametrize("position", ["right", "left", "bottom"])
+def test_a_way_hidden_under_the_panel_is_brought_into_view(session, fake, position):
+    offsets = {"right": (0.0016, 0.0), "left": (-0.0016, 0.0), "bottom": (0.0, -0.0007)}
+    dx, dy = offsets[position]
+    fake.add_way(101, line_at(CENTER, dx=dx, dy=dy, length=0.0005), street("Rue Cachée", "Verborgenstraat"))
+    s = session()
+    wait_candidates(s.page, 1)
+    s.page.click(f'#edit-dock-position [data-dock="{position}"]')
+    s.page.keyboard.press("ArrowRight")
+    wait_selected(s.page, 101)
+    time.sleep(0.8)
+    info = s.page.evaluate(f"""async () => {{
+      const {{ store }} = await import('/map/store.js');
+      const p = store.map.project([{CENTER[0] + dx}, {CENTER[1] + dy}]);
+      const r = document.getElementById('edit-dock').getBoundingClientRect();
+      return {{ x: p.x, y: p.y, dock: [r.left, r.top, r.right, r.bottom] }};
+    }}""")
+    left, top, right, bottom = info["dock"]
+    if position == "right":
+        assert info["x"] < left - 12
+    elif position == "left":
+        assert info["x"] > right + 12
+    else:
+        assert info["y"] < top - 12
+
+
+def test_a_visible_way_does_not_move_the_map(session, fake):
+    fake.add_way(101, line_at(CENTER, dx=-0.0004), street("Rue Visible", "Zichtbaarstraat"))
+    s = session()
+    wait_candidates(s.page, 1)
+    before = s.page.evaluate("location.hash")
+    s.page.keyboard.press("ArrowRight")
+    wait_selected(s.page, 101)
+    time.sleep(0.6)
+    assert s.page.evaluate("location.hash") == before

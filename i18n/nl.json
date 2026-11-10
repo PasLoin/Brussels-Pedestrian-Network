@@ -486,7 +486,10 @@
       "differentSides": "Verschillende kanten…",
       "sameSides": "Zelfde waarde aan beide kanten",
       "queued": "In wachtrij: {{tags}}",
-      "unqueue": "Verwijderen"
+      "unqueue": "Verwijderen",
+      "skip": "Overslaan",
+      "next": "Volgende",
+      "shortcuts": "Toetsen: s, y, n zetten de waarde · d verschillende kanten · b beide kanten · → volgende · p overslaan · Esc deselecteren"
     },
     "value": {
       "separate": "separate (apart gekarteerd)",
@@ -547,6 +550,19 @@
       "tooBig": "de zone is te groot of te dicht om kandidaten te laden: zoom in.",
       "server": "de OSM-server gaf een fout terug. Probeer later opnieuw; je wachtrij blijft bewaard.",
       "unknown": "{{message}}"
+    },
+    "dock": {
+      "position": "Positie van het paneel",
+      "left": "Paneel links",
+      "bottom": "Paneel onderaan",
+      "right": "Paneel rechts"
+    },
+    "nav": {
+      "next": "Volgende kandidaat",
+      "none": "Alle kandidaten in beeld zijn bekeken.",
+      "skipped_one": "{{count}} straat overgeslagen.",
+      "skipped_other": "{{count}} straten overgeslagen.",
+      "resetSkipped": "Opnieuw tonen"
     }
   }
 }
