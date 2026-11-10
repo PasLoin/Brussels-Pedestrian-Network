@@ -104,6 +104,16 @@ jobs:
           curl -fsSL "$BOUNDARY_POLY_URL" -o analysis_boundary.poly
           head -2 analysis_boundary.poly
 
+      - name: Export Brussels municipalities
+        continue-on-error: true
+        run: |
+          osmium tags-filter brussels.osm.pbf r/boundary=administrative \
+            -o admin.osm.pbf --overwrite
+          osmium export admin.osm.pbf \
+            --geometry-types=polygon \
+            -o admin_areas.geojson --overwrite
+          python3 scripts/export_communes.py admin_areas.geojson analysis_boundary.poly communes.geojson
+
       - name: Filter pedestrian features
         run: |
           osmium tags-filter brussels.osm.pbf \
@@ -364,6 +374,7 @@ jobs:
         run: |
           python3 build_site.py --out _site --lastmod "$(date -u +%Y-%m-%d)"
           cp state.txt stats.json graph.json pedestrian.pmtiles history.json _site/
+          if [[ -s communes.geojson ]]; then cp communes.geojson _site/; else echo "::warning::communes.geojson missing, changeset comments fall back to the action only."; fi
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
