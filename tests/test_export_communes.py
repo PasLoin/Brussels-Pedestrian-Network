@@ -57,7 +57,7 @@ def test_keeps_only_brussels_municipalities_with_bilingual_names(tmp_path):
     assert export_communes(str(src), str(poly), str(out)) == 1
     data = json.loads(out.read_text(encoding="utf-8"))
     assert [f["properties"] for f in data["features"]] == [
-        {"name": "Ixelles - Elsene", "name_fr": "Ixelles", "name_nl": "Elsene", "ref_ins": "21009"},
+        {"name": "Ixelles - Elsene", "name_fr": "Ixelles", "name_nl": "Elsene"},
     ]
 
 
