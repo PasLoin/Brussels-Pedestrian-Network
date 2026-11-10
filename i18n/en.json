@@ -500,7 +500,6 @@
       "undo": "Undo last"
     },
     "upload": {
-      "comment": "Changeset comment",
       "source": "Sources (required)",
       "sourceOther": "Other sources, separated by ;",
       "hashtags": "Hashtags",
@@ -511,9 +510,9 @@
       "send_other": "Send {{count}} changesets",
       "busy": "Working…",
       "sourceRequired": "Give at least one source.",
-      "commentRequired": "Write a changeset comment.",
-      "defaultComment_one": "Add sidewalk tags on {{count}} residential street",
-      "defaultComment_other": "Add sidewalk tags on {{count}} residential streets"
+      "remark": "Remark (optional)",
+      "remarkPlaceholder": "e.g. checked on site",
+      "commentHelp": "Each changeset gets its own comment (street or municipality, then the action), shown in the plan before sending; your remark is added at the end."
     },
     "plan": {
       "deleted": "deleted on OSM, removed from the queue.",
@@ -522,7 +521,9 @@
       "changesets_one": "{{count}} changeset will be created for {{ways}} way(s).",
       "changesets_other": "{{count}} changesets will be created for {{ways}} way(s).",
       "tooMany": "The queue spreads over {{count}} areas, more than the {{max}} changesets allowed: send part of it first.",
-      "changed": "The queue changed since it was prepared: check the new plan and send again."
+      "changed": "The queue changed since it was prepared: check the new plan and send again.",
+      "geometryChanged": "geometry changed since (reversed or split), removed from the queue.",
+      "comment": "Comment of changeset {{n}}"
     },
     "result": {
       "sent_one": "{{count}} changeset sent:",
@@ -530,7 +531,9 @@
       "conflict": "{{way}} was modified on OSM meanwhile: nothing was written for its group. It has been removed from the queue; prepare again.",
       "failed": "Sending failed: {{message}}",
       "closedEmpty_one": "{{count}} empty changeset closed.",
-      "closedEmpty_other": "{{count}} empty changesets closed."
+      "closedEmpty_other": "{{count}} empty changesets closed.",
+      "retried_one": "Conflict detected: the group was re-read and sent again once.",
+      "retried_other": "Conflicts detected: {{count}} groups were re-read and sent again once."
     }
   }
 }

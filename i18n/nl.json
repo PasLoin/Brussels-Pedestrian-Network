@@ -500,7 +500,6 @@
       "undo": "Laatste ongedaan maken"
     },
     "upload": {
-      "comment": "Changeset-opmerking",
       "source": "Bronnen (verplicht)",
       "sourceOther": "Andere bronnen, gescheiden door ;",
       "hashtags": "Hashtags",
@@ -511,9 +510,9 @@
       "send_other": "{{count}} changesets verzenden",
       "busy": "Bezig…",
       "sourceRequired": "Geef minstens één bron op.",
-      "commentRequired": "Schrijf een changeset-opmerking.",
-      "defaultComment_one": "Sidewalk-tags toegevoegd op {{count}} woonstraat",
-      "defaultComment_other": "Sidewalk-tags toegevoegd op {{count}} woonstraten"
+      "remark": "Opmerking (optioneel)",
+      "remarkPlaceholder": "bv. ter plaatse gecontroleerd",
+      "commentHelp": "Elke changeset krijgt een eigen opmerking (straat of gemeente, dan de actie), zichtbaar in het plan vóór verzending; je opmerking wordt achteraan toegevoegd."
     },
     "plan": {
       "deleted": "verwijderd op OSM, uit de wachtrij gehaald.",
@@ -522,7 +521,9 @@
       "changesets_one": "Er wordt {{count}} changeset aangemaakt voor {{ways}} way(s).",
       "changesets_other": "Er worden {{count}} changesets aangemaakt voor {{ways}} way(s).",
       "tooMany": "De wachtrij beslaat {{count}} zones, meer dan de toegestane {{max}} changesets: verzend eerst een deel.",
-      "changed": "De wachtrij is gewijzigd sinds de voorbereiding: controleer het nieuwe plan en verzend opnieuw."
+      "changed": "De wachtrij is gewijzigd sinds de voorbereiding: controleer het nieuwe plan en verzend opnieuw.",
+      "geometryChanged": "geometrie intussen gewijzigd (omgekeerd of gesplitst), uit de wachtrij gehaald.",
+      "comment": "Opmerking van changeset {{n}}"
     },
     "result": {
       "sent_one": "{{count}} changeset verzonden:",
@@ -530,7 +531,9 @@
       "conflict": "{{way}} werd intussen gewijzigd op OSM: voor zijn groep werd niets geschreven. Hij is uit de wachtrij gehaald; bereid opnieuw voor.",
       "failed": "Verzenden mislukt: {{message}}",
       "closedEmpty_one": "{{count}} lege changeset gesloten.",
-      "closedEmpty_other": "{{count}} lege changesets gesloten."
+      "closedEmpty_other": "{{count}} lege changesets gesloten.",
+      "retried_one": "Conflict gedetecteerd: de groep werd opnieuw gelezen en één keer opnieuw verzonden.",
+      "retried_other": "Conflicten gedetecteerd: {{count}} groepen werden opnieuw gelezen en één keer opnieuw verzonden."
     }
   }
 }

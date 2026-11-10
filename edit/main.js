@@ -2,12 +2,13 @@ import { i18n } from "../map/i18n.js";
 import { store } from "../map/store.js";
 import { guardEnvironment, isLoggedIn, login, loginInProgress, logout, tabId } from "./auth.js";
 import { EMPTY_COLLECTION, bboxString, candidatesFromMapData } from "./candidates.js";
-import { buildChangesetTags, splitList } from "./changeset.js";
+import { buildChangesetTags, normalizeHashtags, splitList } from "./changeset.js";
 import { APP_NAME, APP_VERSION, envFromDocument } from "./env.js";
 import { bboxOf, lineLengthM } from "./geo.js";
 import { chooseValue, choiceFromIntent, completeChoice, makeIntent, switchMode } from "./intent.js";
 import { closeEmptyChangesets, planUpload, uploadGroups } from "./osm.js";
 import { authView, detailView, queueView, statusView } from "./panel.js";
+import { composeComment, describeGroup, indexCommunes } from "./places.js";
 import { createQueue } from "./queue.js";
 import { isEditableCandidate } from "./whitelist.js";
 
@@ -39,8 +40,7 @@ const state = {
   result: null,
   busy: false,
   form: {
-    comment: "",
-    commentTouched: false,
+    remark: "",
     sources: [],
     sourceOther: "",
     hashtags: env.defaultHashtags.join(" "),
@@ -50,9 +50,33 @@ const state = {
 const liveFeatures = new Map();
 let map = null;
 let refreshSelected = null;
+let communes = [];
 
-function defaultComment() {
-  return i18n.t("edit.upload.defaultComment", { count: queue.size() });
+fetch(new URL("../communes.geojson", import.meta.url))
+  .then(res => (res.ok ? res.json() : null))
+  .then((data) => {
+    communes = indexCommunes(data);
+    if (state.plan) renderQueue();
+  })
+  .catch(() => {});
+
+function hashtagList() {
+  return normalizeHashtags(state.form.hashtags.split(/[\s;,]+/).filter(Boolean));
+}
+
+function commentFor(group) {
+  return composeComment(describeGroup(group.entries, communes), { remark: state.form.remark, hashtags: hashtagList() });
+}
+
+function planComments() {
+  return state.plan ? state.plan.groups.map(commentFor) : [];
+}
+
+function refreshCommentPreviews() {
+  planComments().forEach((text, i) => {
+    const el = queueEl.querySelector(`[data-comment-group="${i}"]`);
+    if (el) el.textContent = text;
+  });
 }
 
 function showAuth(view) {
@@ -79,11 +103,11 @@ function showSideLines() {
 }
 
 function renderQueue() {
-  if (!state.form.commentTouched) state.form.comment = defaultComment();
   queueEl.innerHTML = html`${queueView({
     items: queue.list(),
     form: state.form,
     plan: state.plan,
+    comments: planComments(),
     result: state.result,
     busy: state.busy,
     loggedIn: Boolean(state.user),
@@ -178,23 +202,22 @@ detailEl.addEventListener("click", (e) => {
 queueEl.addEventListener("input", (e) => {
   const el = e.target;
   const f = state.form;
-  if (el.name === "cs-comment") {
-    f.comment = el.value;
-    f.commentTouched = true;
-  } else if (el.name === "cs-source-other") f.sourceOther = el.value;
+  if (el.name === "cs-remark") f.remark = el.value;
+  else if (el.name === "cs-source-other") f.sourceOther = el.value;
   else if (el.name === "cs-hashtags") f.hashtags = el.value;
   else if (el.name === "cs-review") f.review = el.checked;
   else if (el.name === "cs-source") {
     f.sources = el.checked ? [...new Set([...f.sources, el.value])] : f.sources.filter(v => v !== el.value);
   }
+  if (el.name === "cs-remark" || el.name === "cs-hashtags") refreshCommentPreviews();
 });
 
-function changesetTags() {
+function changesetTags(group) {
   const f = state.form;
   return buildChangesetTags({
-    comment: f.comment,
+    comment: commentFor(group),
     sources: [...f.sources, ...splitList(f.sourceOther)],
-    hashtags: f.hashtags.split(/[\s;,]+/).filter(Boolean),
+    hashtags: hashtagList(),
     reviewRequested: f.review,
     locale: i18n.lang,
     host: `${window.location.origin}${window.location.pathname}`,
@@ -245,15 +268,13 @@ async function onPlan() {
 
 function tagsErrorMessage(err) {
   if (err.message === "source-required") return i18n.t("edit.upload.sourceRequired");
-  if (err.message === "comment-required") return i18n.t("edit.upload.commentRequired");
   return i18n.t("edit.result.failed", { message: err.message });
 }
 
 async function onSend() {
   if (!state.user || !state.plan) return;
-  let tags;
   try {
-    tags = changesetTags();
+    state.plan.groups.forEach(changesetTags);
   } catch (err) {
     state.result = { done: [], error: tagsErrorMessage(err) };
     return renderQueue();
@@ -267,12 +288,16 @@ async function onSend() {
         state.result = { done: [], error: i18n.t("edit.plan.changed") };
         return;
       }
-      const outcome = await uploadGroups({ osm, groups: plan.groups, tags });
+      state.plan = plan;
+      const outcome = await uploadGroups({ osm, groups: plan.groups, tagsFor: changesetTags });
       queue.remove(outcome.done.flatMap(d => d.wayIds));
-      const result = { done: outcome.done, failed: outcome.failed, conflictWayId: null, closed: [] };
+      dropFromQueue(outcome.dropped);
+      const result = { done: outcome.done, failed: outcome.failed, conflictWayId: null, closed: [], dropped: outcome.dropped, retried: outcome.retried };
       if (outcome.failed) {
         result.conflictWayId = outcome.failed.conflictWayId;
         if (result.conflictWayId) queue.remove(result.conflictWayId);
+      }
+      if (outcome.failed || outcome.retried) {
         try {
           result.closed = await closeEmptyChangesets({ osm, apiUrl: env.apiUrl, uid: state.user.uid, createdBy: `${APP_NAME} ${APP_VERSION}` });
         } catch {}
@@ -281,7 +306,7 @@ async function onSend() {
       state.plan = null;
       state.result = result;
       scheduleCandidates();
-      const touched = new Set([...outcome.done.flatMap(d => d.wayIds), result.conflictWayId]);
+      const touched = new Set([...outcome.done.flatMap(d => d.wayIds), ...outcome.dropped.map(d => d.intent.wayId), result.conflictWayId]);
       if (state.detail.kind === "way" && touched.has(state.detail.way.id)) refreshSelected = state.detail.way.id;
     } catch (err) {
       state.result = { done: [], error: i18n.t("edit.result.failed", { message: err.message }) };

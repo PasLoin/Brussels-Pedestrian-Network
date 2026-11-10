@@ -500,7 +500,6 @@
       "undo": "Annuler la dernière"
     },
     "upload": {
-      "comment": "Commentaire du changeset",
       "source": "Sources (obligatoire)",
       "sourceOther": "Autres sources, séparées par ;",
       "hashtags": "Hashtags",
@@ -511,9 +510,9 @@
       "send_other": "Envoyer {{count}} changesets",
       "busy": "Traitement en cours…",
       "sourceRequired": "Indiquez au moins une source.",
-      "commentRequired": "Écrivez un commentaire de changeset.",
-      "defaultComment_one": "Ajout des tags sidewalk sur {{count}} rue résidentielle",
-      "defaultComment_other": "Ajout des tags sidewalk sur {{count}} rues résidentielles"
+      "remark": "Remarque (facultatif)",
+      "remarkPlaceholder": "par ex. vérifié sur place",
+      "commentHelp": "Chaque changeset reçoit son propre commentaire (rue ou commune, puis l'action), visible dans le plan avant l'envoi ; votre remarque est ajoutée à la fin."
     },
     "plan": {
       "deleted": "supprimé sur OSM, retiré de la file.",
@@ -522,7 +521,9 @@
       "changesets_one": "{{count}} changeset va être créé pour {{ways}} way(s).",
       "changesets_other": "{{count}} changesets vont être créés pour {{ways}} way(s).",
       "tooMany": "La file couvre {{count}} zones, au-delà des {{max}} changesets autorisés : envoyez-en une partie d'abord.",
-      "changed": "La file a changé depuis la préparation : vérifiez le nouveau plan et renvoyez."
+      "changed": "La file a changé depuis la préparation : vérifiez le nouveau plan et renvoyez.",
+      "geometryChanged": "géométrie modifiée depuis (inversion ou découpage), retiré de la file.",
+      "comment": "Commentaire du changeset {{n}}"
     },
     "result": {
       "sent_one": "{{count}} changeset envoyé :",
@@ -530,7 +531,9 @@
       "conflict": "{{way}} a été modifié sur OSM entre-temps : rien n'a été écrit pour son groupe. Il a été retiré de la file ; préparez à nouveau.",
       "failed": "Envoi impossible : {{message}}",
       "closedEmpty_one": "{{count}} changeset vide fermé.",
-      "closedEmpty_other": "{{count}} changesets vides fermés."
+      "closedEmpty_other": "{{count}} changesets vides fermés.",
+      "retried_one": "Conflit détecté : le groupe a été relu et renvoyé une fois.",
+      "retried_other": "Conflits détectés : {{count}} groupes ont été relus et renvoyés une fois."
     }
   }
 }

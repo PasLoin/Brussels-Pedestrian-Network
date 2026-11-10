@@ -184,7 +184,7 @@ test("the change sent to OSM uses the live version, nodes and tags", async () =>
   assert.match(xml, /<nd ref="1010"\/>\s*<nd ref="1011"\/>/);
 });
 
-test("each group is one uploadChangeset call with the same tags", async () => {
+test("each group is one uploadChangeset call with its own tags", async () => {
   const { groupEntries, uploadGroups } = await load("osm.js");
   const ways = { 1: way(1, { highway: "residential" }), 2: way(2, { highway: "residential" }) };
   const entries = [
@@ -192,15 +192,28 @@ test("each group is one uploadChangeset call with the same tags", async () => {
     { intent: await intentFor(ways[2], "no", "no", JETTE), way: ways[2] },
   ];
   const osm = fakeOsm();
-  const out = await uploadGroups({ osm, groups: groupEntries(entries, SETTINGS), tags: { comment: "c" } });
+  const tagsFor = group => ({ comment: `ways ${group.entries.map(e => e.intent.wayId).join(",")}` });
+  const out = await uploadGroups({ osm, groups: groupEntries(entries, SETTINGS), tagsFor });
   assert.equal(out.failed, null);
+  assert.equal(out.retried, 0);
   assert.deepEqual(out.done, [{ changesetIds: [1001], wayIds: [1] }, { changesetIds: [1002], wayIds: [2] }]);
-  const uploads = osm.calls.filter(c => c[0] === "upload");
-  assert.equal(uploads.length, 2);
-  assert.deepEqual(uploads.map(u => u[1]), [{ comment: "c" }, { comment: "c" }]);
+  assert.deepEqual(osm.calls.filter(c => c[0] === "upload").map(u => u[1]), [{ comment: "ways 1" }, { comment: "ways 2" }]);
 });
 
-test("a 409 stops the upload, names the conflicting way and keeps earlier groups", async () => {
+function conflictOn(id, times = Infinity) {
+  let left = times;
+  return (tags, diff, calls) => {
+    if (left > 0 && diff.modify.some(w => w.id === id)) {
+      left -= 1;
+      const e = new Error(`OSM API: Version mismatch: Provided 3, server had: 4 of Way ${id}`);
+      e.cause = 409;
+      throw e;
+    }
+    return { [500 + calls.length]: {} };
+  };
+}
+
+test("without retry a 409 stops the upload, names the conflicting way and keeps earlier groups", async () => {
   const { groupEntries, uploadGroups } = await load("osm.js");
   const ways = { 1: way(1, { highway: "residential" }), 2: way(2, { highway: "residential" }), 3: way(3, { highway: "residential" }) };
   const entries = [
@@ -208,18 +221,97 @@ test("a 409 stops the upload, names the conflicting way and keeps earlier groups
     { intent: await intentFor(ways[2], "no", "no", JETTE), way: ways[2] },
     { intent: await intentFor(ways[3], "no", "no", [4.40, 50.83, 4.401, 50.831]), way: ways[3] },
   ];
-  const osm = fakeOsm({
-    upload: (tags, diff, calls) => {
-      if (diff.modify[0].id === 2) { const e = new Error("OSM API: Version mismatch: Provided 3, server had: 4 of Way 2"); e.cause = 409; throw e; }
-      return { [500 + calls.length]: {} };
-    },
-  });
-  const out = await uploadGroups({ osm, groups: groupEntries(entries, SETTINGS), tags: {} });
+  const osm = fakeOsm({ ways, upload: conflictOn(2) });
+  const out = await uploadGroups({ osm, groups: groupEntries(entries, SETTINGS), tagsFor: () => ({}), retryOnConflict: false });
   assert.deepEqual(out.done.map(d => d.wayIds), [[1]]);
   assert.equal(out.failed.index, 1);
   assert.equal(out.failed.conflictWayId, 2);
-  assert.deepEqual(out.failed.wayIds, [2]);
   assert.equal(osm.calls.filter(c => c[0] === "upload").length, 2);
+});
+
+test("a 409 on another tag re-reads the group once and sends it again with the fresh version", async () => {
+  const { groupEntries, uploadGroups } = await load("osm.js");
+  const queued = way(2, { highway: "residential" }, 3);
+  const live = { ...way(2, { highway: "residential", name: "Rue renommée" }, 4) };
+  const entries = [{ intent: await intentFor(queued, "no", "no", JETTE), way: queued }];
+  const osm = fakeOsm({ ways: { 2: live }, upload: conflictOn(2, 1) });
+  const out = await uploadGroups({ osm, groups: groupEntries(entries, SETTINGS), tagsFor: () => ({}) });
+  assert.equal(out.failed, null);
+  assert.equal(out.retried, 1);
+  assert.deepEqual(out.done.map(d => d.wayIds), [[2]]);
+  const second = osm.calls.filter(c => c[0] === "upload")[1][2].modify[0];
+  assert.equal(second.version, 4);
+  assert.deepEqual(second.tags, { highway: "residential", name: "Rue renommée", "sidewalk:both": "no" });
+});
+
+test("the retry after a 409 drops a way reversed meanwhile instead of writing its sides backwards", async () => {
+  const { groupEntries, uploadGroups } = await load("osm.js");
+  const queued = way(2, { highway: "residential" }, 3);
+  const reversed = { ...queued, version: 4, nodes: [...queued.nodes].reverse() };
+  const entries = [{ intent: await intentFor(queued, "yes", "no", JETTE), way: queued }];
+  const osm = fakeOsm({ ways: { 2: reversed }, upload: conflictOn(2, 1) });
+  const out = await uploadGroups({ osm, groups: groupEntries(entries, SETTINGS), tagsFor: () => ({}) });
+  assert.equal(out.failed, null);
+  assert.deepEqual(out.done, []);
+  assert.deepEqual(out.dropped.map(d => [d.intent.wayId, d.reason]), [[2, "geometry_changed"]]);
+  assert.equal(osm.calls.filter(c => c[0] === "upload").length, 1);
+});
+
+test("a second 409 after the retry gives up on the group", async () => {
+  const { groupEntries, uploadGroups } = await load("osm.js");
+  const w2 = way(2, { highway: "residential" });
+  const entries = [{ intent: await intentFor(w2, "no", "no", JETTE), way: w2 }];
+  const osm = fakeOsm({ ways: { 2: w2 }, upload: conflictOn(2) });
+  const out = await uploadGroups({ osm, groups: groupEntries(entries, SETTINGS), tagsFor: () => ({}) });
+  assert.equal(out.retried, 1);
+  assert.equal(out.failed.conflictWayId, 2);
+  assert.equal(osm.calls.filter(c => c[0] === "upload").length, 2);
+});
+
+test("a server error that is not a conflict is never retried", async () => {
+  const { groupEntries, uploadGroups } = await load("osm.js");
+  const w1 = way(1, { highway: "residential" });
+  const entries = [{ intent: await intentFor(w1, "no", "no", UCCLE), way: w1 }];
+  const osm = fakeOsm({ ways: { 1: w1 }, upload: () => { const e = new Error("OSM API: Database offline for maintenance"); e.cause = 503; throw e; } });
+  const out = await uploadGroups({ osm, groups: groupEntries(entries, SETTINGS), tagsFor: () => ({}) });
+  assert.equal(out.retried, 0);
+  assert.equal(out.failed.status, 503);
+  assert.equal(osm.calls.filter(c => c[0] === "upload").length, 1);
+});
+
+test("the end nodes recorded at queue time guard against reversal and splitting", async () => {
+  const { geometryUnchanged, wayEnds } = await load("intent.js");
+  const base = way(7, { highway: "residential" });
+  base.nodes = [1, 2, 3, 4];
+  const intent = await intentFor(base, "yes", "no");
+  assert.deepEqual(intent.ends, { closed: false, first: 1, last: 4 });
+  assert.equal(geometryUnchanged(intent, { ...base, version: 4 }), true);
+  assert.equal(geometryUnchanged(intent, { ...base, nodes: [1, 2, 9, 3, 4] }), true);
+  assert.equal(geometryUnchanged(intent, { ...base, nodes: [4, 3, 2, 1] }), false);
+  assert.equal(geometryUnchanged(intent, { ...base, nodes: [1, 2, 3] }), false);
+  assert.equal(geometryUnchanged(intent, { ...base, nodes: [3, 4] }), false);
+  assert.equal(geometryUnchanged({ ...intent, ends: undefined }, base), false);
+  const loop = { ...base, nodes: [1, 2, 3, 1] };
+  const loopIntent = await intentFor(loop, "yes", "no");
+  assert.deepEqual(loopIntent.ends, { closed: true, nodes: [1, 2, 3, 1] });
+  assert.equal(geometryUnchanged(loopIntent, loop), true);
+  assert.equal(geometryUnchanged(loopIntent, { ...loop, nodes: [1, 3, 2, 1] }), false);
+  assert.equal(geometryUnchanged(loopIntent, { ...loop, nodes: [1, 2, 5, 3, 1] }), false);
+  assert.equal(wayEnds({ nodes: [1] }), null);
+});
+
+test("the preflight drops a way reversed or split since it was queued", async () => {
+  const { preflight } = await load("osm.js");
+  const a = way(1, { highway: "residential" });
+  const b = way(2, { highway: "residential" });
+  const intents = [await intentFor(a, "yes", "no"), await intentFor(b, "no", "no")];
+  const osm = fakeOsm({ ways: {
+    1: { ...a, version: 4, nodes: [...a.nodes].reverse() },
+    2: { ...b, version: 4, nodes: [b.nodes[0], 999] },
+  } });
+  const { ready, dropped } = await preflight(osm, intents);
+  assert.deepEqual(ready, []);
+  assert.deepEqual(dropped.map(d => [d.intent.wayId, d.reason]), [[1, "geometry_changed"], [2, "geometry_changed"]]);
 });
 
 test("only version conflicts name a way", async () => {

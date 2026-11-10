@@ -15,11 +15,27 @@ export function makeIntent({ way, left, right, bbox, lengthM, name, now = Date.n
     unset: [],
     preconditions: { highway: way.tags.highway, noSidewalkKeys: true },
     seenVersion: way.version,
+    ends: wayEnds(way),
     bbox,
     lengthM,
     name: name || way.tags.name || "",
     addedAt: now,
   };
+}
+
+export function wayEnds(way) {
+  const nodes = (way && way.nodes) || [];
+  if (nodes.length < 2) return null;
+  const closed = nodes[0] === nodes[nodes.length - 1];
+  return closed ? { closed: true, nodes: nodes.slice() } : { closed: false, first: nodes[0], last: nodes[nodes.length - 1] };
+}
+
+export function geometryUnchanged(intent, way) {
+  const seen = intent.ends;
+  const now = wayEnds(way);
+  if (!seen || !now || seen.closed !== now.closed) return false;
+  if (seen.closed) return seen.nodes.length === now.nodes.length && seen.nodes.every((id, i) => id === now.nodes[i]);
+  return seen.first === now.first && seen.last === now.last;
 }
 
 export function preconditionsHold(intent, liveTags) {

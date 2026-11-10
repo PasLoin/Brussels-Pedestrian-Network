@@ -118,14 +118,15 @@ def test_devtest_panel_has_a_queue(site):
     assert 'id="edit-queue"' in _html(site / DEVTEST_PAGE)
 
 
-def test_every_basemap_names_its_imagery_for_changesets():
+def test_only_raster_basemaps_name_their_imagery_for_changesets():
     src = (ROOT / "map" / "basemaps.js").read_text(encoding="utf-8")
     block = src[src.index("export const BASEMAPS = ["):src.index("export const BASEMAP_STORAGE_KEY")]
-    ids = re.findall(r'\bid: "([\w-]+)", label:', block)
-    names = re.findall(r'osmName: "([^"]+)"', block)
-    assert ids and len(names) == len(ids)
-    assert len(set(names)) == len(names)
-    assert all("i18n" not in n for n in names)
+    entries = re.split(r"\n  \{", block)[1:]
+    assert len(entries) >= 4
+    for entry in entries:
+        assert ("osmName:" in entry) == ("wms:" in entry), entry[:60]
+    assert re.findall(r'osmName: "([^"]+)"', block) == ["UrbIS Ortho"]
+    assert src.count("if (bm.osmName) store.imageryUsed.add(bm.osmName);") == 2
 
 
 

@@ -1,5 +1,5 @@
 import { mergeBbox, spanM } from "./geo.js";
-import { applyIntent, preconditionsHold } from "./intent.js";
+import { applyIntent, geometryUnchanged, preconditionsHold } from "./intent.js";
 
 const GONE = new Set([404, 410]);
 
@@ -32,6 +32,7 @@ export async function preflight(osm, intents) {
     const way = live.get(intent.wayId);
     if (!way || way.visible === false) dropped.push({ intent, reason: "deleted" });
     else if (!preconditionsHold(intent, way.tags)) dropped.push({ intent, reason: "already_fixed" });
+    else if (!geometryUnchanged(intent, way)) dropped.push({ intent, reason: "geometry_changed" });
     else ready.push({ intent, way });
   }
   return { ready, dropped };
@@ -80,21 +81,44 @@ export function conflictWayId(err) {
   return match ? Number(match[1]) : null;
 }
 
-export async function uploadGroups({ osm, groups, tags }) {
+async function sendGroup(osm, group, tagsFor) {
+  const result = await osm.uploadChangeset({ ...tagsFor(group) }, buildDiff(group));
+  return Object.keys(result).map(Number);
+}
+
+function failure(index, group, err) {
+  return {
+    index,
+    wayIds: group.entries.map(e => e.intent.wayId),
+    conflictWayId: conflictWayId(err),
+    status: err && err.cause,
+    message: (err && err.message) || String(err),
+  };
+}
+
+export async function uploadGroups({ osm, groups, tagsFor, retryOnConflict = true }) {
   const done = [];
+  const dropped = [];
+  let retried = 0;
   for (const [index, group] of groups.entries()) {
-    const wayIds = group.entries.map(e => e.intent.wayId);
     try {
-      const result = await osm.uploadChangeset({ ...tags }, buildDiff(group));
-      done.push({ changesetIds: Object.keys(result).map(Number), wayIds });
+      done.push({ changesetIds: await sendGroup(osm, group, tagsFor), wayIds: group.entries.map(e => e.intent.wayId) });
+      continue;
     } catch (err) {
-      return {
-        done,
-        failed: { index, wayIds, conflictWayId: conflictWayId(err), status: err && err.cause, message: (err && err.message) || String(err) },
-      };
+      if (!retryOnConflict || conflictWayId(err) === null) return { done, dropped, retried, failed: failure(index, group, err) };
+    }
+    retried += 1;
+    const fresh = await preflight(osm, group.entries.map(e => e.intent));
+    dropped.push(...fresh.dropped);
+    if (!fresh.ready.length) continue;
+    const again = { ...group, entries: fresh.ready };
+    try {
+      done.push({ changesetIds: await sendGroup(osm, again, tagsFor), wayIds: again.entries.map(e => e.intent.wayId) });
+    } catch (err) {
+      return { done, dropped, retried, failed: failure(index, again, err) };
     }
   }
-  return { done, failed: null };
+  return { done, dropped, retried, failed: null };
 }
 
 export async function closeEmptyChangesets({ osm, apiUrl, uid, createdBy, fetchImpl = fetch }) {

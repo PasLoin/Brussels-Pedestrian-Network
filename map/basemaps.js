@@ -23,16 +23,16 @@ const LIBERTY_THUMB = "data:image/svg+xml," + encodeURIComponent(
 );
 
 export const BASEMAPS = [
-  { id: "liberty", label: "Liberty", title: "OpenFreeMap Liberty", osmName: "OpenFreeMap Liberty", thumb: LIBERTY_THUMB },
+  { id: "liberty", label: "Liberty", title: "OpenFreeMap Liberty", thumb: LIBERTY_THUMB },
   {
-    id: "zinneke", label: "Zinneke", title: "ZinnekeTiles", osmName: "ZinnekeTiles",
+    id: "zinneke", label: "Zinneke", title: "ZinnekeTiles",
     thumb: ZINNEKE_BASE + "assets/img/basemap-zinneke.png",
     url: ZINNEKE_BASE + "style.json",
     hideSources: ["public_transport", "poi"],
     hideLayers: ["railway-tram*", "railway-subway*", "railway-tunnel-tram", "railway-tunnel-subway", "man_made-tunnel-*"]
   },
   {
-    id: "nb", label: i18n.t("basemap.blackWhite.label"), title: i18n.t("basemap.blackWhite.title"), osmName: "ZinnekeTiles NB",
+    id: "nb", label: i18n.t("basemap.blackWhite.label"), title: i18n.t("basemap.blackWhite.title"),
     thumb: ZINNEKE_BASE + "assets/img/basemap-nb.png",
     url: ZINNEKE_BASE + "style.nb.json",
     hideLayers: ["man_made-tunnel-*"]
@@ -154,7 +154,7 @@ export async function setBasemap(id) {
     const style = await loadBasemapStyle(bm);
     if (request !== basemapRequest) return;
     currentBasemap = id;
-    store.imageryUsed.add(bm.osmName);
+    if (bm.osmName) store.imageryUsed.add(bm.osmName);
     if (bm.url) store.map.once("style.load", () => loadBasemapPatterns(store.map, style, bm.url));
     store.map.setStyle(style, { diff: false, transformStyle: keepOverlays });
     try { localStorage.setItem(BASEMAP_STORAGE_KEY, id); } catch {}
@@ -205,6 +205,6 @@ export async function loadInitialBasemap() {
     style = await loadBasemapStyle(bm);
   }
   currentBasemap = bm.id;
-  store.imageryUsed.add(bm.osmName);
+  if (bm.osmName) store.imageryUsed.add(bm.osmName);
   return { bm, style };
 }

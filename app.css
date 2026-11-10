@@ -396,3 +396,5 @@ body { font-family: system-ui, sans-serif; background: #1a1a1a; }
 @media (max-width: 600px) {
   #edit-dock { top: auto; left: 8px; right: 8px; width: auto; bottom: calc(8px + var(--attribution-clearance, 40px)); max-height: 50vh; }
 }
+#edit-panel .edit-comments { margin: 4px 0; padding-left: 18px; font-size: 12px; }
+#edit-panel .edit-comments li { margin: 4px 0; word-break: break-word; }

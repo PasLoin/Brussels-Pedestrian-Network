@@ -46,6 +46,7 @@ function valueLabel(value, t) {
 function dropReason(reason, t) {
   if (reason === "deleted") return t("edit.plan.deleted");
   if (reason === "already_fixed") return t("edit.plan.alreadyFixed");
+  if (reason === "geometry_changed") return t("edit.plan.geometryChanged");
   return t("edit.plan.modifiedMeanwhile");
 }
 
@@ -116,7 +117,7 @@ function wayLabel(intent) {
   return intent.name ? `${intent.name} (w${intent.wayId})` : `w${intent.wayId}`;
 }
 
-function planView(plan, i18n) {
+function planView(plan, comments, i18n) {
   const { t } = i18n;
   if (!plan) return "";
   return html`
@@ -124,7 +125,10 @@ function planView(plan, i18n) {
       ${plan.dropped.map(d => html`<p class="edit-note">${wayLabel(d.intent)} : ${dropReason(d.reason, t)}</p>`)}
       ${plan.tooMany
         ? html`<p class="edit-note">${t("edit.plan.tooMany", { count: plan.groups.length, max: plan.max })}</p>`
-        : plan.groups.length > 0 && html`<p>${t("edit.plan.changesets", { count: plan.groups.length, ways: plan.ready.length })}</p>`}
+        : plan.groups.length > 0 && html`<p>${t("edit.plan.changesets", { count: plan.groups.length, ways: plan.ready.length })}</p>
+          <ol class="edit-comments">
+            ${(comments || []).map((text, i) => html`<li><span class="edit-help">${t("edit.plan.comment", { n: i + 1 })}</span><br><span data-comment-group="${i}">${text}</span></li>`)}
+          </ol>`}
     </div>
   `;
 }
@@ -137,6 +141,8 @@ function resultView(result, i18n, webUrl) {
     <div class="edit-result">
       ${ids.length > 0 && html`<p class="edit-ok">${t("edit.result.sent", { count: ids.length })}
         ${ids.map((id, i) => html`${i > 0 ? " · " : " "}<a href="${`${webUrl}/changeset/${id}`}" target="_blank" rel="noopener">${id}</a>`)}</p>`}
+      ${result.retried > 0 && html`<p class="edit-help">${t("edit.result.retried", { count: result.retried })}</p>`}
+      ${(result.dropped || []).map(d => html`<p class="edit-note">${wayLabel(d.intent)} : ${dropReason(d.reason, t)}</p>`)}
       ${result.conflictWayId && html`<p class="edit-note">${t("edit.result.conflict", { way: `w${result.conflictWayId}` })}</p>`}
       ${result.failed && !result.conflictWayId && html`<p class="edit-note">${t("edit.result.failed", { message: result.failed.message })}</p>`}
       ${result.closed && result.closed.length > 0 && html`<p class="edit-help">${t("edit.result.closedEmpty", { count: result.closed.length })}</p>`}
@@ -151,9 +157,10 @@ function uploadFormView(state, i18n, settings) {
   const blocked = !state.loggedIn || state.busy;
   return html`
     <div class="edit-upload">
-      <label class="edit-field">${t("edit.upload.comment")}
-        <textarea name="cs-comment" rows="2" maxlength="200">${f.comment}</textarea>
+      <label class="edit-field">${t("edit.upload.remark")}
+        <input type="text" name="cs-remark" maxlength="120" value="${f.remark}" placeholder="${t("edit.upload.remarkPlaceholder")}">
       </label>
+      <p class="edit-help">${t("edit.upload.commentHelp")}</p>
       <fieldset class="edit-field">
         <legend>${t("edit.upload.source")}</legend>
         ${settings.sourcePresets.map(v => html`<label class="edit-check"><input type="checkbox" name="cs-source" value="${v}"${f.sources.includes(v) ? html` checked` : ""}> ${v}</label>`)}
@@ -190,7 +197,7 @@ export function queueView(state, i18n, webUrl, settings) {
       ${uploadFormView(state, i18n, settings)}
     `}
     ${state.busy && html`<p class="edit-help">${t("edit.upload.busy")}</p>`}
-    ${planView(state.plan, i18n)}
+    ${planView(state.plan, state.comments, i18n)}
     ${resultView(state.result, i18n, webUrl)}
   `;
 }
