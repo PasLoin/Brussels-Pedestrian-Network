@@ -1,9 +1,10 @@
 import { i18n } from "../map/i18n.js";
 import { store } from "../map/store.js";
 import { guardEnvironment, isLoggedIn, login, loginInProgress, logout, tabId } from "./auth.js";
-import { EMPTY_COLLECTION, bboxString, candidatesFromMapData } from "./candidates.js";
+import { EMPTY_COLLECTION, bboxString, candidatesFromMapData, tooLargeForCandidates } from "./candidates.js";
 import { buildChangesetTags, normalizeHashtags, splitList } from "./changeset.js";
 import { APP_NAME, APP_VERSION, envFromDocument } from "./env.js";
+import { errorKind, errorMessage } from "./errors.js";
 import { bboxOf, lineLengthM } from "./geo.js";
 import { chooseValue, choiceFromIntent, completeChoice, makeIntent, switchMode } from "./intent.js";
 import { closeEmptyChangesets, planUpload, uploadGroups } from "./osm.js";
@@ -261,18 +262,35 @@ async function onPlan() {
       state.plan = await preparePlan();
     } catch (err) {
       state.plan = null;
-      state.result = { done: [], error: i18n.t("edit.result.failed", { message: err.message }) };
+      state.result = { done: [], error: failure(err) };
+      endSessionIfRevoked(err);
     }
   });
 }
 
+function failure(err) {
+  return i18n.t("edit.result.failed", { message: errorMessage(err, i18n.t) });
+}
+
+function endSessionIfRevoked(err) {
+  if (errorKind(err) !== "auth") return false;
+  logout({ osm, storage });
+  refreshAuth(errorMessage(err, i18n.t));
+  return true;
+}
+
 function tagsErrorMessage(err) {
   if (err.message === "source-required") return i18n.t("edit.upload.sourceRequired");
-  return i18n.t("edit.result.failed", { message: err.message });
+  return failure(err);
 }
 
 async function onSend() {
-  if (!state.user || !state.plan) return;
+  if (state.busy || !state.user || !state.plan) return;
+  if (!isLoggedIn({ osm, storage, env })) {
+    state.plan = null;
+    await refreshAuth(i18n.t("edit.upload.loginFirst"));
+    return;
+  }
   try {
     state.plan.groups.forEach(changesetTags);
   } catch (err) {
@@ -294,10 +312,13 @@ async function onSend() {
       dropFromQueue(outcome.dropped);
       const result = { done: outcome.done, failed: outcome.failed, conflictWayId: null, closed: [], dropped: outcome.dropped, retried: outcome.retried };
       if (outcome.failed) {
+        const err = { cause: outcome.failed.status, message: outcome.failed.message };
+        result.failed = { ...outcome.failed, message: errorMessage(err, i18n.t) };
         result.conflictWayId = outcome.failed.conflictWayId;
         if (result.conflictWayId) queue.remove(result.conflictWayId);
+        if (endSessionIfRevoked(err)) result.closed = [];
       }
-      if (outcome.failed || outcome.retried) {
+      if ((outcome.failed && errorKind({ cause: outcome.failed.status }) !== "auth") || outcome.retried) {
         try {
           result.closed = await closeEmptyChangesets({ osm, apiUrl: env.apiUrl, uid: state.user.uid, createdBy: `${APP_NAME} ${APP_VERSION}` });
         } catch {}
@@ -309,7 +330,8 @@ async function onSend() {
       const touched = new Set([...outcome.done.flatMap(d => d.wayIds), ...outcome.dropped.map(d => d.intent.wayId), result.conflictWayId]);
       if (state.detail.kind === "way" && touched.has(state.detail.way.id)) refreshSelected = state.detail.way.id;
     } catch (err) {
-      state.result = { done: [], error: i18n.t("edit.result.failed", { message: err.message }) };
+      state.result = { done: [], error: failure(err) };
+      endSessionIfRevoked(err);
     }
   });
 }
@@ -390,11 +412,12 @@ let timer = null;
 
 async function loadCandidates() {
   if (controller) controller.abort();
-  if (map.getZoom() < env.candidateMinZoom) {
+  const blocked = tooLargeForCandidates(map.getZoom(), map.getBounds(), env);
+  if (blocked) {
     controller = null;
     liveFeatures.clear();
     map.getSource(SOURCE)?.setData(EMPTY_COLLECTION);
-    return showStatus({ kind: "zoom", minZoom: env.candidateMinZoom });
+    return showStatus({ kind: blocked, minZoom: env.candidateMinZoom });
   }
   const current = new AbortController();
   controller = current;
@@ -410,7 +433,9 @@ async function loadCandidates() {
     showStatus({ kind: "ready", count: collection.features.length });
   } catch (err) {
     if (current.signal.aborted) return;
-    showStatus({ kind: "error", message: err && err.message });
+    liveFeatures.clear();
+    map.getSource(SOURCE)?.setData(EMPTY_COLLECTION);
+    showStatus({ kind: "error", message: errorMessage(err, i18n.t) });
   }
 }
 
@@ -444,7 +469,7 @@ async function selectWay(id) {
     };
   } catch (err) {
     const gone = err && (err.cause === 404 || err.cause === 410);
-    state.detail = gone ? { kind: "gone", wayId: id } : { kind: "error", message: err && err.message };
+    state.detail = gone ? { kind: "gone", wayId: id } : { kind: "error", message: errorMessage(err, i18n.t) };
     if (gone) map.setFilter(SELECTED, NO_SELECTION);
   }
   renderDetail();

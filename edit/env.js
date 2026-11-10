@@ -29,6 +29,7 @@ export const SETTINGS = Object.freeze({
   editEnabled: true,
   autoQueue: true,
   candidateMinZoom: 17,
+  maxCandidateAreaDeg2: 0.001,
   authPendingTtlMs: 5 * 60 * 1000,
   landingPage: "land.html",
   maxWaysPerChangeset: 50,

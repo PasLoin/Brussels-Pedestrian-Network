@@ -536,6 +536,17 @@
       "closedEmpty_other": "{{count}} empty changesets closed.",
       "retried_one": "Conflict detected: the group was re-read and sent again once.",
       "retried_other": "Conflicts detected: {{count}} groups were re-read and sent again once."
+    },
+    "error": {
+      "network": "no network connection, or the OSM server cannot be reached. Nothing was lost: try again once connected.",
+      "auth": "your OSM session has expired or the authorisation was revoked. Log in again; your queue is kept.",
+      "forbidden": "OSM refused the request: the account may be blocked or must accept new terms on openstreetmap.org.",
+      "rateLimit": "OSM limits how many edits a recent account can send per hour. Wait a little before sending the rest; your queue is kept.",
+      "bandwidth": "too much data downloaded from OSM recently. Wait a few minutes before moving the map again.",
+      "maintenance": "the OSM server is in maintenance (read-only). Try again later; your queue is kept.",
+      "tooBig": "the area is too large or too dense to load the candidates: zoom in.",
+      "server": "the OSM server returned an error. Try again later; your queue is kept.",
+      "unknown": "{{message}}"
     }
   }
 }

@@ -7,6 +7,7 @@ import threading
 import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 
@@ -455,7 +456,7 @@ def test_n1_offline_while_loading_candidates_shows_an_error_without_looping(sess
     fake.add_way(101, line_at(CENTER), street("Rue Test", "Teststraat"))
     fake.inject("map", abort=True, times=5)
     s = session()
-    wait(s.page, "() => document.getElementById('edit-status').textContent.includes('Impossible de charger')")
+    wait(s.page, "() => document.getElementById('edit-status').textContent.includes('pas de connexion réseau')")
     time.sleep(1.0)
     assert fake.count("map") == 1
     fake.faults.clear()
@@ -468,7 +469,7 @@ def test_n2_offline_while_preparing_keeps_the_queue(session, fake):
     s = session(queue=[intent_for(fake, 101)])
     fake.inject("ways", abort=True)
     prepare(s.page)
-    assert "Envoi impossible" in queue_text(s.page)
+    assert "pas de connexion réseau" in queue_text(s.page)
     assert queue_ids(s.page) == [101]
 
 
@@ -478,7 +479,7 @@ def test_n3_cut_between_changeset_creation_and_upload_closes_the_empty_changeset
     prepare(s.page)
     fake.inject("upload", abort=True)
     send(s.page)
-    assert "Envoi impossible" in queue_text(s.page)
+    assert "pas de connexion réseau" in queue_text(s.page)
     assert queue_ids(s.page) == [101]
     assert fake.uploads == []
     assert fake.open_changesets() == []
@@ -490,7 +491,7 @@ def test_n4_a_lost_response_after_a_successful_upload_never_writes_twice(session
     prepare(s.page)
     fake.inject("upload", abort=True, after=True)
     send(s.page)
-    assert "Envoi impossible" in queue_text(s.page)
+    assert "pas de connexion réseau" in queue_text(s.page)
     assert len(fake.uploads) == 1
     prepare(s.page)
     assert "déjà corrigé depuis" in queue_text(s.page)
@@ -504,7 +505,7 @@ def test_n5_maintenance_mode_creates_nothing_and_keeps_the_queue(session, fake):
     prepare(s.page)
     fake.inject("create", status=503, body="Database offline for maintenance")
     send(s.page)
-    assert "Envoi impossible" in queue_text(s.page)
+    assert "en maintenance (lecture seule)" in queue_text(s.page)
     assert fake.creates == []
     assert queue_ids(s.page) == [101]
 
@@ -515,6 +516,7 @@ def test_n6_a_server_error_is_not_retried(session, fake):
     prepare(s.page)
     fake.inject("upload", status=500, body="Internal Server Error")
     send(s.page)
+    assert "le serveur OSM a renvoyé une erreur" in queue_text(s.page)
     assert fake.count("upload") == 1
     assert queue_ids(s.page) == [101]
     assert fake.open_changesets() == []
@@ -554,7 +556,7 @@ def test_l1_a_rate_limited_account_keeps_what_was_not_sent(session, fake):
     prepare(s.page)
     fake.inject("create", status=429, body="Changeset rate limit exceeded", skip=1)
     send(s.page)
-    assert "Envoi impossible" in queue_text(s.page)
+    assert "compte récent" in queue_text(s.page)
     assert [u["ways"] for u in fake.uploads] == [[101]]
     assert queue_ids(s.page) == [102]
 
@@ -565,7 +567,31 @@ def test_l2_download_limit_empties_the_candidate_layer(session, fake):
     wait_candidates(s.page, 1)
     fake.inject("map", status=509, body="You have downloaded too much data")
     s.page.evaluate(f"window.location.hash = '#17.6/{CENTER[1]}/{CENTER[0]}'")
-    wait(s.page, "() => document.getElementById('edit-status').textContent.includes('Impossible de charger')")
+    wait(s.page, "() => document.getElementById('edit-status').textContent.includes('trop de données téléchargées')")
+    assert s.page.evaluate("async () => { const { store } = await import('/map/store.js'); return store.map.querySourceFeatures('edit-candidates').length; }") == 0
+
+
+def requested_areas(fake):
+    areas = []
+    for name, url in fake.calls:
+        if name == "map":
+            w, south, e, n = (float(v) for v in parse_qs(urlparse(url).query)["bbox"][0].split(","))
+            areas.append((e - w) * (n - south))
+    return areas
+
+
+def test_l3_a_too_large_area_is_never_requested(session, fake):
+    fake.add_way(101, line_at(CENTER), street("Rue Test", "Teststraat"))
+    s = session()
+    wait_candidates(s.page, 1)
+    s.page.set_viewport_size({"width": 10000, "height": 8000})
+    wait(s.page, "async () => { const { store } = await import('/map/store.js'); return store.map.getCanvas().clientWidth === 10000; }")
+    s.page.evaluate(f"window.location.hash = '#17/{CENTER[1] + 0.0001}/{CENTER[0]}'")
+    wait(s.page, "() => document.getElementById('edit-status').textContent.includes('trop grande ou trop dense')")
+    time.sleep(0.6)
+    assert requested_areas(fake)
+    assert max(requested_areas(fake)) <= 0.001
+    assert s.page.evaluate("async () => { const { store } = await import('/map/store.js'); return store.map.querySourceFeatures('edit-candidates').length; }") == 0
 
 
 @pytest.mark.parametrize("count,changesets", [(50, 1), (51, 2)])
@@ -597,8 +623,10 @@ def test_s1_a_revoked_authorisation_keeps_the_queue(session, fake):
     prepare(s.page)
     fake.inject("create", status=401, body="Couldn't authenticate you")
     send(s.page)
-    assert "Envoi impossible" in queue_text(s.page)
+    assert "session OSM a expiré" in queue_text(s.page)
     assert queue_ids(s.page) == [101]
+    assert s.page.evaluate("localStorage.getItem('__osmAuth')") is None
+    assert "Se connecter à OSM" in s.page.inner_text("#edit-auth")
 
 
 def test_s2_a_blocked_account_is_not_retried(session, fake):
@@ -607,8 +635,22 @@ def test_s2_a_blocked_account_is_not_retried(session, fake):
     prepare(s.page)
     fake.inject("create", status=403, body="Your access to the API has been blocked")
     send(s.page)
+    assert "compte est peut-être bloqué" in queue_text(s.page)
     assert fake.count("create") == 1
     assert queue_ids(s.page) == [101]
+
+
+def test_s3_logging_out_in_another_tab_stops_the_send(session, fake):
+    fake.add_way(101, line_at(CENTER), street("Rue Test", "Teststraat"))
+    s = session(queue=[intent_for(fake, 101)])
+    prepare(s.page)
+    other = s.open()
+    other.click('[data-edit-action="logout"]')
+    send(s.page)
+    assert fake.creates == []
+    assert "Se connecter à OSM" in s.page.inner_text("#edit-auth")
+    assert queue_ids(s.page) == [101]
+    other.close()
 
 
 def test_s5_a_token_from_another_environment_is_purged_on_load(session, fake):

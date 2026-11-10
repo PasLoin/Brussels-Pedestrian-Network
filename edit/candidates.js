@@ -2,6 +2,16 @@ import { isEditableCandidate } from "./whitelist.js";
 
 export const EMPTY_COLLECTION = Object.freeze({ type: "FeatureCollection", features: Object.freeze([]) });
 
+export function bboxAreaDeg2(bounds) {
+  return Math.abs(bounds.getEast() - bounds.getWest()) * Math.abs(bounds.getNorth() - bounds.getSouth());
+}
+
+export function tooLargeForCandidates(zoom, bounds, settings) {
+  if (zoom < settings.candidateMinZoom) return "zoom";
+  if (bboxAreaDeg2(bounds) > settings.maxCandidateAreaDeg2) return "tooBig";
+  return null;
+}
+
 export function bboxString(bounds) {
   return [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()].map(v => v.toFixed(7)).join(",");
 }

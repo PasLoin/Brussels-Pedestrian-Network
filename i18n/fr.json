@@ -536,6 +536,17 @@
       "closedEmpty_other": "{{count}} changesets vides fermés.",
       "retried_one": "Conflit détecté : le groupe a été relu et renvoyé une fois.",
       "retried_other": "Conflits détectés : {{count}} groupes ont été relus et renvoyés une fois."
+    },
+    "error": {
+      "network": "pas de connexion réseau, ou le serveur OSM est injoignable. Rien n'est perdu : réessayez une fois connecté.",
+      "auth": "votre session OSM a expiré ou l'autorisation a été révoquée. Reconnectez-vous ; votre file est conservée.",
+      "forbidden": "OSM a refusé la demande : le compte est peut-être bloqué ou doit accepter de nouvelles conditions sur openstreetmap.org.",
+      "rateLimit": "OSM limite le nombre de modifications qu'un compte récent peut envoyer par heure. Patientez un peu avant d'envoyer la suite ; votre file est conservée.",
+      "bandwidth": "trop de données téléchargées depuis OSM récemment. Attendez quelques minutes avant de déplacer à nouveau la carte.",
+      "maintenance": "le serveur OSM est en maintenance (lecture seule). Réessayez plus tard ; votre file est conservée.",
+      "tooBig": "la zone est trop grande ou trop dense pour charger les candidats : zoomez.",
+      "server": "le serveur OSM a renvoyé une erreur. Réessayez plus tard ; votre file est conservée.",
+      "unknown": "{{message}}"
     }
   }
 }

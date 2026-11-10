@@ -536,6 +536,17 @@
       "closedEmpty_other": "{{count}} lege changesets gesloten.",
       "retried_one": "Conflict gedetecteerd: de groep werd opnieuw gelezen en één keer opnieuw verzonden.",
       "retried_other": "Conflicten gedetecteerd: {{count}} groepen werden opnieuw gelezen en één keer opnieuw verzonden."
+    },
+    "error": {
+      "network": "geen netwerkverbinding, of de OSM-server is onbereikbaar. Er gaat niets verloren: probeer opnieuw zodra je verbonden bent.",
+      "auth": "je OSM-sessie is verlopen of de toestemming werd ingetrokken. Meld je opnieuw aan; je wachtrij blijft bewaard.",
+      "forbidden": "OSM weigerde het verzoek: het account is mogelijk geblokkeerd of moet nieuwe voorwaarden aanvaarden op openstreetmap.org.",
+      "rateLimit": "OSM beperkt hoeveel wijzigingen een recent account per uur kan verzenden. Wacht even voor je de rest verzendt; je wachtrij blijft bewaard.",
+      "bandwidth": "onlangs te veel gegevens gedownload van OSM. Wacht enkele minuten voor je de kaart opnieuw verplaatst.",
+      "maintenance": "de OSM-server is in onderhoud (alleen lezen). Probeer later opnieuw; je wachtrij blijft bewaard.",
+      "tooBig": "de zone is te groot of te dicht om kandidaten te laden: zoom in.",
+      "server": "de OSM-server gaf een fout terug. Probeer later opnieuw; je wachtrij blijft bewaard.",
+      "unknown": "{{message}}"
     }
   }
 }
