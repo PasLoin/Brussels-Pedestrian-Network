@@ -462,7 +462,8 @@
       "version": "Version",
       "lastEdit": "Dernière modification",
       "editable": "Correspond toujours à la liste blanche : éditable.",
-      "alreadyFixed": "Ne correspond plus à la liste blanche : déjà corrigé depuis."
+      "alreadyFixed": "Ne correspond plus à la liste blanche : déjà corrigé depuis.",
+      "gone": "{{way}} n'existe plus sur OSM (supprimé ou fusionné)."
     },
     "land": {
       "title": "Connexion OpenStreetMap",
@@ -523,7 +524,8 @@
       "tooMany": "La file couvre {{count}} zones, au-delà des {{max}} changesets autorisés : envoyez-en une partie d'abord.",
       "changed": "La file a changé depuis la préparation : vérifiez le nouveau plan et renvoyez.",
       "geometryChanged": "géométrie modifiée depuis (inversion ou découpage), retiré de la file.",
-      "comment": "Commentaire du changeset {{n}}"
+      "comment": "Commentaire du changeset {{n}}",
+      "nodeMoved": "un nœud a été déplacé de {{distance}} m depuis la mise en file : vérifiez l'historique du way dans iD ou JOSM, retiré de la file."
     },
     "result": {
       "sent_one": "{{count}} changeset envoyé :",

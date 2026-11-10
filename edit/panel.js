@@ -43,8 +43,10 @@ function valueLabel(value, t) {
   return t("edit.value.no");
 }
 
-function dropReason(reason, t) {
+function dropReason(drop, t) {
+  const reason = drop.reason;
   if (reason === "deleted") return t("edit.plan.deleted");
+  if (reason === "node_moved") return t("edit.plan.nodeMoved", { distance: Math.round(drop.shiftM) });
   if (reason === "already_fixed") return t("edit.plan.alreadyFixed");
   if (reason === "geometry_changed") return t("edit.plan.geometryChanged");
   return t("edit.plan.modifiedMeanwhile");
@@ -96,6 +98,7 @@ export function detailView(state, i18n, webUrl, settings = {}) {
   const { t } = i18n;
   if (!state || state.kind === "none") return html``;
   if (state.kind === "loading") return html`<p>${t("edit.detail.loading")}</p>`;
+  if (state.kind === "gone") return html`<p class="edit-note">${t("edit.detail.gone", { way: `w${state.wayId}` })}</p>`;
   if (state.kind === "error") return html`<p class="edit-note">${t("edit.detail.error", { message: state.message || "" })}</p>`;
   const way = state.way;
   const tags = Object.entries(way.tags || {}).sort(([a], [b]) => a.localeCompare(b));
@@ -122,7 +125,7 @@ function planView(plan, comments, i18n) {
   if (!plan) return "";
   return html`
     <div class="edit-plan">
-      ${plan.dropped.map(d => html`<p class="edit-note">${wayLabel(d.intent)} : ${dropReason(d.reason, t)}</p>`)}
+      ${plan.dropped.map(d => html`<p class="edit-note">${wayLabel(d.intent)} : ${dropReason(d, t)}</p>`)}
       ${plan.tooMany
         ? html`<p class="edit-note">${t("edit.plan.tooMany", { count: plan.groups.length, max: plan.max })}</p>`
         : plan.groups.length > 0 && html`<p>${t("edit.plan.changesets", { count: plan.groups.length, ways: plan.ready.length })}</p>
@@ -142,7 +145,7 @@ function resultView(result, i18n, webUrl) {
       ${ids.length > 0 && html`<p class="edit-ok">${t("edit.result.sent", { count: ids.length })}
         ${ids.map((id, i) => html`${i > 0 ? " · " : " "}<a href="${`${webUrl}/changeset/${id}`}" target="_blank" rel="noopener">${id}</a>`)}</p>`}
       ${result.retried > 0 && html`<p class="edit-help">${t("edit.result.retried", { count: result.retried })}</p>`}
-      ${(result.dropped || []).map(d => html`<p class="edit-note">${wayLabel(d.intent)} : ${dropReason(d.reason, t)}</p>`)}
+      ${(result.dropped || []).map(d => html`<p class="edit-note">${wayLabel(d.intent)} : ${dropReason(d, t)}</p>`)}
       ${result.conflictWayId && html`<p class="edit-note">${t("edit.result.conflict", { way: `w${result.conflictWayId}` })}</p>`}
       ${result.failed && !result.conflictWayId && html`<p class="edit-note">${t("edit.result.failed", { message: result.failed.message })}</p>`}
       ${result.closed && result.closed.length > 0 && html`<p class="edit-help">${t("edit.result.closedEmpty", { count: result.closed.length })}</p>`}

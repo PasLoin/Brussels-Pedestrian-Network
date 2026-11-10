@@ -8,7 +8,7 @@ export function tagsForChoice(left, right) {
   return left === right ? { "sidewalk:both": left } : { "sidewalk:left": left, "sidewalk:right": right };
 }
 
-export function makeIntent({ way, left, right, bbox, lengthM, name, now = Date.now() }) {
+export function makeIntent({ way, left, right, bbox, lengthM, name, coords, now = Date.now() }) {
   return {
     wayId: way.id,
     set: tagsForChoice(left, right),
@@ -16,11 +16,20 @@ export function makeIntent({ way, left, right, bbox, lengthM, name, now = Date.n
     preconditions: { highway: way.tags.highway, noSidewalkKeys: true },
     seenVersion: way.version,
     ends: wayEnds(way),
+    nodeCoords: nodeCoordsOf(way, coords),
     bbox,
     lengthM,
     name: name || way.tags.name || "",
     addedAt: now,
   };
+}
+
+export function nodeCoordsOf(way, coords) {
+  const nodes = (way && way.nodes) || [];
+  if (!coords || coords.length !== nodes.length) return null;
+  const seen = new Map();
+  nodes.forEach((id, i) => { if (coords[i] && !seen.has(id)) seen.set(id, [id, coords[i][0], coords[i][1]]); });
+  return [...seen.values()];
 }
 
 export function wayEnds(way) {

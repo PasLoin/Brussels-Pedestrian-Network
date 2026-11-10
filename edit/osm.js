@@ -1,7 +1,8 @@
-import { mergeBbox, spanM } from "./geo.js";
+import { distanceM, mergeBbox, spanM } from "./geo.js";
 import { applyIntent, geometryUnchanged, preconditionsHold } from "./intent.js";
 
 const GONE = new Set([404, 410]);
+const NODE_CHUNK = 500;
 
 export async function readLiveWays(osm, ids) {
   const out = new Map();
@@ -24,16 +25,44 @@ export async function readLiveWays(osm, ids) {
   return out;
 }
 
-export async function preflight(osm, intents) {
+export async function readLiveNodes(osm, ids) {
+  const out = new Map();
+  const unique = [...new Set(ids)];
+  for (let i = 0; i < unique.length; i += NODE_CHUNK) {
+    for (const node of await osm.getFeatures("node", unique.slice(i, i + NODE_CHUNK))) out.set(node.id, node);
+  }
+  return out;
+}
+
+export function largestShiftM(intent, way, liveNodes) {
+  let worst = 0;
+  const present = new Set(way.nodes || []);
+  for (const [id, lon, lat] of intent.nodeCoords || []) {
+    const node = liveNodes.get(id);
+    if (!present.has(id) || !node || node.visible === false) continue;
+    worst = Math.max(worst, distanceM([lon, lat], [node.lon, node.lat]));
+  }
+  return worst;
+}
+
+export async function preflight(osm, intents, { maxNodeShiftM = Infinity } = {}) {
   const live = await readLiveWays(osm, intents.map(i => i.wayId));
-  const ready = [];
+  const candidates = [];
   const dropped = [];
   for (const intent of intents) {
     const way = live.get(intent.wayId);
     if (!way || way.visible === false) dropped.push({ intent, reason: "deleted" });
     else if (!preconditionsHold(intent, way.tags)) dropped.push({ intent, reason: "already_fixed" });
     else if (!geometryUnchanged(intent, way)) dropped.push({ intent, reason: "geometry_changed" });
-    else ready.push({ intent, way });
+    else candidates.push({ intent, way });
+  }
+  const watched = candidates.flatMap(({ intent }) => (intent.nodeCoords || []).map(([id]) => id));
+  const liveNodes = Number.isFinite(maxNodeShiftM) && watched.length ? await readLiveNodes(osm, watched) : new Map();
+  const ready = [];
+  for (const entry of candidates) {
+    const shiftM = largestShiftM(entry.intent, entry.way, liveNodes);
+    if (shiftM > maxNodeShiftM) dropped.push({ intent: entry.intent, reason: "node_moved", shiftM });
+    else ready.push(entry);
   }
   return { ready, dropped };
 }
@@ -54,7 +83,7 @@ export function groupEntries(entries, { maxWaysPerChangeset, maxChangesetSpanM }
 }
 
 export async function planUpload(osm, intents, settings) {
-  const { ready, dropped } = await preflight(osm, intents);
+  const { ready, dropped } = await preflight(osm, intents, settings);
   const groups = groupEntries(ready, settings);
   return { ready, dropped, groups, tooMany: groups.length > settings.maxChangesetsPerUpload };
 }
@@ -96,7 +125,7 @@ function failure(index, group, err) {
   };
 }
 
-export async function uploadGroups({ osm, groups, tagsFor, retryOnConflict = true }) {
+export async function uploadGroups({ osm, groups, tagsFor, retryOnConflict = true, settings = {} }) {
   const done = [];
   const dropped = [];
   let retried = 0;
@@ -108,7 +137,7 @@ export async function uploadGroups({ osm, groups, tagsFor, retryOnConflict = tru
       if (!retryOnConflict || conflictWayId(err) === null) return { done, dropped, retried, failed: failure(index, group, err) };
     }
     retried += 1;
-    const fresh = await preflight(osm, group.entries.map(e => e.intent));
+    const fresh = await preflight(osm, group.entries.map(e => e.intent), settings);
     dropped.push(...fresh.dropped);
     if (!fresh.ready.length) continue;
     const again = { ...group, entries: fresh.ready };

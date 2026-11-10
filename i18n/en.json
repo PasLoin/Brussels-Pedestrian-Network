@@ -462,7 +462,8 @@
       "version": "Version",
       "lastEdit": "Last edit",
       "editable": "Still matches the whitelist: editable.",
-      "alreadyFixed": "No longer matches the whitelist: already fixed since."
+      "alreadyFixed": "No longer matches the whitelist: already fixed since.",
+      "gone": "{{way}} no longer exists on OSM (deleted or merged)."
     },
     "land": {
       "title": "OpenStreetMap login",
@@ -523,7 +524,8 @@
       "tooMany": "The queue spreads over {{count}} areas, more than the {{max}} changesets allowed: send part of it first.",
       "changed": "The queue changed since it was prepared: check the new plan and send again.",
       "geometryChanged": "geometry changed since (reversed or split), removed from the queue.",
-      "comment": "Comment of changeset {{n}}"
+      "comment": "Comment of changeset {{n}}",
+      "nodeMoved": "a node was moved {{distance}} m since it was queued: check the way's history in iD or JOSM, removed from the queue."
     },
     "result": {
       "sent_one": "{{count}} changeset sent:",

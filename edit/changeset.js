@@ -37,7 +37,7 @@ export function buildChangesetTags({
   if (!String(comment || "").trim()) throw new Error("comment-required");
   const tags = {
     created_by: `${APP_NAME} ${APP_VERSION}`,
-    "bpn:osm-api-js": OSM_API_VERSION,
+    osm_api_js_version: OSM_API_VERSION,
     comment: fullComment,
     source: sourceList.join(";"),
   };

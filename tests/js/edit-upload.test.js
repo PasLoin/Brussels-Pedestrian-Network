@@ -30,11 +30,15 @@ async function intentFor(w, left, right, bbox = UCCLE) {
   return makeIntent({ way: w, left, right, bbox, lengthM: 80, now: 1 });
 }
 
-function fakeOsm({ ways = {}, upload, getFeaturesError, changesets = [] } = {}) {
+function fakeOsm({ ways = {}, nodes = {}, upload, getFeaturesError, changesets = [] } = {}) {
   const calls = [];
   return {
     calls,
     getFeatures: async (type, ids) => {
+      if (type === "node") {
+        calls.push(["getNodes", ids]);
+        return ids.filter(id => nodes[id]).map(id => nodes[id]);
+      }
       calls.push(["getFeatures", ids]);
       if (getFeaturesError) throw getFeaturesError;
       return ids.filter(id => ways[id]).map(id => ways[id]);
@@ -353,7 +357,7 @@ test("changeset tags carry everything a reviewer needs", async () => {
   });
   assert.deepEqual(tags, {
     created_by: "BrusselsPedestrianNetwork 0.2.0",
-    "bpn:osm-api-js": "4.0.1",
+    osm_api_js_version: "4.0.1",
     comment: "Ajout des tags sidewalk #BrusselsPedestrianNetwork #bpn",
     source: "survey;aerial imagery",
     imagery_used: "OpenFreeMap Liberty;UrbIS Ortho",
@@ -515,4 +519,69 @@ test("the P2 panel speaks every published language without a missing key", async
     for (const text of outs) assert.doesNotMatch(text, /\bedit\.[a-z]+\.[A-Za-z_]+/, `${lang}`);
     assert.deepEqual(warnings, []);
   }
+});
+
+const node = (id, lon, lat, extra = {}) => ({ type: "node", id, lon, lat, version: 1, ...extra });
+
+async function intentWithCoords(w, coords, settings = {}) {
+  const { makeIntent } = await load("intent.js");
+  return makeIntent({ way: w, left: "no", right: "no", bbox: UCCLE, lengthM: 80, coords, now: 1, ...settings });
+}
+
+test("an intent remembers where each node of the way was when it was queued", async () => {
+  const w = way(9, { highway: "residential" });
+  w.nodes = [1, 2, 3];
+  const intent = await intentWithCoords(w, [[4.30, 50.80], [4.301, 50.80], [4.302, 50.80]]);
+  assert.deepEqual(intent.nodeCoords, [[1, 4.30, 50.80], [2, 4.301, 50.80], [3, 4.302, 50.80]]);
+  assert.equal((await intentWithCoords(w, [[4.30, 50.80]])).nodeCoords, null);
+  assert.equal((await intentWithCoords(w, undefined)).nodeCoords, null);
+});
+
+test("a node moved further than the threshold since queueing drops the way with the distance", async () => {
+  const { preflight } = await load("osm.js");
+  const w = way(9, { highway: "residential" });
+  w.nodes = [1, 2, 3];
+  const intent = await intentWithCoords(w, [[4.30, 50.80], [4.301, 50.80], [4.302, 50.80]]);
+  const moved = fakeOsm({ ways: { 9: w }, nodes: { 1: node(1, 4.30, 50.80), 2: node(2, 4.301, 50.8009), 3: node(3, 4.302, 50.80) } });
+  const out = await preflight(moved, [intent], { maxNodeShiftM: 10 });
+  assert.deepEqual(out.ready, []);
+  assert.equal(out.dropped[0].reason, "node_moved");
+  assert.ok(Math.abs(out.dropped[0].shiftM - 100) < 2);
+  assert.deepEqual(moved.calls.find(c => c[0] === "getNodes")[1], [1, 2, 3]);
+});
+
+test("small realignments, removed nodes and intents without positions are not blocked", async () => {
+  const { preflight } = await load("osm.js");
+  const w = way(9, { highway: "residential" });
+  w.nodes = [1, 2, 3];
+  const intent = await intentWithCoords(w, [[4.30, 50.80], [4.301, 50.80], [4.302, 50.80]]);
+  const nudged = fakeOsm({ ways: { 9: w }, nodes: { 1: node(1, 4.30, 50.80), 2: node(2, 4.30105, 50.80003), 3: node(3, 4.302, 50.80) } });
+  assert.equal((await preflight(nudged, [intent], { maxNodeShiftM: 10 })).ready.length, 1);
+  const without2 = { ...w, version: 4, nodes: [1, 3] };
+  const removed = fakeOsm({ ways: { 9: without2 }, nodes: { 1: node(1, 4.30, 50.80), 2: node(2, 4.5, 50.9), 3: node(3, 4.302, 50.80) } });
+  assert.equal((await preflight(removed, [intent], { maxNodeShiftM: 10 })).ready.length, 1);
+  const legacy = { ...intent, nodeCoords: null };
+  const noRead = fakeOsm({ ways: { 9: w } });
+  assert.equal((await preflight(noRead, [legacy], { maxNodeShiftM: 10 })).ready.length, 1);
+  assert.equal(noRead.calls.some(c => c[0] === "getNodes"), false);
+});
+
+test("nodes are read in chunks so a full queue never builds an oversized request", async () => {
+  const { readLiveNodes } = await load("osm.js");
+  const ids = Array.from({ length: 1200 }, (_, i) => i + 1);
+  const osm = fakeOsm({ nodes: Object.fromEntries(ids.map(id => [id, node(id, 4.3, 50.8)])) });
+  const live = await readLiveNodes(osm, [...ids, ...ids.slice(0, 10)]);
+  assert.equal(live.size, 1200);
+  assert.deepEqual(osm.calls.filter(c => c[0] === "getNodes").map(c => c[1].length), [500, 500, 200]);
+});
+
+test("the plan explains a moved node and a vanished way plainly", async () => {
+  const { queueView, detailView } = await load("panel.js");
+  const form = { remark: "", sources: [], sourceOther: "", hashtags: "", review: false };
+  const out = String(queueView({
+    items: [], form, busy: false, loggedIn: true, result: null, comments: [],
+    plan: { ready: [], groups: [], tooMany: false, max: 3, dropped: [{ intent: { wayId: 4, name: "Rue A" }, reason: "node_moved", shiftM: 412.6 }] },
+  }, i18nFor("fr"), "https://dev", { sourcePresets: [] }));
+  assert.match(out, /Rue A \(w4\) : un nœud a été déplacé de 413 m depuis la mise en file/);
+  assert.match(String(detailView({ kind: "gone", wayId: 4307565075 }, i18nFor("fr"), "https://dev")), /w4307565075 n&#039;existe plus sur OSM/);
 });

@@ -160,7 +160,7 @@ function queueChoice() {
   const d = state.detail;
   const sides = completeChoice(d.choice);
   if (!sides) return;
-  const intent = makeIntent({ way: d.way, left: sides.left, right: sides.right, bbox: d.bbox, lengthM: d.lengthM });
+  const intent = makeIntent({ way: d.way, left: sides.left, right: sides.right, bbox: d.bbox, lengthM: d.lengthM, coords: d.coords });
   queue.put(intent);
   state.plan = null;
   state.result = null;
@@ -289,7 +289,7 @@ async function onSend() {
         return;
       }
       state.plan = plan;
-      const outcome = await uploadGroups({ osm, groups: plan.groups, tagsFor: changesetTags });
+      const outcome = await uploadGroups({ osm, groups: plan.groups, tagsFor: changesetTags, settings: env });
       queue.remove(outcome.done.flatMap(d => d.wayIds));
       dropFromQueue(outcome.dropped);
       const result = { done: outcome.done, failed: outcome.failed, conflictWayId: null, closed: [], dropped: outcome.dropped, retried: outcome.retried };
@@ -419,36 +419,33 @@ function scheduleCandidates() {
   timer = setTimeout(loadCandidates, 300);
 }
 
-async function geometryOf(id) {
-  const cached = liveFeatures.get(id);
-  if (cached) return cached.geometry.coordinates;
-  const elements = await osm.getFeature("way", id, true);
-  const nodes = new Map(elements.filter(f => f.type === "node").map(n => [n.id, [n.lon, n.lat]]));
-  const way = elements.find(f => f.type === "way" && f.id === id);
-  return way.nodes.map(n => nodes.get(n)).filter(Boolean);
-}
-
 async function selectWay(id) {
   map.setFilter(SELECTED, ["==", ["get", "osm_id"], id]);
   setDockOpen(true);
   state.detail = { kind: "loading" };
   renderDetail();
   try {
-    const [way] = await osm.getFeature("way", id);
-    const coords = await geometryOf(id);
+    const elements = await osm.getFeature("way", id, true);
+    const way = elements.find(f => f.type === "way" && f.id === id);
+    const nodes = new Map(elements.filter(f => f.type === "node").map(n => [n.id, [n.lon, n.lat]]));
+    const coords = way.nodes.map(n => nodes.get(n));
+    if (coords.some(c => !c)) throw new Error("incomplete way");
     const lengthM = lineLengthM(coords);
     state.detail = {
       kind: "way",
       way,
       editable: isEditableCandidate(way.tags),
       bbox: bboxOf(coords),
+      coords,
       lengthM,
       longWay: lengthM > env.longWayWarningM,
       queued: queue.get(id),
       choice: choiceFromIntent(queue.get(id)),
     };
   } catch (err) {
-    state.detail = { kind: "error", message: err && err.message };
+    const gone = err && (err.cause === 404 || err.cause === 410);
+    state.detail = gone ? { kind: "gone", wayId: id } : { kind: "error", message: err && err.message };
+    if (gone) map.setFilter(SELECTED, NO_SELECTION);
   }
   renderDetail();
   (detailEl.querySelector(".edit-form") || detailEl).scrollIntoView({ block: "nearest", behavior: "smooth" });

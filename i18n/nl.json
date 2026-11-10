@@ -462,7 +462,8 @@
       "version": "Versie",
       "lastEdit": "Laatste wijziging",
       "editable": "Voldoet nog aan de witte lijst: bewerkbaar.",
-      "alreadyFixed": "Voldoet niet meer aan de witte lijst: intussen al verbeterd."
+      "alreadyFixed": "Voldoet niet meer aan de witte lijst: intussen al verbeterd.",
+      "gone": "{{way}} bestaat niet meer op OSM (verwijderd of samengevoegd)."
     },
     "land": {
       "title": "Aanmelden bij OpenStreetMap",
@@ -523,7 +524,8 @@
       "tooMany": "De wachtrij beslaat {{count}} zones, meer dan de toegestane {{max}} changesets: verzend eerst een deel.",
       "changed": "De wachtrij is gewijzigd sinds de voorbereiding: controleer het nieuwe plan en verzend opnieuw.",
       "geometryChanged": "geometrie intussen gewijzigd (omgekeerd of gesplitst), uit de wachtrij gehaald.",
-      "comment": "Opmerking van changeset {{n}}"
+      "comment": "Opmerking van changeset {{n}}",
+      "nodeMoved": "een node werd {{distance}} m verplaatst sinds het in de wachtrij kwam: controleer de geschiedenis van de way in iD of JOSM, uit de wachtrij gehaald."
     },
     "result": {
       "sent_one": "{{count}} changeset verzonden:",
