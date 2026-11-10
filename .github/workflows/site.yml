@@ -65,6 +65,7 @@ jobs:
             stats.json
             graph.json
             pedestrian.pmtiles
+            communes.geojson
           sparse-checkout-cone-mode: false
 
       - name: Reuse published data
@@ -76,6 +77,7 @@ jobs:
             fi
             cp "published/$f" _site/
           done
+          if [[ -s published/communes.geojson ]]; then cp published/communes.geojson _site/; fi
           if [[ -f history.json ]] && jq empty history.json 2>/dev/null; then
             cp history.json _site/
           else
