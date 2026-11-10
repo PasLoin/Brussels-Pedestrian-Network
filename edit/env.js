@@ -35,7 +35,7 @@ export const SETTINGS = Object.freeze({
   maxChangesetSpanM: 1000,
   maxChangesetsPerUpload: 3,
   longWayWarningM: 200,
-  maxNodeShiftM: 0,
+  maxNodeShiftM: 10,
   defaultHashtags: Object.freeze(["#BrusselsPedestrianNetwork"]),
   sourcePresets: Object.freeze(["survey", "local_knowledge", "streetlevel imagery", "aerial imagery"]),
 });
