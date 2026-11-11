@@ -1,7 +1,7 @@
 import { i18n } from "../map/i18n.js";
 import { store } from "../map/store.js";
 import { guardEnvironment, isLoggedIn, login, loginInProgress, logout, tabId } from "./auth.js";
-import { EMPTY_COLLECTION, bboxString, candidatesFromMapData, tooLargeForCandidates } from "./candidates.js";
+import { EMPTY_COLLECTION, boundsBox, boxString, boxWithin, candidateRequest, candidateWindow, candidatesFromMapData, countInBox, mergeCandidates } from "./candidates.js";
 import { MAX_TAG_LENGTH, buildChangesetTags, hashtagsValue, normalizeHashtags, sourceValue, splitList, tooLongFields } from "./changeset.js";
 import { createClient } from "./client.js";
 import { APP_NAME, APP_VERSION, envFromDocument } from "./env.js";
@@ -27,6 +27,7 @@ const SIDE_RIGHT = "edit-candidates-right";
 const FIT_MARGIN_PX = 40;
 const VISIBLE_MARGIN_PX = 4;
 const FIT_DURATION_MS = 250;
+const WIDER_SEARCH = [2, 4];
 
 const env = envFromDocument(document);
 const osm = createClient(window.OSM);
@@ -42,6 +43,7 @@ const visited = new Set();
 const navEl = document.getElementById("edit-nav");
 let navHint = "";
 let candidatesBlocked = null;
+let loadedBoxes = [];
 const authEl = document.getElementById("edit-auth");
 const statusEl = document.getElementById("edit-status");
 const detailEl = document.getElementById("edit-detail");
@@ -180,7 +182,7 @@ function renderNav() {
   }, i18n)}`;
 }
 
-function selectNext() {
+function selectNext(widen = true) {
   if (!map) return false;
   const current = state.detail.kind === "way" ? state.detail.way.id : null;
   const here = map.getCenter();
@@ -196,7 +198,8 @@ function selectNext() {
     next = nextCandidate(pool, from, base);
   }
   if (!next) {
-    navHint = candidatesBlocked === "zoom" ? i18n.t("edit.status.zoomIn", { zoom: env.candidateMinZoom }) : i18n.t("edit.nav.none");
+    const searching = widen && current !== null && searchWider(current);
+    navHint = searching ? i18n.t("edit.nav.searching") : candidatesBlocked === "zoom" ? i18n.t("edit.status.zoomIn", { zoom: env.candidateFloorZoom }) : i18n.t("edit.nav.none");
     renderNav();
     return false;
   }
@@ -247,18 +250,14 @@ let pendingKeys = [];
 
 function bringWholeWayIntoView(d, force = false) {
   if (!map || d.kind !== "way") return "hidden";
-  const zoom = map.getZoom();
-  const belowCandidates = zoom < env.candidateMinZoom;
-  const shown = wholeWayVisible(d.coords, FIT_MARGIN_PX);
-  if (!force && !belowCandidates && shown) return "visible";
+  if (!force && wholeWayVisible(d.coords, FIT_MARGIN_PX)) return "visible";
   const { canvas, free } = viewArea();
   const camera = map.cameraForBounds([[d.bbox[0], d.bbox[1]], [d.bbox[2], d.bbox[3]]], {
     padding: fitPadding(canvas, free, FIT_MARGIN_PX),
     bearing: map.getBearing(),
-    maxZoom: Math.max(zoom, env.candidateMinZoom),
+    maxZoom: map.getZoom(),
   });
   if (!camera) return wholeWayVisible(d.coords) ? "visible" : "hidden";
-  if (!force && shown && camera.zoom <= zoom + 0.01) return "visible";
   map.easeTo({ ...camera, bearing: map.getBearing(), pitch: map.getPitch(), duration: FIT_DURATION_MS });
   clearTimeout(settleTimer);
   settleTimer = setTimeout(() => updateVisibility(true), FIT_DURATION_MS + 150);
@@ -275,9 +274,9 @@ function updateVisibility(settled = false) {
   const d = state.detail;
   if (d.kind !== "way" || !d.editable) return;
   if (d.fitting && !settled && map.isMoving()) return;
-  const visible = wholeWayVisible(d.coords);
+  const visible = wholeWayVisible(d.coords) || Boolean(d.userFit && d.fitting && settled);
   if (visible === d.visible && !d.fitting) return;
-  state.detail = { ...d, visible, fitting: false };
+  state.detail = { ...d, visible, fitting: false, userFit: false };
   renderDetail();
   if (visible) replayPendingKeys();
   else pendingKeys = [];
@@ -363,6 +362,7 @@ detailEl.addEventListener("click", (e) => {
   const action = button.dataset.editAction;
   if (action === "fit") {
     applyView(bringWholeWayIntoView(d, true));
+    state.detail = { ...state.detail, userFit: state.detail.fitting };
     renderDetail();
     return;
   } else if (action === "plan") {
@@ -600,6 +600,7 @@ document.addEventListener("keydown", (e) => {
   if (!action) return;
   const d = state.detail;
   const editing = d.kind === "way" && d.editable;
+  if ((action.type === "value" || action.type === "mode") && widening) return;
   if ((action.type === "value" || action.type === "mode") && editing && d.fitting) {
     pendingKeys.push(action);
     return;
@@ -701,39 +702,87 @@ for (const [id, color, sign] of [[SIDE_LEFT, "#0284c7", -1], [SIDE_RIGHT, "#ea58
 let controller = null;
 let timer = null;
 
-async function loadCandidates() {
+function setCandidates(features) {
+  liveFeatures.clear();
+  for (const [id, f] of features) liveFeatures.set(id, f);
+  map.getSource(SOURCE)?.setData({ type: "FeatureCollection", features: [...liveFeatures.values()] });
+  syncQueuedState();
+}
+
+function clearCandidates() {
+  loadedBoxes = [];
+  liveFeatures.clear();
+  map.getSource(SOURCE)?.setData(EMPTY_COLLECTION);
+}
+
+function candidateFocus() {
+  return state.detail.kind === "way" && state.detail.bbox ? state.detail.bbox : null;
+}
+
+function currentRequest(focus = candidateFocus()) {
+  const canvas = { width: map.getCanvas().clientWidth, height: map.getCanvas().clientHeight };
+  const center = map.getCenter();
+  return candidateRequest({ zoom: map.getZoom(), bounds: map.getBounds(), center: [center.lng, center.lat], canvas, focus, settings: env });
+}
+
+let widening = null;
+
+function searchWider(wayId) {
+  const focus = candidateFocus();
+  if (widening || !focus) return false;
+  widening = (async () => {
+    for (const scale of WIDER_SEARCH) {
+      const center = map.getCenter();
+      const box = candidateWindow({ center: [center.lng, center.lat], canvas: { width: map.getCanvas().clientWidth, height: map.getCanvas().clientHeight }, focus, settings: env, scale });
+      if (loadedBoxes.some(b => boxWithin(box, b))) continue;
+      await loadCandidates({ box, around: true });
+      if (state.detail.kind !== "way" || state.detail.way.id !== wayId) return;
+      if (selectNext(false)) return;
+    }
+    if (state.detail.kind === "way" && state.detail.way.id === wayId) {
+      navHint = i18n.t("edit.nav.none");
+      renderNav();
+    }
+  })().finally(() => { widening = null; });
+  return true;
+}
+
+function loadAroundSelection() {
+  const focus = candidateFocus();
+  if (!map || !focus) return;
+  const request = currentRequest(focus);
+  if (request.blocked || !request.around) return;
+  if (loadedBoxes.some(box => boxWithin(request.box, box))) return;
+  loadCandidates(request);
+}
+
+async function loadCandidates(given = null) {
   if (controller) controller.abort();
-  const blocked = tooLargeForCandidates(map.getZoom(), map.getBounds(), env);
-  candidatesBlocked = blocked || null;
-  if (blocked === "zoom" && liveFeatures.size) {
+  const request = given || currentRequest();
+  candidatesBlocked = request.blocked || null;
+  if (request.blocked) {
     controller = null;
+    if (request.blocked === "zoom" && liveFeatures.size) {
+      renderNav();
+      return showStatus({ kind: "zoom", minZoom: env.candidateFloorZoom, kept: liveFeatures.size });
+    }
+    clearCandidates();
     renderNav();
-    return showStatus({ kind: "zoom", minZoom: env.candidateMinZoom, kept: liveFeatures.size });
-  }
-  if (blocked) {
-    controller = null;
-    liveFeatures.clear();
-    map.getSource(SOURCE)?.setData(EMPTY_COLLECTION);
-    renderNav();
-    return showStatus({ kind: blocked, minZoom: env.candidateMinZoom });
+    return showStatus({ kind: request.blocked, minZoom: env.candidateFloorZoom });
   }
   const current = new AbortController();
   controller = current;
   showStatus({ kind: "loading" });
   try {
-    const features = await osm.getMapData(bboxString(map.getBounds()), { signal: current.signal });
+    const features = await osm.getMapData(boxString(request.box), { signal: current.signal });
     if (current.signal.aborted) return;
-    const collection = candidatesFromMapData(features);
-    liveFeatures.clear();
-    for (const f of collection.features) liveFeatures.set(f.properties.osm_id, f);
-    map.getSource(SOURCE)?.setData(collection);
-    syncQueuedState();
-    showStatus({ kind: "ready", count: collection.features.length });
+    setCandidates(mergeCandidates(liveFeatures, candidatesFromMapData(features), request.box));
+    loadedBoxes = [request.box, ...loadedBoxes].slice(0, 20);
+    showStatus({ kind: "ready", count: countInBox(liveFeatures.values(), boundsBox(map.getBounds())) });
     renderNav();
   } catch (err) {
     if (current.signal.aborted) return;
-    liveFeatures.clear();
-    map.getSource(SOURCE)?.setData(EMPTY_COLLECTION);
+    clearCandidates();
     showStatus({ kind: "error", message: errorMessage(err, i18n.t) });
     renderNav();
   }
@@ -779,6 +828,7 @@ async function selectWay(id) {
   renderDetail();
   renderNav();
   (detailEl.querySelector(".edit-form") || detailEl).scrollIntoView({ block: "nearest", behavior: "smooth" });
+  if (state.detail.kind === "way" && !state.detail.fitting) loadAroundSelection();
 }
 
 map.on("click", LAYER, (e) => {
@@ -792,4 +842,7 @@ map.on("moveend", () => {
   updateVisibility(true);
 });
 map.on("resize", updateVisibility);
+map.on("movestart", (e) => {
+  if (e.originalEvent && state.detail.kind === "way" && state.detail.userFit) state.detail = { ...state.detail, userFit: false };
+});
 loadCandidates();

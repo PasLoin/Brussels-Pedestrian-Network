@@ -572,6 +572,7 @@
     "nav": {
       "next": "Candidat suivant",
       "none": "Tous les candidats de la vue ont été parcourus.",
+      "searching": "Recherche de rues voisines…",
       "skipped_one": "{{count}} rue passée.",
       "skipped_other": "{{count}} rues passées.",
       "resetSkipped": "Réafficher"

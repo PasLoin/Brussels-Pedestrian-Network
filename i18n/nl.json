@@ -572,6 +572,7 @@
     "nav": {
       "next": "Volgende kandidaat",
       "none": "Alle kandidaten in beeld zijn bekeken.",
+      "searching": "Naburige straten zoeken…",
       "skipped_one": "{{count}} straat overgeslagen.",
       "skipped_other": "{{count}} straten overgeslagen.",
       "resetSkipped": "Opnieuw tonen"

@@ -30,6 +30,7 @@ export const SETTINGS = Object.freeze({
   autoQueue: true,
   autoAdvance: true,
   candidateMinZoom: 17,
+  candidateFloorZoom: 15,
   maxCandidateAreaDeg2: 0.001,
   authPendingTtlMs: 5 * 60 * 1000,
   landingPage: "land.html",

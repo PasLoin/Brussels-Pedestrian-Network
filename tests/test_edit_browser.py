@@ -950,7 +950,7 @@ def map_zoom(page):
     return map_eval(page, "return m.getZoom();")
 
 
-def test_after_a_long_street_the_next_one_is_still_offered_and_the_zoom_comes_back(session, fake):
+def test_after_a_long_street_the_next_one_is_offered_without_zooming_back(session, fake):
     long_line = line_at(CENTER, length=0.012)
     fake.add_way(101, long_line, street("Longue Rue", "Lange Straat"))
     fake.add_way(102, line_at(CENTER, dy=-0.0004), street("Rue Courte", "Korte Straat"))
@@ -958,14 +958,52 @@ def test_after_a_long_street_the_next_one_is_still_offered_and_the_zoom_comes_ba
     wait_candidates(s.page, 2)
     click_way(s.page, CENTER[0], CENTER[1] + 0.00001, 101)
     wait(s.page, "() => !!document.querySelector('[data-edit-action=choose]') && !document.querySelector('[data-edit-action=choose][disabled]')")
-    assert map_zoom(s.page) < 17
-    wait(s.page, "() => document.getElementById('edit-status').textContent.includes('2 candidats déjà chargés')")
-    requests = fake.count("map")
-    assert map_eval(s.page, "return m.querySourceFeatures('edit-candidates').length;") >= 2
+    zoom = map_zoom(s.page)
+    assert zoom < 17
     s.page.keyboard.press("s")
     wait_selected(s.page, 102)
-    wait(s.page, "async () => { const { store } = await import('/map/store.js'); return store.map.getZoom() >= 17 && !store.map.isMoving(); }")
-    wait(s.page, "() => document.getElementById('edit-status').textContent.includes('candidats dans la vue')")
-    assert fake.count("map") > requests
-    assert queue_ids(s.page) == [101]
+    time.sleep(0.6)
+    assert abs(map_zoom(s.page) - zoom) < 0.01
     assert not locked(s.page)
+    s.page.keyboard.press("y")
+    wait(s.page, "() => (localStorage.getItem('bpn.queue.dev') || '').includes('102')")
+    assert queue_ids(s.page) == [101, 102]
+    assert max(requested_areas(fake)) <= 0.001
+
+
+def test_streets_beyond_the_first_view_are_chained_from_the_keyboard(session, fake):
+    fake.add_way(101, line_at(CENTER), street("Rue A", "Astraat"))
+    fake.add_way(102, line_at(CENTER, dy=-0.0006, length=0.004), street("Rue B", "Bstraat"))
+    fake.add_way(103, line_at(CENTER, dy=-0.0012, length=0.0006), street("Rue C", "Cstraat"))
+    fake.add_way(104, line_at(CENTER, dy=0.0010, dx=0.002, length=0.0006), street("Rue D", "Dstraat"))
+    fake.add_way(105, line_at(CENTER, dy=-0.0030, dx=0.004, length=0.0006), street("Rue E", "Estraat"))
+    s = session()
+    wait(s.page, "() => document.getElementById('edit-status').textContent.includes('candidats dans la vue')")
+    s.page.keyboard.press("ArrowRight")
+    wait_selected(s.page, 101)
+    for count in range(1, 6):
+        if count > 1:
+            wait(s.page, "() => !!document.querySelector('[data-edit-action=choose]') && !document.querySelector('[data-edit-action=choose][disabled]') && !document.getElementById('edit-nav').textContent.includes('Recherche')")
+            time.sleep(0.4)
+        s.page.keyboard.press("n")
+        wait(s.page, f"() => JSON.parse(localStorage.getItem('bpn.queue.dev') || '[]').length === {count}")
+    assert sorted(queue_ids(s.page)) == [101, 102, 103, 104, 105]
+    assert max(requested_areas(fake)) <= 0.001
+
+
+def test_keys_pressed_while_searching_for_the_next_street_change_nothing(session, fake):
+    fake.add_way(101, line_at(CENTER), street("Rue A", "Astraat"))
+    fake.add_way(102, line_at(CENTER, dy=-0.0045, dx=0.005, length=0.0006), street("Rue Loin", "Verstraat"))
+    s = session()
+    wait_candidates(s.page, 1)
+    s.page.keyboard.press("ArrowRight")
+    wait_selected(s.page, 101)
+    time.sleep(0.8)
+    wait(s.page, "() => document.getElementById('edit-status').textContent.includes('dans la vue')")
+    fake.inject("map", delay=1.5, times=3)
+    s.page.keyboard.press("n")
+    wait(s.page, "() => document.getElementById('edit-nav').textContent.includes('Recherche de rues voisines')")
+    s.page.keyboard.press("s")
+    wait_selected(s.page, 102)
+    stored = json.loads(s.page.evaluate("localStorage.getItem('bpn.queue.dev')"))
+    assert [(i["wayId"], i["set"]) for i in stored] == [(101, {"sidewalk:both": "no"})]

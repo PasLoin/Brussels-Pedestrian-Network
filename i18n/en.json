@@ -572,6 +572,7 @@
     "nav": {
       "next": "Next candidate",
       "none": "Every candidate in view has been visited.",
+      "searching": "Looking for nearby streets…",
       "skipped_one": "{{count}} street skipped.",
       "skipped_other": "{{count}} streets skipped.",
       "resetSkipped": "Show again"
