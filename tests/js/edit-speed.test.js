@@ -97,15 +97,100 @@ test("the free map area excludes the side taken by the panel", async () => {
   assert.deepEqual(freeRect(canvas, { left: 220, right: 780, top: 400, bottom: 650 }, "bottom"), { left: 0, top: 0, right: 1000, bottom: 388 });
 });
 
-test("the map only moves when the selected way is hidden or too close to the edge", async () => {
-  const { freeRect, recenterOffset } = await load("viewport.js");
+test("a way counts as visible only when all of it lies inside the free map area", async () => {
+  const { boxOf, boxVisible, freeRect } = await load("viewport.js");
   const canvas = { width: 1000, height: 700 };
   const free = freeRect(canvas, { left: 688, right: 988, top: 100, bottom: 500 }, "right");
-  assert.equal(recenterOffset(canvas, free, { minX: 300, maxX: 500, minY: 300, maxY: 320 }), null);
-  assert.deepEqual(recenterOffset(canvas, free, { minX: 700, maxX: 900, minY: 300, maxY: 320 }), [-162, 0]);
-  assert.deepEqual(recenterOffset(canvas, free, { minX: 10, maxX: 200, minY: 300, maxY: 320 }), [-162, 0]);
+  assert.deepEqual(boxOf([{ x: 300, y: 320 }, { x: 500, y: 300 }]), { minX: 300, maxX: 500, minY: 300, maxY: 320 });
+  assert.equal(boxVisible(free, { minX: 300, maxX: 500, minY: 300, maxY: 320 }, 40), true);
+  assert.equal(boxVisible(free, { minX: 300, maxX: 700, minY: 300, maxY: 320 }), false);
+  assert.equal(boxVisible(free, { minX: -20, maxX: 500, minY: 300, maxY: 320 }), false);
+  assert.equal(boxVisible(free, { minX: 300, maxX: 650, minY: 300, maxY: 320 }, 40), false);
+  assert.equal(boxVisible(free, { minX: 300, maxX: 650, minY: 300, maxY: 320 }, 4), true);
   const below = freeRect(canvas, { left: 220, right: 780, top: 400, bottom: 650 }, "bottom");
-  assert.deepEqual(recenterOffset(canvas, below, { minX: 400, maxX: 600, minY: 500, maxY: 520 }), [0, -156]);
+  assert.equal(boxVisible(below, { minX: 400, maxX: 600, minY: 300, maxY: 420 }), false);
+});
+
+test("fitting a way keeps it clear of the panel and never asks for more room than there is", async () => {
+  const { fitPadding, freeRect } = await load("viewport.js");
+  const canvas = { width: 1000, height: 700 };
+  assert.deepEqual(fitPadding(canvas, freeRect(canvas, { left: 688, right: 988, top: 100, bottom: 500 }, "right")), { left: 40, top: 40, right: 364, bottom: 40 });
+  assert.deepEqual(fitPadding(canvas, freeRect(canvas, { left: 12, right: 312, top: 60, bottom: 500 }, "left")), { left: 364, top: 40, right: 40, bottom: 40 });
+  assert.deepEqual(fitPadding(canvas, freeRect(canvas, { left: 0, right: 1000, top: 560, bottom: 700 }, "bottom")), { left: 40, top: 40, right: 40, bottom: 192 });
+  const tight = fitPadding({ width: 400, height: 300 }, { left: 0, top: 0, right: 400, bottom: 60 });
+  assert.deepEqual(tight, { left: 15, top: 15, right: 15, bottom: 255 });
+});
+
+test("the edit form is locked until the whole street is on screen", async () => {
+  const { detailView, editLock } = await load("panel.js");
+  const base = { kind: "way", editable: true, way: { id: 5, version: 1, tags: {} }, choice: { mode: "both", both: "", left: "", right: "" } };
+  assert.equal(editLock({ ...base, visible: false }), "hidden");
+  assert.equal(editLock({ ...base, visible: true, fitting: true }), "moving");
+  const moving = String(detailView({ ...base, fitting: true }, i18nFor("fr"), "https://dev", { autoQueue: true }));
+  assert.match(moving, /Affichage de toute la rue/);
+  assert.match(moving, /data-value="yes"[^>]*disabled/);
+  assert.equal(editLock({ ...base, visible: true }), null);
+  assert.equal(editLock(base), null);
+  const hidden = String(detailView({ ...base, visible: false }, i18nFor("fr"), "https://dev", { autoQueue: true }));
+  assert.match(hidden, /pas entièrement visible/);
+  assert.match(hidden, /data-edit-action="fit"/);
+  assert.match(hidden, /data-value="separate"[^>]*disabled/);
+  assert.doesNotMatch(hidden, /découp/);
+  const shown = String(detailView({ ...base, visible: true }, i18nFor("fr"), "https://dev", { autoQueue: true }));
+  assert.doesNotMatch(shown, /disabled|data-edit-action="fit"/);
+});
+
+test("a street that would need one changeset too many cannot be edited until the queue is sent", async () => {
+  const { detailView, editLock } = await load("panel.js");
+  const base = { kind: "way", editable: true, visible: true, way: { id: 5, version: 1, tags: {} }, choice: { mode: "both", both: "", left: "", right: "" } };
+  const full = { zones: 3, after: 4, max: 3, fits: false };
+  assert.equal(editLock({ ...base, room: full }), "full");
+  assert.equal(editLock({ ...base, room: { ...full, after: 3, fits: true } }), null);
+  assert.equal(editLock({ ...base, room: full, queued: { wayId: 5, set: { "sidewalk:both": "no" } } }), null);
+  const out = String(detailView({ ...base, room: full }, i18nFor("fr"), "https://dev", { autoQueue: false }));
+  assert.match(out, /au-delà des 3 changesets autorisés/);
+  assert.match(out, /data-edit-action="plan"/);
+  assert.match(out, /data-value="no"[^>]*disabled/);
+  assert.match(out, /data-edit-action="queue" disabled/);
+});
+
+test("the queue counts its zones against the per-upload limit", async () => {
+  const { zonesFor, queueRoom } = await load("osm.js");
+  const settings = { maxWaysPerChangeset: 2, maxChangesetSpanM: 1000, maxChangesetsPerUpload: 2 };
+  const at = (wayId, lon) => ({ wayId, bbox: [lon, 50.80, lon + 0.0005, 50.8005] });
+  const queue = [at(1, 4.30), at(2, 4.3005), at(3, 4.40)];
+  assert.equal(zonesFor(queue, settings), 2);
+  assert.equal(zonesFor([...queue, { wayId: 9 }], settings), 2);
+  assert.deepEqual(queueRoom(queue, at(4, 4.4002), settings), { zones: 2, after: 2, max: 2, fits: true });
+  assert.deepEqual(queueRoom(queue, at(5, 4.50), settings), { zones: 2, after: 3, max: 2, fits: false });
+  assert.deepEqual(queueRoom(queue, at(6, 4.3001), settings), { zones: 2, after: 3, max: 2, fits: false });
+  assert.equal(queueRoom(queue, at(3, 4.50), settings).fits, true);
+});
+
+test("the queue shows how many changesets it will need and warns at the limit", async () => {
+  const { queueView } = await load("panel.js");
+  const form = { remark: "", sources: [], sourceOther: "", hashtags: "", review: false };
+  const items = [{ wayId: 1, set: { "sidewalk:both": "no" }, name: "Rue A" }];
+  const base = { items, form, plan: null, result: null, busy: false, loggedIn: true };
+  const some = String(queueView({ ...base, zones: 2, maxZones: 3 }, i18nFor("fr"), "https://dev", { sourcePresets: [] }));
+  assert.match(some, /2 changesets sur 3 au plus par envoi/);
+  assert.doesNotMatch(some, /Limite atteinte/);
+  assert.match(String(queueView({ ...base, zones: 3, maxZones: 3 }, i18nFor("fr"), "https://dev", { sourcePresets: [] })), /Limite atteinte/);
+  assert.doesNotMatch(String(queueView({ ...base, items: [], zones: 0, maxZones: 3 }, i18nFor("fr"), "https://dev", { sourcePresets: [] })), /au plus par envoi/);
+});
+
+test("an over-long source or hashtag list is reported in the form and blocks sending", async () => {
+  const { queueView } = await load("panel.js");
+  const form = { remark: "", sources: ["survey"], sourceOther: "", hashtags: "", review: false };
+  const items = [{ wayId: 1, set: { "sidewalk:both": "no" }, name: "Rue A" }];
+  const plan = { ready: [{}], dropped: [], groups: [{}], tooMany: false, max: 3 };
+  const base = { items, form, plan, result: null, busy: false, loggedIn: true };
+  const ok = String(queueView({ ...base, tooLong: [] }, i18nFor("fr"), "https://dev", { sourcePresets: ["survey"], maxTagLength: 255 }));
+  assert.match(ok, /data-edit-action="send">/);
+  assert.match(ok, /name="cs-source-other" maxlength="255"/);
+  const bad = String(queueView({ ...base, tooLong: [{ key: "source", length: 300, max: 255 }] }, i18nFor("fr"), "https://dev", { sourcePresets: ["survey"] }));
+  assert.match(bad, /data-field-error="source"[^>]*>Sources trop longues : 300 caractères pour 255 au plus/);
+  assert.match(bad, /data-edit-action="send" disabled/);
 });
 
 test("the form shows the keys and offers to skip or move on", async () => {
@@ -132,6 +217,9 @@ test("the new controls speak every published language", async () => {
     const i18n = i18nFor(lang, warnings);
     const outs = [
       detailView({ kind: "way", editable: true, way: { id: 5, version: 1, tags: {} }, choice: { mode: "sides", both: "", left: "", right: "" } }, i18n, "https://x", { autoQueue: true }),
+      detailView({ kind: "way", editable: true, fitting: true, way: { id: 5, version: 1, tags: {} }, choice: { mode: "both", both: "", left: "", right: "" } }, i18n, "https://x", { autoQueue: true }),
+      detailView({ kind: "way", editable: true, visible: false, way: { id: 5, version: 1, tags: {} }, choice: { mode: "sides", both: "", left: "", right: "" } }, i18n, "https://x", { autoQueue: true }),
+      detailView({ kind: "way", editable: true, visible: true, room: { zones: 3, after: 4, max: 3, fits: false }, way: { id: 5, version: 1, tags: {} }, choice: { mode: "both", both: "", left: "", right: "" } }, i18n, "https://x", { autoQueue: true }),
       navView({ candidates: 2, skipped: 1, selected: false, hint: i18n.t("edit.nav.none") }, i18n),
       navView({ candidates: 2, skipped: 3, selected: false, hint: "" }, i18n),
     ].map(String);

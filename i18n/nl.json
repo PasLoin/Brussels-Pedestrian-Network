@@ -481,7 +481,6 @@
       "right": "Rechts",
       "add": "Toevoegen aan wachtrij",
       "update": "Bijwerken in wachtrij",
-      "longWay": "Deze way is {{length}} m lang: als de stoep langs de straat verandert, splits hem eerst in JOSM of iD.",
       "both": "Beide kanten",
       "differentSides": "Verschillende kanten…",
       "sameSides": "Zelfde waarde aan beide kanten",
@@ -489,7 +488,11 @@
       "unqueue": "Verwijderen",
       "skip": "Overslaan",
       "next": "Volgende",
-      "shortcuts": "Toetsen: s, y, n zetten de waarde · d verschillende kanten · b beide kanten · → volgende · p overslaan · Esc deselecteren"
+      "shortcuts": "Toetsen: s, y, n zetten de waarde · d verschillende kanten · b beide kanten · → volgende · p overslaan · Esc deselecteren",
+      "notVisible": "De straat is niet volledig zichtbaar. Toon ze helemaal voor je kiest: de stoep moet over de hele lengte gecontroleerd worden.",
+      "showWhole": "Hele straat tonen",
+      "fitting": "Hele straat wordt getoond…",
+      "queueFull": "Deze straat zou een extra zone openen, boven de {{max}} changesets die per verzending zijn toegestaan. Bereid de wachtrij voor en verstuur ze voor je hier verdergaat."
     },
     "value": {
       "separate": "separate (apart gekarteerd)",
@@ -501,7 +504,10 @@
       "title_other": "Bewerkingswachtrij ({{count}})",
       "empty": "Geen wachtende wijzigingen.",
       "remove": "Verwijderen",
-      "undo": "Laatste ongedaan maken"
+      "undo": "Laatste ongedaan maken",
+      "zones_one": "{{count}} changeset van maximaal {{max}} per verzending.",
+      "zones_other": "{{count}} changesets van maximaal {{max}} per verzending.",
+      "full": "Limiet bereikt: alleen straten dicht bij de zones in de wachtrij kunnen nog worden toegevoegd."
     },
     "upload": {
       "source": "Bronnen (verplicht)",
@@ -516,7 +522,10 @@
       "sourceRequired": "Geef minstens één bron op.",
       "remark": "Opmerking (optioneel)",
       "remarkPlaceholder": "bv. ter plaatse gecontroleerd",
-      "commentHelp": "Elke changeset krijgt een eigen opmerking (straat of gemeente, dan de actie), zichtbaar in het plan vóór verzending; je opmerking wordt achteraan toegevoegd."
+      "commentHelp": "Elke changeset krijgt een eigen opmerking (straat of gemeente, dan de actie), zichtbaar in het plan vóór verzending; je opmerking wordt achteraan toegevoegd.",
+      "sourceTooLong": "Bronnen te lang: {{length}} tekens, OSM aanvaardt er maximaal {{max}}. Kort ze in voor je verstuurt.",
+      "hashtagsTooLong": "Hashtags te lang: {{length}} tekens, OSM aanvaardt er maximaal {{max}}. Kort ze in voor je verstuurt.",
+      "tagTooLong": "De tag {{key}} is langer dan de {{max}} tekens die OSM aanvaardt."
     },
     "plan": {
       "deleted": "verwijderd op OSM, uit de wachtrij gehaald.",
@@ -533,12 +542,13 @@
     "result": {
       "sent_one": "{{count}} changeset verzonden:",
       "sent_other": "{{count}} changesets verzonden:",
-      "conflict": "{{way}} werd intussen gewijzigd op OSM: voor zijn groep werd niets geschreven. Hij is uit de wachtrij gehaald; bereid opnieuw voor.",
       "failed": "Verzenden mislukt: {{message}}",
       "closedEmpty_one": "{{count}} lege changeset gesloten.",
       "closedEmpty_other": "{{count}} lege changesets gesloten.",
       "retried_one": "Conflict gedetecteerd: de groep werd opnieuw gelezen en één keer opnieuw verzonden.",
-      "retried_other": "Conflicten gedetecteerd: {{count}} groepen werden opnieuw gelezen en één keer opnieuw verzonden."
+      "retried_other": "Conflicten gedetecteerd: {{count}} groepen werden opnieuw gelezen en één keer opnieuw verzonden.",
+      "conflict_one": "{{way}} werd intussen gewijzigd op OSM: voor zijn groep werd niets geschreven. Hij is uit de wachtrij gehaald; bereid opnieuw voor.",
+      "conflict_other": "{{way}} werden intussen gewijzigd op OSM: voor hun groep werd niets geschreven. Ze zijn uit de wachtrij gehaald; bereid opnieuw voor."
     },
     "error": {
       "network": "geen netwerkverbinding, of de OSM-server is onbereikbaar. Er gaat niets verloren: probeer opnieuw zodra je verbonden bent.",

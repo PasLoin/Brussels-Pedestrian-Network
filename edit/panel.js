@@ -53,13 +53,38 @@ function dropReason(drop, t) {
   return t("edit.plan.modifiedMeanwhile");
 }
 
-function chips(side, selected, i18n) {
+function chips(side, selected, i18n, locked = false) {
   const { t } = i18n;
   return html`
     <div class="edit-chips" role="group">
-      ${SIDE_VALUES.map(v => html`<button type="button" class="edit-chip${v === selected ? " active" : ""}" data-edit-action="choose" data-side="${side}" data-value="${v}" aria-pressed="${v === selected ? "true" : "false"}" title="${valueLabel(v, t)}"><u>${v[0]}</u>${v.slice(1)}</button>`)}
+      ${SIDE_VALUES.map(v => html`<button type="button" class="edit-chip${v === selected ? " active" : ""}" data-edit-action="choose" data-side="${side}" data-value="${v}" aria-pressed="${v === selected ? "true" : "false"}" title="${valueLabel(v, t)}"${locked ? html` disabled` : ""}><u>${v[0]}</u>${v.slice(1)}</button>`)}
     </div>
   `;
+}
+
+export function editLock(state) {
+  if (state.fitting) return "moving";
+  if (state.visible === false) return "hidden";
+  if (state.room && !state.room.fits && !state.queued) return "full";
+  return null;
+}
+
+function lockView(lock, state, i18n) {
+  const { t } = i18n;
+  if (lock === "moving") return html`<p class="edit-help" role="status">${t("edit.form.fitting")}</p>`;
+  if (lock === "hidden") {
+    return html`<div class="edit-lock" role="status">
+      <p class="edit-warn">${t("edit.form.notVisible")}</p>
+      <button type="button" class="header-btn" data-edit-action="fit">${t("edit.form.showWhole")}</button>
+    </div>`;
+  }
+  if (lock === "full") {
+    return html`<div class="edit-lock" role="status">
+      <p class="edit-warn">${t("edit.form.queueFull", { count: state.room.after, max: state.room.max })}</p>
+      <button type="button" class="header-btn" data-edit-action="plan">${t("edit.upload.prepare")}</button>
+    </div>`;
+  }
+  return "";
 }
 
 export function tagSummary(set) {
@@ -71,23 +96,25 @@ export function editFormView(state, i18n, settings = {}) {
   const choice = state.choice || { mode: "both", both: "", left: "", right: "" };
   const sides = choice.mode === "sides";
   const complete = sides ? Boolean(choice.left && choice.right) : Boolean(choice.both);
+  const lock = editLock(state);
+  const locked = Boolean(lock);
   return html`
-    <div class="edit-form">
-      ${state.longWay && html`<p class="edit-warn">${t("edit.form.longWay", { length: Math.round(state.lengthM) })}</p>`}
+    <div class="edit-form${locked ? " locked" : ""}">
+      ${lockView(lock, state, i18n)}
       ${sides
         ? html`
           <p class="edit-help">${t("edit.form.direction")}</p>
           <div class="edit-side edit-side-left"><span class="edit-swatch"></span>${t("edit.form.left")}</div>
-          ${chips("left", choice.left, i18n)}
+          ${chips("left", choice.left, i18n, locked)}
           <div class="edit-side edit-side-right"><span class="edit-swatch"></span>${t("edit.form.right")}</div>
-          ${chips("right", choice.right, i18n)}
+          ${chips("right", choice.right, i18n, locked)}
           <button type="button" class="edit-link" data-edit-action="mode" data-mode="both">${t("edit.form.sameSides")} <kbd>b</kbd></button>`
         : html`
           <div class="edit-side">${t("edit.form.both")}</div>
-          ${chips("both", choice.both, i18n)}
+          ${chips("both", choice.both, i18n, locked)}
           <button type="button" class="edit-link" data-edit-action="mode" data-mode="sides">${t("edit.form.differentSides")} <kbd>d</kbd></button>`}
       ${!settings.autoQueue && html`
-        <button type="button" class="header-btn" data-edit-action="queue"${complete ? "" : html` disabled`}>${state.queued ? t("edit.form.update") : t("edit.form.add")}</button>`}
+        <button type="button" class="header-btn" data-edit-action="queue"${complete && !locked ? "" : html` disabled`}>${state.queued ? t("edit.form.update") : t("edit.form.add")}</button>`}
       ${state.queued && html`
         <p class="edit-ok edit-queued">${t("edit.form.queued", { tags: tagSummary(state.queued.set) })}
           <button type="button" class="edit-link" data-edit-action="unqueue">${t("edit.form.unqueue")}</button></p>`}
@@ -158,24 +185,37 @@ function resultView(result, i18n, webUrl) {
   const { t } = i18n;
   if (!result) return "";
   const ids = result.done.flatMap(d => d.changesetIds);
+  const conflicts = result.conflictWayIds || [];
   return html`
     <div class="edit-result">
       ${ids.length > 0 && html`<p class="edit-ok">${t("edit.result.sent", { count: ids.length })}
         ${ids.map((id, i) => html`${i > 0 ? " · " : " "}<a href="${`${webUrl}/changeset/${id}`}" target="_blank" rel="noopener">${id}</a>`)}</p>`}
       ${result.retried > 0 && html`<p class="edit-help">${t("edit.result.retried", { count: result.retried })}</p>`}
       ${(result.dropped || []).map(d => html`<p class="edit-note">${wayLabel(d.intent)} : ${dropReason(d, t)}</p>`)}
-      ${result.conflictWayId && html`<p class="edit-note">${t("edit.result.conflict", { way: `w${result.conflictWayId}` })}</p>`}
-      ${result.failed && !result.conflictWayId && html`<p class="edit-note">${t("edit.result.failed", { message: result.failed.message })}</p>`}
+      ${conflicts.length > 0 && html`<p class="edit-note">${t("edit.result.conflict", { count: conflicts.length, way: conflicts.map(id => `w${id}`).join(", ") })}</p>`}
+      ${result.failed && !conflicts.length && html`<p class="edit-note">${t("edit.result.failed", { message: result.failed.message })}</p>`}
       ${result.closed && result.closed.length > 0 && html`<p class="edit-help">${t("edit.result.closedEmpty", { count: result.closed.length })}</p>`}
       ${result.error && html`<p class="edit-note">${result.error}</p>`}
     </div>
   `;
 }
 
+export function tooLongMessage(issue, t) {
+  if (issue.key === "source") return t("edit.upload.sourceTooLong", { length: issue.length, max: issue.max });
+  if (issue.key === "hashtags") return t("edit.upload.hashtagsTooLong", { length: issue.length, max: issue.max });
+  return t("edit.upload.tagTooLong", { key: issue.key, max: issue.max });
+}
+
+function fieldError(key, issues, t) {
+  const issue = (issues || []).find(i => i.key === key);
+  return html`<p class="edit-note" data-field-error="${key}" aria-live="polite">${issue ? tooLongMessage(issue, t) : ""}</p>`;
+}
+
 function uploadFormView(state, i18n, settings) {
   const { t } = i18n;
   const f = state.form;
-  const blocked = !state.loggedIn || state.busy;
+  const invalid = (state.tooLong || []).length > 0;
+  const blocked = !state.loggedIn || state.busy || invalid;
   return html`
     <div class="edit-upload">
       <label class="edit-field">${t("edit.upload.remark")}
@@ -185,11 +225,13 @@ function uploadFormView(state, i18n, settings) {
       <fieldset class="edit-field">
         <legend>${t("edit.upload.source")}</legend>
         ${settings.sourcePresets.map(v => html`<label class="edit-check"><input type="checkbox" name="cs-source" value="${v}"${f.sources.includes(v) ? html` checked` : ""}> ${v}</label>`)}
-        <input type="text" name="cs-source-other" value="${f.sourceOther}" placeholder="${t("edit.upload.sourceOther")}">
+        <input type="text" name="cs-source-other" maxlength="${settings.maxTagLength || 255}" value="${f.sourceOther}" placeholder="${t("edit.upload.sourceOther")}">
+        ${fieldError("source", state.tooLong, t)}
       </fieldset>
       <label class="edit-field">${t("edit.upload.hashtags")}
-        <input type="text" name="cs-hashtags" value="${f.hashtags}">
+        <input type="text" name="cs-hashtags" maxlength="${settings.maxTagLength || 255}" value="${f.hashtags}">
       </label>
+      ${fieldError("hashtags", state.tooLong, t)}
       <label class="edit-check"><input type="checkbox" name="cs-review"${f.review ? html` checked` : ""}> ${t("edit.upload.review")}</label>
       ${!state.loggedIn && html`<p class="edit-help">${t("edit.upload.loginFirst")}</p>`}
       <div class="edit-actions">
@@ -201,11 +243,19 @@ function uploadFormView(state, i18n, settings) {
   `;
 }
 
+function zonesView(state, i18n) {
+  const { t } = i18n;
+  if (!state.items.length || !Number.isFinite(state.zones) || !Number.isFinite(state.maxZones)) return "";
+  const full = state.zones >= state.maxZones;
+  return html`<p class="${full ? "edit-warn" : "edit-help"}" data-queue-zones>${t("edit.queue.zones", { count: state.zones, max: state.maxZones })}${full ? html` ${t("edit.queue.full")}` : ""}</p>`;
+}
+
 export function queueView(state, i18n, webUrl, settings) {
   const { t } = i18n;
   const items = state.items;
   return html`
     <h3>${t("edit.queue.title", { count: items.length })}</h3>
+    ${zonesView(state, i18n)}
     ${items.length === 0 && html`<p class="edit-help">${t("edit.queue.empty")}</p>`}
     ${items.length > 0 && html`
       <ul class="edit-queue">

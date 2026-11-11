@@ -481,7 +481,6 @@
       "right": "Right",
       "add": "Add to queue",
       "update": "Update in queue",
-      "longWay": "This way is {{length}} m long: if the sidewalk changes along the street, split it first in JOSM or iD.",
       "both": "Both sides",
       "differentSides": "Different sides…",
       "sameSides": "Same value on both sides",
@@ -489,7 +488,11 @@
       "unqueue": "Remove",
       "skip": "Skip",
       "next": "Next",
-      "shortcuts": "Keys: s, y, n set the value · d different sides · b both sides · → next · p skip · Esc deselect"
+      "shortcuts": "Keys: s, y, n set the value · d different sides · b both sides · → next · p skip · Esc deselect",
+      "notVisible": "The street is not fully visible. Show all of it before choosing: the sidewalk must be checked along its whole length.",
+      "showWhole": "Show the whole street",
+      "fitting": "Showing the whole street…",
+      "queueFull": "This street would open one more area, beyond the {{max}} changesets allowed per upload. Prepare and send the queue before going on here."
     },
     "value": {
       "separate": "separate (mapped as its own way)",
@@ -501,7 +504,10 @@
       "title_other": "Edit queue ({{count}})",
       "empty": "No pending edits.",
       "remove": "Remove",
-      "undo": "Undo last"
+      "undo": "Undo last",
+      "zones_one": "{{count}} changeset out of {{max}} at most per upload.",
+      "zones_other": "{{count}} changesets out of {{max}} at most per upload.",
+      "full": "Limit reached: only streets close to the areas already queued can still be added."
     },
     "upload": {
       "source": "Sources (required)",
@@ -516,7 +522,10 @@
       "sourceRequired": "Give at least one source.",
       "remark": "Remark (optional)",
       "remarkPlaceholder": "e.g. checked on site",
-      "commentHelp": "Each changeset gets its own comment (street or municipality, then the action), shown in the plan before sending; your remark is added at the end."
+      "commentHelp": "Each changeset gets its own comment (street or municipality, then the action), shown in the plan before sending; your remark is added at the end.",
+      "sourceTooLong": "Sources too long: {{length}} characters, OSM accepts at most {{max}}. Shorten them before sending.",
+      "hashtagsTooLong": "Hashtags too long: {{length}} characters, OSM accepts at most {{max}}. Shorten them before sending.",
+      "tagTooLong": "The {{key}} tag is longer than the {{max}} characters OSM accepts."
     },
     "plan": {
       "deleted": "deleted on OSM, removed from the queue.",
@@ -533,12 +542,13 @@
     "result": {
       "sent_one": "{{count}} changeset sent:",
       "sent_other": "{{count}} changesets sent:",
-      "conflict": "{{way}} was modified on OSM meanwhile: nothing was written for its group. It has been removed from the queue; prepare again.",
       "failed": "Sending failed: {{message}}",
       "closedEmpty_one": "{{count}} empty changeset closed.",
       "closedEmpty_other": "{{count}} empty changesets closed.",
       "retried_one": "Conflict detected: the group was re-read and sent again once.",
-      "retried_other": "Conflicts detected: {{count}} groups were re-read and sent again once."
+      "retried_other": "Conflicts detected: {{count}} groups were re-read and sent again once.",
+      "conflict_one": "{{way}} was modified on OSM meanwhile: nothing was written for its group. It has been removed from the queue; prepare again.",
+      "conflict_other": "{{way}} were modified on OSM meanwhile: nothing was written for their group. They have been removed from the queue; prepare again."
     },
     "error": {
       "network": "no network connection, or the OSM server cannot be reached. Nothing was lost: try again once connected.",

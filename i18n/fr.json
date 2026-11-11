@@ -481,7 +481,6 @@
       "right": "Droite",
       "add": "Ajouter à la file",
       "update": "Mettre à jour dans la file",
-      "longWay": "Ce way mesure {{length}} m : si le trottoir change le long de la rue, découpez-le d'abord dans JOSM ou iD.",
       "both": "Les deux côtés",
       "differentSides": "Côtés différents…",
       "sameSides": "Même valeur des deux côtés",
@@ -489,7 +488,11 @@
       "unqueue": "Retirer",
       "skip": "Passer",
       "next": "Suivant",
-      "shortcuts": "Touches : s, y, n posent la valeur · d côtés différents · b les deux côtés · → suivant · p passer · Échap désélectionner"
+      "shortcuts": "Touches : s, y, n posent la valeur · d côtés différents · b les deux côtés · → suivant · p passer · Échap désélectionner",
+      "notVisible": "La rue n'est pas entièrement visible. Affichez-la en entier avant de choisir : le trottoir doit être vérifié sur toute sa longueur.",
+      "showWhole": "Afficher toute la rue",
+      "fitting": "Affichage de toute la rue…",
+      "queueFull": "Cette rue ouvrirait une zone de plus, au-delà des {{max}} changesets autorisés par envoi. Préparez et envoyez la file avant de continuer ici."
     },
     "value": {
       "separate": "separate (cartographié à part)",
@@ -501,7 +504,10 @@
       "title_other": "File d'édition ({{count}})",
       "empty": "Aucune modification en attente.",
       "remove": "Retirer",
-      "undo": "Annuler la dernière"
+      "undo": "Annuler la dernière",
+      "zones_one": "{{count}} changeset sur {{max}} au plus par envoi.",
+      "zones_other": "{{count}} changesets sur {{max}} au plus par envoi.",
+      "full": "Limite atteinte : seules les rues proches des zones déjà en file peuvent encore être ajoutées."
     },
     "upload": {
       "source": "Sources (obligatoire)",
@@ -516,7 +522,10 @@
       "sourceRequired": "Indiquez au moins une source.",
       "remark": "Remarque (facultatif)",
       "remarkPlaceholder": "par ex. vérifié sur place",
-      "commentHelp": "Chaque changeset reçoit son propre commentaire (rue ou commune, puis l'action), visible dans le plan avant l'envoi ; votre remarque est ajoutée à la fin."
+      "commentHelp": "Chaque changeset reçoit son propre commentaire (rue ou commune, puis l'action), visible dans le plan avant l'envoi ; votre remarque est ajoutée à la fin.",
+      "sourceTooLong": "Sources trop longues : {{length}} caractères pour {{max}} au plus acceptés par OSM. Raccourcissez-les avant d'envoyer.",
+      "hashtagsTooLong": "Hashtags trop longs : {{length}} caractères pour {{max}} au plus acceptés par OSM. Raccourcissez-les avant d'envoyer.",
+      "tagTooLong": "Le tag {{key}} dépasse les {{max}} caractères acceptés par OSM."
     },
     "plan": {
       "deleted": "supprimé sur OSM, retiré de la file.",
@@ -533,12 +542,13 @@
     "result": {
       "sent_one": "{{count}} changeset envoyé :",
       "sent_other": "{{count}} changesets envoyés :",
-      "conflict": "{{way}} a été modifié sur OSM entre-temps : rien n'a été écrit pour son groupe. Il a été retiré de la file ; préparez à nouveau.",
       "failed": "Envoi impossible : {{message}}",
       "closedEmpty_one": "{{count}} changeset vide fermé.",
       "closedEmpty_other": "{{count}} changesets vides fermés.",
       "retried_one": "Conflit détecté : le groupe a été relu et renvoyé une fois.",
-      "retried_other": "Conflits détectés : {{count}} groupes ont été relus et renvoyés une fois."
+      "retried_other": "Conflits détectés : {{count}} groupes ont été relus et renvoyés une fois.",
+      "conflict_one": "{{way}} a été modifié sur OSM entre-temps : rien n'a été écrit pour son groupe. Il a été retiré de la file ; préparez à nouveau.",
+      "conflict_other": "{{way}} ont été modifiés sur OSM entre-temps : rien n'a été écrit pour leur groupe. Ils ont été retirés de la file ; préparez à nouveau."
     },
     "error": {
       "network": "pas de connexion réseau, ou le serveur OSM est injoignable. Rien n'est perdu : réessayez une fois connecté.",

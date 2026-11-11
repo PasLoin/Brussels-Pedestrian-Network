@@ -1,4 +1,6 @@
-export const MAX_COMMENT = 255;
+import { MAX_TAG_LENGTH, clipCodepoints, codepoints } from "./changeset.js";
+
+export const MAX_COMMENT = MAX_TAG_LENGTH;
 
 export function streetLabel(tags) {
   const t = tags || {};
@@ -108,8 +110,8 @@ export function composeComment(description, { remark = "", hashtags = [] } = {})
   for (const base of generatedComments(description)) {
     const body = note ? `${base} - ${note}` : base;
     const full = [body, ...hashtagSuffix(body, hashtags)].join(" ");
-    if (full.length <= MAX_COMMENT) return full;
+    if (codepoints(full) <= MAX_COMMENT) return full;
   }
   const base = capitalize(actionText(description.count));
-  return [base, ...hashtagSuffix(base, hashtags)].join(" ").slice(0, MAX_COMMENT);
+  return clipCodepoints([base, ...hashtagSuffix(base, hashtags)].join(" "), MAX_COMMENT);
 }

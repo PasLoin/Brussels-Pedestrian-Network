@@ -680,6 +680,7 @@ def test_each_changeset_carries_its_own_comment_and_reviewer_tags(session, fake)
     assert tags["hashtags"] == "#test"
     assert tags["locale"] == "fr"
     assert tags["changesets_count"] == "12"
+    assert fake.creates[1]["tags"]["changesets_count"] == "13"
     assert tags["host"].endswith("/test-api/devtest.html")
     assert "imagery_used" not in tags
     assert "bpn:osm-api-js" not in tags
@@ -826,3 +827,120 @@ def test_a_visible_way_does_not_move_the_map(session, fake):
     wait_selected(s.page, 101)
     time.sleep(0.6)
     assert s.page.evaluate("location.hash") == before
+
+
+def locked(page):
+    return page.evaluate("() => !!document.querySelector('[data-edit-action=choose][disabled]')")
+
+
+def map_eval(page, body):
+    return page.evaluate(f"async () => {{ const {{ store }} = await import('/map/store.js'); const m = store.map; {body} }}")
+
+
+def whole_way_inside(page, coords):
+    return map_eval(page, f"""
+      const dock = document.getElementById('edit-dock');
+      const r = dock.getBoundingClientRect();
+      const c = m.getCanvas();
+      const right = dock.classList.contains('open') ? r.left : c.clientWidth;
+      return {json.dumps(coords)}.every(p => {{ const q = m.project(p); return q.x >= 0 && q.y >= 0 && q.x <= right && q.y <= c.clientHeight; }});""")
+
+
+def test_a_long_street_is_shown_whole_before_it_can_be_edited(session, fake):
+    long_line = line_at(CENTER, length=0.012)
+    fake.add_way(101, long_line, street("Longue Rue", "Lange Straat"))
+    s = session()
+    wait_candidates(s.page, 1)
+    click_way(s.page, CENTER[0], CENTER[1] + 0.00001, 101)
+    wait(s.page, "() => !document.querySelector('[data-edit-action=choose][disabled]')")
+    assert whole_way_inside(s.page, long_line)
+    assert "découp" not in s.page.inner_text("#edit-detail")
+    map_eval(s.page, f"m.jumpTo({{ center: [{CENTER[0] + 0.006}, {CENTER[1]}], zoom: 17.5 }}); return true;")
+    wait(s.page, "() => !!document.querySelector('[data-edit-action=choose][disabled]')")
+    assert "pas entièrement visible" in s.page.inner_text("#edit-detail")
+    s.page.keyboard.press("s")
+    time.sleep(0.3)
+    assert queue_ids(s.page) == []
+    s.page.click('[data-edit-action="fit"]')
+    wait(s.page, "() => !!document.querySelector('[data-edit-action=choose]') && !document.querySelector('[data-edit-action=choose][disabled]')")
+    assert whole_way_inside(s.page, long_line)
+    s.page.keyboard.press("s")
+    wait(s.page, "() => (localStorage.getItem('bpn.queue.dev') || '').includes('101')")
+    assert queue_ids(s.page) == [101]
+
+
+def test_a_street_that_would_open_a_fourth_zone_is_locked_before_any_edit(session, fake):
+    fake.add_way(201, line_at(FAR_SOUTH), street("Rue Sud", "Zuidstraat"))
+    fake.add_way(202, line_at(FAR_WEST), street("Rue Ouest", "Weststraat"))
+    fake.add_way(203, line_at(FAR_EAST), street("Rue Est", "Ooststraat"))
+    fake.add_way(101, line_at(CENTER), street("Rue Centre", "Centrumstraat"))
+    s = session(queue=[intent_for(fake, w) for w in (201, 202, 203)])
+    wait(s.page, "() => document.getElementById('edit-queue').textContent.includes('3 changesets sur 3')")
+    assert "Limite atteinte" in queue_text(s.page)
+    wait_candidates(s.page, 1)
+    click_way(s.page, CENTER[0], CENTER[1] + 0.00001, 101)
+    assert locked(s.page)
+    assert "au-delà des 3 changesets autorisés" in s.page.inner_text("#edit-detail")
+    s.page.keyboard.press("n")
+    time.sleep(0.3)
+    assert queue_ids(s.page) == [201, 202, 203]
+    s.page.click('#edit-detail [data-edit-action="plan"]')
+    wait_idle(s.page)
+    assert "3 changesets vont être créés" in queue_text(s.page)
+    send(s.page)
+    assert "3 changesets envoyés" in queue_text(s.page)
+    wait(s.page, "() => !document.querySelector('[data-edit-action=choose][disabled]')")
+    s.page.keyboard.press("n")
+    wait(s.page, "() => (localStorage.getItem('bpn.queue.dev') || '').includes('101')")
+
+
+def test_a_street_in_a_zone_already_queued_can_still_be_added_at_the_limit(session, fake):
+    fake.add_way(201, line_at(FAR_SOUTH), street("Rue Sud", "Zuidstraat"))
+    fake.add_way(202, line_at(FAR_WEST), street("Rue Ouest", "Weststraat"))
+    fake.add_way(101, line_at(CENTER), street("Rue Centre", "Centrumstraat"))
+    fake.add_way(102, line_at(CENTER, dy=-0.0004), street("Rue Voisine", "Buurstraat"))
+    s = session(queue=[intent_for(fake, w) for w in (201, 202, 101)])
+    wait_candidates(s.page, 2)
+    assert "Limite atteinte" in queue_text(s.page)
+    click_way(s.page, CENTER[0], CENTER[1] - 0.0004 + 0.00001, 102)
+    assert not locked(s.page)
+    s.page.keyboard.press("y")
+    wait(s.page, "() => (localStorage.getItem('bpn.queue.dev') || '').includes('102')")
+
+
+def test_an_over_long_source_is_refused_in_the_form_before_anything_is_sent(session, fake):
+    fake.add_way(101, line_at(CENTER), street("Rue Test", "Teststraat"))
+    s = session(queue=[intent_for(fake, 101)])
+    prepare(s.page)
+    s.page.check('input[name="cs-source"][value="survey"]')
+    s.page.fill('input[name="cs-source-other"]', "é" * 250)
+    wait(s.page, "() => document.querySelector('[data-field-error=source]').textContent.includes('Sources trop longues : 257 caractères')")
+    assert s.page.is_disabled('[data-edit-action="send"]')
+    s.page.fill('input[name="cs-source-other"]', "é" * 240)
+    wait(s.page, "() => document.querySelector('[data-field-error=source]').textContent === ''")
+    assert not s.page.is_disabled('[data-edit-action="send"]')
+    assert s.page.get_attribute('input[name="cs-hashtags"]', "maxlength") == "255"
+    s.page.fill('input[name="cs-hashtags"]', " ".join(f"x{i}" for i in range(70)))
+    wait(s.page, "() => document.querySelector('[data-field-error=hashtags]').textContent.includes('Hashtags trop longs')")
+    assert s.page.is_disabled('[data-edit-action="send"]')
+    s.page.evaluate("document.querySelector('[data-edit-action=send]').disabled = false")
+    s.page.click('[data-edit-action="send"]')
+    wait_idle(s.page)
+    assert "Hashtags trop longs" in queue_text(s.page)
+    assert fake.creates == []
+
+
+def test_a_second_conflict_is_named_from_versions_whatever_the_api_says(session, fake):
+    fake.add_way(101, line_at(CENTER), street("Rue Test", "Teststraat"))
+    s = session(queue=[intent_for(fake, 101)])
+    prepare(s.page)
+    fake.conflict_text = "Un texte que personne ne sait analyser"
+    bump = lambda f: f.edit_way(101, tags={**f.ways[101]["tags"], "maxspeed": str(f.ways[101]["version"])})
+    fake.inject("upload", hook=bump, times=2)
+    send(s.page)
+    text = queue_text(s.page)
+    assert "w101 a été modifié sur OSM entre-temps" in text
+    assert queue_ids(s.page) == []
+    assert fake.uploads == []
+    assert fake.open_changesets() == []
+    assert fake.count("close") >= 2

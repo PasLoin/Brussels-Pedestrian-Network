@@ -19,9 +19,24 @@ export function freeRect(canvas, dock, position, gap = 12) {
   return rect;
 }
 
-export function recenterOffset(canvas, free, box, margin = 40) {
-  const visible = box.minX >= free.left + margin && box.maxX <= free.right - margin
+export function boxOf(points) {
+  const xs = points.map(p => p.x);
+  const ys = points.map(p => p.y);
+  return { minX: Math.min(...xs), maxX: Math.max(...xs), minY: Math.min(...ys), maxY: Math.max(...ys) };
+}
+
+export function boxVisible(free, box, margin = 0) {
+  return box.minX >= free.left + margin && box.maxX <= free.right - margin
     && box.minY >= free.top + margin && box.maxY <= free.bottom - margin;
-  if (visible) return null;
-  return [(free.left + free.right) / 2 - canvas.width / 2, (free.top + free.bottom) / 2 - canvas.height / 2];
+}
+
+export function fitPadding(canvas, free, margin = 40) {
+  const room = Math.min(free.right - free.left, free.bottom - free.top);
+  const m = Math.max(0, Math.min(margin, Math.floor(room / 4)));
+  return {
+    left: Math.max(0, free.left) + m,
+    top: Math.max(0, free.top) + m,
+    right: Math.max(0, canvas.width - free.right) + m,
+    bottom: Math.max(0, canvas.height - free.bottom) + m,
+  };
 }

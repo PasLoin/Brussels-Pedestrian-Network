@@ -53,6 +53,7 @@ function fakeOsm({ ways = {}, nodes = {}, upload, getFeaturesError, changesets =
       return upload ? upload(tags, diff, calls) : { [1000 + calls.filter(c => c[0] === "upload").length]: { diffResult: {} } };
     },
     listChangesets: async (q) => { calls.push(["list", q]); return changesets; },
+    closeChangeset: async (id) => { calls.push(["close", id]); },
     getAuthToken: () => "tok",
   };
 }
@@ -204,12 +205,12 @@ test("each group is one uploadChangeset call with its own tags", async () => {
   assert.deepEqual(osm.calls.filter(c => c[0] === "upload").map(u => u[1]), [{ comment: "ways 1" }, { comment: "ways 2" }]);
 });
 
-function conflictOn(id, times = Infinity) {
+function conflictOn(id, times = Infinity, message = "OSM API: Conflict") {
   let left = times;
   return (tags, diff, calls) => {
     if (left > 0 && diff.modify.some(w => w.id === id)) {
       left -= 1;
-      const e = new Error(`OSM API: Version mismatch: Provided 3, server had: 4 of Way ${id}`);
+      const e = new Error(message);
       e.cause = 409;
       throw e;
     }
@@ -217,7 +218,12 @@ function conflictOn(id, times = Infinity) {
   };
 }
 
-test("without retry a 409 stops the upload, names the conflicting way and keeps earlier groups", async () => {
+function editedAtEveryRead(base) {
+  let version = base.version;
+  return new Proxy({}, { get: (_, key) => (Number(key) === base.id ? { ...base, version: ++version } : undefined) });
+}
+
+test("without retry a 409 stops the upload, names the way whose version moved and keeps earlier groups", async () => {
   const { groupEntries, uploadGroups } = await load("osm.js");
   const ways = { 1: way(1, { highway: "residential" }), 2: way(2, { highway: "residential" }), 3: way(3, { highway: "residential" }) };
   const entries = [
@@ -225,11 +231,11 @@ test("without retry a 409 stops the upload, names the conflicting way and keeps 
     { intent: await intentFor(ways[2], "no", "no", JETTE), way: ways[2] },
     { intent: await intentFor(ways[3], "no", "no", [4.40, 50.83, 4.401, 50.831]), way: ways[3] },
   ];
-  const osm = fakeOsm({ ways, upload: conflictOn(2) });
+  const osm = fakeOsm({ ways: { ...ways, 2: { ...ways[2], version: 4 } }, upload: conflictOn(2) });
   const out = await uploadGroups({ osm, groups: groupEntries(entries, SETTINGS), tagsFor: () => ({}), retryOnConflict: false });
   assert.deepEqual(out.done.map(d => d.wayIds), [[1]]);
   assert.equal(out.failed.index, 1);
-  assert.equal(out.failed.conflictWayId, 2);
+  assert.deepEqual(out.failed.conflictWayIds, [2]);
   assert.equal(osm.calls.filter(c => c[0] === "upload").length, 2);
 });
 
@@ -261,15 +267,49 @@ test("the retry after a 409 drops a way reversed meanwhile instead of writing it
   assert.equal(osm.calls.filter(c => c[0] === "upload").length, 1);
 });
 
-test("a second 409 after the retry gives up on the group", async () => {
+test("a second 409 after the retry gives up on the group and names the way edited again", async () => {
   const { groupEntries, uploadGroups } = await load("osm.js");
   const w2 = way(2, { highway: "residential" });
   const entries = [{ intent: await intentFor(w2, "no", "no", JETTE), way: w2 }];
-  const osm = fakeOsm({ ways: { 2: w2 }, upload: conflictOn(2) });
+  const osm = fakeOsm({ ways: editedAtEveryRead(w2), upload: conflictOn(2) });
   const out = await uploadGroups({ osm, groups: groupEntries(entries, SETTINGS), tagsFor: () => ({}) });
   assert.equal(out.retried, 1);
-  assert.equal(out.failed.conflictWayId, 2);
+  assert.deepEqual(out.failed.conflictWayIds, [2]);
   assert.equal(osm.calls.filter(c => c[0] === "upload").length, 2);
+});
+
+test("a 409 where no way changed is not retried and names no way", async () => {
+  const { groupEntries, uploadGroups } = await load("osm.js");
+  const w2 = way(2, { highway: "residential" });
+  const entries = [{ intent: await intentFor(w2, "no", "no", JETTE), way: w2 }];
+  const osm = fakeOsm({ ways: { 2: w2 }, upload: conflictOn(2, Infinity, "OSM API: The changeset 5 was closed at 2026-11-11") });
+  const out = await uploadGroups({ osm, groups: groupEntries(entries, SETTINGS), tagsFor: () => ({}) });
+  assert.equal(out.retried, 0);
+  assert.equal(out.failed.status, 409);
+  assert.deepEqual(out.failed.conflictWayIds, []);
+  assert.equal(osm.calls.filter(c => c[0] === "upload").length, 1);
+});
+
+test("conflicts are found from versions, whatever the wording of the API message", async () => {
+  const { changedSince, isConflict } = await load("osm.js");
+  const entries = [1, 2, 3].map(id => ({ way: way(id, {}, 3) }));
+  const live = new Map([[1, way(1, {}, 3)], [2, way(2, {}, 5)], [3, { ...way(3, {}, 4), visible: false }]]);
+  assert.deepEqual(changedSince(entries, live), [2, 3]);
+  assert.deepEqual(changedSince(entries, new Map([[1, way(1, {}, 3)]])), [2, 3]);
+  assert.equal(isConflict(Object.assign(new Error("Versionskonflikt"), { cause: 409 })), true);
+  assert.equal(isConflict(Object.assign(new Error("OSM API: Version mismatch: Provided 3, server had: 4 of Way 42"), { cause: 412 })), false);
+  assert.equal(isConflict(new Error("Failed to fetch")), false);
+});
+
+test("tags are asked again for each changeset, so the retry gets a fresh count", async () => {
+  const { groupEntries, uploadGroups } = await load("osm.js");
+  const queued = way(2, { highway: "residential" }, 3);
+  const entries = [{ intent: await intentFor(queued, "no", "no", JETTE), way: queued }];
+  const osm = fakeOsm({ ways: { 2: way(2, { highway: "residential" }, 4) }, upload: conflictOn(2, 1) });
+  let count = 40;
+  const out = await uploadGroups({ osm, groups: groupEntries(entries, SETTINGS), tagsFor: async () => ({ changesets_count: String(count++) }) });
+  assert.equal(out.failed, null);
+  assert.deepEqual(osm.calls.filter(c => c[0] === "upload").map(c => c[1].changesets_count), ["40", "41"]);
 });
 
 test("a server error that is not a conflict is never retried", async () => {
@@ -318,29 +358,36 @@ test("the preflight drops a way reversed or split since it was queued", async ()
   assert.deepEqual(dropped.map(d => [d.intent.wayId, d.reason]), [[1, "geometry_changed"], [2, "geometry_changed"]]);
 });
 
-test("only version conflicts name a way", async () => {
-  const { conflictWayId } = await load("osm.js");
-  const conflict = Object.assign(new Error("OSM API: Version mismatch: Provided 3, server had: 4 of Way 42"), { cause: 409 });
-  assert.equal(conflictWayId(conflict), 42);
-  assert.equal(conflictWayId(Object.assign(new Error("OSM API: The changeset 5 was closed"), { cause: 409 })), null);
-  assert.equal(conflictWayId(Object.assign(new Error("OSM API: Way 42 still used"), { cause: 412 })), null);
-  assert.equal(conflictWayId(new Error("Failed to fetch")), null);
-});
-
-test("only our own open and empty changesets are closed after a failure", async () => {
+test("only our own open and empty changesets are closed after a failure, through the client", async () => {
   const { closeEmptyChangesets } = await load("osm.js");
   const osm = fakeOsm({ changesets: [
     { id: 1, open: true, changes_count: 0, tags: { created_by: "BrusselsPedestrianNetwork 0.2.0" } },
     { id: 2, open: true, changes_count: 3, tags: { created_by: "BrusselsPedestrianNetwork 0.2.0" } },
     { id: 3, open: true, changes_count: 0, tags: { created_by: "iD 2.30" } },
     { id: 4, open: false, changes_count: 0, tags: { created_by: "BrusselsPedestrianNetwork 0.2.0" } },
+    { id: 5, open: true, changes_count: 0, tags: { created_by: "BrusselsPedestrianNetwork 0.2.0" } },
   ] });
-  const requests = [];
-  const fetchImpl = async (url, opts) => { requests.push([url, opts.method, opts.headers.Authorization]); return { ok: true }; };
-  const closed = await closeEmptyChangesets({ osm, apiUrl: "https://dev", uid: 9, createdBy: "BrusselsPedestrianNetwork 0.2.0", fetchImpl });
+  const close = osm.closeChangeset;
+  osm.closeChangeset = async (id) => { await close(id); if (id === 5) throw Object.assign(new Error("OSM API: gone"), { cause: 409 }); };
+  const closed = await closeEmptyChangesets({ osm, uid: 9, createdBy: "BrusselsPedestrianNetwork 0.2.0" });
   assert.deepEqual(closed, [1]);
-  assert.deepEqual(requests, [["https://dev/api/0.6/changeset/1/close", "PUT", "Bearer tok"]]);
+  assert.deepEqual(osm.calls.filter(c => c[0] === "close").map(c => c[1]), [1, 5]);
   assert.deepEqual(osm.calls.find(c => c[0] === "list")[1], { user: 9 });
+});
+
+test("the client closes a changeset on the configured server with the session token", async () => {
+  const { createClient } = await load("client.js");
+  const requests = [];
+  const base = { getConfig: () => ({ apiUrl: "https://dev" }), getAuthToken: () => "tok", getUser: async () => ({ id: 1 }) };
+  const ok = createClient(base, async (url, opts) => { requests.push([url, opts.method, opts.headers.Authorization]); return { ok: true, status: 200 }; });
+  await ok.closeChangeset(7);
+  assert.deepEqual(requests, [["https://dev/api/0.6/changeset/7/close", "PUT", "Bearer tok"]]);
+  assert.equal(ok.getUser, base.getUser);
+  const refused = createClient(base, async () => ({ ok: false, status: 409, text: async () => "already closed" }));
+  await assert.rejects(refused.closeChangeset(7), e => e.cause === 409 && e.message === "OSM API: already closed");
+  const header = createClient({ ...base, getConfig: () => ({ apiUrl: "https://x", authHeader: "Basic abc" }) }, async (url, opts) => { requests.push(opts.headers.Authorization); return { ok: true }; });
+  await header.closeChangeset(8);
+  assert.equal(requests.at(-1), "Basic abc");
 });
 
 test("changeset tags carry everything a reviewer needs", async () => {
@@ -375,11 +422,31 @@ test("a changeset without source or comment is refused, optional tags are left o
   assert.throws(() => buildChangesetTags({ comment: "x", sources: [" "] }), /source-required/);
   assert.throws(() => buildChangesetTags({ comment: " ", sources: ["survey"] }), /comment-required/);
   assert.throws(() => buildChangesetTags({ comment: "x".repeat(300), sources: ["survey"] }), /tag-too-long:comment/);
+  assert.throws(() => buildChangesetTags({ comment: "x", sources: ["s".repeat(256)] }), /tag-too-long:source/);
   const tags = buildChangesetTags({ comment: "x #bpn", sources: ["survey"], hashtags: ["bpn"] });
   assert.equal(tags.comment, "x #bpn");
   assert.equal("review_requested" in tags, false);
   assert.equal("imagery_used" in tags, false);
   assert.equal("changesets_count" in tags, false);
+});
+
+test("tag lengths are counted in unicode codepoints, as the OSM API does", async () => {
+  const { codepoints, clipCodepoints, tooLongFields, buildChangesetTags, sourceValue, hashtagsValue } = await load("changeset.js");
+  assert.equal(codepoints("🚶".repeat(3)), 3);
+  assert.equal("🚶".repeat(3).length, 6);
+  assert.equal(codepoints("é"), 1);
+  assert.equal(clipCodepoints("🚶🚶🚶", 2), "🚶🚶");
+  assert.deepEqual(tooLongFields({ a: "🚶".repeat(255), b: "x".repeat(256) }), [{ key: "b", length: 256, max: 255 }]);
+  assert.equal(buildChangesetTags({ comment: "🚶".repeat(200), sources: ["survey"] }).comment.length, 400);
+  assert.equal(sourceValue(["survey", " survey ", "local_knowledge"]), "survey;local_knowledge");
+  assert.equal(hashtagsValue(["bpn", "#BPN", "#x"]), "#bpn;#x");
+});
+
+test("generated comments never cut an emoji in half", async () => {
+  const { composeComment } = await load("places.js");
+  const text = composeComment({ streets: [], unnamed: 1, communes: [], count: 1 }, { hashtags: ["#" + "🚶".repeat(300)] });
+  assert.equal([...text].length, 255);
+  assert.equal(text.endsWith("\ud83d"), false);
 });
 
 test("the version announced in created_by matches the vendored library", async () => {
@@ -429,15 +496,16 @@ test("without automatic queueing the add button waits for a complete choice", as
   assert.match(done, /data-edit-action="queue">/);
 });
 
-test("a queued way shows its tags, the long way warning and a remove button", async () => {
+test("a queued way shows its tags and a remove button, never an invitation to split", async () => {
   const { detailView } = await load("panel.js");
   const intent = await intentFor(way(5, { highway: "residential" }), "separate", "no");
   const out = String(detailView({
-    kind: "way", editable: true, longWay: true, lengthM: 412.4, queued: intent,
+    kind: "way", editable: true, lengthM: 412.4, visible: true, queued: intent,
     choice: { mode: "sides", both: "", left: "separate", right: "no" },
     way: { id: 5, version: 2, tags: { highway: "residential" } },
   }, i18nFor("fr"), "https://dev", { autoQueue: true }));
-  assert.match(out, /412 m/);
+  assert.doesNotMatch(out, /découp|JOSM ou iD/);
+  assert.doesNotMatch(out, /disabled/);
   assert.match(out, /En file : sidewalk:left=separate · sidewalk:right=no/);
   assert.match(out, /data-edit-action="unqueue"/);
   const fixed = String(detailView({ kind: "way", editable: false, way: { id: 5, version: 2, tags: {} } }, i18nFor("fr"), "https://dev", { autoQueue: true }));
@@ -492,11 +560,14 @@ test("results link every changeset on the environment's site", async () => {
   const form = { comment: "", sources: [], sourceOther: "", hashtags: "", review: false };
   const out = String(queueView({
     items: [], form, plan: null, busy: false, loggedIn: true,
-    result: { done: [{ changesetIds: [11], wayIds: [1] }, { changesetIds: [12], wayIds: [2] }], failed: { message: "x" }, conflictWayId: 3, closed: [99] },
+    result: { done: [{ changesetIds: [11], wayIds: [1] }, { changesetIds: [12], wayIds: [2] }], failed: { message: "x" }, conflictWayIds: [3], closed: [99] },
   }, i18nFor("fr"), "https://master.apis.dev.openstreetmap.org", { sourcePresets: [] }));
   assert.match(out, /href="https:\/\/master\.apis\.dev\.openstreetmap\.org\/changeset\/11"/);
   assert.match(out, /href="https:\/\/master\.apis\.dev\.openstreetmap\.org\/changeset\/12"/);
   assert.match(out, /w3 a été modifié/);
+  const two = String(queueView({ items: [], form: { remark: "", sources: [], sourceOther: "", hashtags: "", review: false }, plan: null, busy: false, loggedIn: true,
+    result: { done: [], failed: { message: "x" }, conflictWayIds: [3, 4], closed: [] } }, i18nFor("fr"), "https://dev", { sourcePresets: [] }));
+  assert.match(two, /w3, w4 ont été modifiés/);
   assert.match(out, /1 changeset vide fermé/);
 });
 
@@ -508,9 +579,12 @@ test("the P2 panel speaks every published language without a missing key", async
     const i18n = i18nFor(lang, warnings);
     const form = { comment: "", sources: [], sourceOther: "", hashtags: "", review: false };
     const outs = [
-      detailView({ kind: "way", editable: true, longWay: true, lengthM: 300, queued: intent, choice: { mode: "sides", both: "", left: "no", right: "yes" }, way: { id: 5, version: 1, tags: {} } }, i18n, "https://x", { autoQueue: false }),
-      detailView({ kind: "way", editable: true, longWay: false, lengthM: 30, queued: null, choice: { mode: "both", both: "", left: "", right: "" }, way: { id: 5, version: 1, tags: {} } }, i18n, "https://x", { autoQueue: true }),
+      detailView({ kind: "way", editable: true, visible: false, lengthM: 300, queued: intent, choice: { mode: "sides", both: "", left: "no", right: "yes" }, way: { id: 5, version: 1, tags: {} } }, i18n, "https://x", { autoQueue: false }),
+      detailView({ kind: "way", editable: true, visible: true, room: { zones: 3, after: 4, max: 3, fits: false }, lengthM: 30, queued: null, choice: { mode: "both", both: "", left: "", right: "" }, way: { id: 5, version: 1, tags: {} } }, i18n, "https://x", { autoQueue: true }),
       queueView({ items: [], form, plan: null, result: null, busy: false, loggedIn: false }, i18n, "https://x", { sourcePresets: ["survey"] }),
+      queueView({ items: [intent], zones: 3, maxZones: 3, form, plan: null, busy: false, loggedIn: true,
+        tooLong: [{ key: "source", length: 300, max: 255 }, { key: "hashtags", length: 260, max: 255 }, { key: "comment", length: 256, max: 255 }],
+        result: { done: [], failed: { message: "m" }, conflictWayIds: [5, 6], closed: [] } }, i18n, "https://x", { sourcePresets: ["survey"] }),
       queueView({ items: [intent], form, busy: true, loggedIn: true,
         plan: { ready: [{}], groups: [{}], tooMany: false, max: 3, dropped: ["deleted", "already_fixed", "modified_meanwhile"].map(reason => ({ intent, reason })) },
         result: { done: [{ changesetIds: [1, 2], wayIds: [5] }], failed: { message: "m" }, conflictWayId: null, closed: [1, 2], error: "e" } }, i18n, "https://x", { sourcePresets: ["survey"] }),

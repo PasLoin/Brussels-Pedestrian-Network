@@ -82,6 +82,18 @@ export function groupEntries(entries, { maxWaysPerChangeset, maxChangesetSpanM }
   return groups;
 }
 
+export function zonesFor(intents, settings) {
+  return groupEntries(intents.filter(i => i && Array.isArray(i.bbox)).map(intent => ({ intent })), settings).length;
+}
+
+export function queueRoom(intents, candidate, settings) {
+  const max = settings.maxChangesetsPerUpload;
+  const others = intents.filter(i => i.wayId !== candidate.wayId);
+  const before = zonesFor(others, settings);
+  const after = zonesFor([...others, candidate], settings);
+  return { zones: before, after, max, fits: after <= max };
+}
+
 export async function planUpload(osm, intents, settings) {
   const { ready, dropped } = await preflight(osm, intents, settings);
   const groups = groupEntries(ready, settings);
@@ -102,27 +114,45 @@ export function buildDiff(group) {
   };
 }
 
-export function conflictWayId(err) {
-  const message = String((err && err.message) || "");
-  const conflict = (err && err.cause === 409) || /version mismatch/i.test(message);
-  if (!conflict) return null;
-  const match = message.match(/\bway\s+(\d+)/i);
-  return match ? Number(match[1]) : null;
+export function isConflict(err) {
+  return Boolean(err) && err.cause === 409;
+}
+
+export function changedSince(entries, live) {
+  return entries
+    .filter(({ way }) => {
+      const now = live.get(way.id);
+      return !now || now.visible === false || now.version !== way.version;
+    })
+    .map(({ way }) => way.id);
 }
 
 async function sendGroup(osm, group, tagsFor) {
-  const result = await osm.uploadChangeset({ ...tagsFor(group) }, buildDiff(group));
+  const tags = await tagsFor(group);
+  const result = await osm.uploadChangeset({ ...tags }, buildDiff(group));
   return Object.keys(result).map(Number);
 }
 
-function failure(index, group, err) {
+async function conflictingWays(osm, group) {
+  try {
+    return changedSince(group.entries, await readLiveWays(osm, group.entries.map(e => e.way.id)));
+  } catch {
+    return [];
+  }
+}
+
+function failure(index, group, err, conflictWayIds = []) {
   return {
     index,
     wayIds: group.entries.map(e => e.intent.wayId),
-    conflictWayId: conflictWayId(err),
+    conflictWayIds,
     status: err && err.cause,
     message: (err && err.message) || String(err),
   };
+}
+
+async function sent(osm, group, tagsFor) {
+  return { changesetIds: await sendGroup(osm, group, tagsFor), wayIds: group.entries.map(e => e.intent.wayId) };
 }
 
 export async function uploadGroups({ osm, groups, tagsFor, retryOnConflict = true, settings = {} }) {
@@ -130,36 +160,41 @@ export async function uploadGroups({ osm, groups, tagsFor, retryOnConflict = tru
   const dropped = [];
   let retried = 0;
   for (const [index, group] of groups.entries()) {
+    let firstError;
     try {
-      done.push({ changesetIds: await sendGroup(osm, group, tagsFor), wayIds: group.entries.map(e => e.intent.wayId) });
+      done.push(await sent(osm, group, tagsFor));
       continue;
     } catch (err) {
-      if (!retryOnConflict || conflictWayId(err) === null) return { done, dropped, retried, failed: failure(index, group, err) };
+      firstError = err;
     }
-    retried += 1;
+    if (!isConflict(firstError)) return { done, dropped, retried, failed: failure(index, group, firstError) };
+    if (!retryOnConflict) return { done, dropped, retried, failed: failure(index, group, firstError, await conflictingWays(osm, group)) };
     const fresh = await preflight(osm, group.entries.map(e => e.intent), settings);
+    const moved = changedSince(group.entries, new Map(fresh.ready.map(e => [e.way.id, e.way])));
+    if (!fresh.dropped.length && !moved.length) return { done, dropped, retried, failed: failure(index, group, firstError) };
+    retried += 1;
     dropped.push(...fresh.dropped);
     if (!fresh.ready.length) continue;
     const again = { ...group, entries: fresh.ready };
     try {
-      done.push({ changesetIds: await sendGroup(osm, again, tagsFor), wayIds: again.entries.map(e => e.intent.wayId) });
+      done.push(await sent(osm, again, tagsFor));
     } catch (err) {
-      return { done, dropped, retried, failed: failure(index, again, err) };
+      const conflicts = isConflict(err) ? await conflictingWays(osm, again) : [];
+      return { done, dropped, retried, failed: failure(index, again, err, conflicts) };
     }
   }
   return { done, dropped, retried, failed: null };
 }
 
-export async function closeEmptyChangesets({ osm, apiUrl, uid, createdBy, fetchImpl = fetch }) {
+export async function closeEmptyChangesets({ osm, uid, createdBy }) {
   const list = await osm.listChangesets({ user: uid });
   const stale = list.filter(c => c.open && c.changes_count === 0 && c.tags && c.tags.created_by === createdBy);
   const closed = [];
   for (const cs of stale) {
-    const res = await fetchImpl(`${apiUrl}/api/0.6/changeset/${cs.id}/close`, {
-      method: "PUT",
-      headers: { Authorization: `Bearer ${osm.getAuthToken()}` },
-    });
-    if (res.ok) closed.push(cs.id);
+    try {
+      await osm.closeChangeset(cs.id);
+      closed.push(cs.id);
+    } catch {}
   }
   return closed;
 }

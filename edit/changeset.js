@@ -1,6 +1,28 @@
 import { APP_NAME, APP_VERSION, OSM_API_VERSION } from "./env.js";
 
-const MAX_TAG_LENGTH = 255;
+export const MAX_TAG_LENGTH = 255;
+
+export function codepoints(text) {
+  return [...String(text ?? "")].length;
+}
+
+export function clipCodepoints(text, max = MAX_TAG_LENGTH) {
+  return [...String(text ?? "")].slice(0, max).join("");
+}
+
+export function sourceValue(sources) {
+  return uniqueValues(sources || []).join(";");
+}
+
+export function hashtagsValue(hashtags) {
+  return normalizeHashtags(hashtags || []).join(";");
+}
+
+export function tooLongFields(fields, max = MAX_TAG_LENGTH) {
+  return Object.entries(fields)
+    .filter(([, value]) => codepoints(value) > max)
+    .map(([key, value]) => ({ key, length: codepoints(value), max }));
+}
 
 export function splitList(text) {
   return String(text || "").split(/[;,\n]/).map(s => s.trim()).filter(Boolean);
@@ -48,7 +70,7 @@ export function buildChangesetTags({
   if (host) tags.host = host;
   if (Number.isFinite(changesetsCount)) tags.changesets_count = String(changesetsCount);
   if (reviewRequested) tags.review_requested = "yes";
-  const tooLong = Object.entries(tags).filter(([, v]) => v.length > MAX_TAG_LENGTH).map(([k]) => k);
+  const tooLong = tooLongFields(tags).map(f => f.key);
   if (tooLong.length) throw new Error(`tag-too-long:${tooLong.join(",")}`);
   return tags;
 }

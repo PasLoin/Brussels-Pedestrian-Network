@@ -45,6 +45,7 @@ class FakeOsm:
         self.closed = []
         self.faults = []
         self.lock = threading.Lock()
+        self.conflict_text = None
 
     def add_node(self, node_id, lon, lat):
         self.nodes[node_id] = {"type": "node", "id": node_id, "lon": lon, "lat": lat, "version": 1, "visible": True}
@@ -190,6 +191,7 @@ class FakeOsm:
         cid = self.next_changeset
         self.changesets[cid] = {"open": True, "changes": 0, "tags": tags, "uid": self.user["id"]}
         self.creates.append({"id": cid, "tags": tags})
+        self.user["changesets"]["count"] += 1
         return 200, str(cid), TEXT_HEADERS
 
     def _upload(self, req, parsed, match):
@@ -204,7 +206,8 @@ class FakeOsm:
                 return 410, f"The way with the id {wid} has already been deleted", TEXT_HEADERS
             current = self.ways[wid]["version"]
             if provided != current:
-                return 409, f"Version mismatch: Provided {provided}, server had: {current} of Way {wid}", TEXT_HEADERS
+                text = self.conflict_text or f"Version mismatch: Provided {provided}, server had: {current} of Way {wid}"
+                return 409, text, TEXT_HEADERS
             modified.append((wid, {t.get("k"): t.get("v") for t in way.iter("tag")}, [int(nd.get("ref")) for nd in way.iter("nd")]))
         for wid, tags, nds in modified:
             self.ways[wid]["tags"] = tags
