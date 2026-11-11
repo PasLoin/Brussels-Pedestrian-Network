@@ -451,6 +451,8 @@
     },
     "status": {
       "zoomIn": "Zoomez au niveau {{zoom}} pour charger les candidats.",
+      "zoomKept_one": "Zoomez au niveau {{zoom}} pour charger d'autres candidats ; le candidat déjà chargé reste affiché.",
+      "zoomKept_other": "Zoomez au niveau {{zoom}} pour charger d'autres candidats ; les {{count}} candidats déjà chargés restent affichés.",
       "loading": "Chargement des candidats…",
       "candidates_one": "{{count}} candidat dans la vue.",
       "candidates_other": "{{count}} candidats dans la vue.",

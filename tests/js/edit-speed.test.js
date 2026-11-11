@@ -233,3 +233,16 @@ test("automatic advance is on by default and can be turned off", async () => {
   assert.equal(SETTINGS.autoAdvance, true);
   assert.equal(resolveEnv("dev", "https://x/test-api/devtest.html", { ...SETTINGS, autoAdvance: false }).autoAdvance, false);
 });
+
+test("below the candidate zoom the status says the loaded candidates stay", async () => {
+  const { statusView } = await load("panel.js");
+  for (const lang of ["en", "fr", "nl"]) {
+    const warnings = [];
+    const i18n = i18nFor(lang, warnings);
+    for (const kept of [0, 1, 4]) assert.doesNotMatch(String(statusView({ kind: "zoom", minZoom: 17, kept }, i18n)), /\bedit\.[a-z]+\.[A-Za-z_]+/);
+    assert.deepEqual(warnings, []);
+  }
+  const fr = i18nFor("fr");
+  assert.match(statusView({ kind: "zoom", minZoom: 17, kept: 4 }, fr), /les 4 candidats déjà chargés restent affichés/);
+  assert.match(statusView({ kind: "zoom", minZoom: 17, kept: 0 }, fr), /^Zoomez au niveau 17 pour charger les candidats/);
+});

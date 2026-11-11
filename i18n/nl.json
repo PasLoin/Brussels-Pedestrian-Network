@@ -451,6 +451,8 @@
     },
     "status": {
       "zoomIn": "Zoom in tot niveau {{zoom}} om kandidaten te laden.",
+      "zoomKept_one": "Zoom in tot niveau {{zoom}} om meer kandidaten te laden; de al geladen kandidaat blijft zichtbaar.",
+      "zoomKept_other": "Zoom in tot niveau {{zoom}} om meer kandidaten te laden; de {{count}} al geladen kandidaten blijven zichtbaar.",
       "loading": "Kandidaten laden…",
       "candidates_one": "{{count}} kandidaat in beeld.",
       "candidates_other": "{{count}} kandidaten in beeld.",

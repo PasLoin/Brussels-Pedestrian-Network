@@ -247,14 +247,18 @@ let pendingKeys = [];
 
 function bringWholeWayIntoView(d, force = false) {
   if (!map || d.kind !== "way") return "hidden";
-  if (!force && wholeWayVisible(d.coords, FIT_MARGIN_PX)) return "visible";
+  const zoom = map.getZoom();
+  const belowCandidates = zoom < env.candidateMinZoom;
+  const shown = wholeWayVisible(d.coords, FIT_MARGIN_PX);
+  if (!force && !belowCandidates && shown) return "visible";
   const { canvas, free } = viewArea();
   const camera = map.cameraForBounds([[d.bbox[0], d.bbox[1]], [d.bbox[2], d.bbox[3]]], {
     padding: fitPadding(canvas, free, FIT_MARGIN_PX),
     bearing: map.getBearing(),
-    maxZoom: map.getZoom(),
+    maxZoom: Math.max(zoom, env.candidateMinZoom),
   });
   if (!camera) return wholeWayVisible(d.coords) ? "visible" : "hidden";
+  if (!force && shown && camera.zoom <= zoom + 0.01) return "visible";
   map.easeTo({ ...camera, bearing: map.getBearing(), pitch: map.getPitch(), duration: FIT_DURATION_MS });
   clearTimeout(settleTimer);
   settleTimer = setTimeout(() => updateVisibility(true), FIT_DURATION_MS + 150);
@@ -701,6 +705,11 @@ async function loadCandidates() {
   if (controller) controller.abort();
   const blocked = tooLargeForCandidates(map.getZoom(), map.getBounds(), env);
   candidatesBlocked = blocked || null;
+  if (blocked === "zoom" && liveFeatures.size) {
+    controller = null;
+    renderNav();
+    return showStatus({ kind: "zoom", minZoom: env.candidateMinZoom, kept: liveFeatures.size });
+  }
   if (blocked) {
     controller = null;
     liveFeatures.clear();

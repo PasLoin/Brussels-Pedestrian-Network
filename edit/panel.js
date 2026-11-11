@@ -28,6 +28,7 @@ export function authView(state, i18n) {
 
 export function statusView(state, i18n) {
   const { t } = i18n;
+  if (state.kind === "zoom" && state.kept > 0) return t("edit.status.zoomKept", { zoom: state.minZoom, count: state.kept });
   if (state.kind === "zoom") return t("edit.status.zoomIn", { zoom: state.minZoom });
   if (state.kind === "tooBig") return t("edit.error.tooBig");
   if (state.kind === "loading") return t("edit.status.loading");

@@ -451,6 +451,8 @@
     },
     "status": {
       "zoomIn": "Zoom in to level {{zoom}} to load candidates.",
+      "zoomKept_one": "Zoom in to level {{zoom}} to load more candidates; the candidate already loaded stays on the map.",
+      "zoomKept_other": "Zoom in to level {{zoom}} to load more candidates; the {{count}} candidates already loaded stay on the map.",
       "loading": "Loading candidates…",
       "candidates_one": "{{count}} candidate in view.",
       "candidates_other": "{{count}} candidates in view.",

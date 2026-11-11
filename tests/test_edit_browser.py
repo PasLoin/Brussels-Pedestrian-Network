@@ -944,3 +944,28 @@ def test_a_second_conflict_is_named_from_versions_whatever_the_api_says(session,
     assert fake.uploads == []
     assert fake.open_changesets() == []
     assert fake.count("close") >= 2
+
+
+def map_zoom(page):
+    return map_eval(page, "return m.getZoom();")
+
+
+def test_after_a_long_street_the_next_one_is_still_offered_and_the_zoom_comes_back(session, fake):
+    long_line = line_at(CENTER, length=0.012)
+    fake.add_way(101, long_line, street("Longue Rue", "Lange Straat"))
+    fake.add_way(102, line_at(CENTER, dy=-0.0004), street("Rue Courte", "Korte Straat"))
+    s = session()
+    wait_candidates(s.page, 2)
+    click_way(s.page, CENTER[0], CENTER[1] + 0.00001, 101)
+    wait(s.page, "() => !!document.querySelector('[data-edit-action=choose]') && !document.querySelector('[data-edit-action=choose][disabled]')")
+    assert map_zoom(s.page) < 17
+    wait(s.page, "() => document.getElementById('edit-status').textContent.includes('2 candidats déjà chargés')")
+    requests = fake.count("map")
+    assert map_eval(s.page, "return m.querySourceFeatures('edit-candidates').length;") >= 2
+    s.page.keyboard.press("s")
+    wait_selected(s.page, 102)
+    wait(s.page, "async () => { const { store } = await import('/map/store.js'); return store.map.getZoom() >= 17 && !store.map.isMoving(); }")
+    wait(s.page, "() => document.getElementById('edit-status').textContent.includes('candidats dans la vue')")
+    assert fake.count("map") > requests
+    assert queue_ids(s.page) == [101]
+    assert not locked(s.page)
