@@ -8,4 +8,5 @@ export const { hover: HOVER_LAYERS, click: CLICK_LAYERS } = makePopupLayers({
   highwayLayers: HIGHWAY_LAYERS,
   elevatorColor: ELEVATOR_COLOR,
   elevatorLayerIds: ELEVATOR_LAYER_IDS,
+  editHere: p => Boolean(window.BPNEdit && window.BPNEdit.canEdit(p)),
 }, i18n);

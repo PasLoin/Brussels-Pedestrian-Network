@@ -123,7 +123,7 @@ def intent_for(fake, way_id, set_tags=None):
 
 
 class Session:
-    def __init__(self, browser, server, fake, logged_in=True, queue=None, auth_env="dev", center=CENTER, zoom=17.5):
+    def __init__(self, browser, server, fake, logged_in=True, queue=None, auth_env="dev", center=CENTER, zoom=17.5, editing=True):
         self.fake = fake
         self.problems = []
         self.context = browser.new_context(viewport={"width": 1134, "height": 763}, locale="fr-BE")
@@ -140,7 +140,7 @@ class Session:
             " localStorage.setItem('test.seeded', '1'); }"
         )
         self.url = f"{server}test-api/devtest.html#{zoom}/{center[1]}/{center[0]}"
-        self.page = self.open()
+        self.page = self.open(editing)
 
     def _route(self, route):
         url = route.request.url
@@ -157,12 +157,14 @@ class Session:
             return route.continue_()
         return route.abort()
 
-    def open(self):
+    def open(self, editing=True):
         page = self.context.new_page()
         page.on("pageerror", lambda e: self.problems.append(f"pageerror: {e}"))
         page.on("console", lambda m: self.problems.append(m.text) if m.type == "error" and m.text.startswith("CSP") else None)
         page.goto(self.url)
-        wait(page, "() => !!document.getElementById('edit-status') && document.getElementById('edit-status').textContent.length > 0")
+        wait(page, "() => window.BPNEdit !== undefined && window.BPNMap !== undefined")
+        if editing:
+            enter_edit(page)
         return page
 
     def close(self):
@@ -182,6 +184,12 @@ def session(browser, server, fake):
     yield make
     for s in opened:
         s.close()
+
+
+def enter_edit(page):
+    if not page.evaluate("BPNEdit.isActive()"):
+        page.click("#edit-enter")
+    wait(page, "() => document.getElementById('edit-status').textContent.length > 0")
 
 
 def wait(page, expr, timeout=15):
@@ -1007,3 +1015,134 @@ def test_keys_pressed_while_searching_for_the_next_street_change_nothing(session
     wait_selected(s.page, 102)
     stored = json.loads(s.page.evaluate("localStorage.getItem('bpn.queue.dev')"))
     assert [(i["wayId"], i["set"]) for i in stored] == [(101, {"sidewalk:both": "no"})]
+
+
+def edit_ui(page):
+    return page.evaluate("""() => ({
+      active: BPNEdit.isActive(),
+      body: document.body.classList.contains('is-editing'),
+      dock: !document.getElementById('edit-dock').hidden,
+      bar: !document.getElementById('edit-bar').hidden,
+    })""")
+
+
+def candidates_visible(page):
+    return page.evaluate("""async () => {
+      const { store } = await import('/map/store.js');
+      return store.map.getLayoutProperty('edit-candidates', 'visibility') !== 'none';
+    }""")
+
+
+def test_the_page_opens_like_the_main_map_and_loads_nothing_until_editing(session, fake):
+    three_streets(fake)
+    s = session(editing=False)
+    time.sleep(0.8)
+    ui = edit_ui(s.page)
+    assert (ui["active"], ui["body"], ui["dock"], ui["bar"]) == (False, False, False, False)
+    assert fake.count("map") == 0
+    s.page.keyboard.press("ArrowRight")
+    s.page.keyboard.press("s")
+    assert selected_way(s.page) is None and queue_ids(s.page) == []
+    assert s.page.evaluate("document.getElementById('legend').classList.contains('open')")
+    enter_edit(s.page)
+    wait_candidates(s.page, 3)
+    assert candidates_visible(s.page)
+    ui = edit_ui(s.page)
+    assert (ui["active"], ui["body"], ui["dock"], ui["bar"]) == (True, True, True, True)
+    assert not s.page.is_visible("#header")
+
+
+def test_leaving_with_an_empty_queue_needs_no_confirmation(session, fake):
+    three_streets(fake)
+    s = session()
+    wait_candidates(s.page, 3)
+    s.page.keyboard.press("ArrowRight")
+    wait_selected(s.page, 101)
+    s.page.click("#edit-exit")
+    ui = edit_ui(s.page)
+    assert (ui["active"], ui["dock"], ui["bar"]) == (False, False, False)
+    assert not s.page.evaluate("document.getElementById('edit-exit-dialog').open")
+    assert not candidates_visible(s.page)
+    assert s.page.is_visible("#header")
+    assert s.page.evaluate("document.activeElement.id") == "edit-enter"
+    calls = fake.count("map")
+    s.page.mouse.move(400, 400)
+    s.page.mouse.down()
+    s.page.mouse.move(300, 300, steps=5)
+    s.page.mouse.up()
+    time.sleep(0.8)
+    assert fake.count("map") == calls
+
+
+def test_leaving_with_pending_edits_can_keep_them_for_later(session, fake):
+    fake.add_way(101, line_at(CENTER), street("Rue Test", "Teststraat"))
+    s = session(queue=[intent_for(fake, 101)])
+    s.page.click("#edit-exit")
+    assert s.page.evaluate("document.getElementById('edit-exit-dialog').open")
+    assert "1 modification n'est pas encore envoyée" in s.page.inner_text("#edit-exit-dialog")
+    s.page.click('[data-exit-choice="stay"]')
+    assert edit_ui(s.page)["active"] is True
+    s.page.click("#edit-exit")
+    s.page.click('[data-exit-choice="keep"]')
+    assert edit_ui(s.page)["active"] is False
+    assert queue_ids(s.page) == [101]
+    assert s.page.inner_text("#edit-enter-pending") == "1 en attente"
+    enter_edit(s.page)
+    assert "File d'édition (1)" in queue_text(s.page)
+
+
+def test_leaving_can_discard_pending_edits(session, fake):
+    fake.add_way(101, line_at(CENTER), street("Rue Test", "Teststraat"))
+    fake.add_way(102, line_at(CENTER, dy=-0.0004), street("Rue B", "Bstraat"))
+    s = session(queue=[intent_for(fake, 101), intent_for(fake, 102)])
+    s.page.click("#edit-exit")
+    assert "2 modifications ne sont pas encore envoyées" in s.page.inner_text("#edit-exit-dialog")
+    s.page.click('[data-exit-choice="discard"]')
+    assert edit_ui(s.page)["active"] is False
+    assert queue_ids(s.page) == []
+    assert not s.page.is_visible("#edit-enter-pending")
+    assert fake.count("create") == 0
+
+
+def test_escape_in_the_exit_dialog_keeps_editing(session, fake):
+    fake.add_way(101, line_at(CENTER), street("Rue Test", "Teststraat"))
+    s = session(queue=[intent_for(fake, 101)])
+    s.page.click("#edit-exit")
+    s.page.keyboard.press("Escape")
+    assert not s.page.evaluate("document.getElementById('edit-exit-dialog').open")
+    assert edit_ui(s.page)["active"] is True
+    assert queue_ids(s.page) == [101]
+
+
+def test_a_reload_stays_in_editing_mode_but_a_new_tab_does_not(session, fake):
+    three_streets(fake)
+    s = session()
+    wait_candidates(s.page, 3)
+    s.page.reload()
+    wait(s.page, "() => window.BPNEdit && BPNEdit.isActive()")
+    wait_candidates(s.page, 3)
+    other = s.open(editing=False)
+    time.sleep(0.5)
+    assert other.evaluate("BPNEdit.isActive()") is False
+
+
+def test_edit_here_in_the_popup_opens_the_editor_on_that_way(session, fake):
+    three_streets(fake)
+    s = session(editing=False)
+    wait(s.page, "async () => (await import('/map/store.js')).store.mapReady")
+    assert s.page.evaluate("BPNEdit.canEdit({ sw: 'unknown', highway: 'residential' })") is True
+    assert s.page.evaluate("BPNEdit.canEdit({ sw: 'unknown', highway: 'tertiary' })") is False
+    assert s.page.evaluate("BPNEdit.canEdit({ sw: 'partial', highway: 'residential' })") is False
+    html = s.page.evaluate("""() => BPNMap.clickPopups.find(c => c.ids.includes('sidewalk-roads'))
+      .format({ osm_id: 102, sw: 'unknown', highway: 'residential', name: 'rue b', length_m: 70 })""")
+    assert 'data-bpn-edit-way="102"' in html and "Éditer ici" in html
+    other = s.page.evaluate("""() => BPNMap.clickPopups.find(c => c.ids.includes('sidewalk-roads'))
+      .format({ osm_id: 103, sw: 'documented', highway: 'residential', name: 'rue c', length_m: 70 })""")
+    assert "data-bpn-edit-way" not in other
+    s.page.evaluate("""async (markup) => {
+      const { store } = await import('/map/store.js');
+      new maplibregl.Popup().setLngLat(store.map.getCenter()).setHTML(markup).addTo(store.map);
+    }""", html)
+    s.page.click('[data-bpn-edit-way="102"]')
+    wait_selected(s.page, 102)
+    assert edit_ui(s.page)["active"] is True

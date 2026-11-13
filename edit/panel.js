@@ -9,18 +9,18 @@ export function authView(state, i18n) {
   if (state.kind === "logged") {
     return html`
       <p>${t("edit.auth.loggedAs", { name: state.name || "?" })}</p>
-      <button type="button" class="header-btn" data-edit-action="logout">${t("edit.auth.logout")}</button>
+      <button type="button" class="btn" data-edit-action="logout">${t("edit.auth.logout")}</button>
     `;
   }
   if (state.kind === "waiting") {
     return html`
       <p class="edit-note">${t("edit.auth.waiting")}</p>
-      <button type="button" class="header-btn" data-edit-action="login">${t("edit.auth.retry")}</button>
+      <button type="button" class="btn" data-edit-action="login">${t("edit.auth.retry")}</button>
     `;
   }
   return html`
     ${state.message && html`<p class="edit-note">${state.message}</p>`}
-    <button type="button" class="header-btn" data-edit-action="login"${state.kind === "pending" ? html` disabled` : ""}>
+    <button type="button" class="btn" data-edit-action="login"${state.kind === "pending" ? html` disabled` : ""}>
       ${state.kind === "pending" ? t("edit.auth.pending") : t("edit.auth.login")}
     </button>
   `;
@@ -76,13 +76,13 @@ function lockView(lock, state, i18n) {
   if (lock === "hidden") {
     return html`<div class="edit-lock" role="status">
       <p class="edit-warn">${t("edit.form.notVisible")}</p>
-      <button type="button" class="header-btn" data-edit-action="fit">${t("edit.form.showWhole")}</button>
+      <button type="button" class="btn" data-edit-action="fit">${t("edit.form.showWhole")}</button>
     </div>`;
   }
   if (lock === "full") {
     return html`<div class="edit-lock" role="status">
       <p class="edit-warn">${t("edit.form.queueFull", { count: state.room.after, max: state.room.max })}</p>
-      <button type="button" class="header-btn" data-edit-action="plan">${t("edit.upload.prepare")}</button>
+      <button type="button" class="btn" data-edit-action="plan">${t("edit.upload.prepare")}</button>
     </div>`;
   }
   return "";
@@ -115,7 +115,7 @@ export function editFormView(state, i18n, settings = {}) {
           ${chips("both", choice.both, i18n, locked)}
           <button type="button" class="edit-link" data-edit-action="mode" data-mode="sides">${t("edit.form.differentSides")} <kbd>d</kbd></button>`}
       ${!settings.autoQueue && html`
-        <button type="button" class="header-btn" data-edit-action="queue"${complete && !locked ? "" : html` disabled`}>${state.queued ? t("edit.form.update") : t("edit.form.add")}</button>`}
+        <button type="button" class="btn" data-edit-action="queue"${complete && !locked ? "" : html` disabled`}>${state.queued ? t("edit.form.update") : t("edit.form.add")}</button>`}
       ${state.queued && html`
         <p class="edit-ok edit-queued">${t("edit.form.queued", { tags: tagSummary(state.queued.set) })}
           <button type="button" class="edit-link" data-edit-action="unqueue">${t("edit.form.unqueue")}</button></p>`}
@@ -123,7 +123,7 @@ export function editFormView(state, i18n, settings = {}) {
         <button type="button" class="edit-link" data-edit-action="skip">${t("edit.form.skip")} <kbd>p</kbd></button>
         <button type="button" class="edit-link" data-edit-action="next">${t("edit.form.next")} <kbd>→</kbd></button>
       </div>
-      <p class="edit-help">${t("edit.form.shortcuts")}</p>
+      <details class="edit-shortcuts"><summary>${t("edit.form.shortcutsTitle")}</summary><p class="edit-help">${t("edit.form.shortcuts")}</p></details>
     </div>
   `;
 }
@@ -236,9 +236,9 @@ function uploadFormView(state, i18n, settings) {
       <label class="edit-check"><input type="checkbox" name="cs-review"${f.review ? html` checked` : ""}> ${t("edit.upload.review")}</label>
       ${!state.loggedIn && html`<p class="edit-help">${t("edit.upload.loginFirst")}</p>`}
       <div class="edit-actions">
-        <button type="button" class="header-btn" data-edit-action="plan"${state.busy ? html` disabled` : ""}>${t("edit.upload.prepare")}</button>
+        <button type="button" class="btn" data-edit-action="plan"${state.busy ? html` disabled` : ""}>${t("edit.upload.prepare")}</button>
         ${state.plan && !state.plan.tooMany && state.plan.groups.length > 0 && html`
-          <button type="button" class="header-btn edit-send" data-edit-action="send"${blocked ? html` disabled` : ""}>${t("edit.upload.send", { count: state.plan.groups.length })}</button>`}
+          <button type="button" class="btn btn-primary edit-send" data-edit-action="send"${blocked ? html` disabled` : ""}>${t("edit.upload.send", { count: state.plan.groups.length })}</button>`}
       </div>
     </div>
   `;

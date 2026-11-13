@@ -6,6 +6,7 @@ import { clearRoute, isNavigating, loadGraph, toggleNavMode } from "./navigation
 import {
   collapsePanelsOnSmallScreens, hideRoutePanel, setHeaderOpen, setLegendOpen, showRoutePanel, toggleHeader, toggleLegend,
 } from "./panels.js";
+import { closePopups } from "./interactions.js";
 import { CLICK_LAYERS, HOVER_LAYERS } from "./popup-layers.js";
 import { updateFlowFilter } from "./type-filters.js";
 
@@ -26,6 +27,8 @@ window.BPNMap = Object.freeze({
   toggleLegend,
   setHeaderOpen,
   toggleHeader,
+  closePopups,
+  stopNavigation: () => { if (isNavigating()) toggleNavMode(); },
   hoverPopups: HOVER_LAYERS,
   clickPopups: CLICK_LAYERS,
 });

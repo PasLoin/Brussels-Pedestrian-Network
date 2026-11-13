@@ -51,10 +51,7 @@ STATS_HTML_PATHS = frozenset({
     "sidewalk_roads.total_road_ways",
 })
 
-APP_STATS_PATHS = frozenset({
-    "routing.avg_distance_m",
-    "routing.routed_trips",
-})
+APP_STATS_PATHS = frozenset()
 
 HISTORY_PATHS = frozenset({
     "crossing_continuous", "crossing_nodes", "crossing_tagged_pct", "cycleway_km",
@@ -177,6 +174,8 @@ def stats_reads(src: str, root: str = "s") -> set:
 
 
 def app_stats_block(src: str) -> str:
+    if 'fetch(i18n.dataUrl("stats.json"))' not in src:
+        return ""
     start = src.index('fetch(i18n.dataUrl("stats.json"))')
     return src[start:src.index(".catch(", start)]
 

@@ -1,12 +1,20 @@
 import { isNavigating, isPickingRoute } from "./navigation.js";
 import { CLICK_LAYERS, HOVER_LAYERS } from "./popup-layers.js";
+import { store } from "./store.js";
+
+const openPopups = [];
+
+export function closePopups() {
+  for (const p of openPopups) p.remove();
+}
 
 export function bindPopups(map) {
   const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, maxWidth: "280px" });
+  openPopups.push(popup);
   const allHoverIds = HOVER_LAYERS.flatMap(h => h.ids);
 
   map.on("mousemove", (e) => {
-    if (isPickingRoute()) { popup.remove(); return; }
+    if (isPickingRoute() || store.editing) { popup.remove(); return; }
     const visibleIds = allHoverIds.filter(id => {
       try { return map.getLayoutProperty(id, "visibility") !== "none"; }
       catch { return false; }
@@ -21,13 +29,14 @@ export function bindPopups(map) {
     popup.setLngLat(e.lngLat).setHTML(hoverConf.format(f.properties)).addTo(map);
   });
 
-  map.on("mouseleave", allHoverIds, () => { popup.remove(); if (!isNavigating()) map.getCanvas().style.cursor = ""; });
+  map.on("mouseleave", allHoverIds, () => { popup.remove(); if (!isNavigating() && !store.editing) map.getCanvas().style.cursor = ""; });
 
   const clickPopup = new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: "300px" });
+  openPopups.push(clickPopup);
   const allClickIds = CLICK_LAYERS.flatMap(c => c.ids);
 
   map.on("click", (e) => {
-    if (isNavigating()) return;
+    if (isNavigating() || store.editing) return;
     const visibleIds = allClickIds.filter(id => {
       try { return map.getLayoutProperty(id, "visibility") !== "none"; }
       catch { return false; }
@@ -44,7 +53,7 @@ export function bindPopups(map) {
   });
 
   map.on("mousemove", (e) => {
-    if (isNavigating()) return;
+    if (isNavigating() || store.editing) return;
     const visibleIds = allClickIds.filter(id => {
       try { return map.getLayoutProperty(id, "visibility") !== "none"; }
       catch { return false; }

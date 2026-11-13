@@ -23,7 +23,6 @@
       "stats": "Statistiques",
       "evolution": "Évolution",
       "about": "Méthodologie",
-      "statsShort": "Stats",
       "map": "Carte",
       "backToMap": "Retour à la carte"
     },
@@ -39,19 +38,18 @@
   "header": {
     "subtitle": "Flux piétons simulés et contrôle qualité OpenStreetMap à Bruxelles",
     "flowThreshold": "Flux sur route, minimum",
-    "editInOsm": "Éditer dans OSM",
+    "editInOsm": "Éditer sur openstreetmap.org",
     "editHint": "Disponible à partir du zoom {{zoom}}",
-    "osmDate": "Données OSM : {{date}}",
+    "osmDate": "Données OSM du {{date}}",
     "osmDateUnknown": "Données OSM : date inconnue",
-    "buildDate": "Calcul : {{date}}",
-    "simulatedTrips": "Trajets simulés :",
-    "averageDistance": "Distance moyenne :"
+    "buildDate": "Calcul du {{date}}",
+    "pages": "Pages du site"
   },
   "nav": {
     "loadingGraph": "Chargement du graphe…",
-    "start": "Navigation",
-    "unavailable": "Navigation (indisponible)",
-    "exit": "Quitter la navigation",
+    "start": "Itinéraire",
+    "unavailable": "Itinéraire indisponible",
+    "exit": "Quitter l'itinéraire",
     "placeStart": "Cliquez sur la carte pour placer le départ",
     "placeEnd": "Cliquez pour placer l'arrivée",
     "computing": "Calcul…",
@@ -67,7 +65,8 @@
     "clear": "Effacer l'itinéraire"
   },
   "map": {
-    "zoom": "zoom"
+    "zoom": "zoom",
+    "sourceCode": "Code source"
   },
   "basemap": {
     "menu": "Fond de carte",
@@ -81,7 +80,7 @@
     }
   },
   "legend": {
-    "title": "Légende",
+    "title": "Couches",
     "filterByType": "Filtrer par type",
     "selectAll": "Tout sélectionner",
     "deselectAll": "Tout désélectionner",
@@ -211,7 +210,8 @@
     "kerb": {
       "missingProblem": "Aucun nœud barrier=kerb ou kerb=no trouvé à cette extrémité",
       "untaggedProblem": "Nœud barrier=kerb ou kerb=no présent mais sans tag tactile_paving"
-    }
+    },
+    "editHere": "Éditer ici"
   },
   "stats": {
     "infra": {
@@ -459,12 +459,12 @@
       "error": "Impossible de charger les candidats : {{message}}"
     },
     "detail": {
-      "loading": "Lecture du way en direct…",
+      "loading": "Lecture du way sur OSM…",
       "error": "Impossible de lire le way : {{message}}",
       "version": "Version",
       "lastEdit": "Dernière modification",
-      "editable": "Correspond toujours à la liste blanche : éditable.",
-      "alreadyFixed": "Ne correspond plus à la liste blanche : déjà corrigé depuis.",
+      "editable": "Aucun tag sidewalk : éditable.",
+      "alreadyFixed": "Ce way a déjà un tag sidewalk ou n'est plus une rue résidentielle : rien à faire.",
       "gone": "{{way}} n'existe plus sur OSM (supprimé ou fusionné)."
     },
     "land": {
@@ -490,11 +490,12 @@
       "unqueue": "Retirer",
       "skip": "Passer",
       "next": "Suivant",
-      "shortcuts": "Touches : s, y, n posent la valeur · d côtés différents · b les deux côtés · → suivant · p passer · Échap désélectionner",
+      "shortcuts": "Touches : s, y, n posent la valeur, d pour des côtés différents, b pour les deux côtés, → rue suivante, p pour passer, Échap pour désélectionner.",
       "notVisible": "La rue n'est pas entièrement visible. Affichez-la en entier avant de choisir : le trottoir doit être vérifié sur toute sa longueur.",
       "showWhole": "Afficher toute la rue",
       "fitting": "Affichage de toute la rue…",
-      "queueFull": "Cette rue ouvrirait une zone de plus, au-delà des {{max}} changesets autorisés par envoi. Préparez et envoyez la file avant de continuer ici."
+      "queueFull": "Cette rue ouvrirait une zone de plus, au-delà des {{max}} changesets autorisés par envoi. Préparez et envoyez la file avant de continuer ici.",
+      "shortcutsTitle": "Raccourcis clavier"
     },
     "value": {
       "separate": "separate (cartographié à part)",
@@ -524,7 +525,7 @@
       "sourceRequired": "Indiquez au moins une source.",
       "remark": "Remarque (facultatif)",
       "remarkPlaceholder": "par ex. vérifié sur place",
-      "commentHelp": "Chaque changeset reçoit son propre commentaire (rue ou commune, puis l'action), visible dans le plan avant l'envoi ; votre remarque est ajoutée à la fin.",
+      "commentHelp": "Chaque changeset reçoit un commentaire automatique (rue ou commune, puis l'action), visible avant l'envoi. Votre remarque s'ajoute à la fin.",
       "sourceTooLong": "Sources trop longues : {{length}} caractères pour {{max}} au plus acceptés par OSM. Raccourcissez-les avant d'envoyer.",
       "hashtagsTooLong": "Hashtags trop longs : {{length}} caractères pour {{max}} au plus acceptés par OSM. Raccourcissez-les avant d'envoyer.",
       "tagTooLong": "Le tag {{key}} dépasse les {{max}} caractères acceptés par OSM."
@@ -576,6 +577,19 @@
       "skipped_one": "{{count}} rue passée.",
       "skipped_other": "{{count}} rues passées.",
       "resetSkipped": "Réafficher"
+    },
+    "mode": {
+      "enter": "Éditer les trottoirs",
+      "title": "Mode édition",
+      "exit": "Quitter",
+      "exitTitle": "Quitter le mode édition ?",
+      "exitText_one": "{{count}} modification n'est pas encore envoyée sur OSM. Elle reste dans ce navigateur si vous la gardez.",
+      "exitText_other": "{{count}} modifications ne sont pas encore envoyées sur OSM. Elles restent dans ce navigateur si vous les gardez.",
+      "keep": "Garder pour plus tard",
+      "discard": "Abandonner les modifications",
+      "stay": "Continuer à éditer",
+      "pending_one": "{{count}} en attente",
+      "pending_other": "{{count}} en attente"
     }
   }
 }

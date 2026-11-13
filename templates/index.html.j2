@@ -14,26 +14,20 @@
 <div id="map"></div>
 
 <div id="header" class="open">
-  <button id="header-toggle" type="button" aria-expanded="true" aria-controls="header-content">
-    <span class="header-brand">
-      <img src="{{ root }}favicon.svg" alt="" width="16" height="16" />
-      <span>Brussels Pedestrian</span>
-    </span>
-    <svg aria-hidden="true" class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="6 9 12 15 18 9"/>
-    </svg>
-  </button>
+  <h1 class="header-title">
+    <button id="header-toggle" type="button" aria-expanded="true" aria-controls="header-content">
+      <img src="{{ root }}favicon.svg" alt="" width="20" height="20" />
+      <span>Brussels Pedestrian Network</span>
+      <svg aria-hidden="true" class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="6 9 12 15 18 9"/>
+      </svg>
+    </button>
+  </h1>
   <div id="header-content">
-    <h1>Brussels Pedestrian<br>Simulated Flows</h1>
     <p class="subtitle">{{ t("header.subtitle") }}</p>
+    <p class="header-meta"><span id="osm-date">{{ t("common.loading") }}</span> <span id="build-date"></span></p>
 
-    <div class="header-meta">
-      <div id="osm-date">{{ t("common.loading") }}</div>
-      <div id="build-date"></div>
-      <div id="routing-stats"></div>
-    </div>
-
-    <nav class="header-nav">
+    <nav class="header-nav" aria-label="{{ t("header.pages") }}">
       <a href="{{ home }}stats.html">{{ t("common.nav.stats") }}</a>
       <a href="{{ home }}evolution.html">{{ t("common.nav.evolution") }}</a>
       <a href="{{ home }}about.html">{{ t("common.nav.about") }}</a>
@@ -41,34 +35,53 @@
     </nav>
 
     <div class="flow-filter-wrap">
-      <div class="flow-filter-label" id="flow-threshold-label">
+      <label class="flow-filter-label" id="flow-threshold-label" for="flow-threshold-slider">
         {{ t("header.flowThreshold") }} <span id="flow-threshold-val">0 %</span>
-      </div>
-      <input
-        id="flow-threshold-slider" aria-labelledby="flow-threshold-label"
-        type="range"
-        min="0" max="95" step="5" value="0"
-      />
+      </label>
+      <input id="flow-threshold-slider" type="range" min="0" max="95" step="5" value="0" />
     </div>
 
-    <button id="nav-btn" type="button" class="header-btn loading" aria-busy="true" aria-live="polite">
-      <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <polygon points="3 11 22 2 13 21 11 13 3 11"/>
-      </svg>
-      <span id="nav-btn-label">{{ t("nav.loadingGraph") }}</span>
-    </button>
-    <div id="nav-hint" aria-live="polite"></div>
-
-    <a id="edit-btn" class="header-btn disabled" aria-disabled="true" tabindex="-1" href="#" target="_blank" rel="noopener">
-      <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-      </svg>
-      {{ t("header.editInOsm") }}
-    </a>
-    <div id="edit-hint">{{ t("header.editHint", zoom=16) }}</div>
+    <div class="header-tools">
+      <button id="nav-btn" type="button" class="tool-btn loading" aria-busy="true" aria-live="polite">
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h7a3.5 3.5 0 0 0 0-7H9a3.5 3.5 0 0 1 0-7h7"/>
+        </svg>
+        <span id="nav-btn-label">{{ t("nav.loadingGraph") }}</span>
+      </button>
+      <div id="nav-hint" aria-live="polite"></div>
+{% if edit_env %}
+      <button id="edit-enter" type="button" class="tool-btn">
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="m13.5 6.5 4 4"/>
+        </svg>
+        <span>{{ t("edit.mode.enter") }}</span>
+        <span id="edit-enter-pending" class="pending-count" hidden></span>
+      </button>
+{% endif %}
+      <a id="edit-btn" class="tool-link disabled" aria-disabled="true" tabindex="-1" href="#" target="_blank" rel="noopener">{{ t("header.editInOsm") }}</a>
+      <div id="edit-hint">{{ t("header.editHint", zoom=16) }}</div>
+    </div>
   </div>
 </div>
+{% if edit_env %}
+<div id="edit-bar" role="region" aria-label="{{ t("edit.mode.title") }}" hidden>
+  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="m13.5 6.5 4 4"/>
+  </svg>
+  <span class="edit-bar-title">{{ t("edit.mode.title") }}</span>
+  <span class="edit-env">{{ edit_env }}</span>
+  <button id="edit-exit" type="button">{{ t("edit.mode.exit") }}</button>
+</div>
+<dialog id="edit-exit-dialog" aria-labelledby="edit-exit-title">
+  <h2 id="edit-exit-title">{{ t("edit.mode.exitTitle") }}</h2>
+  <p id="edit-exit-text"></p>
+  <div class="dialog-actions">
+    <button type="button" class="btn-primary" data-exit-choice="keep">{{ t("edit.mode.keep") }}</button>
+    <button type="button" class="btn-danger" data-exit-choice="discard">{{ t("edit.mode.discard") }}</button>
+    <button type="button" class="btn-plain" data-exit-choice="stay">{{ t("edit.mode.stay") }}</button>
+  </div>
+</dialog>
+{% endif %}
 
 <div id="route-panel">
   <h2>{{ t("route.title") }}</h2>
@@ -99,7 +112,7 @@
       <span class="rpct" id="stat-cyc-pct"></span>
     </div>
   </div>
-  <button id="route-clear" type="button">✕ {{ t("route.clear") }}</button>
+  <button id="route-clear" type="button">{{ t("route.clear") }}</button>
 </div>
 
 <div id="legend" class="open">
@@ -112,10 +125,10 @@
   <div id="legend-content"></div>
 </div>
 {% if edit_env %}
-<aside id="edit-dock" class="open" data-position="right" aria-labelledby="edit-panel-title">
+<aside id="edit-dock" class="open" data-position="right" hidden aria-labelledby="edit-panel-title">
   <div class="edit-dock-bar">
     <button id="edit-dock-toggle" type="button" aria-expanded="true" aria-controls="edit-panel">
-      <span id="edit-panel-title">{{ t("edit.panel.title") }} <span class="edit-env">{{ edit_env }}</span></span>
+      <span id="edit-panel-title">{{ t("edit.panel.title") }}</span>
       <svg aria-hidden="true" class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="6 9 12 15 18 9"/>
       </svg>

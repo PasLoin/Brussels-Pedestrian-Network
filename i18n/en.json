@@ -23,7 +23,6 @@
       "stats": "Statistics",
       "evolution": "Trends",
       "about": "Methodology",
-      "statsShort": "Stats",
       "map": "Map",
       "backToMap": "Back to the map"
     },
@@ -39,19 +38,18 @@
   "header": {
     "subtitle": "Simulated pedestrian flows and OpenStreetMap quality control in Brussels",
     "flowThreshold": "Road flow, minimum",
-    "editInOsm": "Edit in OSM",
+    "editInOsm": "Edit on openstreetmap.org",
     "editHint": "Available from zoom {{zoom}}",
-    "osmDate": "OSM data: {{date}}",
+    "osmDate": "OSM data from {{date}}",
     "osmDateUnknown": "OSM data: unknown date",
-    "buildDate": "Computed: {{date}}",
-    "simulatedTrips": "Simulated trips:",
-    "averageDistance": "Average distance:"
+    "buildDate": "Computed on {{date}}",
+    "pages": "Site pages"
   },
   "nav": {
     "loadingGraph": "Loading the graph…",
-    "start": "Navigation",
-    "unavailable": "Navigation (unavailable)",
-    "exit": "Exit navigation",
+    "start": "Route",
+    "unavailable": "Route unavailable",
+    "exit": "Exit route",
     "placeStart": "Click on the map to set the start",
     "placeEnd": "Click to set the destination",
     "computing": "Computing…",
@@ -67,7 +65,8 @@
     "clear": "Clear route"
   },
   "map": {
-    "zoom": "zoom"
+    "zoom": "zoom",
+    "sourceCode": "Source code"
   },
   "basemap": {
     "menu": "Base map",
@@ -81,7 +80,7 @@
     }
   },
   "legend": {
-    "title": "Legend",
+    "title": "Layers",
     "filterByType": "Filter by type",
     "selectAll": "Select all",
     "deselectAll": "Deselect all",
@@ -211,7 +210,8 @@
     "kerb": {
       "missingProblem": "No barrier=kerb or kerb=no node found at this end",
       "untaggedProblem": "barrier=kerb or kerb=no node present but without a tactile_paving tag"
-    }
+    },
+    "editHere": "Edit here"
   },
   "stats": {
     "infra": {
@@ -494,7 +494,8 @@
       "notVisible": "The street is not fully visible. Show all of it before choosing: the sidewalk must be checked along its whole length.",
       "showWhole": "Show the whole street",
       "fitting": "Showing the whole street…",
-      "queueFull": "This street would open one more area, beyond the {{max}} changesets allowed per upload. Prepare and send the queue before going on here."
+      "queueFull": "This street would open one more area, beyond the {{max}} changesets allowed per upload. Prepare and send the queue before going on here.",
+      "shortcutsTitle": "Keyboard shortcuts"
     },
     "value": {
       "separate": "separate (mapped as its own way)",
@@ -576,6 +577,19 @@
       "skipped_one": "{{count}} street skipped.",
       "skipped_other": "{{count}} streets skipped.",
       "resetSkipped": "Show again"
+    },
+    "mode": {
+      "enter": "Edit sidewalks",
+      "title": "Editing mode",
+      "exit": "Exit",
+      "exitTitle": "Leave editing mode?",
+      "exitText_one": "{{count}} change has not been sent to OSM yet. If you keep it, it stays in this browser.",
+      "exitText_other": "{{count}} changes have not been sent to OSM yet. If you keep them, they stay in this browser.",
+      "keep": "Keep for later",
+      "discard": "Discard the changes",
+      "stay": "Keep editing",
+      "pending_one": "{{count}} pending",
+      "pending_other": "{{count}} pending"
     }
   }
 }

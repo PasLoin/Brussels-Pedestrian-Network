@@ -16,7 +16,7 @@ import { createQueue } from "./queue.js";
 import { shortcutFor, sideForValue } from "./shortcuts.js";
 import { createSkipList } from "./skipped.js";
 import { DOCK_KEY, DOCK_POSITIONS, boxOf, boxVisible, fitPadding, freeRect, readDockPosition } from "./viewport.js";
-import { isEditableCandidate } from "./whitelist.js";
+import { isEditableCandidate, matchesWhitelist } from "./whitelist.js";
 
 const SOURCE = "edit-candidates";
 const LAYER = "edit-candidates";
@@ -48,6 +48,16 @@ const authEl = document.getElementById("edit-auth");
 const statusEl = document.getElementById("edit-status");
 const detailEl = document.getElementById("edit-detail");
 const queueEl = document.getElementById("edit-queue");
+const editBar = document.getElementById("edit-bar");
+const enterButton = document.getElementById("edit-enter");
+const pendingEl = document.getElementById("edit-enter-pending");
+const exitButton = document.getElementById("edit-exit");
+const exitDialog = document.getElementById("edit-exit-dialog");
+const exitText = document.getElementById("edit-exit-text");
+const MODE_KEY = `bpn.editing.${env.name}`;
+let active = false;
+let headerWasOpen = false;
+store.editing = false;
 
 const state = {
   user: null,
@@ -152,8 +162,15 @@ function refreshFormChecks() {
   if (send) send.disabled = issues.length > 0 || !state.user || state.busy;
 }
 
+function renderPending() {
+  const count = queue.size();
+  pendingEl.hidden = count === 0;
+  pendingEl.textContent = count ? i18n.t("edit.mode.pending", { count }) : "";
+}
+
 function renderQueue() {
   const items = queue.list();
+  renderPending();
   queueEl.innerHTML = html`${queueView({
     items,
     zones: zonesFor(items, env),
@@ -596,6 +613,7 @@ function replayPendingKeys() {
 }
 
 document.addEventListener("keydown", (e) => {
+  if (!active) return;
   const action = shortcutFor(e);
   if (!action) return;
   const d = state.detail;
@@ -634,7 +652,7 @@ function setDockPosition(position, persist) {
   if (persist) {
     try { storage.setItem(DOCK_KEY, value); } catch {}
   }
-  foldSidePanel(value);
+  if (active) foldSidePanel(value);
   if (map && state.detail.kind === "way") afterLayoutChange();
 }
 
@@ -662,13 +680,115 @@ dockToggle.addEventListener("click", () => {
   afterLayoutChange();
 });
 
+const mapReady = store.mapReady
+  ? Promise.resolve(store.map)
+  : new Promise(resolve => window.addEventListener("bpn:map-ready", e => resolve(e.detail), { once: true }));
+
+function setEditLayersVisible(visible) {
+  if (!map) return;
+  for (const id of [LAYER, SELECTED]) {
+    if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", visible ? "visible" : "none");
+  }
+  if (!visible) for (const id of [SIDE_LEFT, SIDE_RIGHT]) if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "none");
+}
+
+function enterEdit() {
+  if (active) return;
+  active = true;
+  store.editing = true;
+  try { window.sessionStorage.setItem(MODE_KEY, "1"); } catch {}
+  document.body.classList.add("is-editing");
+  editBar.hidden = false;
+  dock.hidden = false;
+  headerWasOpen = document.getElementById("header").classList.contains("open");
+  if (window.BPNMap) {
+    window.BPNMap.stopNavigation();
+    window.BPNMap.closePopups();
+    window.BPNMap.setHeaderOpen(false);
+  }
+  foldSidePanel(dock.dataset.position);
+  setDockOpen(true);
+  if (map) {
+    setEditLayersVisible(true);
+    loadCandidates();
+  }
+}
+
+function leaveEdit() {
+  if (!active) return;
+  active = false;
+  store.editing = false;
+  try { window.sessionStorage.removeItem(MODE_KEY); } catch {}
+  clearTimeout(timer);
+  if (controller) controller.abort();
+  controller = null;
+  deselect();
+  setEditLayersVisible(false);
+  document.body.classList.remove("is-editing");
+  editBar.hidden = true;
+  dock.hidden = true;
+  if (headerWasOpen && window.BPNMap) window.BPNMap.setHeaderOpen(true);
+  enterButton.focus();
+}
+
+function requestExit() {
+  if (!active || state.busy) return;
+  const count = queue.size();
+  if (!count) return leaveEdit();
+  exitText.textContent = i18n.t("edit.mode.exitText", { count });
+  exitDialog.showModal();
+}
+
+function discardQueue() {
+  queue.clear();
+  state.plan = null;
+  state.result = null;
+  if (state.detail.kind === "way") state.detail = { ...state.detail, queued: null, choice: choiceFromIntent(null) };
+  renderQueue();
+  syncQueuedState();
+}
+
+exitDialog.addEventListener("click", (e) => {
+  const choice = e.target.closest("[data-exit-choice]")?.dataset.exitChoice;
+  if (!choice) return;
+  exitDialog.close();
+  if (choice === "discard") discardQueue();
+  if (choice === "keep" || choice === "discard") leaveEdit();
+});
+
+async function editWay(id) {
+  enterEdit();
+  if (window.BPNMap) window.BPNMap.closePopups();
+  await mapReady;
+  selectWay(id);
+}
+
+enterButton.addEventListener("click", enterEdit);
+exitButton.addEventListener("click", requestExit);
+document.addEventListener("click", (e) => {
+  const button = e.target.closest("[data-bpn-edit-way]");
+  if (!button) return;
+  const id = Number(button.dataset.bpnEditWay);
+  if (!Number.isFinite(id) || id <= 0) return;
+  e.preventDefault();
+  editWay(id);
+});
+
+window.BPNEdit = Object.freeze({
+  enter: enterEdit,
+  exit: requestExit,
+  isActive: () => active,
+  canEdit: p => Boolean(p && p.sw === "unknown" && matchesWhitelist({ highway: p.highway })),
+});
+
 refreshAuth();
+try {
+  if (window.sessionStorage.getItem(MODE_KEY) === "1") enterEdit();
+} catch {}
 
-map = store.mapReady
-  ? store.map
-  : await new Promise(resolve => window.addEventListener("bpn:map-ready", e => resolve(e.detail), { once: true }));
+map = await mapReady;
 
-foldSidePanel(dock.dataset.position);
+if (active) foldSidePanel(dock.dataset.position);
 
 const WIDTH = ["interpolate", ["linear"], ["zoom"], 16, 4, 19, 9];
 map.addSource(SOURCE, { type: "geojson", data: EMPTY_COLLECTION, promoteId: "osm_id" });
@@ -838,6 +958,7 @@ map.on("click", LAYER, (e) => {
 map.on("mouseenter", LAYER, () => { map.getCanvas().style.cursor = "pointer"; });
 map.on("mouseleave", LAYER, () => { map.getCanvas().style.cursor = ""; });
 map.on("moveend", () => {
+  if (!active) return;
   scheduleCandidates();
   updateVisibility(true);
 });
@@ -845,4 +966,5 @@ map.on("resize", updateVisibility);
 map.on("movestart", (e) => {
   if (e.originalEvent && state.detail.kind === "way" && state.detail.userFit) state.detail = { ...state.detail, userFit: false };
 });
-loadCandidates();
+setEditLayersVisible(active);
+if (active) loadCandidates();

@@ -23,7 +23,6 @@
       "stats": "Statistieken",
       "evolution": "Evolutie",
       "about": "Methodologie",
-      "statsShort": "Statistieken",
       "map": "Kaart",
       "backToMap": "Terug naar de kaart"
     },
@@ -39,19 +38,18 @@
   "header": {
     "subtitle": "Gesimuleerde voetgangersstromen en OpenStreetMap-kwaliteitscontrole in Brussel",
     "flowThreshold": "Stroom op de rijweg, minimum",
-    "editInOsm": "Bewerken in OSM",
+    "editInOsm": "Bewerken op openstreetmap.org",
     "editHint": "Beschikbaar vanaf zoom {{zoom}}",
-    "osmDate": "OSM-gegevens: {{date}}",
+    "osmDate": "OSM-gegevens van {{date}}",
     "osmDateUnknown": "OSM-gegevens: datum onbekend",
-    "buildDate": "Berekend: {{date}}",
-    "simulatedTrips": "Gesimuleerde verplaatsingen:",
-    "averageDistance": "Gemiddelde afstand:"
+    "buildDate": "Berekend op {{date}}",
+    "pages": "Pagina's van de site"
   },
   "nav": {
     "loadingGraph": "Netwerk laden…",
-    "start": "Navigatie",
-    "unavailable": "Navigatie (niet beschikbaar)",
-    "exit": "Navigatie verlaten",
+    "start": "Route",
+    "unavailable": "Route niet beschikbaar",
+    "exit": "Route verlaten",
     "placeStart": "Klik op de kaart om het vertrekpunt te kiezen",
     "placeEnd": "Klik om de bestemming te kiezen",
     "computing": "Berekenen…",
@@ -67,7 +65,8 @@
     "clear": "Route wissen"
   },
   "map": {
-    "zoom": "zoom"
+    "zoom": "zoom",
+    "sourceCode": "Broncode"
   },
   "basemap": {
     "menu": "Achtergrondkaart",
@@ -81,7 +80,7 @@
     }
   },
   "legend": {
-    "title": "Legende",
+    "title": "Lagen",
     "filterByType": "Filteren op type",
     "selectAll": "Alles selecteren",
     "deselectAll": "Alles deselecteren",
@@ -211,7 +210,8 @@
     "kerb": {
       "missingProblem": "Geen knoop barrier=kerb of kerb=no gevonden aan dit uiteinde",
       "untaggedProblem": "Knoop barrier=kerb of kerb=no aanwezig maar zonder tag tactile_paving"
-    }
+    },
+    "editHere": "Hier bewerken"
   },
   "stats": {
     "infra": {
@@ -494,7 +494,8 @@
       "notVisible": "De straat is niet volledig zichtbaar. Toon ze helemaal voor je kiest: de stoep moet over de hele lengte gecontroleerd worden.",
       "showWhole": "Hele straat tonen",
       "fitting": "Hele straat wordt getoond…",
-      "queueFull": "Deze straat zou een extra zone openen, boven de {{max}} changesets die per verzending zijn toegestaan. Bereid de wachtrij voor en verstuur ze voor je hier verdergaat."
+      "queueFull": "Deze straat zou een extra zone openen, boven de {{max}} changesets die per verzending zijn toegestaan. Bereid de wachtrij voor en verstuur ze voor je hier verdergaat.",
+      "shortcutsTitle": "Sneltoetsen"
     },
     "value": {
       "separate": "separate (apart gekarteerd)",
@@ -576,6 +577,19 @@
       "skipped_one": "{{count}} straat overgeslagen.",
       "skipped_other": "{{count}} straten overgeslagen.",
       "resetSkipped": "Opnieuw tonen"
+    },
+    "mode": {
+      "enter": "Voetpaden bewerken",
+      "title": "Bewerkingsmodus",
+      "exit": "Afsluiten",
+      "exitTitle": "Bewerkingsmodus verlaten?",
+      "exitText_one": "{{count}} wijziging is nog niet naar OSM verstuurd. Als je ze bewaart, blijft ze in deze browser.",
+      "exitText_other": "{{count}} wijzigingen zijn nog niet naar OSM verstuurd. Als je ze bewaart, blijven ze in deze browser.",
+      "keep": "Bewaren voor later",
+      "discard": "Wijzigingen verwerpen",
+      "stay": "Verder bewerken",
+      "pending_one": "{{count}} in wachtrij",
+      "pending_other": "{{count}} in wachtrij"
     }
   }
 }
