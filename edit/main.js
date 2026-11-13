@@ -13,6 +13,7 @@ import { closeEmptyChangesets, planUpload, queueRoom, uploadGroups, zonesFor } f
 import { authView, detailView, editLock, navView, queueView, statusView, tooLongMessage } from "./panel.js";
 import { composeComment, describeGroup, indexCommunes } from "./places.js";
 import { createQueue } from "./queue.js";
+import { coveredIndexes, createReviewStore, samplesAlong } from "./review.js";
 import { shortcutFor, sideForValue } from "./shortcuts.js";
 import { createSkipList } from "./skipped.js";
 import { DOCK_KEY, DOCK_POSITIONS, boxOf, boxVisible, fitPadding, freeRect, readDockPosition } from "./viewport.js";
@@ -22,6 +23,7 @@ const SOURCE = "edit-candidates";
 const LAYER = "edit-candidates";
 const SELECTION = "edit-selection";
 const SELECTED = "edit-candidates-selected";
+const SELECTED_CASING = "edit-candidates-selected-casing";
 const SIDE_LEFT = "edit-candidates-left";
 const SIDE_RIGHT = "edit-candidates-right";
 const FIT_MARGIN_PX = 40;
@@ -39,6 +41,10 @@ osm.configure({ apiUrl: env.apiUrl });
 
 const queue = createQueue({ storage, env: env.name });
 const skipped = createSkipList({ storage, env: env.name });
+const reviews = createReviewStore({ storage, env: env.name, ttlMs: env.reviewTtlMs });
+let reviewSamples = [];
+let reviewSeen = new Set();
+let selectionCoords = null;
 const visited = new Set();
 const navEl = document.getElementById("edit-nav");
 let navHint = "";
@@ -117,6 +123,7 @@ function renderDetail() {
   if (state.detail.kind === "way" && state.detail.editable) state.detail = { ...state.detail, room: roomFor(state.detail) };
   detailEl.innerHTML = html`${detailView(state.detail, i18n, env.webUrl, env)}`;
   showSideLines();
+  if (selectionCoords) showSelection(selectionCoords);
 }
 
 function showSideLines() {
@@ -127,11 +134,61 @@ function showSideLines() {
 }
 
 function showSelection(coords) {
+  selectionCoords = coords || null;
   const source = map && map.getSource(SELECTION);
   if (!source) return;
+  const queued = state.detail.kind === "way" && Boolean(state.detail.queued);
   source.setData(coords
-    ? { type: "FeatureCollection", features: [{ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: coords } }] }
+    ? { type: "FeatureCollection", features: [{ type: "Feature", properties: { queued }, geometry: { type: "LineString", coordinates: coords } }] }
     : EMPTY_COLLECTION);
+}
+
+function reviewState(done) {
+  if (!env.reviewZoom) return null;
+  const total = reviewSamples.length || 1;
+  return { zoom: env.reviewZoom, percent: done ? 100 : Math.floor((100 * reviewSeen.size) / total), done };
+}
+
+function noteReview() {
+  let d = state.detail;
+  if (!map || d.kind !== "way" || !d.editable || d.fitting) return false;
+  let changed = false;
+  if (!d.seenWhole && (d.visible || wholeWayVisible(d.coords))) {
+    reviews.markWhole(d.way.id, d.way.version);
+    d = { ...d, seenWhole: true };
+    changed = true;
+  }
+  if (d.review && !d.review.done && map.getZoom() >= env.reviewZoom - 1e-6) {
+    const points = reviewSamples.map(c => map.project(c));
+    for (const i of coveredIndexes(points, viewArea().free, VISIBLE_MARGIN_PX)) reviewSeen.add(i);
+    const done = reviewSeen.size >= reviewSamples.length;
+    if (done) reviews.markDetail(d.way.id, d.way.version);
+    const review = reviewState(done);
+    if (review.percent !== d.review.percent || done) {
+      d = { ...d, review };
+      changed = true;
+    }
+  }
+  if (changed) state.detail = d;
+  return changed;
+}
+
+function goToUnseenPart() {
+  const d = state.detail;
+  if (!map || d.kind !== "way" || !d.review) return;
+  const index = reviewSamples.findIndex((_, i) => !reviewSeen.has(i));
+  if (index < 0) return;
+  const { canvas, free } = viewArea();
+  const offset = [(free.left + free.right) / 2 - canvas.width / 2, (free.top + free.bottom) / 2 - canvas.height / 2];
+  map.easeTo({ center: reviewSamples[index], zoom: Math.max(map.getZoom(), env.reviewZoom), offset, duration: FIT_DURATION_MS });
+}
+
+function anyPartVisible(coords) {
+  const { free } = viewArea();
+  return coords.some(c => {
+    const p = map.project(c);
+    return p.x >= free.left && p.x <= free.right && p.y >= free.top && p.y <= free.bottom;
+  });
 }
 
 function roomFor(detail) {
@@ -287,15 +344,21 @@ function applyView(view) {
   state.detail = { ...d, fitting: view === "moving", visible: view === "visible" };
 }
 
+function lockSignature(d) {
+  return [d.visible, d.fitting, d.seenWhole, d.review && d.review.percent, d.review && d.review.done].join("|");
+}
+
 function updateVisibility(settled = false) {
   const d = state.detail;
   if (d.kind !== "way" || !d.editable) return;
   if (d.fitting && !settled && map.isMoving()) return;
   const visible = wholeWayVisible(d.coords) || Boolean(d.userFit && d.fitting && settled);
-  if (visible === d.visible && !d.fitting) return;
+  const before = lockSignature(d);
   state.detail = { ...d, visible, fitting: false, userFit: false };
+  noteReview();
+  if (lockSignature(state.detail) === before) return;
   renderDetail();
-  if (visible) replayPendingKeys();
+  if (!editLock(state.detail)) replayPendingKeys();
   else pendingKeys = [];
 }
 
@@ -384,6 +447,8 @@ detailEl.addEventListener("click", (e) => {
     return;
   } else if (action === "plan") {
     return onPlan();
+  } else if (action === "review-next") {
+    return goToUnseenPart();
   } else if (action === "choose") {
     return applyValue(button.dataset.side, button.dataset.value);
   } else if (action === "skip") {
@@ -686,7 +751,7 @@ const mapReady = store.mapReady
 
 function setEditLayersVisible(visible) {
   if (!map) return;
-  for (const id of [LAYER, SELECTED]) {
+  for (const id of [LAYER, SELECTED_CASING, SELECTED]) {
     if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", visible ? "visible" : "none");
   }
   if (!visible) for (const id of [SIDE_LEFT, SIDE_RIGHT]) if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "none");
@@ -803,9 +868,17 @@ map.addLayer({
 });
 map.addSource(SELECTION, { type: "geojson", data: EMPTY_COLLECTION });
 map.addLayer({
+  id: SELECTED_CASING, type: "line", source: SELECTION,
+  layout: { "line-cap": "round", "line-join": "round" },
+  paint: { "line-color": "#1f2421", "line-width": ["interpolate", ["linear"], ["zoom"], 16, 10, 19, 17], "line-opacity": 0.9 },
+});
+map.addLayer({
   id: SELECTED, type: "line", source: SELECTION,
   layout: { "line-cap": "round", "line-join": "round" },
-  paint: { "line-color": "#111827", "line-width": ["interpolate", ["linear"], ["zoom"], 16, 7, 19, 13], "line-opacity": 0.6 },
+  paint: {
+    "line-color": ["case", ["boolean", ["get", "queued"], false], "#16a34a", "#f5c518"],
+    "line-width": ["interpolate", ["linear"], ["zoom"], 16, 6, 19, 11],
+  },
 });
 for (const [id, color, sign] of [[SIDE_LEFT, "#0284c7", -1], [SIDE_RIGHT, "#ea580c", 1]]) {
   map.addLayer({
@@ -813,8 +886,8 @@ for (const [id, color, sign] of [[SIDE_LEFT, "#0284c7", -1], [SIDE_RIGHT, "#ea58
     layout: { "line-cap": "butt", "line-join": "round", visibility: "none" },
     paint: {
       "line-color": color,
-      "line-width": ["interpolate", ["linear"], ["zoom"], 16, 3, 19, 5],
-      "line-offset": ["interpolate", ["linear"], ["zoom"], 16, sign * 7, 19, sign * 14],
+      "line-width": ["interpolate", ["linear"], ["zoom"], 16, 4, 19, 6],
+      "line-offset": ["interpolate", ["linear"], ["zoom"], 16, sign * 9, 19, sign * 16],
     },
   });
 }
@@ -938,8 +1011,15 @@ async function selectWay(id) {
       queued: queue.get(id),
       choice: choiceFromIntent(queue.get(id)),
     };
-    const view = bringWholeWayIntoView(detail);
+    reviewSamples = env.reviewZoom ? samplesAlong(coords, env.reviewStepM) : [];
+    reviewSeen = new Set();
+    detail.seenWhole = reviews.seenWhole(id, way.version);
+    detail.review = reviewState(reviews.seenDetail(id, way.version));
+    const view = detail.seenWhole && anyPartVisible(coords)
+      ? (wholeWayVisible(coords) ? "visible" : "partial")
+      : bringWholeWayIntoView(detail);
     state.detail = { ...detail, fitting: view === "moving", visible: view === "visible" };
+    noteReview();
   } catch (err) {
     const gone = err && (err.cause === 404 || err.cause === 410);
     state.detail = gone ? { kind: "gone", wayId: id } : { kind: "error", message: errorMessage(err, i18n.t) };
@@ -963,6 +1043,19 @@ map.on("moveend", () => {
   updateVisibility(true);
 });
 map.on("resize", updateVisibility);
+let reviewFrame = 0;
+map.on("move", () => {
+  if (!active || !env.reviewZoom || reviewFrame) return;
+  reviewFrame = requestAnimationFrame(() => {
+    reviewFrame = 0;
+    if (noteReview()) renderDetail();
+  });
+});
+map.on("style.load", () => {
+  setEditLayersVisible(active);
+  syncQueuedState();
+  showSideLines();
+});
 map.on("movestart", (e) => {
   if (e.originalEvent && state.detail.kind === "way" && state.detail.userFit) state.detail = { ...state.detail, userFit: false };
 });

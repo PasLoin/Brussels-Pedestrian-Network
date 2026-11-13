@@ -854,7 +854,7 @@ def whole_way_inside(page, coords):
       return {json.dumps(coords)}.every(p => {{ const q = m.project(p); return q.x >= 0 && q.y >= 0 && q.x <= right && q.y <= c.clientHeight; }});""")
 
 
-def test_a_long_street_is_shown_whole_before_it_can_be_edited(session, fake):
+def test_a_long_street_seen_whole_once_can_then_be_edited_zoomed_in(session, fake):
     long_line = line_at(CENTER, length=0.012)
     fake.add_way(101, long_line, street("Longue Rue", "Lange Straat"))
     s = session()
@@ -862,19 +862,98 @@ def test_a_long_street_is_shown_whole_before_it_can_be_edited(session, fake):
     click_way(s.page, CENTER[0], CENTER[1] + 0.00001, 101)
     wait(s.page, "() => !document.querySelector('[data-edit-action=choose][disabled]')")
     assert whole_way_inside(s.page, long_line)
-    assert "découp" not in s.page.inner_text("#edit-detail")
-    map_eval(s.page, f"m.jumpTo({{ center: [{CENTER[0] + 0.006}, {CENTER[1]}], zoom: 17.5 }}); return true;")
-    wait(s.page, "() => !!document.querySelector('[data-edit-action=choose][disabled]')")
-    assert "pas entièrement visible" in s.page.inner_text("#edit-detail")
-    s.page.keyboard.press("s")
-    time.sleep(0.3)
-    assert queue_ids(s.page) == []
-    s.page.click('[data-edit-action="fit"]')
-    wait(s.page, "() => !!document.querySelector('[data-edit-action=choose]') && !document.querySelector('[data-edit-action=choose][disabled]')")
-    assert whole_way_inside(s.page, long_line)
+    seen = json.loads(s.page.evaluate("localStorage.getItem('bpn.reviewed.dev')"))
+    assert seen["101"]["whole"] is True and seen["101"]["v"] == 1
+    map_eval(s.page, f"m.jumpTo({{ center: [{CENTER[0] + 0.004}, {CENTER[1]}], zoom: 19 }}); return true;")
+    time.sleep(0.5)
+    assert not locked(s.page)
+    assert "pas encore été vue en entier" not in s.page.inner_text("#edit-detail")
     s.page.keyboard.press("s")
     wait(s.page, "() => (localStorage.getItem('bpn.queue.dev') || '').includes('101')")
     assert queue_ids(s.page) == [101]
+
+
+def test_a_street_never_seen_whole_stays_locked_until_shown(session, fake):
+    long_line = line_at(CENTER, length=0.012)
+    fake.add_way(101, long_line, street("Longue Rue", "Lange Straat"))
+    s = session()
+    wait_candidates(s.page, 1)
+    s.page.evaluate("""async () => {
+      const { store } = await import('/map/store.js');
+      store.map.easeTo = () => {};
+    }""")
+    click_way(s.page, CENTER[0], CENTER[1] + 0.00001, 101, expect_form=False)
+    wait(s.page, "() => document.getElementById('edit-detail').textContent.includes('pas encore été vue en entier')")
+    assert locked(s.page)
+    s.page.keyboard.press("s")
+    time.sleep(0.3)
+    assert queue_ids(s.page) == []
+    s.page.reload()
+    wait_candidates(s.page, 1)
+    click_way(s.page, CENTER[0], CENTER[1] + 0.00001, 101)
+    wait(s.page, "() => !document.querySelector('[data-edit-action=choose][disabled]')")
+    assert whole_way_inside(s.page, long_line)
+
+
+def test_a_street_seen_whole_is_not_zoomed_out_again_when_selected_later(session, fake):
+    long_line = line_at(CENTER, length=0.012)
+    fake.add_way(101, long_line, street("Longue Rue", "Lange Straat"))
+    s = session()
+    wait_candidates(s.page, 1)
+    click_way(s.page, CENTER[0], CENTER[1] + 0.00001, 101)
+    wait(s.page, "() => !document.querySelector('[data-edit-action=choose][disabled]')")
+    s.page.keyboard.press("Escape")
+    map_eval(s.page, f"m.jumpTo({{ center: [{CENTER[0]}, {CENTER[1]}], zoom: 19 }}); return true;")
+    time.sleep(0.6)
+    click_way(s.page, CENTER[0], CENTER[1] + 0.00001, 101)
+    time.sleep(0.5)
+    assert abs(map_eval(s.page, "return m.getZoom();") - 19) < 0.01
+    assert not locked(s.page)
+
+
+def test_a_review_zoom_asks_to_go_along_the_whole_street_close_up(session, fake):
+    line = line_at(CENTER, length=0.0016)
+    fake.add_way(101, line, street("Rue Proche", "Nabijstraat"))
+    s = session()
+    s.url = s.url.replace("devtest.html#", "devtest.html?review-zoom=18.6#")
+    s.page.close()
+    s.page = s.open()
+    wait_candidates(s.page, 1)
+    click_way(s.page, CENTER[0], CENTER[1] + 0.00001, 101, expect_form=False)
+    wait(s.page, "() => !!document.querySelector('[data-edit-action=review-next]')")
+    assert "zoom 18,6" in s.page.inner_text("#edit-detail")
+    assert locked(s.page)
+    for _ in range(12):
+        if not s.page.query_selector('[data-edit-action="review-next"]'):
+            break
+        s.page.click('[data-edit-action="review-next"]')
+        time.sleep(0.5)
+    wait(s.page, "() => !document.querySelector('[data-edit-action=choose][disabled]')")
+    assert map_eval(s.page, "return m.getZoom();") >= 18.6
+    assert json.loads(s.page.evaluate("localStorage.getItem('bpn.reviewed.dev')"))["101"]["detail"] is True
+    s.page.keyboard.press("y")
+    wait(s.page, "() => (localStorage.getItem('bpn.queue.dev') || '').includes('101')")
+
+
+def selection_queued(page):
+    return map_eval(page, "const f = m.querySourceFeatures('edit-selection')[0]; return f ? f.properties.queued : null;")
+
+
+def test_the_selected_street_is_yellow_then_green_once_queued(session, fake):
+    fake.add_way(101, line_at(CENTER), street("Rue Test", "Teststraat"))
+    fake.add_way(102, line_at(CENTER, dy=-0.0004), street("Rue B", "Bstraat"))
+    s = session()
+    wait_candidates(s.page, 2)
+    click_way(s.page, CENTER[0], CENTER[1] + 0.00001, 101)
+    wait(s.page, "async () => { const { store } = await import('/map/store.js'); return store.map.querySourceFeatures('edit-selection').length > 0; }")
+    assert selection_queued(s.page) is False
+    assert map_eval(s.page, "return m.getPaintProperty('edit-candidates-selected', 'line-color')") == ["case", ["boolean", ["get", "queued"], False], "#16a34a", "#f5c518"]
+    s.page.click('[data-edit-action="mode"][data-mode="sides"]')
+    s.page.click('[data-side="left"][data-value="yes"]')
+    s.page.click('[data-side="right"][data-value="no"]')
+    wait_selected(s.page, 102)
+    click_way(s.page, CENTER[0], CENTER[1] + 0.00001, 101)
+    wait(s.page, "async () => { const { store } = await import('/map/store.js'); const f = store.map.querySourceFeatures('edit-selection')[0]; return !!f && f.properties.queued === true; }")
 
 
 def test_a_street_that_would_open_a_fourth_zone_is_locked_before_any_edit(session, fake):
@@ -1146,3 +1225,27 @@ def test_edit_here_in_the_popup_opens_the_editor_on_that_way(session, fake):
     s.page.click('[data-bpn-edit-way="102"]')
     wait_selected(s.page, 102)
     assert edit_ui(s.page)["active"] is True
+
+
+
+def side_layers(page):
+    return page.evaluate("""async () => {
+      const { store } = await import('/map/store.js');
+      const m = store.map;
+      return ['edit-candidates-selected', 'edit-candidates-left', 'edit-candidates-right']
+        .map(id => m.getLayer(id) ? [m.getLayoutProperty(id, 'visibility') || 'visible', m.queryRenderedFeatures({ layers: [id] }).length > 0] : null);
+    }""")
+
+
+def test_the_selection_and_its_sides_survive_a_basemap_change(session, fake):
+    fake.add_way(101, line_at(CENTER), street("Rue Test", "Teststraat"))
+    s = session()
+    wait_candidates(s.page, 1)
+    click_way(s.page, CENTER[0], CENTER[1] + 0.00001, 101)
+    s.page.click("#basemap-toggle")
+    s.page.click('.basemap-option[data-id="urbis-ortho"]')
+    wait(s.page, "() => localStorage.getItem('bpn-basemap') === 'urbis-ortho'")
+    time.sleep(0.6)
+    s.page.click('[data-edit-action="mode"][data-mode="sides"]')
+    wait(s.page, "async () => { const { store } = await import('/map/store.js'); return !!store.map.getLayer('edit-candidates-left') && store.map.queryRenderedFeatures({ layers: ['edit-candidates-left'] }).length > 0; }")
+    assert side_layers(s.page) == [["visible", True], ["visible", True], ["visible", True]]

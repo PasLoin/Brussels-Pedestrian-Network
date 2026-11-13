@@ -491,11 +491,13 @@
       "skip": "Passer",
       "next": "Suivant",
       "shortcuts": "Touches : s, y, n posent la valeur, d pour des côtés différents, b pour les deux côtés, → rue suivante, p pour passer, Échap pour désélectionner.",
-      "notVisible": "La rue n'est pas entièrement visible. Affichez-la en entier avant de choisir : le trottoir doit être vérifié sur toute sa longueur.",
+      "notVisible": "La rue n'a pas encore été vue en entier. Affichez-la une fois en entier avant de choisir ; ensuite, vous pourrez zoomer librement.",
       "showWhole": "Afficher toute la rue",
       "fitting": "Affichage de toute la rue…",
       "queueFull": "Cette rue ouvrirait une zone de plus, au-delà des {{max}} changesets autorisés par envoi. Préparez et envoyez la file avant de continuer ici.",
-      "shortcutsTitle": "Raccourcis clavier"
+      "shortcutsTitle": "Raccourcis clavier",
+      "reviewDetail": "Parcourez toute la rue au zoom {{zoom}} ou plus avant de choisir : {{percent}} % vu.",
+      "reviewNext": "Aller à la partie non vue"
     },
     "value": {
       "separate": "separate (cartographié à part)",

@@ -1,3 +1,5 @@
+import { parseReviewZoom } from "./review.js";
+
 const DEV_API = "https://master.apis.dev.openstreetmap.org";
 const SCOPES = Object.freeze(["read_prefs", "write_api"]);
 
@@ -40,6 +42,9 @@ export const SETTINGS = Object.freeze({
   longWayWarningM: 200,
   maxNodeShiftM: 10,
   defaultHashtags: Object.freeze(["#BrusselsPedestrianNetwork"]),
+  reviewZoom: null,
+  reviewStepM: 5,
+  reviewTtlMs: 12 * 60 * 60 * 1000,
   sourcePresets: Object.freeze(["survey", "local_knowledge", "streetlevel imagery", "aerial imagery"]),
 });
 
@@ -54,5 +59,7 @@ export function resolveEnv(name, pageUrl, settings = SETTINGS) {
 }
 
 export function envFromDocument(doc = document) {
-  return resolveEnv(doc.documentElement.dataset.editEnv, doc.location.href);
+  const zoom = new URL(doc.location.href).searchParams.get("review-zoom");
+  const settings = zoom === null ? SETTINGS : { ...SETTINGS, reviewZoom: parseReviewZoom(zoom) };
+  return resolveEnv(doc.documentElement.dataset.editEnv, doc.location.href, settings);
 }

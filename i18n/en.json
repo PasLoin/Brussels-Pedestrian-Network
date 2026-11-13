@@ -491,11 +491,13 @@
       "skip": "Skip",
       "next": "Next",
       "shortcuts": "Keys: s, y, n set the value · d different sides · b both sides · → next · p skip · Esc deselect",
-      "notVisible": "The street is not fully visible. Show all of it before choosing: the sidewalk must be checked along its whole length.",
+      "notVisible": "This street has not been seen whole yet. Show it whole once before choosing; after that you can zoom in freely.",
       "showWhole": "Show the whole street",
       "fitting": "Showing the whole street…",
       "queueFull": "This street would open one more area, beyond the {{max}} changesets allowed per upload. Prepare and send the queue before going on here.",
-      "shortcutsTitle": "Keyboard shortcuts"
+      "shortcutsTitle": "Keyboard shortcuts",
+      "reviewDetail": "Go along the whole street at zoom {{zoom}} or closer before choosing: {{percent}} % seen.",
+      "reviewNext": "Go to the part not seen yet"
     },
     "value": {
       "separate": "separate (mapped as its own way)",

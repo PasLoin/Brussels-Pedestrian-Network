@@ -579,7 +579,7 @@ test("the P2 panel speaks every published language without a missing key", async
     const i18n = i18nFor(lang, warnings);
     const form = { comment: "", sources: [], sourceOther: "", hashtags: "", review: false };
     const outs = [
-      detailView({ kind: "way", editable: true, visible: false, lengthM: 300, queued: intent, choice: { mode: "sides", both: "", left: "no", right: "yes" }, way: { id: 5, version: 1, tags: {} } }, i18n, "https://x", { autoQueue: false }),
+      detailView({ kind: "way", editable: true, seenWhole: false, lengthM: 300, queued: intent, choice: { mode: "sides", both: "", left: "no", right: "yes" }, way: { id: 5, version: 1, tags: {} } }, i18n, "https://x", { autoQueue: false }),
       detailView({ kind: "way", editable: true, visible: true, room: { zones: 3, after: 4, max: 3, fits: false }, lengthM: 30, queued: null, choice: { mode: "both", both: "", left: "", right: "" }, way: { id: 5, version: 1, tags: {} } }, i18n, "https://x", { autoQueue: true }),
       queueView({ items: [], form, plan: null, result: null, busy: false, loggedIn: false }, i18n, "https://x", { sourcePresets: ["survey"] }),
       queueView({ items: [intent], zones: 3, maxZones: 3, form, plan: null, busy: false, loggedIn: true,

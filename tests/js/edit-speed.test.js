@@ -124,15 +124,15 @@ test("fitting a way keeps it clear of the panel and never asks for more room tha
 test("the edit form is locked until the whole street is on screen", async () => {
   const { detailView, editLock } = await load("panel.js");
   const base = { kind: "way", editable: true, way: { id: 5, version: 1, tags: {} }, choice: { mode: "both", both: "", left: "", right: "" } };
-  assert.equal(editLock({ ...base, visible: false }), "hidden");
+  assert.equal(editLock({ ...base, seenWhole: false }), "hidden");
   assert.equal(editLock({ ...base, visible: true, fitting: true }), "moving");
   const moving = String(detailView({ ...base, fitting: true }, i18nFor("fr"), "https://dev", { autoQueue: true }));
   assert.match(moving, /Affichage de toute la rue/);
   assert.match(moving, /data-value="yes"[^>]*disabled/);
   assert.equal(editLock({ ...base, visible: true }), null);
   assert.equal(editLock(base), null);
-  const hidden = String(detailView({ ...base, visible: false }, i18nFor("fr"), "https://dev", { autoQueue: true }));
-  assert.match(hidden, /pas entièrement visible/);
+  const hidden = String(detailView({ ...base, seenWhole: false }, i18nFor("fr"), "https://dev", { autoQueue: true }));
+  assert.match(hidden, /pas encore été vue en entier/);
   assert.match(hidden, /data-edit-action="fit"/);
   assert.match(hidden, /data-value="separate"[^>]*disabled/);
   assert.doesNotMatch(hidden, /découp/);
@@ -218,7 +218,7 @@ test("the new controls speak every published language", async () => {
     const outs = [
       detailView({ kind: "way", editable: true, way: { id: 5, version: 1, tags: {} }, choice: { mode: "sides", both: "", left: "", right: "" } }, i18n, "https://x", { autoQueue: true }),
       detailView({ kind: "way", editable: true, fitting: true, way: { id: 5, version: 1, tags: {} }, choice: { mode: "both", both: "", left: "", right: "" } }, i18n, "https://x", { autoQueue: true }),
-      detailView({ kind: "way", editable: true, visible: false, way: { id: 5, version: 1, tags: {} }, choice: { mode: "sides", both: "", left: "", right: "" } }, i18n, "https://x", { autoQueue: true }),
+      detailView({ kind: "way", editable: true, seenWhole: false, way: { id: 5, version: 1, tags: {} }, choice: { mode: "sides", both: "", left: "", right: "" } }, i18n, "https://x", { autoQueue: true }),
       detailView({ kind: "way", editable: true, visible: true, room: { zones: 3, after: 4, max: 3, fits: false }, way: { id: 5, version: 1, tags: {} }, choice: { mode: "both", both: "", left: "", right: "" } }, i18n, "https://x", { autoQueue: true }),
       navView({ candidates: 2, skipped: 1, selected: false, hint: i18n.t("edit.nav.none") }, i18n),
       navView({ candidates: 2, skipped: 3, selected: false, hint: "" }, i18n),

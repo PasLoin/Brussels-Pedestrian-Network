@@ -1,7 +1,7 @@
 export const OSM_ATTRIBUTION = '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>';
 export const ZINNEKE_ATTRIBUTION = '<a href="https://github.com/PasLoin/ZinnekeTiles" target="_blank" rel="noopener">ZinnekeTiles</a> ' + OSM_ATTRIBUTION;
 export const ZINNEKE_SOURCE_PREFIX = "zt-";
-export const OVERLAY_SOURCES = ["pedestrian", "nav-route", "edit-candidates"];
+export const OVERLAY_SOURCES = ["pedestrian", "nav-route", "edit-candidates", "edit-selection"];
 export const WMS_SOURCE_PREFIX = "wms-";
 
 export function pedestrianSource(url) {

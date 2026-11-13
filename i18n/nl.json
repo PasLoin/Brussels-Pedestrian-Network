@@ -491,11 +491,13 @@
       "skip": "Overslaan",
       "next": "Volgende",
       "shortcuts": "Toetsen: s, y, n zetten de waarde · d verschillende kanten · b beide kanten · → volgende · p overslaan · Esc deselecteren",
-      "notVisible": "De straat is niet volledig zichtbaar. Toon ze helemaal voor je kiest: de stoep moet over de hele lengte gecontroleerd worden.",
+      "notVisible": "Deze straat is nog niet volledig bekeken. Toon ze één keer volledig voor je kiest; daarna kun je vrij inzoomen.",
       "showWhole": "Hele straat tonen",
       "fitting": "Hele straat wordt getoond…",
       "queueFull": "Deze straat zou een extra zone openen, boven de {{max}} changesets die per verzending zijn toegestaan. Bereid de wachtrij voor en verstuur ze voor je hier verdergaat.",
-      "shortcutsTitle": "Sneltoetsen"
+      "shortcutsTitle": "Sneltoetsen",
+      "reviewDetail": "Loop de hele straat af op zoom {{zoom}} of dichterbij voor je kiest: {{percent}} % bekeken.",
+      "reviewNext": "Naar het deel dat nog niet bekeken is"
     },
     "value": {
       "separate": "separate (apart gekarteerd)",

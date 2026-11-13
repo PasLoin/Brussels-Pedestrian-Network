@@ -65,7 +65,8 @@ function chips(side, selected, i18n, locked = false) {
 
 export function editLock(state) {
   if (state.fitting) return "moving";
-  if (state.visible === false) return "hidden";
+  if (state.seenWhole === false) return "hidden";
+  if (state.review && !state.review.done) return "detail";
   if (state.room && !state.room.fits && !state.queued) return "full";
   return null;
 }
@@ -77,6 +78,13 @@ function lockView(lock, state, i18n) {
     return html`<div class="edit-lock" role="status">
       <p class="edit-warn">${t("edit.form.notVisible")}</p>
       <button type="button" class="btn" data-edit-action="fit">${t("edit.form.showWhole")}</button>
+    </div>`;
+  }
+  if (lock === "detail") {
+    return html`<div class="edit-lock" role="status">
+      <p class="edit-warn">${t("edit.form.reviewDetail", { zoom: i18n.number(state.review.zoom, { maximumFractionDigits: 1 }), percent: state.review.percent })}</p>
+      <progress class="edit-progress" max="100" value="${state.review.percent}"></progress>
+      <button type="button" class="btn" data-edit-action="review-next">${t("edit.form.reviewNext")}</button>
     </div>`;
   }
   if (lock === "full") {
