@@ -42,7 +42,7 @@ export const SETTINGS = Object.freeze({
   longWayWarningM: 200,
   maxNodeShiftM: 10,
   defaultHashtags: Object.freeze(["#BrusselsPedestrianNetwork"]),
-  reviewZoom: null,
+  reviewZoom: 18.6,
   reviewStepM: 5,
   reviewTtlMs: 12 * 60 * 60 * 1000,
   sourcePresets: Object.freeze(["survey", "local_knowledge", "streetlevel imagery", "aerial imagery"]),
