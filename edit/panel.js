@@ -57,6 +57,7 @@ export function meterView(stats, i18n, settings = {}) {
     </table>
     <p>${t("edit.meter.peakMinute", { count: stats.peakPerMinute })}</p>
     <p class="${warnFlight ? "edit-warn" : ""}">${t("edit.meter.peakInFlight", { count: stats.peakInFlight })}</p>
+    <p>${t("edit.meter.peakWaiting", { count: stats.peakWaiting || 0 })}</p>
     ${warnFlight && html`<p class="edit-help">${t("edit.meter.warnInFlight")}</p>`}
     ${warnMinute && html`<p class="edit-help">${t("edit.meter.warnMinute", { count: settings.apiMeterWarnPerMinute || 30 })}</p>`}
     ${statuses.length > 0 && html`<p>${t("edit.meter.failures", { list: statuses.map(([code, n]) => `${code} × ${n}`).join(", ") })}</p>`}

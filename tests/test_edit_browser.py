@@ -1333,3 +1333,21 @@ def test_the_left_side_line_is_drawn_left_of_the_way_direction(session, fake):
       return {{ leftNorth: at(-off, 'edit-candidates-left'), leftSouth: at(off, 'edit-candidates-left'),
                 rightSouth: at(off, 'edit-candidates-right'), rightNorth: at(-off, 'edit-candidates-right') }};""")
     assert found == {"leftNorth": True, "leftSouth": False, "rightSouth": True, "rightNorth": False}
+
+
+def test_the_page_never_has_more_than_two_api_calls_in_flight(session, fake):
+    three_streets(fake)
+    s = session()
+    wait_candidates(s.page, 3)
+    s.page.evaluate("BPNEdit.resetApiStats()")
+    statuses = s.page.evaluate("""async () => {
+      const api = "https://master.apis.dev.openstreetmap.org";
+      const calls = [1, 2, 3, 4, 5].map(() => fetch(`${api}/api/0.6/user/details.json`).then(r => r.status));
+      return Promise.all(calls);
+    }""")
+    assert statuses == [200] * 5
+    stats = api_stats(s.page)
+    assert stats["byKind"]["user"] == 5
+    assert stats["peakInFlight"] == 2
+    assert stats["peakWaiting"] == 3
+    assert stats["waiting"] == 0

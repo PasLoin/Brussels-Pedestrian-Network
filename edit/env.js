@@ -46,6 +46,7 @@ export const SETTINGS = Object.freeze({
   defaultHashtags: Object.freeze(["#BrusselsPedestrianNetwork"]),
   reviewZoom: null,
   apiMeterWarnPerMinute: 30,
+  maxConcurrentApi: 2,
   reviewStepM: 5,
   reviewTtlMs: 12 * 60 * 60 * 1000,
   sourcePresets: Object.freeze(["survey", "local_knowledge", "streetlevel imagery", "aerial imagery"]),

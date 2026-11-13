@@ -25,7 +25,7 @@ export function classifyApiCall(url, method = "GET") {
 }
 
 function emptyTotals(since) {
-  return { since, total: 0, byKind: {}, byStatus: {}, failures: 0, peakPerMinute: 0, peakInFlight: 0 };
+  return { since, total: 0, byKind: {}, byStatus: {}, failures: 0, peakPerMinute: 0, peakInFlight: 0, peakWaiting: 0 };
 }
 
 export function createApiMeter({ storage, env, apiUrl, now = () => Date.now() }) {
@@ -37,6 +37,7 @@ export function createApiMeter({ storage, env, apiUrl, now = () => Date.now() })
   } catch {}
   let recent = [];
   let inFlight = 0;
+  let waiting = 0;
   const listeners = new Set();
   const save = () => {
     try { storage.setItem(key, JSON.stringify(totals)); } catch {}
@@ -87,7 +88,15 @@ export function createApiMeter({ storage, env, apiUrl, now = () => Date.now() })
       };
     },
     stats() {
-      return { ...totals, byKind: { ...totals.byKind }, byStatus: { ...totals.byStatus }, lastMinute: lastMinute(), inFlight };
+      return { ...totals, byKind: { ...totals.byKind }, byStatus: { ...totals.byStatus }, lastMinute: lastMinute(), inFlight, waiting };
+    },
+    noteWaiting(count) {
+      waiting = count;
+      if (count > totals.peakWaiting) {
+        totals = { ...totals, peakWaiting: count };
+        save();
+      }
+      notify();
     },
     reset() {
       totals = emptyTotals(now());
@@ -105,5 +114,12 @@ export function createApiMeter({ storage, env, apiUrl, now = () => Date.now() })
 export function installApiMeter(target, meter) {
   const original = target.fetch.bind(target);
   target.fetch = meter.wrap(original);
+  return () => { target.fetch = original; };
+}
+
+export function installApiChain(target, { apiUrl, meter = null, limit }) {
+  const original = target.fetch.bind(target);
+  const counted = meter ? meter.wrap(original) : original;
+  target.fetch = limit(counted, { matches: url => typeof url === "string" && url.startsWith(apiUrl), onWaiting: n => meter && meter.noteWaiting(n) });
   return () => { target.fetch = original; };
 }

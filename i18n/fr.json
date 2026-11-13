@@ -602,7 +602,8 @@
       "warnMinute": "Plus de {{count}} appels dans la dernière minute.",
       "failures": "Réponses en erreur : {{list}}",
       "since": "Compté depuis le {{date}}, dans ce navigateur.",
-      "reset": "Remettre à zéro"
+      "reset": "Remettre à zéro",
+      "peakWaiting": "Appels mis en attente au plus : {{count}}"
     }
   }
 }

@@ -602,7 +602,8 @@
       "warnMinute": "More than {{count}} calls in the last minute.",
       "failures": "Error responses: {{list}}",
       "since": "Counted since {{date}}, in this browser.",
-      "reset": "Reset"
+      "reset": "Reset",
+      "peakWaiting": "Most calls kept waiting: {{count}}"
     }
   }
 }

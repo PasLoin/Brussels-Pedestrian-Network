@@ -1,5 +1,6 @@
 import { i18n } from "../map/i18n.js";
-import { createApiMeter, installApiMeter } from "./api-meter.js";
+import { createApiMeter, installApiChain } from "./api-meter.js";
+import { limitConcurrency } from "./api-queue.js";
 import { store } from "../map/store.js";
 import { guardEnvironment, isLoggedIn, login, loginInProgress, logout, tabId } from "./auth.js";
 import { EMPTY_COLLECTION, boundsBox, boxString, boxWithin, candidateRequest, candidateWindow, candidatesFromMapData, countInBox, mergeCandidates } from "./candidates.js";
@@ -36,7 +37,11 @@ const WIDER_SEARCH = [2, 4];
 const env = envFromDocument(document);
 const storage = window.localStorage;
 const meter = env.apiMeter ? createApiMeter({ storage, env: env.name, apiUrl: env.apiUrl }) : null;
-if (meter) installApiMeter(window, meter);
+installApiChain(window, {
+  apiUrl: env.apiUrl,
+  meter,
+  limit: (fetchImpl, options) => limitConcurrency(fetchImpl, { ...options, max: env.maxConcurrentApi }),
+});
 const osm = createClient(window.OSM);
 const tab = tabId(window.sessionStorage);
 
