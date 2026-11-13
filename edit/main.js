@@ -1,4 +1,5 @@
 import { i18n } from "../map/i18n.js";
+import { createApiMeter, installApiMeter } from "./api-meter.js";
 import { store } from "../map/store.js";
 import { guardEnvironment, isLoggedIn, login, loginInProgress, logout, tabId } from "./auth.js";
 import { EMPTY_COLLECTION, boundsBox, boxString, boxWithin, candidateRequest, candidateWindow, candidatesFromMapData, countInBox, mergeCandidates } from "./candidates.js";
@@ -8,9 +9,10 @@ import { APP_NAME, APP_VERSION, envFromDocument } from "./env.js";
 import { errorKind, errorMessage } from "./errors.js";
 import { bboxOf, lineLengthM } from "./geo.js";
 import { chooseValue, choiceFromIntent, completeChoice, makeIntent, switchMode } from "./intent.js";
+import { linesOf, matchCandidate } from "./match.js";
 import { nextCandidate } from "./next.js";
 import { closeEmptyChangesets, planUpload, queueRoom, uploadGroups, zonesFor } from "./osm.js";
-import { authView, detailView, editLock, navView, queueView, statusView, tooLongMessage } from "./panel.js";
+import { authView, detailView, editLock, meterView, navView, queueView, statusView, tooLongMessage } from "./panel.js";
 import { composeComment, describeGroup, indexCommunes } from "./places.js";
 import { createQueue } from "./queue.js";
 import { coveredIndexes, createReviewStore, samplesAlong } from "./review.js";
@@ -32,8 +34,10 @@ const FIT_DURATION_MS = 250;
 const WIDER_SEARCH = [2, 4];
 
 const env = envFromDocument(document);
-const osm = createClient(window.OSM);
 const storage = window.localStorage;
+const meter = env.apiMeter ? createApiMeter({ storage, env: env.name, apiUrl: env.apiUrl }) : null;
+if (meter) installApiMeter(window, meter);
+const osm = createClient(window.OSM);
 const tab = tabId(window.sessionStorage);
 
 guardEnvironment({ env: env.name, storage, osm });
@@ -821,11 +825,52 @@ exitDialog.addEventListener("click", (e) => {
   if (choice === "keep" || choice === "discard") leaveEdit();
 });
 
+function tileLines(id) {
+  const lines = [];
+  if (store.lastClicked && Number(store.lastClicked.id) === id) lines.push(...linesOf(store.lastClicked.geometry));
+  try {
+    const parts = map.querySourceFeatures("pedestrian", { sourceLayer: "sidewalk_roads", filter: ["==", ["to-number", ["get", "osm_id"]], id] });
+    for (const f of parts) lines.push(...linesOf(f.geometry));
+  } catch {}
+  return lines;
+}
+
+function paddedBox(lines, pad = 0.0003) {
+  const [w, s, e, n] = bboxOf(lines.flat());
+  return [w - pad, s - pad, e + pad, n + pad];
+}
+
 async function editWay(id) {
   enterEdit();
   if (window.BPNMap) window.BPNMap.closePopups();
   await mapReady;
-  selectWay(id);
+  if (env.candidates === "pmtiles") return selectWay(id);
+  const lines = tileLines(id);
+  if (!lines.length) return showStatus({ kind: "noMatch" });
+  await loadCandidates({ box: paddedBox(lines), around: true });
+  const best = matchCandidate(lines, liveFeatures.values());
+  if (!best) return showStatus({ kind: "noMatch" });
+  selectWay(best.feature.properties.osm_id);
+}
+
+const meterEl = document.getElementById("edit-meter");
+let meterFrame = 0;
+function renderMeter() {
+  if (!meter || meterFrame) return;
+  meterFrame = requestAnimationFrame(() => {
+    meterFrame = 0;
+    const open = Boolean(meterEl.querySelector("details[open]"));
+    meterEl.innerHTML = html`${meterView(meter.stats(), i18n, env)}`;
+    if (open) meterEl.querySelector("details").open = true;
+  });
+}
+if (meter) {
+  meter.onChange(renderMeter);
+  renderMeter();
+  setInterval(renderMeter, 15000);
+  meterEl.addEventListener("click", (e) => {
+    if (e.target.closest("[data-edit-action=meter-reset]")) meter.reset();
+  });
 }
 
 enterButton.addEventListener("click", enterEdit);
@@ -843,6 +888,8 @@ window.BPNEdit = Object.freeze({
   enter: enterEdit,
   exit: requestExit,
   isActive: () => active,
+  apiStats: () => (meter ? meter.stats() : null),
+  resetApiStats: () => meter && meter.reset(),
   canEdit: p => Boolean(p && p.sw === "unknown" && matchesWhitelist({ highway: p.highway })),
 });
 

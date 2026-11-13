@@ -49,6 +49,7 @@ export function bindPopups(map) {
     const conf = CLICK_LAYERS.find(c => c.ids.includes(f.layer.id));
     if (!conf) return;
     map.getCanvas().style.cursor = "pointer";
+    store.lastClicked = { id: f.properties.osm_id, geometry: f.geometry };
     clickPopup.setLngLat(e.lngLat).setHTML(conf.format(f.properties)).addTo(map);
   });
 

@@ -456,7 +456,8 @@
       "loading": "Kandidaten laden…",
       "candidates_one": "{{count}} kandidaat in beeld.",
       "candidates_other": "{{count}} kandidaten in beeld.",
-      "error": "Kandidaten konden niet geladen worden: {{message}}"
+      "error": "Kandidaten konden niet geladen worden: {{message}}",
+      "noMatch": "Op de dev-server komt geen straat zonder sidewalk-tag overeen met deze plek."
     },
     "detail": {
       "loading": "Live way lezen…",
@@ -592,6 +593,16 @@
       "stay": "Verder bewerken",
       "pending_one": "{{count}} in wachtrij",
       "pending_other": "{{count}} in wachtrij"
+    },
+    "meter": {
+      "summary": "API-oproepen: {{total}}, waarvan {{minute}} in de laatste minuut",
+      "peakMinute": "Drukste minuut: {{count}}",
+      "peakInFlight": "Meeste gelijktijdige oproepen: {{count}}",
+      "warnInFlight": "Het gebruiksbeleid van de API vraagt hoogstens twee gelijktijdige downloads.",
+      "warnMinute": "Meer dan {{count}} oproepen in de laatste minuut.",
+      "failures": "Foutantwoorden: {{list}}",
+      "since": "Geteld sinds {{date}}, in deze browser.",
+      "reset": "Op nul zetten"
     }
   }
 }

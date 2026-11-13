@@ -11,6 +11,7 @@ export const ENVS = Object.freeze({
     clientId: "5KoHVvJ44fBlMmDP5qSQxN5N_UJGWCX18-e5aIfzO0Q",
     scopes: SCOPES,
     candidates: "live",
+    apiMeter: true,
   }),
   prod: Object.freeze({
     name: "prod",
@@ -19,6 +20,7 @@ export const ENVS = Object.freeze({
     clientId: "",
     scopes: SCOPES,
     candidates: "pmtiles",
+    apiMeter: false,
   }),
 });
 
@@ -42,7 +44,8 @@ export const SETTINGS = Object.freeze({
   longWayWarningM: 200,
   maxNodeShiftM: 10,
   defaultHashtags: Object.freeze(["#BrusselsPedestrianNetwork"]),
-  reviewZoom: 18.6,
+  reviewZoom: null,
+  apiMeterWarnPerMinute: 30,
   reviewStepM: 5,
   reviewTtlMs: 12 * 60 * 60 * 1000,
   sourcePresets: Object.freeze(["survey", "local_knowledge", "streetlevel imagery", "aerial imagery"]),

@@ -34,7 +34,35 @@ export function statusView(state, i18n) {
   if (state.kind === "loading") return t("edit.status.loading");
   if (state.kind === "error") return t("edit.status.error", { message: state.message || "" });
   if (state.kind === "ready") return t("edit.status.candidates", { count: state.count });
+  if (state.kind === "noMatch") return t("edit.status.noMatch");
   return "";
+}
+
+const METER_KINDS = ["map", "wayFull", "way", "ways", "nodes", "changesetCreate", "upload", "changesetClose", "changesets", "user", "oauth", "other"];
+const METER_PATHS = {
+  map: "map", wayFull: "way/…/full", way: "way/…", ways: "ways", nodes: "nodes", changesetCreate: "changeset/create",
+  upload: "changeset/…/upload", changesetClose: "changeset/…/close", changesets: "changesets", user: "user/details", oauth: "oauth2/token", other: "…",
+};
+
+export function meterView(stats, i18n, settings = {}) {
+  const { t } = i18n;
+  if (!stats) return "";
+  const warnMinute = stats.lastMinute > (settings.apiMeterWarnPerMinute || 30);
+  const warnFlight = stats.peakInFlight > 2;
+  const statuses = Object.entries(stats.byStatus);
+  return html`<details class="edit-meter">
+    <summary class="${warnMinute || warnFlight ? "edit-warn" : ""}">${t("edit.meter.summary", { total: stats.total, minute: stats.lastMinute })}</summary>
+    <table class="edit-tags">
+      ${METER_KINDS.filter(k => stats.byKind[k]).map(k => html`<tr><th><code>${METER_PATHS[k]}</code></th><td>${stats.byKind[k]}</td></tr>`)}
+    </table>
+    <p>${t("edit.meter.peakMinute", { count: stats.peakPerMinute })}</p>
+    <p class="${warnFlight ? "edit-warn" : ""}">${t("edit.meter.peakInFlight", { count: stats.peakInFlight })}</p>
+    ${warnFlight && html`<p class="edit-help">${t("edit.meter.warnInFlight")}</p>`}
+    ${warnMinute && html`<p class="edit-help">${t("edit.meter.warnMinute", { count: settings.apiMeterWarnPerMinute || 30 })}</p>`}
+    ${statuses.length > 0 && html`<p>${t("edit.meter.failures", { list: statuses.map(([code, n]) => `${code} × ${n}`).join(", ") })}</p>`}
+    <p class="edit-help">${t("edit.meter.since", { date: i18n.date(stats.since, { dateStyle: "short", timeStyle: "short" }) })}</p>
+    <button type="button" class="edit-link" data-edit-action="meter-reset">${t("edit.meter.reset")}</button>
+  </details>`;
 }
 
 const SIDE_VALUES = ["separate", "yes", "no"];

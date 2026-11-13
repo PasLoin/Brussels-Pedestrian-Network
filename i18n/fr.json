@@ -456,7 +456,8 @@
       "loading": "Chargement des candidats…",
       "candidates_one": "{{count}} candidat dans la vue.",
       "candidates_other": "{{count}} candidats dans la vue.",
-      "error": "Impossible de charger les candidats : {{message}}"
+      "error": "Impossible de charger les candidats : {{message}}",
+      "noMatch": "Aucune rue sans tag sidewalk ne correspond à cet endroit sur le serveur dev."
     },
     "detail": {
       "loading": "Lecture du way sur OSM…",
@@ -592,6 +593,16 @@
       "stay": "Continuer à éditer",
       "pending_one": "{{count}} en attente",
       "pending_other": "{{count}} en attente"
+    },
+    "meter": {
+      "summary": "Appels API : {{total}}, dont {{minute}} dans la dernière minute",
+      "peakMinute": "Pointe sur une minute : {{count}}",
+      "peakInFlight": "Appels simultanés au plus : {{count}}",
+      "warnInFlight": "La politique d'usage de l'API demande deux téléchargements simultanés au plus.",
+      "warnMinute": "Plus de {{count}} appels dans la dernière minute.",
+      "failures": "Réponses en erreur : {{list}}",
+      "since": "Compté depuis le {{date}}, dans ce navigateur.",
+      "reset": "Remettre à zéro"
     }
   }
 }

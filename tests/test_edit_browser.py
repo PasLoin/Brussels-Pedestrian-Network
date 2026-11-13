@@ -1218,11 +1218,7 @@ def test_edit_here_in_the_popup_opens_the_editor_on_that_way(session, fake):
     other = s.page.evaluate("""() => BPNMap.clickPopups.find(c => c.ids.includes('sidewalk-roads'))
       .format({ osm_id: 103, sw: 'documented', highway: 'residential', name: 'rue c', length_m: 70 })""")
     assert "data-bpn-edit-way" not in other
-    s.page.evaluate("""async (markup) => {
-      const { store } = await import('/map/store.js');
-      new maplibregl.Popup().setLngLat(store.map.getCenter()).setHTML(markup).addTo(store.map);
-    }""", html)
-    s.page.click('[data-bpn-edit-way="102"]')
+    click_edit_here(s.page, 102, [list(c) for c in line_at(CENTER, dy=-0.0004)])
     wait_selected(s.page, 102)
     assert edit_ui(s.page)["active"] is True
 
@@ -1249,3 +1245,91 @@ def test_the_selection_and_its_sides_survive_a_basemap_change(session, fake):
     s.page.click('[data-edit-action="mode"][data-mode="sides"]')
     wait(s.page, "async () => { const { store } = await import('/map/store.js'); return !!store.map.getLayer('edit-candidates-left') && store.map.queryRenderedFeatures({ layers: ['edit-candidates-left'] }).length > 0; }")
     assert side_layers(s.page) == [["visible", True], ["visible", True], ["visible", True]]
+
+
+def api_stats(page):
+    return page.evaluate("BPNEdit.apiStats()")
+
+
+def test_the_dev_meter_counts_exactly_the_calls_the_server_received(session, fake):
+    three_streets(fake)
+    s = session()
+    s.page.evaluate("BPNEdit.resetApiStats()")
+    before_map, before_full = fake.count("map"), fake.count("way_full")
+    map_eval(s.page, f"m.jumpTo({{ center: [{CENTER[0] + 0.0002}, {CENTER[1]}], zoom: 17.5 }}); return true;")
+    wait_candidates(s.page, 3)
+    s.page.keyboard.press("ArrowRight")
+    wait_selected(s.page, 101)
+    s.page.keyboard.press("s")
+    wait_selected(s.page, 102)
+    time.sleep(0.8)
+    stats = api_stats(s.page)
+    assert stats["byKind"].get("map", 0) == fake.count("map") - before_map
+    assert stats["byKind"].get("wayFull", 0) == fake.count("way_full") - before_full
+    assert stats["total"] == sum(stats["byKind"].values())
+    assert stats["peakInFlight"] <= 2
+    assert stats["lastMinute"] == stats["total"]
+    s.page.click("#edit-meter summary")
+    text = s.page.inner_text("#edit-meter")
+    assert f"Appels API : {stats['total']}" in text and "way/…/full" in text
+    s.page.click("[data-edit-action=meter-reset]")
+    wait(s.page, "() => BPNEdit.apiStats().total === 0")
+    s.page.reload()
+    wait(s.page, "() => window.BPNEdit && BPNEdit.isActive()")
+    assert api_stats(s.page)["since"] > 0
+
+
+def test_the_meter_records_server_refusals(session, fake):
+    three_streets(fake)
+    fake.inject("map", status=509, body="You have downloaded too much data")
+    s = session()
+    wait(s.page, "() => (BPNEdit.apiStats().byStatus['509'] || 0) === 1")
+    assert api_stats(s.page)["failures"] >= 1
+
+
+def click_edit_here(page, tile_id, coords):
+    page.evaluate("""async ([id, coords]) => {
+      const { store } = await import('/map/store.js');
+      store.lastClicked = { id, geometry: { type: 'LineString', coordinates: coords } };
+      const html = BPNMap.clickPopups.find(c => c.ids.includes('sidewalk-roads'))
+        .format({ osm_id: id, sw: 'unknown', highway: 'residential', name: 'x', length_m: 60 });
+      new maplibregl.Popup().setLngLat(store.map.getCenter()).setHTML(html).addTo(store.map);
+    }""", [tile_id, coords])
+    page.click(f'[data-bpn-edit-way="{tile_id}"]')
+
+
+def test_edit_here_on_dev_finds_the_dev_way_under_the_clicked_tile_way(session, fake):
+    three_streets(fake)
+    s = session(editing=False)
+    wait(s.page, "async () => (await import('/map/store.js')).store.mapReady")
+    tile_coords = [[x, y + 0.00003] for x, y in line_at(CENTER, dy=-0.0004)]
+    click_edit_here(s.page, 987654321, tile_coords)
+    wait_selected(s.page, 102)
+    assert s.page.evaluate("BPNEdit.isActive()") is True
+    assert fake.count("way_full") >= 1
+
+
+def test_edit_here_on_dev_says_so_when_nothing_matches(session, fake):
+    three_streets(fake)
+    s = session(editing=False)
+    wait(s.page, "async () => (await import('/map/store.js')).store.mapReady")
+    far = [[x, y + 0.0002] for x, y in line_at(CENTER, dy=-0.0004)]
+    click_edit_here(s.page, 987654321, far)
+    wait(s.page, "() => document.getElementById('edit-status').textContent.includes('Aucune rue sans tag sidewalk ne correspond')")
+    assert selected_way(s.page) is None
+
+
+def test_the_left_side_line_is_drawn_left_of_the_way_direction(session, fake):
+    fake.add_way(101, [(CENTER[0] - 0.0005, CENTER[1]), (CENTER[0] + 0.0005, CENTER[1])], street("Rue Est", "Ooststraat"))
+    s = session()
+    wait_candidates(s.page, 1)
+    click_way(s.page, CENTER[0], CENTER[1], 101)
+    s.page.click('[data-edit-action="mode"][data-mode="sides"]')
+    time.sleep(0.5)
+    found = map_eval(s.page, f"""
+      const p = m.project([{CENTER[0]}, {CENTER[1]}]);
+      const at = (dy, id) => m.queryRenderedFeatures([[p.x - 2, p.y + dy - 2], [p.x + 2, p.y + dy + 2]], {{ layers: [id] }}).length > 0;
+      const off = 9 + (16 - 9) * (m.getZoom() - 16) / 3;
+      return {{ leftNorth: at(-off, 'edit-candidates-left'), leftSouth: at(off, 'edit-candidates-left'),
+                rightSouth: at(off, 'edit-candidates-right'), rightNorth: at(-off, 'edit-candidates-right') }};""")
+    assert found == {"leftNorth": True, "leftSouth": False, "rightSouth": True, "rightNorth": False}

@@ -456,7 +456,8 @@
       "loading": "Loading candidates…",
       "candidates_one": "{{count}} candidate in view.",
       "candidates_other": "{{count}} candidates in view.",
-      "error": "Could not load candidates: {{message}}"
+      "error": "Could not load candidates: {{message}}",
+      "noMatch": "No street without a sidewalk tag matches this place on the dev server."
     },
     "detail": {
       "loading": "Loading the live way…",
@@ -592,6 +593,16 @@
       "stay": "Keep editing",
       "pending_one": "{{count}} pending",
       "pending_other": "{{count}} pending"
+    },
+    "meter": {
+      "summary": "API calls: {{total}}, {{minute}} in the last minute",
+      "peakMinute": "Busiest minute: {{count}}",
+      "peakInFlight": "Most calls at once: {{count}}",
+      "warnInFlight": "The API usage policy asks for at most two downloads at once.",
+      "warnMinute": "More than {{count}} calls in the last minute.",
+      "failures": "Error responses: {{list}}",
+      "since": "Counted since {{date}}, in this browser.",
+      "reset": "Reset"
     }
   }
 }
