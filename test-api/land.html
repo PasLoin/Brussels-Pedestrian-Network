@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="fr" data-edit-env="dev">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src 'self'; base-uri 'none'; form-action 'none';" />
+  <meta name="referrer" content="no-referrer" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Connexion OpenStreetMap</title>
+  <style>
+    body { font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; margin: 2rem auto; max-width: 32rem; padding: 0 1rem; color: #1f2937; }
+    [hidden] { display: none; }
+  </style>
+</head>
+<body>
+  <h1>Connexion OpenStreetMap</h1>
+  <p id="land-working">Vérification de la connexion…</p>
+  <p id="land-ok" hidden>Connexion terminée, vous pouvez fermer cette fenêtre.</p>
+  <p id="land-missing" hidden>Aucune connexion n&#39;a été lancée depuis ce site. Fermez cette fenêtre et recommencez.</p>
+  <p id="land-expired" hidden>La connexion a pris trop de temps. Fermez cette fenêtre et recommencez.</p>
+  <p id="land-mismatch" hidden>Cette connexion a été lancée pour un autre serveur OSM. Fermez cette fenêtre et recommencez.</p>
+  <p id="land-denied" hidden>L&#39;accès a été refusé sur OpenStreetMap.</p>
+  <p id="land-nocode" hidden>Cette page sert uniquement à terminer une connexion OpenStreetMap.</p>
+  <script type="module" src="../edit/land.js"></script>
+</body>
+</html>

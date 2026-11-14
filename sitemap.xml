@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://pasloin.github.io/Brussels-Pedestrian-Network/</loc>
+    <lastmod>2026-11-14</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://pasloin.github.io/Brussels-Pedestrian-Network/"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://pasloin.github.io/Brussels-Pedestrian-Network/fr/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://pasloin.github.io/Brussels-Pedestrian-Network/"/>
+  </url>
+  <url>
+    <loc>https://pasloin.github.io/Brussels-Pedestrian-Network/fr/</loc>
+    <lastmod>2026-11-14</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://pasloin.github.io/Brussels-Pedestrian-Network/"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://pasloin.github.io/Brussels-Pedestrian-Network/fr/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://pasloin.github.io/Brussels-Pedestrian-Network/"/>
+  </url>
+  <url>
+    <loc>https://pasloin.github.io/Brussels-Pedestrian-Network/stats.html</loc>
+    <lastmod>2026-11-14</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://pasloin.github.io/Brussels-Pedestrian-Network/stats.html"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://pasloin.github.io/Brussels-Pedestrian-Network/fr/stats.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://pasloin.github.io/Brussels-Pedestrian-Network/stats.html"/>
+  </url>
+  <url>
+    <loc>https://pasloin.github.io/Brussels-Pedestrian-Network/fr/stats.html</loc>
+    <lastmod>2026-11-14</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://pasloin.github.io/Brussels-Pedestrian-Network/stats.html"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://pasloin.github.io/Brussels-Pedestrian-Network/fr/stats.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://pasloin.github.io/Brussels-Pedestrian-Network/stats.html"/>
+  </url>
+  <url>
+    <loc>https://pasloin.github.io/Brussels-Pedestrian-Network/evolution.html</loc>
+    <lastmod>2026-11-14</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://pasloin.github.io/Brussels-Pedestrian-Network/evolution.html"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://pasloin.github.io/Brussels-Pedestrian-Network/fr/evolution.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://pasloin.github.io/Brussels-Pedestrian-Network/evolution.html"/>
+  </url>
+  <url>
+    <loc>https://pasloin.github.io/Brussels-Pedestrian-Network/fr/evolution.html</loc>
+    <lastmod>2026-11-14</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://pasloin.github.io/Brussels-Pedestrian-Network/evolution.html"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://pasloin.github.io/Brussels-Pedestrian-Network/fr/evolution.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://pasloin.github.io/Brussels-Pedestrian-Network/evolution.html"/>
+  </url>
+  <url>
+    <loc>https://pasloin.github.io/Brussels-Pedestrian-Network/about.html</loc>
+    <lastmod>2026-11-14</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://pasloin.github.io/Brussels-Pedestrian-Network/about.html"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://pasloin.github.io/Brussels-Pedestrian-Network/fr/about.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://pasloin.github.io/Brussels-Pedestrian-Network/about.html"/>
+  </url>
+  <url>
+    <loc>https://pasloin.github.io/Brussels-Pedestrian-Network/fr/about.html</loc>
+    <lastmod>2026-11-14</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://pasloin.github.io/Brussels-Pedestrian-Network/about.html"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://pasloin.github.io/Brussels-Pedestrian-Network/fr/about.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://pasloin.github.io/Brussels-Pedestrian-Network/about.html"/>
+  </url>
+</urlset>

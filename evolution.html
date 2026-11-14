@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en" data-locale="en-GB" data-time-zone="Europe/Brussels" data-root="./">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' https://unpkg.com 'unsafe-inline'; img-src 'self' https://tiles.openfreemap.org https://www.openstreetmap.org data:; connect-src 'self' https://tiles.openfreemap.org https://unpkg.com; worker-src blob:; child-src blob:; font-src https://tiles.openfreemap.org; object-src 'none'; base-uri 'self'; upgrade-insecure-requests;" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Brussels Pedestrian Network trends</title>
+  <meta name="description" content="Monthly evolution of pedestrian mapping in Brussels on OpenStreetMap: network, documented sidewalks and crossings over time." />
+  <meta property="og:title" content="Brussels Pedestrian Network trends" />
+  <meta property="og:description" content="Monthly evolution of pedestrian mapping in Brussels on OpenStreetMap: network, documented sidewalks and crossings over time." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://pasloin.github.io/Brussels-Pedestrian-Network/evolution.html" />
+  <meta property="og:locale" content="en_GB" />
+  <meta property="og:locale:alternate" content="fr_BE" />
+  <meta name="twitter:card" content="summary_large_image" />
+
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+  <link rel="canonical" href="https://pasloin.github.io/Brussels-Pedestrian-Network/evolution.html" />
+  <link rel="alternate" hreflang="en" href="https://pasloin.github.io/Brussels-Pedestrian-Network/evolution.html" />
+  <link rel="alternate" hreflang="fr" href="https://pasloin.github.io/Brussels-Pedestrian-Network/fr/evolution.html" />
+  <link rel="alternate" hreflang="x-default" href="https://pasloin.github.io/Brussels-Pedestrian-Network/evolution.html" />
+  <style>
+    .lang-switch { display: inline-flex; gap: 0.45em; white-space: nowrap; }
+    .lang-switch a:not([aria-current]) { opacity: 0.6; }
+    .lang-switch a:not([aria-current]):hover { opacity: 1; }
+    .lang-switch a[aria-current] { font-weight: 700; text-decoration: none; pointer-events: none; }
+    #lang-banner { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 10000; display: flex; align-items: center; gap: 12px; box-sizing: border-box; width: max-content; max-width: calc(100vw - 24px); padding: 10px 12px 10px 16px; background: #1f2937; color: #fff; border-radius: 10px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25); font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
+    #lang-banner[hidden] { display: none; }
+    #lang-banner a { color: #93c5fd; font-weight: 600; white-space: nowrap; }
+    #lang-banner button { background: none; border: 0; color: inherit; font-size: 20px; line-height: 1; cursor: pointer; padding: 2px 6px; }
+  </style>
+  <script type="application/json" id="i18n-dict">{"about.footer":"Maintained by {{maintainer}}. Data © {{osm}} contributors, ODbL licence.","basemap.blackWhite.label":"Zinneke B\u0026W","basemap.blackWhite.title":"ZinnekeTiles black and white","basemap.menu":"Base map","basemap.urbisOrtho.label":"UrbIS Ortho","basemap.urbisOrtho.title":"UrbIS orthophoto + topographic lines","common.chart.tooltip":"{{label}}: {{value}}","common.error":"Error: {{message}}","common.footer.data":"Data:","common.footer.source":"Source","common.loading":"Loading…","common.nav.about":"Methodology","common.nav.backToMap":"Back to the map","common.nav.evolution":"Trends","common.nav.map":"Map","common.nav.stats":"Statistics","edit.auth.disabled":"Editing is disabled.","edit.auth.expired":"Session expired, please log in again.","edit.auth.failed":"Login failed or cancelled.","edit.auth.loggedAs":"Logged in as {{name}}","edit.auth.login":"Log in to OSM","edit.auth.logout":"Log out","edit.auth.pending":"A login is already in progress in another tab.","edit.auth.retry":"Restart login","edit.auth.unconfigured":"OAuth client not configured for this environment.","edit.auth.waiting":"Finish logging in in the OSM window.","edit.data.active_one":"{{count}} street loaded from {{name}}.","edit.data.active_other":"{{count}} streets loaded from {{name}}.","edit.data.errorEmpty":"No usable street in this file.","edit.data.errorNotOsm":"This file is not an OSM XML export.","edit.data.errorRead":"The file could not be read.","edit.data.errorTooBig":"File too large: {{size}} MB, 50 at most.","edit.data.errorUnsaved":"This file holds objects not uploaded yet (negative ID or local change in JOSM). Export the data from the dev server.","edit.data.help":"Load a .osm export of the dev server: the “Sidewalk tags” layer then shows its streets with their dev IDs, as the tiles will in production.","edit.data.latest":"Latest change in the export: {{date}}","edit.data.load":"Load a .osm export","edit.data.loading":"Reading {{name}}…","edit.data.replace":"Load another export","edit.data.reset":"Back to the production tiles","edit.data.title":"Dev server data","edit.detail.alreadyFixed":"No longer matches the whitelist: already fixed since.","edit.detail.editable":"Still matches the whitelist: editable.","edit.detail.error":"Could not read the way: {{message}}","edit.detail.gone":"{{way}} no longer exists on OSM (deleted or merged).","edit.detail.lastEdit":"Last edit","edit.detail.loading":"Loading the live way…","edit.detail.version":"Version","edit.dock.bottom":"Panel at the bottom","edit.dock.left":"Panel on the left","edit.dock.position":"Panel position","edit.dock.right":"Panel on the right","edit.error.auth":"your OSM session has expired or the authorisation was revoked. Log in again; your queue is kept.","edit.error.bandwidth":"too much data downloaded from OSM recently. Wait a few minutes before moving the map again.","edit.error.forbidden":"OSM refused the request: the account may be blocked or must accept new terms on openstreetmap.org.","edit.error.maintenance":"the OSM server is in maintenance (read-only). Try again later; your queue is kept.","edit.error.network":"no network connection, or the OSM server cannot be reached. Nothing was lost: try again once connected.","edit.error.pausedBandwidth":"the OSM server limits downloads: calls paused until about {{time}}.","edit.error.pausedRate":"too many map loads in one minute: loading paused until about {{time}}.","edit.error.rateLimit":"OSM limits how many edits a recent account can send per hour. Wait a little before sending the rest; your queue is kept.","edit.error.server":"the OSM server returned an error. Try again later; your queue is kept.","edit.error.tooBig":"the area is too large or too dense to load the candidates: zoom in.","edit.error.unknown":"{{message}}","edit.form.add":"Add to queue","edit.form.both":"Both sides","edit.form.differentSides":"Different sides…","edit.form.direction":"Left and right follow the way's direction: blue on the left, orange on the right.","edit.form.fitting":"Showing the whole street…","edit.form.left":"Left","edit.form.lookTime_one":"Take the time to look at the street: {{count}} more second.","edit.form.lookTime_other":"Take the time to look at the street: {{count}} more seconds.","edit.form.needOrtho":"Switch to the UrbIS orthophoto to edit: a sidewalk is judged on the image, not on a drawn map.","edit.form.next":"Next","edit.form.notVisible":"This street has not been seen whole yet. Show it whole once before choosing; after that you can zoom in freely.","edit.form.paceCooldown_one":"You are still editing too fast. {{count}} second pause before you can go on: favour quality over quantity.","edit.form.paceCooldown_other":"You are still editing too fast. {{count}} second pause before you can go on: favour quality over quantity.","edit.form.queueFull":"This street would open one more area, beyond the {{max}} changesets allowed per upload. Prepare and send the queue before going on here.","edit.form.queued":"In queue: {{tags}}","edit.form.reviewDetail":"Go along the whole street at zoom {{zoom}} or closer before choosing: {{percent}} % seen.","edit.form.reviewNext":"Go to the part not seen yet","edit.form.right":"Right","edit.form.sameSides":"Same value on both sides","edit.form.shortcuts":"Keys: s, y, n set the value · d different sides · b both sides · → next · p skip · Esc deselect","edit.form.shortcutsTitle":"Keyboard shortcuts","edit.form.showOrtho":"Show the UrbIS orthophoto","edit.form.showWhole":"Show the whole street","edit.form.skip":"Skip","edit.form.tooFast":"You are editing too fast: favour quality over quantity.","edit.form.unqueue":"Remove","edit.form.update":"Update in queue","edit.land.denied":"Access was refused on OpenStreetMap.","edit.land.expired":"The login took too long. Close this window and start again.","edit.land.mismatch":"This login was started for another OSM server. Close this window and start again.","edit.land.missing":"No login was started from this site. Close this window and start again.","edit.land.nocode":"This page only completes an OpenStreetMap login.","edit.land.ok":"Login complete, you can close this window.","edit.land.title":"OpenStreetMap login","edit.land.working":"Checking the login…","edit.meter.failures":"Error responses: {{list}}","edit.meter.peakInFlight":"Most calls at once: {{count}}","edit.meter.peakMinute":"Busiest minute: {{count}}","edit.meter.peakWaiting":"Most calls kept waiting: {{count}}","edit.meter.reset":"Reset","edit.meter.since":"Counted since {{date}}, in this browser.","edit.meter.summary":"API calls: {{total}}, {{minute}} in the last minute","edit.meter.warnInFlight":"The API usage policy asks for at most two downloads at once.","edit.meter.warnMinute":"More than {{count}} calls in the last minute.","edit.mode.discard":"Discard the changes","edit.mode.enter":"Edit sidewalks","edit.mode.exit":"Exit","edit.mode.exitText_one":"{{count}} change has not been sent to OSM yet. If you keep it, it stays in this browser.","edit.mode.exitText_other":"{{count}} changes have not been sent to OSM yet. If you keep them, they stay in this browser.","edit.mode.exitTitle":"Leave editing mode?","edit.mode.keep":"Keep for later","edit.mode.pending_one":"{{count}} pending","edit.mode.pending_other":"{{count}} pending","edit.mode.stay":"Keep editing","edit.mode.title":"Editing mode","edit.nav.next":"Next candidate","edit.nav.none":"Every candidate in view has been visited.","edit.nav.resetSkipped":"Show again","edit.nav.searching":"Looking for nearby streets…","edit.nav.skipped_one":"{{count}} street skipped.","edit.nav.skipped_other":"{{count}} streets skipped.","edit.panel.title":"Sidewalk editing","edit.plan.alreadyFixed":"already fixed since, removed from the queue.","edit.plan.changed":"The queue changed since it was prepared: check the new plan and send again.","edit.plan.changesets_one":"{{count}} changeset will be created for {{ways}} way(s).","edit.plan.changesets_other":"{{count}} changesets will be created for {{ways}} way(s).","edit.plan.comment":"Comment of changeset {{n}}","edit.plan.deleted":"deleted on OSM, removed from the queue.","edit.plan.geometryChanged":"geometry changed since (reversed or split), removed from the queue.","edit.plan.modifiedMeanwhile":"modified meanwhile, removed from the queue.","edit.plan.nodeMoved":"a node was moved {{distance}} m since it was queued: check the way's history in iD or JOSM, removed from the queue.","edit.plan.tooMany":"The queue spreads over {{count}} areas, more than the {{max}} changesets allowed: send part of it first.","edit.queue.empty":"No pending edits.","edit.queue.full":"Limit reached: only streets close to the areas already queued can still be added.","edit.queue.remove":"Remove","edit.queue.title_one":"Edit queue ({{count}})","edit.queue.title_other":"Edit queue ({{count}})","edit.queue.undo":"Undo last","edit.queue.zones_one":"{{count}} changeset out of {{max}} at most per upload.","edit.queue.zones_other":"{{count}} changesets out of {{max}} at most per upload.","edit.result.closedEmpty_one":"{{count}} empty changeset closed.","edit.result.closedEmpty_other":"{{count}} empty changesets closed.","edit.result.conflict_one":"{{way}} was modified on OSM meanwhile: nothing was written for its group. It has been removed from the queue; prepare again.","edit.result.conflict_other":"{{way}} were modified on OSM meanwhile: nothing was written for their group. They have been removed from the queue; prepare again.","edit.result.failed":"Sending failed: {{message}}","edit.result.retried_one":"Conflict detected: the group was re-read and sent again once.","edit.result.retried_other":"Conflicts detected: {{count}} groups were re-read and sent again once.","edit.result.sent_one":"{{count}} changeset sent:","edit.result.sent_other":"{{count}} changesets sent:","edit.status.candidates_one":"{{count}} candidate in view.","edit.status.candidates_other":"{{count}} candidates in view.","edit.status.error":"Could not load candidates: {{message}}","edit.status.loading":"Loading candidates…","edit.status.noMatch":"No street without a sidewalk tag matches this place on the dev server.","edit.status.splitOnDev_one":"This street matches {{count}} way on the dev server.","edit.status.splitOnDev_other":"This street matches {{count}} ways on the dev server (split since the import): pick the right one on the map.","edit.status.zoomIn":"Zoom in to level {{zoom}} to load candidates.","edit.status.zoomKept_one":"Zoom in to level {{zoom}} to load more candidates; the candidate already loaded stays on the map.","edit.status.zoomKept_other":"Zoom in to level {{zoom}} to load more candidates; the {{count}} candidates already loaded stay on the map.","edit.upload.busy":"Working…","edit.upload.commentHelp":"Each changeset gets its own comment (street or municipality, then the action), shown in the plan before sending; your remark is added at the end.","edit.upload.hashtags":"Hashtags","edit.upload.hashtagsTooLong":"Hashtags too long: {{length}} characters, OSM accepts at most {{max}}. Shorten them before sending.","edit.upload.loginFirst":"Log in to send.","edit.upload.prepare":"Prepare sending","edit.upload.remark":"Remark (optional)","edit.upload.remarkPlaceholder":"e.g. checked on site","edit.upload.review":"Ask for a review","edit.upload.send_one":"Send {{count}} changeset","edit.upload.send_other":"Send {{count}} changesets","edit.upload.source":"Sources (required)","edit.upload.sourceOther":"Other sources, separated by ;","edit.upload.sourceRequired":"Give at least one source.","edit.upload.sourceTooLong":"Sources too long: {{length}} characters, OSM accepts at most {{max}}. Shorten them before sending.","edit.upload.tagTooLong":"The {{key}} tag is longer than the {{max}} characters OSM accepts.","edit.value.no":"no sidewalk","edit.value.separate":"separate (mapped as its own way)","edit.value.yes":"yes (present, not mapped separately)","evolution.compare.fwSubtitle":"Detail of highway=footway ways by footway=* subtag, same two dates.","evolution.compare.fwTitle":"Footway subtypes: snapshot vs today","evolution.compare.hwSubtitle":"Comparison between the last monthly snapshot ({{snapshot}}) and the most recent daily extract ({{today}}). Only dedicated pedestrian infrastructure is compared: roads (primary, etc.) change very little from one day to the next and are covered below.","evolution.compare.hwTitle":"Km by pedestrian infrastructure type: snapshot vs today","evolution.compare.snapshotOf":"Snapshot of {{date}}","evolution.compare.title":"Since the last monthly snapshot","evolution.compare.today":"Today ({{date}})","evolution.currentStats":"Current statistics","evolution.deltas.at":"Change at {{date}}","evolution.deltas.crossingNodes":"Crossing nodes","evolution.deltas.crossingTagged":"Tagged crossing ratio","evolution.deltas.crossingWays":"footway=crossing ways","evolution.deltas.footwaySidewalk":"footway=sidewalk","evolution.deltas.pedNetwork":"Pedestrian network","evolution.deltas.points":"{{value}} pts","evolution.deltas.range":"Change from {{from}} to {{to}}","evolution.deltas.sidewalksDocumented":"Documented sidewalks","evolution.deltas.sidewalksSeparate":"Separate sidewalks","evolution.deltas.since":"{{delta}} since {{date}}","evolution.deltas.tactilePaving":"Tactile paving","evolution.deltas.title":"Trends","evolution.emptyHistory":"Empty history. Run the \"Compute History\" workflow.","evolution.footways.mixSubtitle":"sidewalk / crossing / link / traffic_island / other / no tag. “Other”: a footway=* subtag outside this list; “no tag”: no subtag.","evolution.footways.mixTitle":"footway=* subtags (stacked)","evolution.footways.title":"Footway composition","evolution.intro_one":"{{snapshots}} snapshots covering {{count}} year of the Brussels pedestrian network in OpenStreetMap.","evolution.intro_other":"{{snapshots}} snapshots covering {{count}} years of the Brussels pedestrian network in OpenStreetMap.","evolution.loading":"Loading history…","evolution.meta.area":"Area: Brussels-Capital Region (OSM relation 54094)","evolution.meta.daily":"* = latest daily extract ({{date}})","evolution.meta.pedKm":"{{now}} km of pedestrian ways now ({{first}} km at the first snapshot)","evolution.meta.range":"From {{from}} to {{to}}","evolution.network.allSubtitle":"Pedestrian, road, cycleway. “Road” covers ways from residential to primary where pedestrians walk on the carriageway.","evolution.network.allTitle":"Overall network by category","evolution.network.hwSubtitle":"The six most common types by km.","evolution.network.hwTitle":"Detail by highway type","evolution.network.pedTitle":"Dedicated pedestrian infrastructure","evolution.network.title":"Network length (km)","evolution.period.from":"From","evolution.period.full":"Full period","evolution.period.fullInfo_one":"Full period · {{count}} point","evolution.period.fullInfo_other":"Full period · {{count}} points","evolution.period.hint":"The vertical scale of the charts adapts to the chosen period, which makes small variations visible. Default: the last 6 months.","evolution.period.last6Months":"Last 6 months","evolution.period.title":"Analysis period","evolution.period.to":"to","evolution.period.zoomInfo_one":"{{count}} point shown (zoom active)","evolution.period.zoomInfo_other":"{{count}} points shown (zoom active)","evolution.quality.accSubtitle":"% of footways with surface, % of footways with smoothness, % of crossings with tactile_paving.","evolution.quality.accTitle":"Accessibility: additional tags","evolution.quality.swSubtitle":"% of roads (residential → primary) with an explicit sidewalk tag (separate, yes, both, no), and the share still undocumented.","evolution.quality.swTitle":"Sidewalks: share of documented roads","evolution.quality.title":"Pedestrian mapping quality","evolution.quality.xingSubtitle":"A crossing is correctly mapped when it has both a highway=crossing node and a footway=crossing way. The gap between the two curves is the number of crossings left to complete.","evolution.quality.xingTitle":"Crossings: nodes and ways","evolution.roadType.primary":"Primary","evolution.roadType.residential":"Residential","evolution.roadType.secondary":"Secondary","evolution.roadType.tertiary":"Tertiary","evolution.roadType.total_one":"{{count}} road in total","evolution.roadType.total_other":"{{count}} roads in total","evolution.series.continuousCrossings":"Continuous crossings","evolution.series.crossingNodes":"highway=crossing nodes","evolution.series.crossingTactilePaving":"Crossing tactile_paving","evolution.series.crossingWays":"footway=crossing ways","evolution.series.cycleway":"Cycleway","evolution.series.documentedAnyTag":"Documented (any tag)","evolution.series.footwaySmoothness":"Footway smoothness=*","evolution.series.footwaySurface":"Footway surface=*","evolution.series.noExplicit":"no (explicit)","evolution.series.noTag":"no tag","evolution.series.notDocumented":"Not documented","evolution.series.other":"other","evolution.series.otherRecognised":"other (recognised subtag)","evolution.series.pedestrian":"Pedestrian","evolution.series.roads":"Roads","evolution.sidewalks.byTypeSubtitle":"Same composition (separate / yes / partial / no / no tag), broken down by road type, for the latest point of the selected period.","evolution.sidewalks.byTypeTitle":"Detail by road type","evolution.sidewalks.mixSubtitle":"separate / yes / partial / no / no tag. When roads move from “yes” to “separate”, their sidewalks have been drawn as separate ways.","evolution.sidewalks.mixTitle":"Sidewalk tags (stacked)","evolution.sidewalks.noData":"Detail by road type not yet available for {{date}}. It will appear after the next extraction.","evolution.sidewalks.noDataUndated":"Detail by road type not yet available.","evolution.sidewalks.title":"Composition of sidewalk tags on roads","header.buildDate":"Computed on {{date}}","header.editHint":"Available from zoom {{zoom}}","header.editInOsm":"Edit on openstreetmap.org","header.flowThreshold":"Road flow, minimum","header.osmDate":"OSM data from {{date}}","header.osmDateUnknown":"OSM data: unknown date","header.pages":"Site pages","header.subtitle":"Simulated pedestrian flows and OpenStreetMap quality control in Brussels","lang.banner.dismiss":"Dismiss","lang.banner.switch":"Switch to English","lang.banner.text":"This page is also available in English.","lang.label":"Language","layer.crossingCandidates":"Crossing without footway=crossing?","layer.elevator":"Lift","layer.flow.cycleway":"Flow on cycle tracks","layer.flow.pedestrian":"Pedestrian flow","layer.flow.road":"Flow on roads","layer.highway.cycleway":"Cycle track","layer.highway.footway":"Sidewalk / footpath","layer.highway.livingStreet":"Living street","layer.highway.path":"Path","layer.highway.pedestrian":"Pedestrian zone","layer.highway.platform":"Stop platform","layer.highway.steps":"Steps","layer.highway.track":"Rural / forest track","layer.island.isolated":"Isolated island","layer.island.level":"Level discontinuity","layer.island.unjoined":"Missing junction (≤ 2 m)","layer.islands":"Island disconnected from the network","layer.kerb.missing":"Kerb missing","layer.kerb.untagged":"Kerb without tactile_paving","layer.missingCrossing.missingTag":"footway=crossing tag missing","layer.missingCrossing.missingWay":"Way not mapped","layer.missingCrossing.wrongTag":"Tagged footway=sidewalk","layer.missingCrossings":"Missing crossing","layer.sidewalk.documented":"documented (both)","layer.sidewalk.partial":"partial (1 side)","layer.sidewalk.unknown":"no tag","layer.sidewalkGaps":"Sidewalk on one side only","layer.sidewalkTags":"Sidewalk tags","layer.tactilePaving":"Inconsistent tactile paving","legend.deselectAll":"Deselect all","legend.filterByType":"Filter by type","legend.section.network":"Base network","legend.section.quality":"Spatial analysis and quality","legend.section.routing":"Simulated routing","legend.selectAll":"Select all","legend.title":"Layers","map.sourceCode":"Source code","map.zoom":"zoom","meta.about.description":"Routing costs, criteria of the quality-control layers and calculation of the Brussels Pedestrian Network indicators.","meta.about.title":"Brussels Pedestrian Network methodology","meta.evolution.description":"Monthly evolution of pedestrian mapping in Brussels on OpenStreetMap: network, documented sidewalks and crossings over time.","meta.evolution.title":"Brussels Pedestrian Network trends","meta.index.description":"Map of simulated pedestrian flows in Brussels built from OpenStreetMap, with quality-control layers to fix sidewalks and crossings.","meta.index.title":"Simulated pedestrian flows and OpenStreetMap QA in Brussels","meta.stats.description":"Completeness statistics for the Brussels pedestrian network in OpenStreetMap: documented sidewalks and connected crossings.","meta.stats.title":"Brussels Pedestrian Network statistics","nav.computedIn":"Computed in {{ms}} ms","nav.computing":"Computing…","nav.exit":"Exit route","nav.loadingGraph":"Loading the graph…","nav.noRoute":"No route found","nav.placeEnd":"Click to set the destination","nav.placeStart":"Click on the map to set the start","nav.start":"Route","nav.unavailable":"Route unavailable","notFound.text":"This page does not exist or has moved.","notFound.title":"Page not found","popup.crossingCandidate.problem":"Connects a sidewalk on each side of a road but lacks the footway=crossing tag","popup.editHere":"Edit here","popup.flow.title":"Simulated flow","popup.infra.cyclewayFootYes":"Cycle track, pedestrians allowed","popup.infra.cyclewayNoFoot":"Cycle track without foot=yes","popup.infra.pedestrian":"Pedestrian","popup.infra.road":"Roadway","popup.island.isolatedProblem":"Group of ways with no link to the main network","popup.island.isolatedTitle":"Island isolated from the network","popup.island.levelProblem":"Steps whose level=* does not overlap that of a directly connected way: the link is theoretically impassable","popup.island.unjoinedProblem":"Almost touches the main network but shares no node with it","popup.island.unjoinedTitle":"Missing junction","popup.kerb.missingProblem":"No barrier=kerb or kerb=no node found at this end","popup.kerb.untaggedProblem":"barrier=kerb or kerb=no node present but without a tactile_paving tag","popup.label.adjacentWay":"Adjacent way","popup.label.crossedStreet":"Crossed street","popup.label.crossing":"Crossing","popup.label.crossingNode":"Crossing node","popup.label.crossingWay":"Crossing way","popup.label.edit":"Edit","popup.label.gapToNetwork":"Gap to the network","popup.label.infrastructure":"Infrastructure","popup.label.kerb":"Kerb","popup.label.kerbSide":"Kerb, side {{side}}","popup.label.length":"Length","popup.label.levels":"Levels","popup.label.nearestCrossing":"Nearest footway=crossing","popup.label.node":"Node","popup.label.problem":"Problem","popup.label.relativeFlow":"Relative flow","popup.label.status":"Status","popup.label.street":"Street","popup.label.types":"Types","popup.label.way":"Way","popup.label.ways":"Ways","popup.levels.missing":"{{values}}: level {{level}} not connected","popup.levels.untagged":"0 (untagged)","popup.missingCrossing.missingTagProblem":"Footway connected but without the footway=crossing tag","popup.missingCrossing.missingWayProblem":"No footway connected to the node","popup.missingCrossing.missingWayTitle":"Crossing not mapped","popup.missingCrossing.wrongTagProblem":"The way crossing the road at the crossing node has footway={{value}} instead of footway=crossing","popup.missingCrossing.wrongTagTitle":"Crossing tagged footway={{value}}","popup.note.notChecked":"not checked: the way ends at the crossing node","popup.note.radius":"(radius {{radius}} m)","popup.note.sameCrossing":"(same crossing as the previous one)","popup.sidewalk.documented":"Both sides documented","popup.sidewalk.partial":"Only one side documented","popup.sidewalk.unknown":"No sidewalk tag","popup.sidewalk.yes":"sidewalk=yes, to be mapped as separate","popup.tactile.reason.incorrectNotMixed":"incorrect expected: one kerb yes + one kerb no","popup.tactile.reason.valueMismatch":"Kerb tactile_paving differs from the crossing's","popup.value.absent":"missing","route.clear":"Clear route","route.cyclewayNoFoot":"Cycle track without foot=yes","route.pedestrian":"Pedestrian","route.roadway":"Roadway","route.title":"Route","route.walkTime":"≈ {{minutes}} min walk","stats.completeness.intro":"Average of the five indicators below. The calculation is described in the {{link}}.","stats.completeness.methodologyLink":"methodology","stats.completeness.outOf100":"out of 100","stats.completeness.title":"Pedestrian network completeness","stats.crossings.chart":"Crossing status","stats.crossings.continuous":"Continuous","stats.crossings.excluded":"On an excluded way","stats.crossings.intro":"Status of the highway=crossing nodes found on the analysable network.","stats.crossings.missingTag":"Missing tag","stats.crossings.missingTagSub":"footway=crossing missing","stats.crossings.missingWay":"Missing way","stats.crossings.missingWaySub":"to be mapped","stats.crossings.nodes":"Crossing nodes","stats.crossings.nodesSub":"analysed","stats.crossings.ok":"Way + tag OK","stats.crossings.title":"Pedestrian crossings","stats.crossings.wrongTag":"Wrong tag","stats.crossings.wrongTagSub":"tagged footway=sidewalk","stats.indicator.continuity.hint":"roads with a sidewalk on both sides, among those with at least one","stats.indicator.continuity.label":"Sidewalk continuity","stats.indicator.crossingsConnected.hint":"highway=crossing with a connected footway","stats.indicator.crossingsConnected.label":"Connected crossings","stats.indicator.crossingsTagged.hint":"footway=crossing present on the connected way","stats.indicator.crossingsTagged.label":"Fully tagged crossings","stats.indicator.sidewalkSeparate.hint":"all existing sidewalks mapped as separate (ideal form)","stats.indicator.sidewalkSeparate.label":"Sidewalks mapped separately","stats.indicator.sidewalkTags.hint":"(separate + yes + documented + ½ partial)","stats.indicator.sidewalkTags.label":"Documented sidewalk tags","stats.infra.cyclewayFootYes":"Cycleway (foot=yes)","stats.infra.cyclewayNoFoot":"Cycleway (no foot)","stats.infra.pedestrian":"Pedestrian","stats.infra.road":"Road","stats.network.chartCategory":"km by category","stats.network.chartHighway":"km by highway type","stats.network.cycleways":"Cycleways","stats.network.cyclewaysSub":"foot=yes: {{footYes}} · no foot: {{noFoot}}","stats.network.density":"Pedestrian/road density","stats.network.densitySub":"pedestrian km / road km","stats.network.edges":"Edges","stats.network.nodes":"Nodes","stats.network.pedestrian":"Dedicated pedestrian","stats.network.roads":"Roads","stats.network.title":"Network","stats.network.totalLength":"Total length","stats.sidewalk.documented":"documented","stats.sidewalk.partial":"partial","stats.sidewalk.unknown":"unknown","stats.sidewalkTags.chartCount":"Segments by status","stats.sidewalkTags.chartKm":"km by status","stats.sidewalkTags.documented":"Documented","stats.sidewalkTags.documentedSub":"separate + yes + documented","stats.sidewalkTags.partial":"Partial","stats.sidewalkTags.segments":"Road segments","stats.sidewalkTags.segmentsAxis":"segments","stats.sidewalkTags.title":"Sidewalk tags","stats.sidewalkTags.untagged":"Untagged","stats.simulation.avgDistance":"Average distance","stats.simulation.computeTime":"Computation time","stats.simulation.odPoints":"OD points","stats.simulation.title":"Simulation","stats.simulation.trips":"Routed trips","stats.spatial.analysed":"Roads analysed","stats.spatial.bothSides":"Both sides","stats.spatial.chartFootways":"Footways kept (composition)","stats.spatial.chartResult":"Result per segment","stats.spatial.excluded_one":"{{count}} excluded (sidewalk=no documented)","stats.spatial.excluded_other":"{{count}} excluded (sidewalk=no documented)","stats.spatial.noSide":"No side","stats.spatial.oneSide":"One side only","stats.spatial.title":"Spatial analysis of sidewalks"}</script>
+  <script type="application/json" id="i18n-languages">{"current":"en","isRoot":true,"languages":[{"banner":{"dismiss":"Dismiss","switch":"Switch to English","text":"This page is also available in English."},"href":"./evolution.html","lang":"en","name":"English"},{"banner":{"dismiss":"Fermer","switch":"Passer en français","text":"Cette page existe aussi en français."},"href":"./fr/evolution.html","lang":"fr","name":"Français"}]}</script>
+  <script src="./i18n.js"></script>
+  <script src="./lang.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f4f5f6;
+      --surface: #fff;
+      --border: #d4d6d9;
+      --text: #22252a;
+      --text-dim: #4a4f55;
+      --text-muted: #6b7077;
+      --green: #557d68;
+      --red: #c0392b;
+      --orange: #c27d2a;
+      --blue: #2563eb;
+      --purple: #6c3bbd;
+      --cyan: #0e7490;
+    }
+
+    body {
+      font-family: system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+      font-size: 13px;
+    }
+
+    .page-header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 0;
+    }
+    .page-header-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 20px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .page-header h1 { font-size: 18px; font-weight: 650; }
+    .page-header .home { font-size: 13px; color: var(--text-dim); text-decoration: none; display: block; }
+    .page-header .home:hover { text-decoration: underline; }
+    .page-header-right {
+      display: flex; align-items: baseline; gap: 16px;
+      font-size: 11px; color: var(--text-muted);
+    }
+    .page-header-right a { color: var(--text-dim); text-decoration: none; }
+    .page-header-right a:hover { text-decoration: underline; }
+
+    main a { color: #1d5fa8; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 20px 20px 48px; }
+
+    .intro {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 14px 16px;
+      margin-bottom: 24px;
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+    .intro strong { color: var(--text); }
+    .intro .meta {
+      margin-top: 8px;
+      font-size: 11px;
+      color: var(--text-muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .section { margin-bottom: 28px; }
+    .section-title {
+      font-size: 15px;
+      font-weight: 650;
+      color: var(--text);
+      margin-bottom: 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .chart-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .chart-card h3 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+    .chart-card .subtitle {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+    .chart-wrap { position: relative; height: 280px; }
+    .chart-wrap canvas { max-height: 280px; }
+
+    .delta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .delta {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 10px 12px;
+    }
+    .delta-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 2px;
+    }
+    .delta-val {
+      font-size: 18px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+    .delta-sub {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 1px;
+      font-variant-numeric: tabular-nums;
+    }
+    .delta.pos .delta-val { color: var(--green); }
+    .delta.neg .delta-val { color: var(--red); }
+    .delta.neutral .delta-val { color: var(--text); }
+
+    .period-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 10px 14px;
+    }
+    .period-controls label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+    .period-controls input[type="date"] {
+      font-family: inherit;
+      font-size: 12px;
+      padding: 4px 6px;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .period-controls button {
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 5px 10px;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      background: var(--bg);
+      color: var(--text-dim);
+      cursor: pointer;
+    }
+    .period-controls button:hover { background: #eee; color: var(--text); }
+    .period-controls .period-info {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-left: auto;
+    }
+    .period-controls .period-hint {
+      font-size: 11px;
+      color: var(--text-muted);
+      flex-basis: 100%;
+    }
+
+    .loading { text-align: center; padding: 48px 20px; color: var(--text-muted); }
+
+    .footer {
+      text-align: center;
+      padding: 16px 20px;
+      font-size: 10px;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border);
+    }
+    .footer a { color: var(--text-dim); text-decoration: none; }
+
+    @media (max-width: 600px) {
+      .delta-grid { grid-template-columns: repeat(2, 1fr); }
+      .delta-val { font-size: 16px; }
+      .chart-wrap { height: 220px; }
+      .period-controls .period-info { margin-left: 0; }
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+</head>
+<body>
+<div id="lang-banner" role="region" aria-live="polite" hidden>
+  <span id="lang-banner-text"></span>
+  <a id="lang-banner-switch" href="./"></a>
+  <button id="lang-banner-close" type="button">&times;</button>
+</div>
+
+<header class="page-header">
+  <div class="page-header-inner">
+    <div><a class="home" href="./">Brussels Pedestrian Network</a><h1>Trends</h1></div>
+    <div class="page-header-right">
+      <a href="./">Map</a>
+      <a href="./stats.html">Statistics</a>
+      <a href="./about.html">Methodology</a>
+<span class="lang-switch" role="group" aria-label="Language">
+  <a href="./evolution.html" lang="en" hreflang="en" data-lang="en" title="English" aria-current="true">EN</a>
+  <a href="./fr/evolution.html" lang="fr" hreflang="fr" data-lang="fr" title="Français">FR</a>
+</span>
+    </div>
+  </div>
+</header>
+
+<main class="container" id="main">
+  <div class="loading" id="loading">Loading history…</div>
+</main>
+
+<script src="./html.js"></script>
+<script src="./evolution.js"></script>
+<footer class="footer" style="text-align:center; padding: 40px 0; color: #888; font-size: 11px; border-top: 1px solid #ddd; margin-top: 40px;">
+  Data: <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener" style="color: #666; text-decoration: none;">OpenStreetMap</a>
+  · <a href="https://github.com/PasLoin/Brussels-Pedestrian-Network" target="_blank" rel="noopener" style="color: #666; text-decoration: none;">Source</a>
+  · <a href="./stats.html" style="color: #666; text-decoration: none;">Current statistics</a>
+  · <a href="./" style="color: #666; text-decoration: none;">Back to the map</a>
+</footer>
+</body>
+</html>
