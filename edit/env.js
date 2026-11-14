@@ -55,6 +55,8 @@ export const SETTINGS = Object.freeze({
   minLookMs: 3000,
   lookMsPerMeter: 30,
   lookMode: "warn",
+  lookHistory: 10,
+  lookQuickTolerance: 5,
   paceWindowMs: 60 * 1000,
   paceMaxMeters: 1200,
   paceBlockMeters: 1800,

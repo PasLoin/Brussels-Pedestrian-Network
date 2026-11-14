@@ -18,7 +18,7 @@ import { closeEmptyChangesets, planUpload, queueRoom, uploadGroups, zonesFor } f
 import { authView, detailView, devDataView, editLock, meterView, navView, queueView, statusView, tooLongMessage } from "./panel.js";
 import { composeComment, describeGroup, indexCommunes } from "./places.js";
 import { createPace } from "./pace.js";
-import { lookTimeMs } from "./look.js";
+import { createLookTracker, lookTimeMs } from "./look.js";
 import { createQueue } from "./queue.js";
 import { coveredIndexes, createReviewStore, samplesAlong } from "./review.js";
 import { shortcutFor, sideForValue } from "./shortcuts.js";
@@ -54,6 +54,7 @@ installApiChain(window, {
   guard,
   limit: (fetchImpl, options) => limitConcurrency(fetchImpl, { ...options, max: env.maxConcurrentApi }),
 });
+const looks = createLookTracker({ storage, env: env.name, history: env.lookHistory, tolerance: env.lookQuickTolerance });
 const pace = createPace({
   storage,
   env: env.name,
@@ -157,7 +158,7 @@ function basemapAllowed() {
 
 function qualityNow() {
   const status = pace.status();
-  return { basemapOk: basemapAllowed(), tooFast: status.tooFast, paceLeftMs: status.cooldownLeftMs, lookMode: env.lookMode };
+  return { basemapOk: basemapAllowed(), tooFast: status.tooFast, paceLeftMs: status.cooldownLeftMs, lookMode: env.lookMode, lookHasty: looks.hasty() };
 }
 
 function renderDetail() {
@@ -464,7 +465,10 @@ function queueChoice() {
   const sides = completeChoice(d.choice);
   if (!sides || editBlocked()) return false;
   const intent = makeIntent({ way: d.way, left: sides.left, right: sides.right, bbox: d.bbox, lengthM: d.lengthM, coords: d.coords });
-  if (!d.queued) pace.record(d.lengthM);
+  if (!d.queued) {
+    pace.record(d.lengthM);
+    looks.record(d.lookLeftMs > 0);
+  }
   queue.put(intent);
   skipped.remove(intent.wayId);
   state.plan = null;

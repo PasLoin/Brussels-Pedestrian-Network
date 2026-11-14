@@ -1663,16 +1663,21 @@ def test_map_loads_pause_after_the_per_minute_ceiling(session, fake):
     assert fake.count("map") == 2
 
 
-def test_in_warn_mode_the_look_time_is_only_a_hint(session, fake):
-    fake.add_way(101, line_at(CENTER), street("Rue Test", "Teststraat"))
-    s = session(settings={"minLookMs": "3000", "lookMsPerMeter": "1000"})
-    wait_candidates(s.page, 1)
-    click_way(s.page, CENTER[0], CENTER[1] + 0.00001, 101)
+def test_in_warn_mode_the_look_hint_waits_for_several_hasty_choices(session, fake):
+    for i in range(6):
+        fake.add_way(101 + i, line_at(CENTER, dy=0.0003 - 0.00012 * i), street(f"Rue {i}", f"Straat {i}"))
+    s = session(settings={"minLookMs": "3000", "lookMsPerMeter": "1000", "lookQuickTolerance": "2"})
+    wait_candidates(s.page, 6)
+    s.page.keyboard.press("ArrowRight")
+    for _ in range(2):
+        wait(s.page, "() => !!document.querySelector('[data-edit-action=choose]')")
+        assert "Prenez le temps" not in s.page.inner_text("#edit-detail")
+        assert not locked(s.page)
+        queue_current(s.page)
     wait(s.page, "() => document.getElementById('edit-detail').textContent.includes('Prenez le temps de regarder la rue')")
     assert not locked(s.page)
-    s.page.keyboard.press("s")
-    wait(s.page, "() => (localStorage.getItem('bpn.queue.dev') || '').includes('101')")
-
+    assert json.loads(s.page.evaluate("localStorage.getItem('bpn.look.dev')")) == [True, True]
+    queue_current(s.page)
 
 def test_a_short_segment_only_asks_for_a_short_look(session, fake):
     short = [(CENTER[0], CENTER[1]), (CENTER[0] + 0.0003, CENTER[1])]

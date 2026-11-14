@@ -151,6 +151,21 @@ test("the look time grows with the street length up to three seconds", async () 
   assert.equal(lookTimeMs(undefined, settings), 0);
 });
 
+test("the look hint only appears after five of the last ten streets were decided too fast", async () => {
+  const { createLookTracker } = await load("look.js");
+  const storage = memoryStorage();
+  const looks = createLookTracker({ storage, env: "dev", history: 10, tolerance: 5 });
+  assert.equal(looks.hasty(), false);
+  for (const quick of [false, true, true, false, true, true]) looks.record(quick);
+  assert.equal(looks.hasty(), false);
+  looks.record(true);
+  assert.equal(looks.hasty(), true);
+  assert.equal(createLookTracker({ storage, env: "dev", history: 10, tolerance: 5 }).hasty(), true);
+  for (let i = 0; i < 6; i++) looks.record(false);
+  assert.equal(looks.quickCount(), 3);
+  assert.equal(looks.hasty(), false);
+});
+
 test("the choice waits for the orthophoto, the look time and the pace pause, never for a queued street", async () => {
   const { editLock, detailView } = await load("panel.js");
   const base = { kind: "way", editable: true, seenWhole: true, basemapOk: true, lookLeftMs: 0, paceLeftMs: 0, lookMode: "block", way: { id: 5, version: 1, tags: {} }, choice: { mode: "both", both: "", left: "", right: "" } };
@@ -174,7 +189,8 @@ test("the choice waits for the orthophoto, the look time and the pace pause, nev
   }
   const fr = i18nFor("fr");
   assert.match(String(detailView({ ...base, lookLeftMs: 2100 }, fr, "https://x", {})), /encore 3 secondes/);
-  const warned = String(detailView({ ...base, lookLeftMs: 2100, lookMode: "warn" }, fr, "https://x", {}));
+  assert.doesNotMatch(String(detailView({ ...base, lookLeftMs: 2100, lookMode: "warn" }, fr, "https://x", {})), /Prenez le temps/);
+  const warned = String(detailView({ ...base, lookLeftMs: 2100, lookMode: "warn", lookHasty: true }, fr, "https://x", {}));
   assert.match(warned, /encore 3 secondes/);
   assert.doesNotMatch(warned, /data-value="separate"[^>]*disabled/);
   assert.match(String(detailView({ ...base, tooFast: true }, fr, "https://x", {})), /privilégiez la qualité plutôt que la quantité/);
@@ -198,6 +214,8 @@ test("editing settings: orthophoto only, the three walking layers forced on, sid
   assert.equal(SETTINGS.minLookMs, 3000);
   assert.equal(SETTINGS.lookMsPerMeter, 30);
   assert.equal(SETTINGS.lookMode, "warn");
+  assert.equal(SETTINGS.lookHistory, 10);
+  assert.equal(SETTINGS.lookQuickTolerance, 5);
   assert.equal(SETTINGS.paceMaxMeters, 1200);
   assert.equal(SETTINGS.paceBlockMeters, 1800);
   assert.equal(SETTINGS.paceCooldownMs, 20000);
