@@ -97,3 +97,17 @@ test("the meter panel speaks every language and flags more than two calls at onc
   assert.doesNotMatch(calm, /Réponses en erreur/);
   assert.equal(meterView(null, i18nFor("fr")), "");
 });
+
+test("with editing disabled every OSM API call is refused before leaving the page", async () => {
+  const { blockApi, ApiBlockedError } = await load("api-meter.js");
+  const seen = [];
+  const target = { fetch: async url => { seen.push(url); return { status: 200 }; } };
+  const unblock = blockApi(target, API);
+  await assert.rejects(target.fetch(`${API}/api/0.6/map.json?bbox=1`), ApiBlockedError);
+  await assert.rejects(target.fetch({ url: `${API}/api/0.6/user/details.json` }), ApiBlockedError);
+  await target.fetch("https://tiles.example/1.pbf");
+  assert.deepEqual(seen, ["https://tiles.example/1.pbf"]);
+  unblock();
+  await target.fetch(`${API}/api/0.6/map.json`);
+  assert.equal(seen.length, 2);
+});

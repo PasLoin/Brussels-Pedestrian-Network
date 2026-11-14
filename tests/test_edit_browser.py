@@ -3,6 +3,7 @@ import http.server
 import json
 import math
 import os
+import re
 import threading
 import time
 import xml.etree.ElementTree as ET
@@ -123,8 +124,9 @@ def intent_for(fake, way_id, set_tags=None):
 
 
 class Session:
-    def __init__(self, browser, server, fake, logged_in=True, queue=None, auth_env="dev", center=CENTER, zoom=17.5, editing=True):
+    def __init__(self, browser, server, fake, logged_in=True, queue=None, auth_env="dev", center=CENTER, zoom=17.5, editing=True, settings=None):
         self.fake = fake
+        self.settings = settings or {}
         self.problems = []
         self.context = browser.new_context(viewport={"width": 1134, "height": 763}, locale="fr-BE")
         self.context.route("**/*", self._route)
@@ -153,6 +155,12 @@ class Session:
             return route.fulfill(body=BLANK_STYLE, content_type="application/json", headers={"Access-Control-Allow-Origin": "*"})
         if DEV_HOST in url:
             return self.fake.handle(route)
+        if self.settings and url.split("?")[0].endswith("/edit/env.js"):
+            body = route.fetch().text()
+            for key, value in self.settings.items():
+                body, n = re.subn(rf"^(\s*{key}): [^,]+,", rf"\1: {value},", body, flags=re.M)
+                assert n == 1, key
+            return route.fulfill(body=body, content_type="application/javascript")
         if url.startswith("http://127.0.0.1"):
             return route.continue_()
         return route.abort()
@@ -1471,3 +1479,28 @@ def test_a_josm_file_with_unsent_objects_or_a_non_osm_file_is_refused(session, f
     wait(s.page, "() => document.getElementById('edit-data').textContent.includes('Aucune rue utilisable')")
     assert s.page.evaluate("BPNEdit.devData()") is None
     assert sidewalk_source(s.page) == ["pedestrian", "sidewalk_roads"]
+
+
+def test_with_editing_disabled_no_api_call_leaves_the_page_even_with_a_token(session, fake):
+    three_streets(fake)
+    s = session(editing=False, settings={"editEnabled": "false"})
+    wait(s.page, "async () => (await import('/map/store.js')).store.mapReady")
+    s.page.evaluate("sessionStorage.setItem('bpn.editing.dev', '1')")
+    s.page.reload()
+    wait(s.page, "async () => window.BPNEdit && (await import('/map/store.js')).store.mapReady")
+    assert not s.page.is_visible("#edit-enter")
+    assert s.page.evaluate("BPNEdit.isActive()") is False
+    assert s.page.evaluate("sessionStorage.getItem('bpn.editing.dev')") is None
+    s.page.evaluate("BPNEdit.enter()")
+    assert s.page.evaluate("BPNEdit.isActive()") is False
+    assert s.page.evaluate("BPNEdit.canEdit({ sw: 'unknown', highway: 'residential' })") is False
+    html = s.page.evaluate("""() => BPNMap.clickPopups.find(c => c.ids.includes('sidewalk-roads'))
+      .format({ osm_id: 101, sw: 'unknown', highway: 'residential', name: 'x', length_m: 60 })""")
+    assert "data-bpn-edit-way" not in html
+    map_eval(s.page, f"m.jumpTo({{ center: [{CENTER[0] + 0.0003}, {CENTER[1]}], zoom: 17.5 }}); return true;")
+    blocked = s.page.evaluate("""() => fetch('https://master.apis.dev.openstreetmap.org/api/0.6/map.json?bbox=1,2,3,4')
+      .then(() => 'sent', e => e.name)""")
+    assert blocked == "ApiBlockedError"
+    time.sleep(0.8)
+    assert fake.calls == []
+    assert "désactivée" in s.page.inner_text("#edit-auth")

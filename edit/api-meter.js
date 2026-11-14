@@ -123,3 +123,20 @@ export function installApiChain(target, { apiUrl, meter = null, limit }) {
   target.fetch = limit(counted, { matches: url => typeof url === "string" && url.startsWith(apiUrl), onWaiting: n => meter && meter.noteWaiting(n) });
   return () => { target.fetch = original; };
 }
+
+export class ApiBlockedError extends Error {
+  constructor(url) {
+    super(`OSM API call blocked, editing is disabled: ${url}`);
+    this.name = "ApiBlockedError";
+  }
+}
+
+export function blockApi(target, apiUrl) {
+  const original = target.fetch.bind(target);
+  target.fetch = (input, init) => {
+    const url = typeof input === "string" ? input : input && input.url;
+    if (typeof url === "string" && url.startsWith(apiUrl)) return Promise.reject(new ApiBlockedError(url));
+    return original(input, init);
+  };
+  return () => { target.fetch = original; };
+}

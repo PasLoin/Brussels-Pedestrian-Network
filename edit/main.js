@@ -1,5 +1,5 @@
 import { i18n } from "../map/i18n.js";
-import { createApiMeter, installApiChain } from "./api-meter.js";
+import { blockApi, createApiMeter, installApiChain } from "./api-meter.js";
 import { limitConcurrency } from "./api-queue.js";
 import { store } from "../map/store.js";
 import { guardEnvironment, isLoggedIn, login, loginInProgress, logout, tabId } from "./auth.js";
@@ -43,6 +43,7 @@ installApiChain(window, {
   meter,
   limit: (fetchImpl, options) => limitConcurrency(fetchImpl, { ...options, max: env.maxConcurrentApi }),
 });
+if (!env.editEnabled) blockApi(window, env.apiUrl);
 const osm = createClient(window.OSM);
 const tab = tabId(window.sessionStorage);
 
@@ -769,7 +770,7 @@ function setEditLayersVisible(visible) {
 }
 
 function enterEdit() {
-  if (active) return;
+  if (active || !env.editEnabled) return;
   active = true;
   store.editing = true;
   try { window.sessionStorage.setItem(MODE_KEY, "1"); } catch {}
@@ -925,6 +926,7 @@ function paddedBox(lines, pad = 0.0003) {
 }
 
 async function editWay(id) {
+  if (!env.editEnabled) return;
   enterEdit();
   if (window.BPNMap) window.BPNMap.closePopups();
   await mapReady;
@@ -978,12 +980,14 @@ window.BPNEdit = Object.freeze({
   devData: () => devData.active,
   apiStats: () => (meter ? meter.stats() : null),
   resetApiStats: () => meter && meter.reset(),
-  canEdit: p => Boolean(p && p.sw === "unknown" && matchesWhitelist({ highway: p.highway })),
+  canEdit: p => Boolean(env.editEnabled && p && p.sw === "unknown" && matchesWhitelist({ highway: p.highway })),
 });
 
+enterButton.hidden = !env.editEnabled;
 refreshAuth();
 try {
-  if (window.sessionStorage.getItem(MODE_KEY) === "1") enterEdit();
+  if (!env.editEnabled) window.sessionStorage.removeItem(MODE_KEY);
+  else if (window.sessionStorage.getItem(MODE_KEY) === "1") enterEdit();
 } catch {}
 
 map = await mapReady;
@@ -1085,6 +1089,7 @@ function loadAroundSelection() {
 }
 
 async function loadCandidates(given = null) {
+  if (!env.editEnabled) return;
   if (controller) controller.abort();
   const request = given || currentRequest();
   candidatesBlocked = request.blocked || null;
