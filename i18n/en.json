@@ -500,7 +500,14 @@
       "queueFull": "This street would open one more area, beyond the {{max}} changesets allowed per upload. Prepare and send the queue before going on here.",
       "shortcutsTitle": "Keyboard shortcuts",
       "reviewDetail": "Go along the whole street at zoom {{zoom}} or closer before choosing: {{percent}} % seen.",
-      "reviewNext": "Go to the part not seen yet"
+      "reviewNext": "Go to the part not seen yet",
+      "needOrtho": "Switch to the UrbIS orthophoto to edit: a sidewalk is judged on the image, not on a drawn map.",
+      "showOrtho": "Show the UrbIS orthophoto",
+      "lookTime_one": "Take the time to look at the street: {{count}} more second.",
+      "lookTime_other": "Take the time to look at the street: {{count}} more seconds.",
+      "tooFast": "You are editing too fast: favour quality over quantity.",
+      "paceCooldown_one": "You are still editing too fast. {{count}} second pause before you can go on: favour quality over quantity.",
+      "paceCooldown_other": "You are still editing too fast. {{count}} second pause before you can go on: favour quality over quantity."
     },
     "value": {
       "separate": "separate (mapped as its own way)",
@@ -567,7 +574,9 @@
       "maintenance": "the OSM server is in maintenance (read-only). Try again later; your queue is kept.",
       "tooBig": "the area is too large or too dense to load the candidates: zoom in.",
       "server": "the OSM server returned an error. Try again later; your queue is kept.",
-      "unknown": "{{message}}"
+      "unknown": "{{message}}",
+      "pausedRate": "too many map loads in one minute: loading paused until about {{time}}.",
+      "pausedBandwidth": "the OSM server limits downloads: calls paused until about {{time}}."
     },
     "dock": {
       "position": "Panel position",

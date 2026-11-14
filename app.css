@@ -383,3 +383,7 @@ body.is-editing #header, body.is-editing #lang-banner { display: none !important
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
 }
+
+.legend-item.locked { cursor: default; }
+.legend-item.locked:hover { background: transparent; }
+#edit-panel .edit-look { font-weight: 600; color: var(--ink-2); }

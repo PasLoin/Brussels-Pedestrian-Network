@@ -1,4 +1,5 @@
 import { i18n } from "../map/i18n.js";
+import { createApiGuard } from "./api-guard.js";
 import { blockApi, createApiMeter, installApiChain } from "./api-meter.js";
 import { limitConcurrency } from "./api-queue.js";
 import { store } from "../map/store.js";
@@ -16,6 +17,7 @@ import { nextCandidate } from "./next.js";
 import { closeEmptyChangesets, planUpload, queueRoom, uploadGroups, zonesFor } from "./osm.js";
 import { authView, detailView, devDataView, editLock, meterView, navView, queueView, statusView, tooLongMessage } from "./panel.js";
 import { composeComment, describeGroup, indexCommunes } from "./places.js";
+import { createPace } from "./pace.js";
 import { createQueue } from "./queue.js";
 import { coveredIndexes, createReviewStore, samplesAlong } from "./review.js";
 import { shortcutFor, sideForValue } from "./shortcuts.js";
@@ -38,10 +40,26 @@ const WIDER_SEARCH = [2, 4];
 const env = envFromDocument(document);
 const storage = window.localStorage;
 const meter = env.apiMeter ? createApiMeter({ storage, env: env.name, apiUrl: env.apiUrl }) : null;
+const guard = createApiGuard({
+  apiUrl: env.apiUrl,
+  mapPerMinute: env.mapCallsPerMinute,
+  pauseMs: env.pauseAfter509Ms,
+  storage,
+  key: `bpn.apiPause.${env.name}`,
+});
 installApiChain(window, {
   apiUrl: env.apiUrl,
   meter,
+  guard,
   limit: (fetchImpl, options) => limitConcurrency(fetchImpl, { ...options, max: env.maxConcurrentApi }),
+});
+const pace = createPace({
+  storage,
+  env: env.name,
+  windowMs: env.paceWindowMs,
+  maxStreets: env.paceMaxStreets,
+  repeatMs: env.paceRepeatMs,
+  cooldownMs: env.paceCooldownMs,
 });
 if (!env.editEnabled) blockApi(window, env.apiUrl);
 const osm = createClient(window.OSM);
@@ -131,8 +149,17 @@ function showStatus(view) {
   statusEl.textContent = statusView(view, i18n);
 }
 
+function basemapAllowed() {
+  return Boolean(window.BPNMap) && env.editBasemaps.includes(window.BPNMap.currentBasemap());
+}
+
+function qualityNow() {
+  const status = pace.status();
+  return { basemapOk: basemapAllowed(), tooFast: status.tooFast, paceLeftMs: status.cooldownLeftMs };
+}
+
 function renderDetail() {
-  if (state.detail.kind === "way" && state.detail.editable) state.detail = { ...state.detail, room: roomFor(state.detail) };
+  if (state.detail.kind === "way" && state.detail.editable) state.detail = { ...state.detail, ...qualityNow(), room: roomFor(state.detail) };
   detailEl.innerHTML = html`${detailView(state.detail, i18n, env.webUrl, env)}`;
   showSideLines();
   if (selectionCoords) showSelection(selectionCoords);
@@ -435,6 +462,7 @@ function queueChoice() {
   const sides = completeChoice(d.choice);
   if (!sides || editBlocked()) return false;
   const intent = makeIntent({ way: d.way, left: sides.left, right: sides.right, bbox: d.bbox, lengthM: d.lengthM, coords: d.coords });
+  if (!d.queued) pace.record();
   queue.put(intent);
   skipped.remove(intent.wayId);
   state.plan = null;
@@ -471,6 +499,10 @@ detailEl.addEventListener("click", (e) => {
   const d = state.detail;
   if (!button || d.kind !== "way" || !d.editable) return;
   const action = button.dataset.editAction;
+  if (action === "basemap") {
+    if (window.BPNMap) window.BPNMap.setBasemap(env.editBasemaps[0]);
+    return;
+  }
   if (action === "fit") {
     applyView(bringWholeWayIntoView(d, true));
     state.detail = { ...state.detail, userFit: state.detail.fitting };
@@ -788,6 +820,69 @@ function setEditLayersVisible(visible) {
   if (!visible) for (const id of [SIDE_LEFT, SIDE_RIGHT]) if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "none");
 }
 
+const GOVERNED_SOURCES = ["pedestrian", DEV_SOURCE];
+const PREV_BASEMAP_KEY = `bpn.editPrevBasemap.${env.name}`;
+let layerSnapshot = null;
+
+function enforceEditLayers() {
+  if (!map) return;
+  layerSnapshot = layerSnapshot || {};
+  for (const layer of map.getStyle().layers) {
+    if (!GOVERNED_SOURCES.includes(layer.source)) continue;
+    const now = map.getLayoutProperty(layer.id, "visibility") || "visible";
+    if (!(layer.id in layerSnapshot)) layerSnapshot[layer.id] = now;
+    const want = env.editRequiredLayers.includes(layer.id) ? "visible" : env.editOptionalLayers.includes(layer.id) ? now : "none";
+    if (want !== now) map.setLayoutProperty(layer.id, "visibility", want);
+  }
+}
+
+function applyEditMap() {
+  if (!map || !window.BPNMap) return;
+  const current = window.BPNMap.currentBasemap();
+  if (!env.editBasemaps.includes(current)) {
+    try { window.sessionStorage.setItem(PREV_BASEMAP_KEY, current); } catch {}
+    window.BPNMap.setBasemap(env.editBasemaps[0]);
+  }
+  window.BPNMap.setBasemapWhitelist(env.editBasemaps);
+  enforceEditLayers();
+  window.BPNMap.setLegendPolicy({ required: env.editRequiredLayers, optional: env.editOptionalLayers });
+}
+
+function restoreEditMap() {
+  if (!map || !window.BPNMap) return;
+  window.BPNMap.setBasemapWhitelist(null);
+  for (const [id, visibility] of Object.entries(layerSnapshot || {})) {
+    if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", visibility);
+  }
+  layerSnapshot = null;
+  window.BPNMap.setLegendPolicy(null);
+  let previous = null;
+  try {
+    previous = window.sessionStorage.getItem(PREV_BASEMAP_KEY);
+    window.sessionStorage.removeItem(PREV_BASEMAP_KEY);
+  } catch {}
+  if (previous && previous !== window.BPNMap.currentBasemap()) window.BPNMap.setBasemap(previous);
+}
+
+let qualityTick = null;
+let lastTick = 0;
+
+function tickQuality() {
+  const t = Date.now();
+  const elapsed = lastTick ? t - lastTick : 0;
+  lastTick = t;
+  const d = state.detail;
+  if (!active || d.kind !== "way" || !d.editable) return;
+  const before = editLock(d);
+  const shown = [Math.ceil((d.lookLeftMs || 0) / 1000), Math.ceil((d.paceLeftMs || 0) / 1000), d.basemapOk, d.tooFast].join("|");
+  const quality = qualityNow();
+  let lookLeftMs = d.lookLeftMs || 0;
+  if (lookLeftMs > 0 && !d.fitting && quality.basemapOk && document.visibilityState === "visible") lookLeftMs = Math.max(0, lookLeftMs - elapsed);
+  state.detail = { ...d, ...quality, lookLeftMs };
+  const after = [Math.ceil(lookLeftMs / 1000), Math.ceil(quality.paceLeftMs / 1000), quality.basemapOk, quality.tooFast].join("|");
+  if (after !== shown || editLock(state.detail) !== before) renderDetail();
+}
+
 function enterEdit() {
   if (active || !env.editEnabled) return;
   active = true;
@@ -804,7 +899,10 @@ function enterEdit() {
   }
   foldSidePanel(dock.dataset.position);
   setDockOpen(true);
+  lastTick = 0;
+  qualityTick = setInterval(tickQuality, 250);
   if (map) {
+    applyEditMap();
     setEditLayersVisible(true);
     loadCandidates();
   }
@@ -819,7 +917,10 @@ function leaveEdit() {
   if (controller) controller.abort();
   controller = null;
   deselect();
+  clearInterval(qualityTick);
+  qualityTick = null;
   setEditLayersVisible(false);
+  restoreEditMap();
   document.body.classList.remove("is-editing");
   editBar.hidden = true;
   dock.hidden = true;
@@ -1012,6 +1113,9 @@ try {
 map = await mapReady;
 
 if (active) foldSidePanel(dock.dataset.position);
+window.addEventListener("bpn:basemap", () => {
+  if (active && state.detail.kind === "way") renderDetail();
+});
 
 const WIDTH = ["interpolate", ["linear"], ["zoom"], 16, 4, 19, 9];
 map.addSource(SOURCE, { type: "geojson", data: EMPTY_COLLECTION, promoteId: "osm_id" });
@@ -1170,6 +1274,8 @@ async function selectWay(id) {
       lengthM: lineLengthM(coords),
       queued: queue.get(id),
       choice: choiceFromIntent(queue.get(id)),
+      lookLeftMs: queue.get(id) ? 0 : env.minLookMs,
+      ...qualityNow(),
     };
     reviewSamples = env.reviewZoom ? samplesAlong(coords, env.reviewStepM) : [];
     reviewSeen = new Set();
@@ -1210,7 +1316,9 @@ map.on("move", () => {
   });
 });
 map.on("style.load", () => {
+  map.getSource(SOURCE)?.setData({ type: "FeatureCollection", features: [...liveFeatures.values()] });
   setEditLayersVisible(active);
+  if (active) enforceEditLayers();
   syncQueuedState();
   showSideLines();
 });
@@ -1218,4 +1326,7 @@ map.on("movestart", (e) => {
   if (e.originalEvent && state.detail.kind === "way" && state.detail.userFit) state.detail = { ...state.detail, userFit: false };
 });
 setEditLayersVisible(active);
-if (active) loadCandidates();
+if (active) {
+  applyEditMap();
+  loadCandidates();
+}

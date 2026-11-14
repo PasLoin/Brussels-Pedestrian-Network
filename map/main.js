@@ -1,4 +1,5 @@
-import { loadBasemapPatterns, loadInitialBasemap, setupBasemapControl } from "./basemaps.js";
+import { currentBasemapId, loadBasemapPatterns, loadInitialBasemap, setBasemap, setBasemapWhitelist, setupBasemapControl } from "./basemaps.js";
+import { setLegendPolicy } from "./legend.js";
 import { loadHeaderData } from "./header-data.js";
 import { initMap } from "./map-view.js";
 import { store } from "./store.js";
@@ -29,6 +30,10 @@ window.BPNMap = Object.freeze({
   toggleHeader,
   closePopups,
   stopNavigation: () => { if (isNavigating()) toggleNavMode(); },
+  setBasemap,
+  currentBasemap: currentBasemapId,
+  setBasemapWhitelist,
+  setLegendPolicy,
   hoverPopups: HOVER_LAYERS,
   clickPopups: CLICK_LAYERS,
 });

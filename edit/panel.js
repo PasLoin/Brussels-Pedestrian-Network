@@ -95,8 +95,11 @@ function chips(side, selected, i18n, locked = false) {
 
 export function editLock(state) {
   if (state.fitting) return "moving";
+  if (state.basemapOk === false) return "basemap";
   if (state.seenWhole === false) return "hidden";
   if (state.review && !state.review.done) return "detail";
+  if (state.paceLeftMs > 0 && !state.queued) return "pace";
+  if (state.lookLeftMs > 0 && !state.queued) return "look";
   if (state.room && !state.room.fits && !state.queued) return "full";
   return null;
 }
@@ -104,6 +107,20 @@ export function editLock(state) {
 function lockView(lock, state, i18n) {
   const { t } = i18n;
   if (lock === "moving") return html`<p class="edit-help" role="status">${t("edit.form.fitting")}</p>`;
+  if (lock === "basemap") {
+    return html`<div class="edit-lock" role="status">
+      <p class="edit-warn">${t("edit.form.needOrtho")}</p>
+      <button type="button" class="btn" data-edit-action="basemap">${t("edit.form.showOrtho")}</button>
+    </div>`;
+  }
+  if (lock === "pace") {
+    return html`<div class="edit-lock" role="status">
+      <p class="edit-warn">${t("edit.form.paceCooldown", { count: Math.ceil(state.paceLeftMs / 1000) })}</p>
+    </div>`;
+  }
+  if (lock === "look") {
+    return html`<p class="edit-help edit-look" role="status">${t("edit.form.lookTime", { count: Math.ceil(state.lookLeftMs / 1000) })}</p>`;
+  }
   if (lock === "hidden") {
     return html`<div class="edit-lock" role="status">
       <p class="edit-warn">${t("edit.form.notVisible")}</p>
@@ -140,6 +157,7 @@ export function editFormView(state, i18n, settings = {}) {
   return html`
     <div class="edit-form${locked ? " locked" : ""}">
       ${lockView(lock, state, i18n)}
+      ${state.tooFast && !lock && html`<p class="edit-warn" role="alert">${t("edit.form.tooFast")}</p>`}
       ${sides
         ? html`
           <p class="edit-help">${t("edit.form.direction")}</p>

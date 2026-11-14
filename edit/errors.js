@@ -1,4 +1,10 @@
+function clock(ms) {
+  const d = new Date(ms);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
 export function errorKind(err) {
+  if (err && err.name === "ApiPausedError") return err.reason === "rate" ? "pausedRate" : "pausedBandwidth";
   const status = err && err.cause;
   const message = String((err && err.message) || "");
   if (status === 401) return "auth";
@@ -14,6 +20,8 @@ export function errorKind(err) {
 
 export function errorMessage(err, t) {
   const kind = errorKind(err);
+  if (kind === "pausedRate") return t("edit.error.pausedRate", { time: clock(err.until) });
+  if (kind === "pausedBandwidth") return t("edit.error.pausedBandwidth", { time: clock(err.until) });
   if (kind === "auth") return t("edit.error.auth");
   if (kind === "forbidden") return t("edit.error.forbidden");
   if (kind === "rateLimit") return t("edit.error.rateLimit");

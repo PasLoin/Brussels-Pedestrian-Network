@@ -52,6 +52,7 @@ export const BASEMAPS = [
 export const BASEMAP_STORAGE_KEY = "bpn-basemap";
 const basemapStyleCache = {};
 let currentBasemap = "liberty";
+let allowedBasemaps = null;
 let basemapRequest = 0;
 
 async function loadLibertyStyle() {
@@ -123,7 +124,8 @@ export async function loadBasemapPatterns(map, style, baseUrl) {
 
 function renderBasemapMenu() {
   const menu = document.getElementById("basemap-menu");
-  menu.replaceChildren(...BASEMAPS.map(bm => {
+  const shown = allowedBasemaps ? BASEMAPS.filter(bm => allowedBasemaps.includes(bm.id)) : BASEMAPS;
+  menu.replaceChildren(...shown.map(bm => {
     const active = bm.id === currentBasemap;
     const btn = document.createElement("button");
     btn.type = "button";
@@ -144,6 +146,15 @@ function renderBasemapMenu() {
   }));
 }
 
+export function currentBasemapId() {
+  return currentBasemap;
+}
+
+export function setBasemapWhitelist(ids) {
+  allowedBasemaps = ids ? [...ids] : null;
+  renderBasemapMenu();
+}
+
 export async function setBasemap(id) {
   const bm = BASEMAPS.find(b => b.id === id);
   if (!bm || id === currentBasemap || !store.map || !store.map.getSource("pedestrian")) return;
@@ -157,6 +168,7 @@ export async function setBasemap(id) {
     if (bm.osmName) store.imageryUsed.add(bm.osmName);
     if (bm.url) store.map.once("style.load", () => loadBasemapPatterns(store.map, style, bm.url));
     store.map.setStyle(style, { diff: false, transformStyle: keepOverlays });
+    window.dispatchEvent(new CustomEvent("bpn:basemap", { detail: id }));
     try { localStorage.setItem(BASEMAP_STORAGE_KEY, id); } catch {}
     renderBasemapMenu();
   } catch (err) {

@@ -500,7 +500,14 @@
       "queueFull": "Deze straat zou een extra zone openen, boven de {{max}} changesets die per verzending zijn toegestaan. Bereid de wachtrij voor en verstuur ze voor je hier verdergaat.",
       "shortcutsTitle": "Sneltoetsen",
       "reviewDetail": "Loop de hele straat af op zoom {{zoom}} of dichterbij voor je kiest: {{percent}} % bekeken.",
-      "reviewNext": "Naar het deel dat nog niet bekeken is"
+      "reviewNext": "Naar het deel dat nog niet bekeken is",
+      "needOrtho": "Schakel naar de UrbIS-orthofoto om te bewerken: een voetpad beoordeel je op het beeld, niet op een getekende kaart.",
+      "showOrtho": "UrbIS-orthofoto tonen",
+      "lookTime_one": "Neem de tijd om de straat te bekijken: nog {{count}} seconde.",
+      "lookTime_other": "Neem de tijd om de straat te bekijken: nog {{count}} seconden.",
+      "tooFast": "Je bewerkt te snel: kies voor kwaliteit boven kwantiteit.",
+      "paceCooldown_one": "Je bewerkt nog steeds te snel. Pauze van {{count}} seconde voor je verder kunt: kies voor kwaliteit boven kwantiteit.",
+      "paceCooldown_other": "Je bewerkt nog steeds te snel. Pauze van {{count}} seconden voor je verder kunt: kies voor kwaliteit boven kwantiteit."
     },
     "value": {
       "separate": "separate (apart gekarteerd)",
@@ -567,7 +574,9 @@
       "maintenance": "de OSM-server is in onderhoud (alleen lezen). Probeer later opnieuw; je wachtrij blijft bewaard.",
       "tooBig": "de zone is te groot of te dicht om kandidaten te laden: zoom in.",
       "server": "de OSM-server gaf een fout terug. Probeer later opnieuw; je wachtrij blijft bewaard.",
-      "unknown": "{{message}}"
+      "unknown": "{{message}}",
+      "pausedRate": "te veel kaartladingen in één minuut: laden gepauzeerd tot ongeveer {{time}}.",
+      "pausedBandwidth": "de OSM-server beperkt downloads: oproepen gepauzeerd tot ongeveer {{time}}."
     },
     "dock": {
       "position": "Positie van het paneel",

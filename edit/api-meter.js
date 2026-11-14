@@ -117,10 +117,11 @@ export function installApiMeter(target, meter) {
   return () => { target.fetch = original; };
 }
 
-export function installApiChain(target, { apiUrl, meter = null, limit }) {
+export function installApiChain(target, { apiUrl, meter = null, limit, guard = null }) {
   const original = target.fetch.bind(target);
   const counted = meter ? meter.wrap(original) : original;
-  target.fetch = limit(counted, { matches: url => typeof url === "string" && url.startsWith(apiUrl), onWaiting: n => meter && meter.noteWaiting(n) });
+  const limited = limit(counted, { matches: url => typeof url === "string" && url.startsWith(apiUrl), onWaiting: n => meter && meter.noteWaiting(n) });
+  target.fetch = guard ? guard.wrap(limited) : limited;
   return () => { target.fetch = original; };
 }
 

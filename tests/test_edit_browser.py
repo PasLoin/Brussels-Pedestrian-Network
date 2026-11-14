@@ -123,10 +123,12 @@ def intent_for(fake, way_id, set_tags=None):
     }
 
 
+BLANK_PNG = bytes.fromhex("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c6360606060000000050001a5f645400000000049454e44ae426082")
+
 class Session:
     def __init__(self, browser, server, fake, logged_in=True, queue=None, auth_env="dev", center=CENTER, zoom=17.5, editing=True, settings=None):
         self.fake = fake
-        self.settings = {"reviewZoom": "null", **(settings or {})}
+        self.settings = {"reviewZoom": "null", "minLookMs": "0", "paceMaxStreets": "1000", **(settings or {})}
         self.problems = []
         self.context = browser.new_context(viewport={"width": 1134, "height": 763}, locale="fr-BE")
         self.context.route("**/*", self._route)
@@ -151,6 +153,8 @@ class Session:
             if name in LIBS:
                 return route.fulfill(path=str(LIBS[name]), content_type="text/css" if name.endswith(".css") else "application/javascript")
             return route.abort()
+        if "geoservices-urbis.irisnet.be" in url:
+            return route.fulfill(body=BLANK_PNG, content_type="image/png", headers={"Access-Control-Allow-Origin": "*"})
         if "tiles.openfreemap.org/styles/liberty" in url:
             return route.fulfill(body=BLANK_STYLE, content_type="application/json", headers={"Access-Control-Allow-Origin": "*"})
         if DEV_HOST in url:
@@ -585,6 +589,11 @@ def test_l2_download_limit_empties_the_candidate_layer(session, fake):
     s.page.evaluate(f"window.location.hash = '#17.6/{CENTER[1]}/{CENTER[0]}'")
     wait(s.page, "() => document.getElementById('edit-status').textContent.includes('trop de données téléchargées')")
     assert s.page.evaluate("async () => { const { store } = await import('/map/store.js'); return store.map.querySourceFeatures('edit-candidates').length; }") == 0
+    calls = fake.count("map")
+    assert int(s.page.evaluate("localStorage.getItem('bpn.apiPause.dev')")) > 0
+    s.page.evaluate(f"window.location.hash = '#17.6/{CENTER[1]}/{CENTER[0] + 0.03}'")
+    wait(s.page, "() => document.getElementById('edit-status').textContent.includes('appels suspendus')")
+    assert fake.count("map") == calls
 
 
 def requested_areas(fake):
@@ -698,7 +707,7 @@ def test_each_changeset_carries_its_own_comment_and_reviewer_tags(session, fake)
     assert tags["changesets_count"] == "12"
     assert fake.creates[1]["tags"]["changesets_count"] == "13"
     assert tags["host"].endswith("/test-api/devtest.html")
-    assert "imagery_used" not in tags
+    assert tags["imagery_used"] == "UrbIS Ortho"
     assert "bpn:osm-api-js" not in tags
 
 
@@ -1539,3 +1548,116 @@ def test_with_editing_disabled_no_api_call_leaves_the_page_even_with_a_token(ses
     time.sleep(0.8)
     assert fake.calls == []
     assert "désactivée" in s.page.inner_text("#edit-auth")
+
+
+def layer_visibility(page, ids):
+    return map_eval(page, f"return Object.fromEntries({json.dumps(ids)}.map(id => [id, m.getLayoutProperty(id, 'visibility') || 'visible']));")
+
+
+def legend_shown(page):
+    return page.evaluate("""() => [...document.querySelectorAll('#legend-content .legend-item')]
+      .filter(el => !el.hidden).map(el => [el.querySelector('.legend-label').textContent, el.getAttribute('aria-disabled') === 'true'])""")
+
+
+WATCHED = ["flow-ped", "flow-road", "sidewalk-gaps", "missing-crossings", "sidewalk-roads",
+           "highway-pedestrian", "highway-footway", "highway-path", "highway-cycleway", "highway-steps"]
+
+
+def test_edit_mode_shows_only_the_orthophoto_and_the_editing_layers_then_restores_the_view(session, fake):
+    three_streets(fake)
+    s = session(editing=False)
+    wait(s.page, "async () => (await import('/map/store.js')).store.mapReady")
+    map_eval(s.page, "m.setLayoutProperty('flow-ped', 'visibility', 'visible'); m.setLayoutProperty('highway-cycleway', 'visibility', 'visible'); return true;")
+    before = layer_visibility(s.page, WATCHED)
+    assert s.page.evaluate("BPNMap.currentBasemap()") == "liberty"
+    enter_edit(s.page)
+    wait(s.page, "() => BPNMap.currentBasemap() === 'urbis-ortho'")
+    assert s.page.evaluate("[...document.querySelectorAll('#basemap-menu .basemap-option')].map(b => b.dataset.id)") == ["urbis-ortho"]
+    seen = layer_visibility(s.page, WATCHED)
+    assert {k for k, v in seen.items() if v == "visible"} <= {"sidewalk-roads", "highway-pedestrian", "highway-footway", "highway-path"}
+    assert all(seen[k] == "visible" for k in ["highway-pedestrian", "highway-footway", "highway-path"])
+    assert seen["flow-ped"] == "none" and seen["highway-cycleway"] == "none"
+    shown = legend_shown(s.page)
+    assert shown == [["Tags sidewalk", False], ["Zone piétonne", True], ["Trottoir / allée", True], ["Sentier", True]]
+    s.page.evaluate("[...document.querySelectorAll('#legend-content .legend-item')].find(el => el.textContent.includes('Sentier')).click()")
+    assert layer_visibility(s.page, ["highway-path"]) == {"highway-path": "visible"}
+    s.page.click("#edit-exit")
+    wait(s.page, "() => BPNMap.currentBasemap() === 'liberty'")
+    assert layer_visibility(s.page, WATCHED) == before
+    assert len(s.page.evaluate("[...document.querySelectorAll('#basemap-menu .basemap-option')].map(b => b.dataset.id)")) > 1
+    assert len(legend_shown(s.page)) > 10
+
+
+def test_a_street_cannot_be_judged_on_a_drawn_basemap(session, fake):
+    fake.add_way(101, line_at(CENTER), street("Rue Test", "Teststraat"))
+    s = session()
+    wait_candidates(s.page, 1)
+    click_way(s.page, CENTER[0], CENTER[1] + 0.00001, 101)
+    s.page.evaluate("BPNMap.setBasemap('liberty')")
+    wait(s.page, "() => document.getElementById('edit-detail').textContent.includes(\"Passez sur l'orthophoto UrbIS\")")
+    assert locked(s.page)
+    s.page.keyboard.press("s")
+    time.sleep(0.3)
+    assert queue_ids(s.page) == []
+    s.page.click('[data-edit-action="basemap"]')
+    wait(s.page, "() => BPNMap.currentBasemap() === 'urbis-ortho' && !document.querySelector('[data-edit-action=choose][disabled]')")
+    s.page.keyboard.press("s")
+    wait(s.page, "() => (localStorage.getItem('bpn.queue.dev') || '').includes('101')")
+
+
+def test_the_choice_opens_only_after_looking_at_the_street_a_few_seconds(session, fake):
+    fake.add_way(101, line_at(CENTER), street("Rue Test", "Teststraat"))
+    s = session(settings={"minLookMs": "1500"})
+    wait_candidates(s.page, 1)
+    click_way(s.page, CENTER[0], CENTER[1] + 0.00001, 101, expect_form=False)
+    wait(s.page, "() => document.getElementById('edit-detail').textContent.includes('Prenez le temps de regarder la rue')")
+    assert locked(s.page)
+    s.page.keyboard.press("s")
+    time.sleep(0.2)
+    assert queue_ids(s.page) == []
+    wait(s.page, "() => !!document.querySelector('[data-edit-action=choose]') && !document.querySelector('[data-edit-action=choose][disabled]')")
+    assert queue_ids(s.page) == []
+    s.page.keyboard.press("s")
+    wait(s.page, "() => (localStorage.getItem('bpn.queue.dev') || '').includes('101')")
+
+
+def queue_current(page):
+    before = len(queue_ids(page))
+    wait(page, "() => !!document.querySelector('[data-edit-action=choose]') && !document.querySelector('[data-edit-action=choose][disabled]')")
+    page.keyboard.press("s")
+    wait(page, f"() => JSON.parse(localStorage.getItem('bpn.queue.dev') || '[]').length === {before + 1}")
+
+
+def test_editing_too_fast_warns_then_pauses_when_it_happens_again(session, fake):
+    for i in range(8):
+        fake.add_way(101 + i, line_at(CENTER, dy=0.0004 - 0.00012 * i), street(f"Rue {i}", f"Straat {i}"))
+    s = session(settings={"paceMaxStreets": "2", "paceWindowMs": "2500", "paceCooldownMs": "3000"})
+    wait_candidates(s.page, 8)
+    s.page.keyboard.press("ArrowRight")
+    for _ in range(3):
+        queue_current(s.page)
+    wait(s.page, "() => document.getElementById('edit-detail').textContent.includes('Vous éditez trop vite')")
+    assert not locked(s.page)
+    time.sleep(2.8)
+    wait(s.page, "() => !!document.querySelector('[data-edit-action=choose]') && !document.getElementById('edit-detail').textContent.includes('Vous éditez trop vite')")
+    for _ in range(3):
+        queue_current(s.page)
+    wait(s.page, "() => document.getElementById('edit-detail').textContent.includes('Vous éditez encore trop vite')")
+    assert locked(s.page)
+    queued = queue_ids(s.page)
+    assert len(queued) == 6
+    s.page.keyboard.press("s")
+    time.sleep(0.3)
+    assert queue_ids(s.page) == queued
+    queue_current(s.page)
+
+
+def test_map_loads_pause_after_the_per_minute_ceiling(session, fake):
+    three_streets(fake)
+    s = session(settings={"mapCallsPerMinute": "2"})
+    wait_candidates(s.page, 3)
+    for step in (1, 2, 3):
+        s.page.evaluate(f"window.location.hash = '#17.6/{CENTER[1]}/{CENTER[0] + 0.02 * step}'")
+        time.sleep(0.6)
+    wait(s.page, "() => document.getElementById('edit-status').textContent.includes('chargement en pause')")
+    assert fake.count("map") == 2

@@ -500,7 +500,14 @@
       "queueFull": "Cette rue ouvrirait une zone de plus, au-delà des {{max}} changesets autorisés par envoi. Préparez et envoyez la file avant de continuer ici.",
       "shortcutsTitle": "Raccourcis clavier",
       "reviewDetail": "Parcourez toute la rue au zoom {{zoom}} ou plus avant de choisir : {{percent}} % vu.",
-      "reviewNext": "Aller à la partie non vue"
+      "reviewNext": "Aller à la partie non vue",
+      "needOrtho": "Passez sur l'orthophoto UrbIS pour éditer : un trottoir se juge sur l'image, pas sur un fond de carte dessiné.",
+      "showOrtho": "Afficher l'orthophoto UrbIS",
+      "lookTime_one": "Prenez le temps de regarder la rue : encore {{count}} seconde.",
+      "lookTime_other": "Prenez le temps de regarder la rue : encore {{count}} secondes.",
+      "tooFast": "Vous éditez trop vite : privilégiez la qualité plutôt que la quantité.",
+      "paceCooldown_one": "Vous éditez encore trop vite. Pause de {{count}} seconde avant de reprendre : privilégiez la qualité plutôt que la quantité.",
+      "paceCooldown_other": "Vous éditez encore trop vite. Pause de {{count}} secondes avant de reprendre : privilégiez la qualité plutôt que la quantité."
     },
     "value": {
       "separate": "separate (cartographié à part)",
@@ -567,7 +574,9 @@
       "maintenance": "le serveur OSM est en maintenance (lecture seule). Réessayez plus tard ; votre file est conservée.",
       "tooBig": "la zone est trop grande ou trop dense pour charger les candidats : zoomez.",
       "server": "le serveur OSM a renvoyé une erreur. Réessayez plus tard ; votre file est conservée.",
-      "unknown": "{{message}}"
+      "unknown": "{{message}}",
+      "pausedRate": "trop de chargements de la carte en une minute : chargement en pause jusque vers {{time}}.",
+      "pausedBandwidth": "le serveur OSM limite les téléchargements : appels suspendus jusqu'à {{time}} environ."
     },
     "dock": {
       "position": "Position du panneau",
