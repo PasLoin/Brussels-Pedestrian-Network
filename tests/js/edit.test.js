@@ -264,3 +264,19 @@ test("no OSM call can run before the environment guard", () => {
   assert.doesNotMatch(src.slice(0, guard), /\bOSM\.\w+\(/);
   assert.doesNotMatch(fs.readFileSync(path.join(EDIT, "land.js"), "utf8"), /\bOSM\b/);
 });
+
+test("the editor modules are only created after the environment guard and never reach the OSM library directly", () => {
+  const main = fs.readFileSync(path.join(EDIT, "main.js"), "utf8");
+  const guard = main.indexOf("guardEnvironment({");
+  const firstInstall = main.search(/\binstall[A-Z]\w*\(ctx/);
+  assert.ok(firstInstall > guard, "a module is installed before guardEnvironment");
+  const dir = path.join(EDIT, "app");
+  const modules = fs.readdirSync(dir).filter(f => f.endsWith(".js"));
+  assert.ok(modules.length >= 10);
+  for (const name of modules) {
+    const src = fs.readFileSync(path.join(dir, name), "utf8");
+    assert.doesNotMatch(src, /\bOSM\.\w+/, name);
+    assert.doesNotMatch(src, /guardEnvironment|configure\(/, name);
+    assert.match(src, /^export function install\w+\(ctx|^export function addEditLayers/m, name);
+  }
+});
