@@ -606,6 +606,22 @@
       "since": "Compté depuis le {{date}}, dans ce navigateur.",
       "reset": "Remettre à zéro",
       "peakWaiting": "Appels mis en attente au plus : {{count}}"
+    },
+    "data": {
+      "title": "Données du serveur dev",
+      "help": "Chargez un export .osm du serveur dev : la couche « Tags sidewalk » affiche alors ses rues avec leurs IDs dev, comme le feront les tuiles en production.",
+      "load": "Charger un export .osm",
+      "replace": "Charger un autre export",
+      "loading": "Lecture de {{name}}…",
+      "active_one": "{{count}} rue chargée depuis {{name}}.",
+      "active_other": "{{count}} rues chargées depuis {{name}}.",
+      "latest": "Dernière modification dans l'export : {{date}}",
+      "reset": "Revenir aux tuiles de prod",
+      "errorNotOsm": "Ce fichier n'est pas un export OSM au format XML.",
+      "errorUnsaved": "Ce fichier contient des objets pas encore envoyés (ID négatif ou modification locale dans JOSM). Exportez les données depuis le serveur dev.",
+      "errorEmpty": "Aucune rue utilisable dans ce fichier.",
+      "errorTooBig": "Fichier trop gros : {{size}} Mo, 50 au plus.",
+      "errorRead": "Le fichier n'a pas pu être lu."
     }
   }
 }

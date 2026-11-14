@@ -12,6 +12,7 @@ export const ENVS = Object.freeze({
     scopes: SCOPES,
     candidates: "live",
     apiMeter: true,
+    devData: true,
   }),
   prod: Object.freeze({
     name: "prod",
@@ -21,6 +22,7 @@ export const ENVS = Object.freeze({
     scopes: SCOPES,
     candidates: "pmtiles",
     apiMeter: false,
+    devData: false,
   }),
 });
 

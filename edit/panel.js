@@ -311,3 +311,28 @@ export function queueView(state, i18n, webUrl, settings) {
     ${resultView(state.result, i18n, webUrl)}
   `;
 }
+
+function devDataError(state, t) {
+  if (state.error === "notOsm") return t("edit.data.errorNotOsm");
+  if (state.error === "unsaved") return t("edit.data.errorUnsaved");
+  if (state.error === "empty") return t("edit.data.errorEmpty");
+  if (state.error === "tooBig") return t("edit.data.errorTooBig", { size: state.size || 0 });
+  return t("edit.data.errorRead");
+}
+
+export function devDataView(state, i18n) {
+  const { t } = i18n;
+  return html`<section class="edit-data" aria-labelledby="edit-data-title">
+    <h3 id="edit-data-title">${t("edit.data.title")}</h3>
+    ${state.active
+      ? html`<p class="edit-ok">${t("edit.data.active", { count: state.active.count, name: state.active.name })}</p>
+        ${state.active.latest && html`<p class="edit-help">${t("edit.data.latest", { date: i18n.date(state.active.latest, { dateStyle: "short", timeStyle: "short" }) })}</p>`}`
+      : html`<p class="edit-help">${t("edit.data.help")}</p>`}
+    ${state.loading && html`<p role="status">${t("edit.data.loading", { name: state.loading })}</p>`}
+    ${state.error && html`<p class="edit-warn" role="alert">${devDataError(state, t)}</p>`}
+    <div class="edit-actions">
+      <button type="button" class="btn" data-edit-action="data-load"${state.loading ? html` disabled` : ""}>${state.active ? t("edit.data.replace") : t("edit.data.load")}</button>
+      ${state.active && html`<button type="button" class="edit-link" data-edit-action="data-reset">${t("edit.data.reset")}</button>`}
+    </div>
+  </section>`;
+}

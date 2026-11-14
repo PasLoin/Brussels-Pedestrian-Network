@@ -7,13 +7,14 @@ import { EMPTY_COLLECTION, boundsBox, boxString, boxWithin, candidateRequest, ca
 import { MAX_TAG_LENGTH, buildChangesetTags, hashtagsValue, normalizeHashtags, sourceValue, splitList, tooLongFields } from "./changeset.js";
 import { createClient } from "./client.js";
 import { APP_NAME, APP_VERSION, envFromDocument } from "./env.js";
+import { DEV_SOURCE, MAX_FILE_BYTES, createDevDataStore, devDataFromFile } from "./dev-data.js";
 import { errorKind, errorMessage } from "./errors.js";
 import { bboxOf, lineLengthM } from "./geo.js";
 import { chooseValue, choiceFromIntent, completeChoice, makeIntent, switchMode } from "./intent.js";
 import { linesOf, matchCandidate } from "./match.js";
 import { nextCandidate } from "./next.js";
 import { closeEmptyChangesets, planUpload, queueRoom, uploadGroups, zonesFor } from "./osm.js";
-import { authView, detailView, editLock, meterView, navView, queueView, statusView, tooLongMessage } from "./panel.js";
+import { authView, detailView, devDataView, editLock, meterView, navView, queueView, statusView, tooLongMessage } from "./panel.js";
 import { composeComment, describeGroup, indexCommunes } from "./places.js";
 import { createQueue } from "./queue.js";
 import { coveredIndexes, createReviewStore, samplesAlong } from "./review.js";
@@ -831,6 +832,83 @@ exitDialog.addEventListener("click", (e) => {
   if (choice === "keep" || choice === "discard") leaveEdit();
 });
 
+const SIDEWALK_LAYER = "sidewalk-roads";
+const devStore = env.devData ? createDevDataStore(window.indexedDB, env.name) : null;
+const dataEl = document.getElementById("edit-data");
+const dataInput = document.getElementById("edit-data-file");
+let devData = { active: null, loading: null, error: null };
+
+function renderDevData() {
+  if (!devStore) return;
+  dataEl.innerHTML = html`${devDataView(devData, i18n)}`;
+}
+
+function swapSidewalkSource(sourceSpec) {
+  const style = map.getStyle();
+  const index = style.layers.findIndex(l => l.id === SIDEWALK_LAYER);
+  if (index < 0) return;
+  const layer = { ...style.layers[index] };
+  delete layer["source-layer"];
+  const before = style.layers[index + 1] ? style.layers[index + 1].id : undefined;
+  map.removeLayer(SIDEWALK_LAYER);
+  if (sourceSpec) {
+    if (map.getSource(DEV_SOURCE)) map.getSource(DEV_SOURCE).setData(sourceSpec.data);
+    else map.addSource(DEV_SOURCE, sourceSpec);
+    map.addLayer({ ...layer, source: DEV_SOURCE }, before);
+  } else {
+    map.addLayer({ ...layer, source: "pedestrian", "source-layer": "sidewalk_roads" }, before);
+    if (map.getSource(DEV_SOURCE)) map.removeSource(DEV_SOURCE);
+  }
+}
+
+function applyDevData(data) {
+  swapSidewalkSource({ type: "geojson", data: data.collection, promoteId: "osm_id" });
+  devData = { active: data.meta, loading: null, error: null };
+  renderDevData();
+}
+
+async function loadDevFile(file) {
+  if (file.size > MAX_FILE_BYTES) {
+    devData = { ...devData, error: "tooBig", size: Math.ceil(file.size / 1048576) };
+    return renderDevData();
+  }
+  devData = { ...devData, loading: file.name, error: null };
+  renderDevData();
+  try {
+    const data = devDataFromFile(await file.text(), file.name);
+    await mapReady;
+    await devStore.save(data);
+    applyDevData(data);
+  } catch (err) {
+    devData = { ...devData, loading: null, error: err.code || "read" };
+    renderDevData();
+  }
+}
+
+async function resetDevData() {
+  swapSidewalkSource(null);
+  await devStore.clear();
+  devData = { active: null, loading: null, error: null };
+  renderDevData();
+}
+
+if (devStore) {
+  renderDevData();
+  dataEl.addEventListener("click", (e) => {
+    const action = e.target.closest("[data-edit-action]")?.dataset.editAction;
+    if (action === "data-load") dataInput.click();
+    if (action === "data-reset") resetDevData();
+  });
+  dataInput.addEventListener("change", () => {
+    const file = dataInput.files && dataInput.files[0];
+    dataInput.value = "";
+    if (file) loadDevFile(file);
+  });
+  Promise.all([devStore.load(), mapReady]).then(([saved]) => {
+    if (saved && saved.collection && !devData.active) applyDevData(saved);
+  });
+}
+
 function tileLines(id) {
   const lines = [];
   if (store.lastClicked && Number(store.lastClicked.id) === id) lines.push(...linesOf(store.lastClicked.geometry));
@@ -850,7 +928,7 @@ async function editWay(id) {
   enterEdit();
   if (window.BPNMap) window.BPNMap.closePopups();
   await mapReady;
-  if (env.candidates === "pmtiles") return selectWay(id);
+  if (env.candidates === "pmtiles" || devData.active) return selectWay(id);
   const lines = tileLines(id);
   await loadCandidates(lines.length ? { box: paddedBox(lines), around: true } : currentRequest());
   const twins = [...(sourceIndex.get(id) || [])];
@@ -897,6 +975,7 @@ window.BPNEdit = Object.freeze({
   enter: enterEdit,
   exit: requestExit,
   isActive: () => active,
+  devData: () => devData.active,
   apiStats: () => (meter ? meter.stats() : null),
   resetApiStats: () => meter && meter.reset(),
   canEdit: p => Boolean(p && p.sw === "unknown" && matchesWhitelist({ highway: p.highway })),

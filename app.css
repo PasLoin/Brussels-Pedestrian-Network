@@ -343,6 +343,9 @@ body.is-editing #header, body.is-editing #lang-banner { display: none !important
 #edit-panel .edit-nav:empty { display: none; }
 #edit-panel .edit-comments { margin: 4px 0; padding-left: 18px; font-size: 12px; }
 #edit-panel .edit-comments li { margin: 4px 0; word-break: break-word; }
+#edit-panel .edit-data { margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--line-soft); }
+#edit-panel .edit-data .edit-actions { flex-direction: row; align-items: center; gap: 12px; }
+#edit-panel .edit-data .btn { width: auto; }
 #edit-panel .edit-meter { margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--line-soft); font-size: 12px; }
 #edit-panel .edit-meter summary { cursor: pointer; color: var(--ink-2); padding: 2px 0; }
 #edit-panel .edit-meter p { margin: 2px 0; }

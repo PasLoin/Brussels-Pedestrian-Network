@@ -606,6 +606,22 @@
       "since": "Counted since {{date}}, in this browser.",
       "reset": "Reset",
       "peakWaiting": "Most calls kept waiting: {{count}}"
+    },
+    "data": {
+      "title": "Dev server data",
+      "help": "Load a .osm export of the dev server: the “Sidewalk tags” layer then shows its streets with their dev IDs, as the tiles will in production.",
+      "load": "Load a .osm export",
+      "replace": "Load another export",
+      "loading": "Reading {{name}}…",
+      "active_one": "{{count}} street loaded from {{name}}.",
+      "active_other": "{{count}} streets loaded from {{name}}.",
+      "latest": "Latest change in the export: {{date}}",
+      "reset": "Back to the production tiles",
+      "errorNotOsm": "This file is not an OSM XML export.",
+      "errorUnsaved": "This file holds objects not uploaded yet (negative ID or local change in JOSM). Export the data from the dev server.",
+      "errorEmpty": "No usable street in this file.",
+      "errorTooBig": "File too large: {{size}} MB, 50 at most.",
+      "errorRead": "The file could not be read."
     }
   }
 }

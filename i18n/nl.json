@@ -606,6 +606,22 @@
       "since": "Geteld sinds {{date}}, in deze browser.",
       "reset": "Op nul zetten",
       "peakWaiting": "Meeste wachtende oproepen: {{count}}"
+    },
+    "data": {
+      "title": "Gegevens van de dev-server",
+      "help": "Laad een .osm-export van de dev-server: de laag “Sidewalk-tags” toont dan de straten met hun dev-ID's, zoals de tegels in productie.",
+      "load": "Een .osm-export laden",
+      "replace": "Een andere export laden",
+      "loading": "{{name}} wordt gelezen…",
+      "active_one": "{{count}} straat geladen uit {{name}}.",
+      "active_other": "{{count}} straten geladen uit {{name}}.",
+      "latest": "Laatste wijziging in de export: {{date}}",
+      "reset": "Terug naar de productietegels",
+      "errorNotOsm": "Dit bestand is geen OSM-export in XML.",
+      "errorUnsaved": "Dit bestand bevat objecten die nog niet verstuurd zijn (negatieve ID of lokale wijziging in JOSM). Exporteer de gegevens van de dev-server.",
+      "errorEmpty": "Geen bruikbare straat in dit bestand.",
+      "errorTooBig": "Bestand te groot: {{size}} MB, hoogstens 50.",
+      "errorRead": "Het bestand kon niet gelezen worden."
     }
   }
 }

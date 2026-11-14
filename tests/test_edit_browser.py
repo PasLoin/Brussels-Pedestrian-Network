@@ -1386,3 +1386,88 @@ def test_edit_here_on_dev_refuses_to_guess_between_two_halves_of_a_split_way(ses
     click_edit_here(s.page, 1052304744, [list(c) for c in line_at(CENTER, length=0.002)])
     wait(s.page, "() => document.getElementById('edit-status').textContent.includes('correspond à 2 ways sur le serveur dev')")
     assert selected_way(s.page) is None
+
+
+def osm_xml(ways, negative=False):
+    nodes, out_ways, nid = [], [], 1
+    for way_id, coords, tags in ways:
+        refs = []
+        for lon, lat in coords:
+            node_id = -nid if negative else nid
+            nodes.append(f'<node id="{node_id}" version="1" timestamp="2026-05-20T04:45:43Z" lat="{lat}" lon="{lon}"/>')
+            refs.append(node_id)
+            nid += 1
+        tag_xml = "".join(f'<tag k="{k}" v="{v}"/>' for k, v in tags.items())
+        nd_xml = "".join(f'<nd ref="{r}"/>' for r in refs)
+        out_ways.append(f'<way id="{way_id}" version="1" timestamp="2026-05-21T10:00:00Z">{nd_xml}{tag_xml}</way>')
+    return f'<?xml version="1.0" encoding="UTF-8"?><osm version="0.6">{"".join(nodes)}{"".join(out_ways)}</osm>'
+
+
+def upload_osm(page, text, name="map.osm"):
+    page.set_input_files("#edit-data-file", files=[{"name": name, "mimeType": "application/xml", "buffer": text.encode()}])
+
+
+def sidewalk_source(page):
+    return map_eval(page, "const l = m.getStyle().layers.find(l => l.id === 'sidewalk-roads'); return [l.source, l['source-layer'] || null];")
+
+
+def dev_features(page):
+    return map_eval(page, "return m.getSource('dev-sidewalk').serialize().data.features.map(f => f.properties);")
+
+
+def test_a_dev_export_replaces_the_sidewalk_layer_and_edit_here_uses_its_ids(session, fake):
+    three_streets(fake)
+    s = session()
+    assert sidewalk_source(s.page) == ["pedestrian", "sidewalk_roads"]
+    upload_osm(s.page, osm_xml([
+        (101, line_at(CENTER), street("Rue Test", "Teststraat")),
+        (102, line_at(CENTER, dy=-0.0004), {**street("Rue B", "Bstraat"), "sidewalk:both": "separate"}),
+        (103, line_at(CENTER, dy=-0.0004, dx=0.002), {"highway": "service"}),
+    ]))
+    wait(s.page, "() => document.getElementById('edit-data').textContent.includes('2 rues chargées depuis map.osm')")
+    assert sidewalk_source(s.page) == ["dev-sidewalk", None]
+    assert s.page.evaluate("BPNEdit.devData().count") == 2
+    statuses = {p["osm_id"]: p["sw"] for p in dev_features(s.page)}
+    assert statuses == {101: "unknown", 102: "separate"}
+    s.page.click("#edit-exit")
+    fake_calls = fake.count("map")
+    click_edit_here(s.page, 101, [[x + 0.001, y + 0.001] for x, y in line_at(CENTER)])
+    wait_selected(s.page, 101)
+    assert fake.count("map") >= fake_calls
+
+
+def test_the_dev_export_survives_a_reload_and_a_basemap_change_until_reset(session, fake):
+    three_streets(fake)
+    s = session()
+    upload_osm(s.page, osm_xml([(101, line_at(CENTER), street("Rue Test", "Teststraat"))]))
+    wait(s.page, "() => !!(window.BPNEdit && BPNEdit.devData())")
+    s.page.reload()
+    wait(s.page, "() => !!(window.BPNEdit && BPNEdit.devData())")
+    wait(s.page, "async () => { const { store } = await import('/map/store.js'); return store.mapReady && store.map.getStyle().layers.find(l => l.id === 'sidewalk-roads').source === 'dev-sidewalk'; }")
+    s.page.click("#basemap-toggle")
+    s.page.click('.basemap-option[data-id="urbis-ortho"]')
+    wait(s.page, "() => localStorage.getItem('bpn-basemap') === 'urbis-ortho'")
+    time.sleep(0.6)
+    assert sidewalk_source(s.page) == ["dev-sidewalk", None]
+    enter_edit(s.page)
+    s.page.click('[data-edit-action="data-reset"]')
+    wait(s.page, "() => BPNEdit.devData() === null")
+    assert sidewalk_source(s.page) == ["pedestrian", "sidewalk_roads"]
+    s.page.reload()
+    wait(s.page, "async () => window.BPNEdit && (await import('/map/store.js')).store.mapReady")
+    time.sleep(0.5)
+    assert s.page.evaluate("BPNEdit.devData()") is None
+    assert sidewalk_source(s.page) == ["pedestrian", "sidewalk_roads"]
+
+
+def test_a_josm_file_with_unsent_objects_or_a_non_osm_file_is_refused(session, fake):
+    three_streets(fake)
+    s = session()
+    upload_osm(s.page, osm_xml([(101, line_at(CENTER), street("Rue Test", "Teststraat"))], negative=True))
+    wait(s.page, "() => document.getElementById('edit-data').textContent.includes('pas encore envoyés')")
+    upload_osm(s.page, "<html><body>nope</body></html>", name="page.html")
+    wait(s.page, "() => document.getElementById('edit-data').textContent.includes(\"n'est pas un export OSM\")")
+    upload_osm(s.page, osm_xml([(101, line_at(CENTER), {"highway": "footway"})]))
+    wait(s.page, "() => document.getElementById('edit-data').textContent.includes('Aucune rue utilisable')")
+    assert s.page.evaluate("BPNEdit.devData()") is None
+    assert sidewalk_source(s.page) == ["pedestrian", "sidewalk_roads"]
