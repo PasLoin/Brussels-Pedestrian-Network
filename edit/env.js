@@ -32,8 +32,8 @@ export const OSM_API_VERSION = "4.0.1";
 export const MAX_WAYS_PER_CHANGESET = 50;
 
 export const SETTINGS = Object.freeze({
-  editEnabled: true,
-  autoQueue: false,
+  editEnabled: false,
+  autoQueue: true,
   autoAdvance: true,
   candidateMinZoom: 17,
   candidateFloorZoom: 15,
