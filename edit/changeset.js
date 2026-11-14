@@ -1,4 +1,4 @@
-import { APP_NAME, APP_VERSION, OSM_API_VERSION } from "./env.js";
+import { APP_NAME, APP_VERSION, OSM_API_JS_VERSION } from "./env.js";
 
 export const MAX_TAG_LENGTH = 255;
 
@@ -59,7 +59,7 @@ export function buildChangesetTags({
   if (!String(comment || "").trim()) throw new Error("comment-required");
   const tags = {
     created_by: `${APP_NAME} ${APP_VERSION}`,
-    osm_api_js_version: OSM_API_VERSION,
+    osm_api_js_version: OSM_API_JS_VERSION,
     comment: fullComment,
     source: sourceList.join(";"),
   };

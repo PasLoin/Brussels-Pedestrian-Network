@@ -28,7 +28,7 @@ export const ENVS = Object.freeze({
 
 export const APP_NAME = "BrusselsPedestrianNetwork";
 export const APP_VERSION = "0.2.0";
-export const OSM_API_VERSION = "4.0.1";
+export const OSM_API_JS_VERSION = "4.0.1";
 export const MAX_WAYS_PER_CHANGESET = 50;
 
 export const SETTINGS = Object.freeze({
@@ -46,7 +46,7 @@ export const SETTINGS = Object.freeze({
   longWayWarningM: 200,
   maxNodeShiftM: 10,
   defaultHashtags: Object.freeze(["#BrusselsPedestrianNetwork"]),
-  reviewZoom: 18,
+  reviewZoom: 18.7,
   fitMinZoom: 17,
   fitMaxZoom: 19,
   apiMeterWarnPerMinute: 30,

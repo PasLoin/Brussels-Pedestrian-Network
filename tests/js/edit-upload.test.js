@@ -450,9 +450,9 @@ test("generated comments never cut an emoji in half", async () => {
 });
 
 test("the version announced in created_by matches the vendored library", async () => {
-  const { OSM_API_VERSION } = await load("env.js");
+  const { OSM_API_JS_VERSION } = await load("env.js");
   const fs = require("node:fs");
-  assert.ok(fs.existsSync(path.join(__dirname, "..", "..", "vendor", `osm-api-${OSM_API_VERSION}.min.js`)));
+  assert.ok(fs.existsSync(path.join(__dirname, "..", "..", "vendor", `osm-api-${OSM_API_JS_VERSION}.min.js`)));
 });
 
 test("a changeset can never exceed 50 ways whatever the settings", async () => {
