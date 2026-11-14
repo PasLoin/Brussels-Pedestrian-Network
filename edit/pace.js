@@ -31,7 +31,7 @@ export function createPace({ storage, env, windowMs, maxMeters, blockMeters, rep
       if (alreadyWarned && meters > blockMeters) {
         state.cooldownUntil = t + cooldownMs;
         state.events = [];
-        state.warnedAt = t;
+        state.warnedAt = null;
       } else if (meters > maxMeters && !alreadyWarned) {
         state.warnedAt = t;
       }

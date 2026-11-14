@@ -113,6 +113,17 @@ test("a single long street never blocks on its own, and a rush long after the wa
   assert.deepEqual(pace.status(), { meters: 700, tooFast: true, cooldownLeftMs: 0 });
 });
 
+test("after the pause every counter starts again from zero, so the next rush only warns", async () => {
+  const { createPace } = await load("pace.js");
+  const clock = { t: 0 };
+  const pace = createPace({ ...paceOptions(memoryStorage(), clock), cooldownMs: 20000 });
+  for (let i = 0; i < 10; i++) { pace.record(100); clock.t += 500; }
+  assert.ok(pace.status().cooldownLeftMs > 0);
+  clock.t += 21000;
+  for (let i = 0; i < 8; i++) pace.record(100);
+  assert.deepEqual(pace.status(), { meters: 800, tooFast: true, cooldownLeftMs: 0 });
+});
+
 test("the pause survives a reload", async () => {
   const { createPace } = await load("pace.js");
   const storage = memoryStorage();
@@ -187,8 +198,9 @@ test("editing settings: orthophoto only, the three walking layers forced on, sid
   assert.equal(SETTINGS.minLookMs, 3000);
   assert.equal(SETTINGS.lookMsPerMeter, 30);
   assert.equal(SETTINGS.lookMode, "warn");
-  assert.equal(SETTINGS.paceMaxMeters, 600);
-  assert.equal(SETTINGS.paceBlockMeters, 900);
+  assert.equal(SETTINGS.paceMaxMeters, 1200);
+  assert.equal(SETTINGS.paceBlockMeters, 1800);
+  assert.equal(SETTINGS.paceCooldownMs, 20000);
   assert.equal(SETTINGS.paceRepeatMs, 300000);
   assert.equal(SETTINGS.mapCallsPerMinute, 25);
   assert.equal(SETTINGS.pauseAfter509Ms, 300000);
