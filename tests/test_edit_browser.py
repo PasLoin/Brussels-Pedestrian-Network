@@ -128,7 +128,7 @@ BLANK_PNG = bytes.fromhex("89504e470d0a1a0a0000000d49484452000000010000000108060
 class Session:
     def __init__(self, browser, server, fake, logged_in=True, queue=None, auth_env="dev", center=CENTER, zoom=17.5, editing=True, settings=None):
         self.fake = fake
-        self.settings = {"reviewZoom": "null", "minLookMs": "0", "paceMaxStreets": "1000", **(settings or {})}
+        self.settings = {"reviewZoom": "null", "minLookMs": "0", "paceMaxMeters": "1000000", **(settings or {})}
         self.problems = []
         self.context = browser.new_context(viewport={"width": 1134, "height": 763}, locale="fr-BE")
         self.context.route("**/*", self._route)
@@ -1607,7 +1607,7 @@ def test_a_street_cannot_be_judged_on_a_drawn_basemap(session, fake):
 
 def test_the_choice_opens_only_after_looking_at_the_street_a_few_seconds(session, fake):
     fake.add_way(101, line_at(CENTER), street("Rue Test", "Teststraat"))
-    s = session(settings={"minLookMs": "1500"})
+    s = session(settings={"minLookMs": "1500", "lookMsPerMeter": "1000", "lookMode": '"block"'})
     wait_candidates(s.page, 1)
     click_way(s.page, CENTER[0], CENTER[1] + 0.00001, 101, expect_form=False)
     wait(s.page, "() => document.getElementById('edit-detail').textContent.includes('Prenez le temps de regarder la rue')")
@@ -1631,7 +1631,7 @@ def queue_current(page):
 def test_editing_too_fast_warns_then_pauses_when_it_happens_again(session, fake):
     for i in range(8):
         fake.add_way(101 + i, line_at(CENTER, dy=0.0004 - 0.00012 * i), street(f"Rue {i}", f"Straat {i}"))
-    s = session(settings={"paceMaxStreets": "2", "paceWindowMs": "2500", "paceCooldownMs": "3000"})
+    s = session(settings={"paceMaxMeters": "180", "paceWindowMs": "2500", "paceCooldownMs": "3000"})
     wait_candidates(s.page, 8)
     s.page.keyboard.press("ArrowRight")
     for _ in range(3):
@@ -1661,3 +1661,26 @@ def test_map_loads_pause_after_the_per_minute_ceiling(session, fake):
         time.sleep(0.6)
     wait(s.page, "() => document.getElementById('edit-status').textContent.includes('chargement en pause')")
     assert fake.count("map") == 2
+
+
+def test_in_warn_mode_the_look_time_is_only_a_hint(session, fake):
+    fake.add_way(101, line_at(CENTER), street("Rue Test", "Teststraat"))
+    s = session(settings={"minLookMs": "3000", "lookMsPerMeter": "1000"})
+    wait_candidates(s.page, 1)
+    click_way(s.page, CENTER[0], CENTER[1] + 0.00001, 101)
+    wait(s.page, "() => document.getElementById('edit-detail').textContent.includes('Prenez le temps de regarder la rue')")
+    assert not locked(s.page)
+    s.page.keyboard.press("s")
+    wait(s.page, "() => (localStorage.getItem('bpn.queue.dev') || '').includes('101')")
+
+
+def test_a_short_segment_only_asks_for_a_short_look(session, fake):
+    short = [(CENTER[0], CENTER[1]), (CENTER[0] + 0.0003, CENTER[1])]
+    fake.add_way(101, short, street("Rue Courte", "Korte Straat"))
+    s = session(settings={"minLookMs": "3000", "lookMsPerMeter": "30", "lookMode": '"block"'})
+    wait_candidates(s.page, 1)
+    click_way(s.page, CENTER[0] + 0.00015, CENTER[1], 101, expect_form=False)
+    wait(s.page, "() => document.getElementById('edit-detail').textContent.includes('encore 1 seconde')")
+    start = time.time()
+    wait(s.page, "() => !!document.querySelector('[data-edit-action=choose]') && !document.querySelector('[data-edit-action=choose][disabled]')")
+    assert time.time() - start < 1.5

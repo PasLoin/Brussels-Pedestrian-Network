@@ -99,7 +99,7 @@ export function editLock(state) {
   if (state.seenWhole === false) return "hidden";
   if (state.review && !state.review.done) return "detail";
   if (state.paceLeftMs > 0 && !state.queued) return "pace";
-  if (state.lookLeftMs > 0 && !state.queued) return "look";
+  if (state.lookLeftMs > 0 && !state.queued && state.lookMode === "block") return "look";
   if (state.room && !state.room.fits && !state.queued) return "full";
   return null;
 }
@@ -157,6 +157,7 @@ export function editFormView(state, i18n, settings = {}) {
   return html`
     <div class="edit-form${locked ? " locked" : ""}">
       ${lockView(lock, state, i18n)}
+      ${state.lookLeftMs > 0 && !state.queued && state.lookMode !== "block" && !lock && html`<p class="edit-help edit-look" role="status">${t("edit.form.lookTime", { count: Math.ceil(state.lookLeftMs / 1000) })}</p>`}
       ${state.tooFast && !lock && html`<p class="edit-warn" role="alert">${t("edit.form.tooFast")}</p>`}
       ${sides
         ? html`

@@ -65,22 +65,32 @@ test("the guard sits in front of the queue, so refused calls are never counted o
   assert.equal(meter.stats().total, 1);
 });
 
+test("editing too fast is measured in metres, so a street cut into short segments is not penalised", async () => {
+  const { createPace } = await load("pace.js");
+  let clock = 0;
+  const pace = createPace({ storage: memoryStorage(), env: "dev", windowMs: 60000, maxMeters: 600, repeatMs: 600000, cooldownMs: 60000, now: () => clock });
+  for (let i = 0; i < 12; i++) { pace.record(40); clock += 1000; }
+  assert.deepEqual(pace.status(), { meters: 480, tooFast: false, cooldownLeftMs: 0 });
+  pace.record(150);
+  assert.equal(pace.status().tooFast, true);
+});
+
 test("editing too fast warns first, then pauses if it happens again soon after", async () => {
   const { createPace } = await load("pace.js");
   const storage = memoryStorage();
   let clock = 0;
-  const options = { storage, env: "dev", windowMs: 60000, maxStreets: 6, repeatMs: 600000, cooldownMs: 60000, now: () => clock };
+  const options = { storage, env: "dev", windowMs: 60000, maxMeters: 600, repeatMs: 600000, cooldownMs: 60000, now: () => clock };
   let pace = createPace(options);
-  for (let i = 0; i < 6; i++) { pace.record(); clock += 1000; }
-  assert.deepEqual(pace.status(), { count: 6, tooFast: false, cooldownLeftMs: 0 });
-  pace.record();
+  for (let i = 0; i < 6; i++) { pace.record(100); clock += 1000; }
+  assert.deepEqual(pace.status(), { meters: 600, tooFast: false, cooldownLeftMs: 0 });
+  pace.record(100);
   assert.equal(pace.status().tooFast, true);
-  pace.record();
+  pace.record(100);
   assert.equal(pace.status().cooldownLeftMs, 0);
   clock += 61000;
   assert.equal(pace.status().tooFast, false);
   pace = createPace(options);
-  for (let i = 0; i < 7; i++) { pace.record(); clock += 500; }
+  for (let i = 0; i < 7; i++) { pace.record(100); clock += 500; }
   const status = pace.status();
   assert.equal(status.tooFast, false);
   assert.ok(status.cooldownLeftMs > 58000 && status.cooldownLeftMs <= 60000, String(status.cooldownLeftMs));
@@ -91,24 +101,43 @@ test("editing too fast warns first, then pauses if it happens again soon after",
 test("a fast burst long after the last warning only warns again", async () => {
   const { createPace } = await load("pace.js");
   let clock = 0;
-  const pace = createPace({ storage: memoryStorage(), env: "dev", windowMs: 60000, maxStreets: 2, repeatMs: 600000, cooldownMs: 60000, now: () => clock });
-  for (let i = 0; i < 3; i++) pace.record();
+  const pace = createPace({ storage: memoryStorage(), env: "dev", windowMs: 60000, maxMeters: 200, repeatMs: 600000, cooldownMs: 60000, now: () => clock });
+  for (let i = 0; i < 3; i++) pace.record(100);
   assert.equal(pace.status().tooFast, true);
   clock += 700000;
   assert.equal(pace.status().tooFast, false);
-  for (let i = 0; i < 3; i++) pace.record();
-  assert.deepEqual(pace.status(), { count: 3, tooFast: true, cooldownLeftMs: 0 });
+  for (let i = 0; i < 3; i++) pace.record(100);
+  assert.deepEqual(pace.status(), { meters: 300, tooFast: true, cooldownLeftMs: 0 });
+});
+
+test("an old pace record in the former format is ignored rather than breaking the page", async () => {
+  const { createPace } = await load("pace.js");
+  const storage = memoryStorage();
+  storage.setItem("bpn.pace.dev", JSON.stringify({ events: [1, 2, 3], warnedAt: 0 }));
+  const pace = createPace({ storage, env: "dev", windowMs: 60000, maxMeters: 600, repeatMs: 600000, cooldownMs: 60000, now: () => 10 });
+  assert.equal(pace.status().meters, 0);
+});
+
+test("the look time grows with the street length up to three seconds", async () => {
+  const { lookTimeMs } = await load("look.js");
+  const settings = { minLookMs: 3000, lookMsPerMeter: 30 };
+  assert.equal(lookTimeMs(20, settings), 600);
+  assert.equal(lookTimeMs(50, settings), 1500);
+  assert.equal(lookTimeMs(100, settings), 3000);
+  assert.equal(lookTimeMs(800, settings), 3000);
+  assert.equal(lookTimeMs(undefined, settings), 0);
 });
 
 test("the choice waits for the orthophoto, the look time and the pace pause, never for a queued street", async () => {
   const { editLock, detailView } = await load("panel.js");
-  const base = { kind: "way", editable: true, seenWhole: true, basemapOk: true, lookLeftMs: 0, paceLeftMs: 0, way: { id: 5, version: 1, tags: {} }, choice: { mode: "both", both: "", left: "", right: "" } };
+  const base = { kind: "way", editable: true, seenWhole: true, basemapOk: true, lookLeftMs: 0, paceLeftMs: 0, lookMode: "block", way: { id: 5, version: 1, tags: {} }, choice: { mode: "both", both: "", left: "", right: "" } };
   assert.equal(editLock(base), null);
   assert.equal(editLock({ ...base, basemapOk: false, lookLeftMs: 3000 }), "basemap");
   assert.equal(editLock({ ...base, lookLeftMs: 2100 }), "look");
   assert.equal(editLock({ ...base, lookLeftMs: 2100, paceLeftMs: 40000 }), "pace");
   assert.equal(editLock({ ...base, lookLeftMs: 2100, paceLeftMs: 40000, queued: { wayId: 5 } }), null);
   assert.equal(editLock({ ...base, basemapOk: false, queued: { wayId: 5 } }), "basemap");
+  assert.equal(editLock({ ...base, lookLeftMs: 2100, lookMode: "warn" }), null);
   for (const lang of ["fr", "en", "nl"]) {
     const warnings = [];
     const i18n = i18nFor(lang, warnings);
@@ -122,6 +151,9 @@ test("the choice waits for the orthophoto, the look time and the pace pause, nev
   }
   const fr = i18nFor("fr");
   assert.match(String(detailView({ ...base, lookLeftMs: 2100 }, fr, "https://x", {})), /encore 3 secondes/);
+  const warned = String(detailView({ ...base, lookLeftMs: 2100, lookMode: "warn" }, fr, "https://x", {}));
+  assert.match(warned, /encore 3 secondes/);
+  assert.doesNotMatch(warned, /data-value="separate"[^>]*disabled/);
   assert.match(String(detailView({ ...base, tooFast: true }, fr, "https://x", {})), /privilégiez la qualité plutôt que la quantité/);
 });
 
@@ -140,7 +172,10 @@ test("editing settings: orthophoto only, the three walking layers forced on, sid
   assert.deepEqual([...SETTINGS.editBasemaps], ["urbis-ortho"]);
   assert.deepEqual([...SETTINGS.editRequiredLayers], ["highway-pedestrian", "highway-footway", "highway-path"]);
   assert.deepEqual([...SETTINGS.editOptionalLayers], ["sidewalk-roads"]);
-  assert.equal(SETTINGS.minLookMs, 4000);
+  assert.equal(SETTINGS.minLookMs, 3000);
+  assert.equal(SETTINGS.lookMsPerMeter, 30);
+  assert.equal(SETTINGS.lookMode, "warn");
+  assert.equal(SETTINGS.paceMaxMeters, 600);
   assert.equal(SETTINGS.mapCallsPerMinute, 25);
   assert.equal(SETTINGS.pauseAfter509Ms, 300000);
 });

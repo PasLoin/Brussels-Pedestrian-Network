@@ -18,6 +18,7 @@ import { closeEmptyChangesets, planUpload, queueRoom, uploadGroups, zonesFor } f
 import { authView, detailView, devDataView, editLock, meterView, navView, queueView, statusView, tooLongMessage } from "./panel.js";
 import { composeComment, describeGroup, indexCommunes } from "./places.js";
 import { createPace } from "./pace.js";
+import { lookTimeMs } from "./look.js";
 import { createQueue } from "./queue.js";
 import { coveredIndexes, createReviewStore, samplesAlong } from "./review.js";
 import { shortcutFor, sideForValue } from "./shortcuts.js";
@@ -57,7 +58,7 @@ const pace = createPace({
   storage,
   env: env.name,
   windowMs: env.paceWindowMs,
-  maxStreets: env.paceMaxStreets,
+  maxMeters: env.paceMaxMeters,
   repeatMs: env.paceRepeatMs,
   cooldownMs: env.paceCooldownMs,
 });
@@ -155,7 +156,7 @@ function basemapAllowed() {
 
 function qualityNow() {
   const status = pace.status();
-  return { basemapOk: basemapAllowed(), tooFast: status.tooFast, paceLeftMs: status.cooldownLeftMs };
+  return { basemapOk: basemapAllowed(), tooFast: status.tooFast, paceLeftMs: status.cooldownLeftMs, lookMode: env.lookMode };
 }
 
 function renderDetail() {
@@ -361,39 +362,39 @@ function wholeWayVisible(coords, margin = VISIBLE_MARGIN_PX) {
 let settleTimer = null;
 let pendingKeys = [];
 
-function frameWay(d) {
-  if (!map || d.kind !== "way") return "hidden";
+function cameraFor(d, maxZoom) {
   const { canvas, free } = viewArea();
-  const camera = map.cameraForBounds([[d.bbox[0], d.bbox[1]], [d.bbox[2], d.bbox[3]]], {
+  return map.cameraForBounds([[d.bbox[0], d.bbox[1]], [d.bbox[2], d.bbox[3]]], {
     padding: fitPadding(canvas, free, FIT_MARGIN_PX),
     bearing: map.getBearing(),
-    maxZoom: env.fitMaxZoom,
+    maxZoom,
   });
-  const zoom = map.getZoom();
-  const visible = wholeWayVisible(d.coords, FIT_MARGIN_PX);
-  if (!camera) return visible ? "visible" : "hidden";
-  if (visible && zoom >= Math.min(camera.zoom, env.fitMinZoom) - 1e-6) return "visible";
-  if (d.seenWhole && camera.zoom < zoom) return anyPartVisible(d.coords) ? "partial" : bringWholeWayIntoView(d);
+}
+
+function moveTo(camera) {
   map.easeTo({ ...camera, bearing: map.getBearing(), pitch: map.getPitch(), duration: FIT_DURATION_MS });
   clearTimeout(settleTimer);
   settleTimer = setTimeout(() => updateVisibility(true), FIT_DURATION_MS + 150);
   return "moving";
 }
 
+function frameWay(d) {
+  if (!map || d.kind !== "way") return "hidden";
+  const camera = cameraFor(d, env.fitMaxZoom);
+  const zoom = map.getZoom();
+  const visible = wholeWayVisible(d.coords, FIT_MARGIN_PX);
+  if (!camera) return visible ? "visible" : "hidden";
+  if (visible && zoom >= Math.min(camera.zoom, env.fitMinZoom) - 1e-6) return "visible";
+  if (d.seenWhole && camera.zoom < zoom) return anyPartVisible(d.coords) ? "partial" : bringWholeWayIntoView(d);
+  return moveTo(camera);
+}
+
 function bringWholeWayIntoView(d, force = false) {
   if (!map || d.kind !== "way") return "hidden";
   if (!force && wholeWayVisible(d.coords, FIT_MARGIN_PX)) return "visible";
-  const { canvas, free } = viewArea();
-  const camera = map.cameraForBounds([[d.bbox[0], d.bbox[1]], [d.bbox[2], d.bbox[3]]], {
-    padding: fitPadding(canvas, free, FIT_MARGIN_PX),
-    bearing: map.getBearing(),
-    maxZoom: map.getZoom(),
-  });
+  const camera = cameraFor(d, map.getZoom());
   if (!camera) return wholeWayVisible(d.coords) ? "visible" : "hidden";
-  map.easeTo({ ...camera, bearing: map.getBearing(), pitch: map.getPitch(), duration: FIT_DURATION_MS });
-  clearTimeout(settleTimer);
-  settleTimer = setTimeout(() => updateVisibility(true), FIT_DURATION_MS + 150);
-  return "moving";
+  return moveTo(camera);
 }
 
 function applyView(view) {
@@ -462,7 +463,7 @@ function queueChoice() {
   const sides = completeChoice(d.choice);
   if (!sides || editBlocked()) return false;
   const intent = makeIntent({ way: d.way, left: sides.left, right: sides.right, bbox: d.bbox, lengthM: d.lengthM, coords: d.coords });
-  if (!d.queued) pace.record();
+  if (!d.queued) pace.record(d.lengthM);
   queue.put(intent);
   skipped.remove(intent.wayId);
   state.plan = null;
@@ -1274,7 +1275,7 @@ async function selectWay(id) {
       lengthM: lineLengthM(coords),
       queued: queue.get(id),
       choice: choiceFromIntent(queue.get(id)),
-      lookLeftMs: queue.get(id) ? 0 : env.minLookMs,
+      lookLeftMs: queue.get(id) ? 0 : lookTimeMs(lineLengthM(coords), env),
       ...qualityNow(),
     };
     reviewSamples = env.reviewZoom ? samplesAlong(coords, env.reviewStepM) : [];
