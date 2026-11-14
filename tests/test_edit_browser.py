@@ -126,7 +126,7 @@ def intent_for(fake, way_id, set_tags=None):
 class Session:
     def __init__(self, browser, server, fake, logged_in=True, queue=None, auth_env="dev", center=CENTER, zoom=17.5, editing=True, settings=None):
         self.fake = fake
-        self.settings = settings or {}
+        self.settings = {"reviewZoom": "null", **(settings or {})}
         self.problems = []
         self.context = browser.new_context(viewport={"width": 1134, "height": 763}, locale="fr-BE")
         self.context.route("**/*", self._route)
@@ -1045,25 +1045,60 @@ def map_zoom(page):
     return map_eval(page, "return m.getZoom();")
 
 
-def test_after_a_long_street_the_next_one_is_offered_without_zooming_back(session, fake):
+def test_after_a_long_street_the_next_one_brings_the_map_back_close(session, fake):
     long_line = line_at(CENTER, length=0.012)
+    short_line = line_at(CENTER, dy=-0.0004)
     fake.add_way(101, long_line, street("Longue Rue", "Lange Straat"))
-    fake.add_way(102, line_at(CENTER, dy=-0.0004), street("Rue Courte", "Korte Straat"))
+    fake.add_way(102, short_line, street("Rue Courte", "Korte Straat"))
     s = session()
     wait_candidates(s.page, 2)
     click_way(s.page, CENTER[0], CENTER[1] + 0.00001, 101)
     wait(s.page, "() => !!document.querySelector('[data-edit-action=choose]') && !document.querySelector('[data-edit-action=choose][disabled]')")
-    zoom = map_zoom(s.page)
-    assert zoom < 17
+    assert map_zoom(s.page) < 17
     s.page.keyboard.press("s")
     wait_selected(s.page, 102)
     time.sleep(0.6)
-    assert abs(map_zoom(s.page) - zoom) < 0.01
+    assert 17 <= map_zoom(s.page) <= 19.0001
+    assert whole_way_inside(s.page, short_line)
     assert not locked(s.page)
     s.page.keyboard.press("y")
     wait(s.page, "() => (localStorage.getItem('bpn.queue.dev') || '').includes('102')")
     assert queue_ids(s.page) == [101, 102]
     assert max(requested_areas(fake)) <= 0.001
+
+
+def test_a_short_street_selected_from_far_out_is_framed_close(session, fake):
+    line = line_at(CENTER)
+    fake.add_way(101, line, street("Rue Test", "Teststraat"))
+    s = session(zoom=15.5)
+    wait_candidates(s.page, 1)
+    click_way(s.page, CENTER[0], CENTER[1] + 0.00001, 101, expect_form=False)
+    wait(s.page, "() => !document.querySelector('[data-edit-action=choose][disabled]') && !!document.querySelector('[data-edit-action=choose]')")
+    assert 17 <= map_zoom(s.page) <= 19.0001
+    assert whole_way_inside(s.page, line)
+    map_eval(s.page, "m.jumpTo({ zoom: 18.5 }); return true;")
+    time.sleep(0.3)
+    s.page.keyboard.press("Escape")
+    click_way(s.page, CENTER[0], CENTER[1] + 0.00001, 101)
+    time.sleep(0.5)
+    assert abs(map_zoom(s.page) - 18.5) < 0.01
+
+
+def test_the_close_look_at_zoom_18_7_unlocks_once_the_whole_street_is_seen(session, fake):
+    line = line_at(CENTER, length=0.004)
+    fake.add_way(101, line, street("Rue Moyenne", "Middenstraat"))
+    s = session(settings={"reviewZoom": "18.7"})
+    wait_candidates(s.page, 1)
+    click_way(s.page, CENTER[0], CENTER[1] + 0.00001, 101, expect_form=False)
+    wait(s.page, "() => !!document.querySelector('[data-edit-action=review-next]')")
+    assert "zoom 18,7" in s.page.inner_text("#edit-detail")
+    for _ in range(20):
+        if not s.page.query_selector('[data-edit-action="review-next"]'):
+            break
+        s.page.click('[data-edit-action="review-next"]')
+        time.sleep(0.5)
+    wait(s.page, "() => !document.querySelector('[data-edit-action=choose][disabled]')")
+    assert map_zoom(s.page) >= 18.7
 
 
 def test_streets_beyond_the_first_view_are_chained_from_the_keyboard(session, fake):

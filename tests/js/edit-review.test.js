@@ -91,3 +91,11 @@ test("an unfinished close look locks the choice and says how much is left", asyn
   }
   assert.match(String(detailView({ ...base, review: { zoom: 18.6, percent: 40, done: false } }, i18nFor("fr"), "https://x", { autoQueue: true })), /zoom 18,6|zoom 18\.6/);
 });
+
+test("by default a street is framed between zoom 17 and 19 and checked close up at zoom 18.7", async () => {
+  const { SETTINGS, resolveEnv } = await load("env.js");
+  assert.equal(SETTINGS.reviewZoom, 18.7);
+  assert.equal(SETTINGS.fitMinZoom, 17);
+  assert.equal(SETTINGS.fitMaxZoom, 19);
+  assert.equal(resolveEnv("dev", "https://x/test-api/devtest.html").reviewZoom, 18.7);
+});

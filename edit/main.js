@@ -334,6 +334,25 @@ function wholeWayVisible(coords, margin = VISIBLE_MARGIN_PX) {
 let settleTimer = null;
 let pendingKeys = [];
 
+function frameWay(d) {
+  if (!map || d.kind !== "way") return "hidden";
+  const { canvas, free } = viewArea();
+  const camera = map.cameraForBounds([[d.bbox[0], d.bbox[1]], [d.bbox[2], d.bbox[3]]], {
+    padding: fitPadding(canvas, free, FIT_MARGIN_PX),
+    bearing: map.getBearing(),
+    maxZoom: env.fitMaxZoom,
+  });
+  const zoom = map.getZoom();
+  const visible = wholeWayVisible(d.coords, FIT_MARGIN_PX);
+  if (!camera) return visible ? "visible" : "hidden";
+  if (visible && zoom >= Math.min(camera.zoom, env.fitMinZoom) - 1e-6) return "visible";
+  if (d.seenWhole && camera.zoom < zoom) return anyPartVisible(d.coords) ? "partial" : bringWholeWayIntoView(d);
+  map.easeTo({ ...camera, bearing: map.getBearing(), pitch: map.getPitch(), duration: FIT_DURATION_MS });
+  clearTimeout(settleTimer);
+  settleTimer = setTimeout(() => updateVisibility(true), FIT_DURATION_MS + 150);
+  return "moving";
+}
+
 function bringWholeWayIntoView(d, force = false) {
   if (!map || d.kind !== "way") return "hidden";
   if (!force && wholeWayVisible(d.coords, FIT_MARGIN_PX)) return "visible";
@@ -1156,9 +1175,7 @@ async function selectWay(id) {
     reviewSeen = new Set();
     detail.seenWhole = reviews.seenWhole(id, way.version);
     detail.review = reviewState(reviews.seenDetail(id, way.version));
-    const view = detail.seenWhole && anyPartVisible(coords)
-      ? (wholeWayVisible(coords) ? "visible" : "partial")
-      : bringWholeWayIntoView(detail);
+    const view = frameWay(detail);
     state.detail = { ...detail, fitting: view === "moving", visible: view === "visible" };
     noteReview();
   } catch (err) {
