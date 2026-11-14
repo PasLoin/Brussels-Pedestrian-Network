@@ -33,7 +33,7 @@ export const MAX_WAYS_PER_CHANGESET = 50;
 
 export const SETTINGS = Object.freeze({
   editEnabled: true,
-  autoQueue: true,
+  autoQueue: false,
   autoAdvance: true,
   candidateMinZoom: 17,
   candidateFloorZoom: 15,
