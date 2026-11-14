@@ -457,7 +457,9 @@
       "candidates_one": "{{count}} candidate in view.",
       "candidates_other": "{{count}} candidates in view.",
       "error": "Could not load candidates: {{message}}",
-      "noMatch": "No street without a sidewalk tag matches this place on the dev server."
+      "noMatch": "No street without a sidewalk tag matches this place on the dev server.",
+      "splitOnDev_one": "This street matches {{count}} way on the dev server.",
+      "splitOnDev_other": "This street matches {{count}} ways on the dev server (split since the import): pick the right one on the map."
     },
     "detail": {
       "loading": "Loading the live way…",

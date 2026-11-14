@@ -457,7 +457,9 @@
       "candidates_one": "{{count}} kandidaat in beeld.",
       "candidates_other": "{{count}} kandidaten in beeld.",
       "error": "Kandidaten konden niet geladen worden: {{message}}",
-      "noMatch": "Op de dev-server komt geen straat zonder sidewalk-tag overeen met deze plek."
+      "noMatch": "Op de dev-server komt geen straat zonder sidewalk-tag overeen met deze plek.",
+      "splitOnDev_one": "Deze straat komt overeen met {{count}} way op de dev-server.",
+      "splitOnDev_other": "Deze straat komt overeen met {{count}} ways op de dev-server (opgesplitst sinds de import): kies de juiste op de kaart."
     },
     "detail": {
       "loading": "Live way lezen…",

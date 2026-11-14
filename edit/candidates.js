@@ -36,6 +36,25 @@ export function candidatesFromMapData(features, isCandidate = isEditableCandidat
   return { type: "FeatureCollection", features: out };
 }
 
+export function sourceIds(features) {
+  const out = new Map();
+  for (const f of features || []) {
+    if (f.type !== "way" || f.visible === false) continue;
+    const raw = (f.tags || {})["@id"];
+    if (!/^\d+$/.test(String(raw ?? ""))) continue;
+    const source = Number(raw);
+    if (!out.has(source)) out.set(source, new Set());
+    out.get(source).add(f.id);
+  }
+  return out;
+}
+
+export function mergeSourceIds(index, fresh, { max = 20000 } = {}) {
+  const out = index.size + fresh.size > max ? new Map() : new Map(index);
+  for (const [source, ids] of fresh) out.set(source, new Set([...(out.get(source) || []), ...ids]));
+  return out;
+}
+
 export function viewSpanDeg(widthPx, heightPx, zoom, lat) {
   const degPerPx = 360 / (512 * 2 ** zoom);
   return { lon: widthPx * degPerPx, lat: heightPx * degPerPx * Math.cos((lat * Math.PI) / 180) };

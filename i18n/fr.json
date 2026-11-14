@@ -457,7 +457,9 @@
       "candidates_one": "{{count}} candidat dans la vue.",
       "candidates_other": "{{count}} candidats dans la vue.",
       "error": "Impossible de charger les candidats : {{message}}",
-      "noMatch": "Aucune rue sans tag sidewalk ne correspond à cet endroit sur le serveur dev."
+      "noMatch": "Aucune rue sans tag sidewalk ne correspond à cet endroit sur le serveur dev.",
+      "splitOnDev_one": "Cette rue correspond à {{count}} way sur le serveur dev.",
+      "splitOnDev_other": "Cette rue correspond à {{count}} ways sur le serveur dev (découpée depuis l'import) : choisissez la bonne sur la carte."
     },
     "detail": {
       "loading": "Lecture du way sur OSM…",

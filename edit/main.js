@@ -3,7 +3,7 @@ import { createApiMeter, installApiChain } from "./api-meter.js";
 import { limitConcurrency } from "./api-queue.js";
 import { store } from "../map/store.js";
 import { guardEnvironment, isLoggedIn, login, loginInProgress, logout, tabId } from "./auth.js";
-import { EMPTY_COLLECTION, boundsBox, boxString, boxWithin, candidateRequest, candidateWindow, candidatesFromMapData, countInBox, mergeCandidates } from "./candidates.js";
+import { EMPTY_COLLECTION, boundsBox, boxString, boxWithin, candidateRequest, candidateWindow, candidatesFromMapData, countInBox, mergeCandidates, mergeSourceIds, sourceIds } from "./candidates.js";
 import { MAX_TAG_LENGTH, buildChangesetTags, hashtagsValue, normalizeHashtags, sourceValue, splitList, tooLongFields } from "./changeset.js";
 import { createClient } from "./client.js";
 import { APP_NAME, APP_VERSION, envFromDocument } from "./env.js";
@@ -89,6 +89,7 @@ const state = {
   },
 };
 const liveFeatures = new Map();
+let sourceIndex = new Map();
 let map = null;
 let refreshSelected = null;
 let communes = [];
@@ -851,8 +852,11 @@ async function editWay(id) {
   await mapReady;
   if (env.candidates === "pmtiles") return selectWay(id);
   const lines = tileLines(id);
+  await loadCandidates(lines.length ? { box: paddedBox(lines), around: true } : currentRequest());
+  const twins = [...(sourceIndex.get(id) || [])];
+  if (twins.length === 1) return selectWay(twins[0]);
+  if (twins.length > 1) return showStatus({ kind: "splitOnDev", count: twins.length });
   if (!lines.length) return showStatus({ kind: "noMatch" });
-  await loadCandidates({ box: paddedBox(lines), around: true });
   const best = matchCandidate(lines, liveFeatures.values());
   if (!best) return showStatus({ kind: "noMatch" });
   selectWay(best.feature.properties.osm_id);
@@ -1021,6 +1025,7 @@ async function loadCandidates(given = null) {
   try {
     const features = await osm.getMapData(boxString(request.box), { signal: current.signal });
     if (current.signal.aborted) return;
+    sourceIndex = mergeSourceIds(sourceIndex, sourceIds(features));
     setCandidates(mergeCandidates(liveFeatures, candidatesFromMapData(features), request.box));
     loadedBoxes = [request.box, ...loadedBoxes].slice(0, 20);
     showStatus({ kind: "ready", count: countInBox(liveFeatures.values(), boundsBox(map.getBounds())) });

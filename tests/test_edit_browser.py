@@ -1351,3 +1351,38 @@ def test_the_page_never_has_more_than_two_api_calls_in_flight(session, fake):
     assert stats["peakInFlight"] == 2
     assert stats["peakWaiting"] == 3
     assert stats["waiting"] == 0
+
+
+def with_source(tags, source_id):
+    return {**tags, "@id": str(source_id), "@type": "way"}
+
+
+def test_edit_here_on_dev_follows_the_original_id_carried_by_the_import(session, fake):
+    fake.add_way(101, line_at(CENTER), with_source(street("Rue A", "Astraat"), 555))
+    fake.add_way(102, line_at(CENTER, dy=-0.0004), with_source(street("Rue B", "Bstraat"), 1052304744))
+    s = session(editing=False)
+    wait(s.page, "async () => (await import('/map/store.js')).store.mapReady")
+    elsewhere = [[x + 0.0003, y + 0.0002] for x, y in line_at(CENTER, dy=-0.0004)]
+    click_edit_here(s.page, 1052304744, elsewhere)
+    wait_selected(s.page, 102)
+
+
+def test_edit_here_on_dev_opens_a_way_already_tagged_there_and_says_so(session, fake):
+    tags = with_source({**street("Rue B", "Bstraat"), "sidewalk:both": "separate"}, 1052304744)
+    fake.add_way(102, line_at(CENTER, dy=-0.0004), tags)
+    s = session(editing=False)
+    wait(s.page, "async () => (await import('/map/store.js')).store.mapReady")
+    click_edit_here(s.page, 1052304744, [list(c) for c in line_at(CENTER, dy=-0.0004)])
+    wait(s.page, "() => document.getElementById('edit-detail').textContent.includes('w102')")
+    assert "rien à faire" in s.page.inner_text("#edit-detail")
+    assert not s.page.query_selector('[data-edit-action="choose"]')
+
+
+def test_edit_here_on_dev_refuses_to_guess_between_two_halves_of_a_split_way(session, fake):
+    fake.add_way(101, line_at(CENTER, dx=-0.0005), with_source(street("Rue A", "Astraat"), 1052304744))
+    fake.add_way(102, line_at(CENTER, dx=0.0005), with_source(street("Rue A", "Astraat"), 1052304744))
+    s = session(editing=False)
+    wait(s.page, "async () => (await import('/map/store.js')).store.mapReady")
+    click_edit_here(s.page, 1052304744, [list(c) for c in line_at(CENTER, length=0.002)])
+    wait(s.page, "() => document.getElementById('edit-status').textContent.includes('correspond à 2 ways sur le serveur dev')")
+    assert selected_way(s.page) is None

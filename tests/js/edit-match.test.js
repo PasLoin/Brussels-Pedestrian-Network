@@ -40,3 +40,22 @@ test("no geometry, no match", async () => {
   assert.deepEqual(linesOf({ type: "Point", coordinates: [0, 0] }), []);
   assert.equal(linesOf({ type: "MultiLineString", coordinates: [street, street] }).length, 2);
 });
+
+test("the original id carried by the dev import points to its dev way", async () => {
+  const { sourceIds, mergeSourceIds } = await load("candidates.js");
+  const index = sourceIds([
+    { type: "node", id: 1, lon: 4.4, lat: 50.8 },
+    { type: "way", id: 4307569310, tags: { highway: "residential", "@id": "1052304744", "@type": "way" } },
+    { type: "way", id: 4307569311, tags: { highway: "residential", "@id": "77" } },
+    { type: "way", id: 4307569312, tags: { highway: "residential", "@id": "77" } },
+    { type: "way", id: 4307569313, tags: { highway: "residential" } },
+    { type: "way", id: 4307569314, tags: { "@id": "abc" } },
+    { type: "way", id: 4307569315, visible: false, tags: { "@id": "88" } },
+  ]);
+  assert.deepEqual([...index.get(1052304744)], [4307569310]);
+  assert.deepEqual([...index.get(77)].sort(), [4307569311, 4307569312]);
+  assert.equal(index.size, 2);
+  const merged = mergeSourceIds(index, sourceIds([{ type: "way", id: 9, tags: { "@id": "77" } }]));
+  assert.deepEqual([...merged.get(77)].sort((a, b) => a - b), [9, 4307569311, 4307569312]);
+  assert.equal(mergeSourceIds(merged, new Map([[1, new Set([2])]]), { max: 2 }).size, 1);
+});

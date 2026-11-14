@@ -35,6 +35,7 @@ export function statusView(state, i18n) {
   if (state.kind === "error") return t("edit.status.error", { message: state.message || "" });
   if (state.kind === "ready") return t("edit.status.candidates", { count: state.count });
   if (state.kind === "noMatch") return t("edit.status.noMatch");
+  if (state.kind === "splitOnDev") return t("edit.status.splitOnDev", { count: state.count });
   return "";
 }
 
