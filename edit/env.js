@@ -46,7 +46,7 @@ export const SETTINGS = Object.freeze({
   longWayWarningM: 200,
   maxNodeShiftM: 10,
   defaultHashtags: Object.freeze(["#BrusselsPedestrianNetwork"]),
-  reviewZoom: null,
+  reviewZoom: 18.7,
   apiMeterWarnPerMinute: 30,
   maxConcurrentApi: 2,
   reviewStepM: 5,
