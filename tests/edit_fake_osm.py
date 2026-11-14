@@ -40,6 +40,7 @@ class FakeOsm:
         self.changesets = {}
         self.next_changeset = 5000
         self.calls = []
+        self.referers = []
         self.uploads = []
         self.creates = []
         self.closed = []
@@ -116,6 +117,7 @@ class FakeOsm:
             return route.fulfill(status=404, body="Not found", headers=TEXT_HEADERS)
         with self.lock:
             self.calls.append((name, req.url))
+            self.referers.append(req.headers.get("referer"))
             fault = self._fault(name)
         if fault and fault["hook"]:
             with self.lock:

@@ -1689,3 +1689,14 @@ def test_a_short_segment_only_asks_for_a_short_look(session, fake):
     start = time.time()
     wait(s.page, "() => !!document.querySelector('[data-edit-action=choose]') && !document.querySelector('[data-edit-action=choose][disabled]')")
     assert time.time() - start < 1.5
+
+
+def test_api_calls_carry_the_site_origin_as_referer_and_nothing_more(session, fake, server):
+    three_streets(fake)
+    s = session()
+    wait_candidates(s.page, 3)
+    origin = server.split("/test-api")[0].rstrip("/") + "/"
+    origin = "/".join(origin.split("/")[:3]) + "/"
+    assert fake.referers
+    assert set(fake.referers) == {origin}
+    assert s.page.evaluate("document.querySelector('meta[name=referrer]').content") == "strict-origin-when-cross-origin"
