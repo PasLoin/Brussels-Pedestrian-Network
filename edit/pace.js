@@ -6,9 +6,9 @@ function validEvent(e) {
   return Array.isArray(e) && Number.isFinite(e[0]) && Number.isFinite(e[1]);
 }
 
-export function createPace({ storage, env, windowMs, maxMeters, repeatMs, cooldownMs, now = () => Date.now() }) {
+export function createPace({ storage, env, windowMs, maxMeters, blockMeters, repeatMs, cooldownMs, now = () => Date.now() }) {
   const key = paceKey(env);
-  let state = { events: [], warnedAt: 0, rearmed: false, cooldownUntil: 0 };
+  let state = { events: [], warnedAt: null, cooldownUntil: 0 };
   try {
     const saved = JSON.parse(storage.getItem(key) || "null");
     if (saved && Array.isArray(saved.events)) state = { ...state, ...saved, events: saved.events.filter(validEvent) };
@@ -21,31 +21,24 @@ export function createPace({ storage, env, windowMs, maxMeters, repeatMs, cooldo
     state.events = state.events.filter(([t]) => t > cutoff);
     return state.events.reduce((sum, [, m]) => sum + m, 0);
   };
-  const evaluate = () => {
-    const meters = recentMeters();
-    const t = now();
-    if (meters <= maxMeters) {
-      if (state.warnedAt && !state.rearmed) state.rearmed = true;
-      return;
-    }
-    if (state.warnedAt && state.rearmed && t - state.warnedAt < repeatMs) {
-      state.cooldownUntil = t + cooldownMs;
-      state.events = [];
-      state.warnedAt = t;
-      state.rearmed = false;
-    } else if (!state.warnedAt || t - state.warnedAt >= repeatMs) {
-      state.warnedAt = t;
-      state.rearmed = false;
-    }
-  };
+  const warnedRecently = t => Number.isFinite(state.warnedAt) && t - state.warnedAt < repeatMs;
   return {
     record(lengthM) {
-      state.events.push([now(), Math.max(0, Number(lengthM) || 0)]);
-      evaluate();
+      const t = now();
+      const alreadyWarned = warnedRecently(t);
+      state.events.push([t, Math.max(0, Number(lengthM) || 0)]);
+      const meters = recentMeters();
+      if (alreadyWarned && meters > blockMeters) {
+        state.cooldownUntil = t + cooldownMs;
+        state.events = [];
+        state.warnedAt = t;
+      } else if (meters > maxMeters && !alreadyWarned) {
+        state.warnedAt = t;
+      }
       save();
     },
     status() {
-      evaluate();
+      recentMeters();
       const t = now();
       const meters = Math.round(state.events.reduce((sum, [, m]) => sum + m, 0));
       return {

@@ -59,6 +59,7 @@ const pace = createPace({
   env: env.name,
   windowMs: env.paceWindowMs,
   maxMeters: env.paceMaxMeters,
+  blockMeters: env.paceBlockMeters,
   repeatMs: env.paceRepeatMs,
   cooldownMs: env.paceCooldownMs,
 });

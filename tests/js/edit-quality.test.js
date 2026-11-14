@@ -65,56 +65,68 @@ test("the guard sits in front of the queue, so refused calls are never counted o
   assert.equal(meter.stats().total, 1);
 });
 
+const paceOptions = (storage, clock) => ({ storage, env: "dev", windowMs: 60000, maxMeters: 600, blockMeters: 900, repeatMs: 300000, cooldownMs: 60000, now: () => clock.t });
+
 test("editing too fast is measured in metres, so a street cut into short segments is not penalised", async () => {
   const { createPace } = await load("pace.js");
-  let clock = 0;
-  const pace = createPace({ storage: memoryStorage(), env: "dev", windowMs: 60000, maxMeters: 600, repeatMs: 600000, cooldownMs: 60000, now: () => clock });
-  for (let i = 0; i < 12; i++) { pace.record(40); clock += 1000; }
+  const clock = { t: 0 };
+  const pace = createPace(paceOptions(memoryStorage(), clock));
+  for (let i = 0; i < 12; i++) { pace.record(40); clock.t += 1000; }
   assert.deepEqual(pace.status(), { meters: 480, tooFast: false, cooldownLeftMs: 0 });
   pace.record(150);
   assert.equal(pace.status().tooFast, true);
 });
 
-test("editing too fast warns first, then pauses if it happens again soon after", async () => {
+test("past 600 m a minute it only warns; a steady pace around the threshold is never blocked", async () => {
   const { createPace } = await load("pace.js");
-  const storage = memoryStorage();
-  let clock = 0;
-  const options = { storage, env: "dev", windowMs: 60000, maxMeters: 600, repeatMs: 600000, cooldownMs: 60000, now: () => clock };
-  let pace = createPace(options);
-  for (let i = 0; i < 6; i++) { pace.record(100); clock += 1000; }
-  assert.deepEqual(pace.status(), { meters: 600, tooFast: false, cooldownLeftMs: 0 });
-  pace.record(100);
+  const clock = { t: 0 };
+  const pace = createPace(paceOptions(memoryStorage(), clock));
+  for (let i = 0; i < 60; i++) { clock.t += 10000; pace.record(110); }
+  const status = pace.status();
+  assert.equal(status.cooldownLeftMs, 0);
+  assert.ok(status.meters > 600 && status.meters <= 900, String(status.meters));
+  assert.equal(status.tooFast, true);
+});
+
+test("past 900 m a minute within five minutes of a warning it pauses for a minute", async () => {
+  const { createPace } = await load("pace.js");
+  const clock = { t: 0 };
+  const pace = createPace(paceOptions(memoryStorage(), clock));
+  for (let i = 0; i < 7; i++) { pace.record(100); clock.t += 1000; }
   assert.equal(pace.status().tooFast, true);
-  pace.record(100);
-  assert.equal(pace.status().cooldownLeftMs, 0);
-  clock += 61000;
-  assert.equal(pace.status().tooFast, false);
-  pace = createPace(options);
-  for (let i = 0; i < 7; i++) { pace.record(100); clock += 500; }
+  for (let i = 0; i < 3; i++) { pace.record(100); clock.t += 1000; }
   const status = pace.status();
   assert.equal(status.tooFast, false);
   assert.ok(status.cooldownLeftMs > 58000 && status.cooldownLeftMs <= 60000, String(status.cooldownLeftMs));
-  clock += 61000;
+  clock.t += 61000;
   assert.equal(pace.status().cooldownLeftMs, 0);
 });
 
-test("a fast burst long after the last warning only warns again", async () => {
+test("a single long street never blocks on its own, and a rush long after the warning only warns again", async () => {
   const { createPace } = await load("pace.js");
-  let clock = 0;
-  const pace = createPace({ storage: memoryStorage(), env: "dev", windowMs: 60000, maxMeters: 200, repeatMs: 600000, cooldownMs: 60000, now: () => clock });
-  for (let i = 0; i < 3; i++) pace.record(100);
-  assert.equal(pace.status().tooFast, true);
-  clock += 700000;
-  assert.equal(pace.status().tooFast, false);
-  for (let i = 0; i < 3; i++) pace.record(100);
-  assert.deepEqual(pace.status(), { meters: 300, tooFast: true, cooldownLeftMs: 0 });
+  const clock = { t: 0 };
+  const pace = createPace(paceOptions(memoryStorage(), clock));
+  pace.record(1200);
+  assert.deepEqual(pace.status(), { meters: 1200, tooFast: true, cooldownLeftMs: 0 });
+  clock.t += 400000;
+  for (let i = 0; i < 7; i++) pace.record(100);
+  assert.deepEqual(pace.status(), { meters: 700, tooFast: true, cooldownLeftMs: 0 });
+});
+
+test("the pause survives a reload", async () => {
+  const { createPace } = await load("pace.js");
+  const storage = memoryStorage();
+  const clock = { t: 0 };
+  const pace = createPace(paceOptions(storage, clock));
+  for (let i = 0; i < 10; i++) { pace.record(100); clock.t += 500; }
+  assert.ok(createPace(paceOptions(storage, clock)).status().cooldownLeftMs > 0);
 });
 
 test("an old pace record in the former format is ignored rather than breaking the page", async () => {
   const { createPace } = await load("pace.js");
   const storage = memoryStorage();
   storage.setItem("bpn.pace.dev", JSON.stringify({ events: [1, 2, 3], warnedAt: 0 }));
-  const pace = createPace({ storage, env: "dev", windowMs: 60000, maxMeters: 600, repeatMs: 600000, cooldownMs: 60000, now: () => 10 });
+  const pace = createPace({ ...paceOptions(storage, { t: 10 }) });
   assert.equal(pace.status().meters, 0);
 });
 
@@ -176,6 +188,8 @@ test("editing settings: orthophoto only, the three walking layers forced on, sid
   assert.equal(SETTINGS.lookMsPerMeter, 30);
   assert.equal(SETTINGS.lookMode, "warn");
   assert.equal(SETTINGS.paceMaxMeters, 600);
+  assert.equal(SETTINGS.paceBlockMeters, 900);
+  assert.equal(SETTINGS.paceRepeatMs, 300000);
   assert.equal(SETTINGS.mapCallsPerMinute, 25);
   assert.equal(SETTINGS.pauseAfter509Ms, 300000);
 });

@@ -128,7 +128,7 @@ BLANK_PNG = bytes.fromhex("89504e470d0a1a0a0000000d49484452000000010000000108060
 class Session:
     def __init__(self, browser, server, fake, logged_in=True, queue=None, auth_env="dev", center=CENTER, zoom=17.5, editing=True, settings=None):
         self.fake = fake
-        self.settings = {"reviewZoom": "null", "minLookMs": "0", "paceMaxMeters": "1000000", **(settings or {})}
+        self.settings = {"reviewZoom": "null", "minLookMs": "0", "paceMaxMeters": "1000000", "paceBlockMeters": "1000000", **(settings or {})}
         self.problems = []
         self.context = browser.new_context(viewport={"width": 1134, "height": 763}, locale="fr-BE")
         self.context.route("**/*", self._route)
@@ -1631,10 +1631,10 @@ def queue_current(page):
 def test_editing_too_fast_warns_then_pauses_when_it_happens_again(session, fake):
     for i in range(8):
         fake.add_way(101 + i, line_at(CENTER, dy=0.0004 - 0.00012 * i), street(f"Rue {i}", f"Straat {i}"))
-    s = session(settings={"paceMaxMeters": "180", "paceWindowMs": "2500", "paceCooldownMs": "3000"})
+    s = session(settings={"paceMaxMeters": "120", "paceBlockMeters": "180", "paceWindowMs": "2500", "paceCooldownMs": "3000"})
     wait_candidates(s.page, 8)
     s.page.keyboard.press("ArrowRight")
-    for _ in range(3):
+    for _ in range(2):
         queue_current(s.page)
     wait(s.page, "() => document.getElementById('edit-detail').textContent.includes('Vous éditez trop vite')")
     assert not locked(s.page)
@@ -1645,7 +1645,7 @@ def test_editing_too_fast_warns_then_pauses_when_it_happens_again(session, fake)
     wait(s.page, "() => document.getElementById('edit-detail').textContent.includes('Vous éditez encore trop vite')")
     assert locked(s.page)
     queued = queue_ids(s.page)
-    assert len(queued) == 6
+    assert len(queued) == 5
     s.page.keyboard.press("s")
     time.sleep(0.3)
     assert queue_ids(s.page) == queued
