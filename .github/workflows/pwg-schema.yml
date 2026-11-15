@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   refresh:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -43,7 +43,7 @@ jobs:
 
   commit:
     needs: refresh
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
@@ -72,7 +72,7 @@ jobs:
 
   validate:
     needs: commit
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout the committed schema
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
