@@ -251,6 +251,11 @@ export function installUpload(ctx) {
     const button = e.target.closest("[data-edit-action]");
     if (!button) return;
     const action = button.dataset.editAction;
+    if (action === "open-queued") {
+      const wayId = Number(button.dataset.wayId);
+      if (Number.isSafeInteger(wayId) && wayId > 0) ctx.selectWay(wayId);
+      return;
+    }
     if (action === "dequeue") {
       queue.remove(Number(button.dataset.wayId));
       state.plan = null;

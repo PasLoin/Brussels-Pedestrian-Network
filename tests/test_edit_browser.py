@@ -15,6 +15,7 @@ import pytest
 import build_site
 from browser_coverage import track
 from edit_fake_osm import DEV_HOST, FakeOsm
+from map_fixtures import CATCH_MAP_ERRORS, empty_pmtiles
 
 try:
     from playwright.sync_api import sync_playwright
@@ -59,6 +60,7 @@ def server(tmp_path_factory):
     site = tmp_path_factory.mktemp("site")
     build_site.build(site)
     (site / "communes.geojson").write_text(json.dumps(COMMUNES), encoding="utf-8")
+    (site / "pedestrian.pmtiles").write_bytes(empty_pmtiles())
     class Quiet(http.server.SimpleHTTPRequestHandler):
         def log_message(self, *args):
             pass
@@ -135,6 +137,7 @@ class Session:
             seed["bpn.authEnv"] = auth_env
         if queue is not None:
             seed["bpn.queue.dev"] = json.dumps(queue)
+        self.context.add_init_script(CATCH_MAP_ERRORS)
         self.context.add_init_script(
             "document.addEventListener('securitypolicyviolation', e => console.error('CSP ' + e.violatedDirective + ' ' + e.blockedURI));"
             f"if (!localStorage.getItem('test.seeded')) {{ for (const [k, v] of Object.entries({json.dumps(seed)})) localStorage.setItem(k, v);"
@@ -167,7 +170,7 @@ class Session:
         if save:
             self.coverage.append(save)
         page.on("pageerror", lambda e: self.problems.append(f"pageerror: {e}"))
-        page.on("console", lambda m: self.problems.append(m.text) if m.type == "error" and m.text.startswith("CSP") else None)
+        page.on("console", lambda m: self.problems.append(m.text) if m.type == "error" and m.text.startswith(("CSP", "MapLibre error")) else None)
         page.goto(self.url)
         wait(page, "() => window.BPNEdit !== undefined && window.BPNMap !== undefined")
         if editing:
@@ -1008,6 +1011,48 @@ def test_a_review_zoom_asks_to_go_along_the_whole_street_close_up(session, fake)
     assert json.loads(s.page.evaluate("localStorage.getItem('bpn.reviewed.dev')"))["101"]["detail"] is True
     s.page.keyboard.press("y")
     wait(s.page, "() => (localStorage.getItem('bpn.queue.dev') || '').includes('101')")
+
+
+def chip_top(page):
+    return page.evaluate("document.querySelector('[data-side=both][data-value=yes]').getBoundingClientRect().top")
+
+
+def test_the_choices_do_not_move_when_the_close_look_ends(session, fake):
+    line = line_at(CENTER, length=0.0016)
+    fake.add_way(101, line, street("Rue Proche", "Nabijstraat"))
+    s = session(settings={"reviewZoom": "18.6"})
+    wait_candidates(s.page, 1)
+    click_way(s.page, CENTER[0], CENTER[1] + 0.00001, 101, expect_form=False)
+    wait(s.page, "() => !!document.querySelector('[data-edit-action=review-next]')")
+    before = chip_top(s.page)
+    gate = s.page.evaluate("document.querySelector('.edit-gate').getBoundingClientRect().bottom")
+    assert gate <= before
+    for _ in range(12):
+        if not s.page.query_selector('[data-edit-action="review-next"]'):
+            break
+        s.page.click('[data-edit-action="review-next"]')
+        time.sleep(0.5)
+    wait(s.page, "() => !document.querySelector('[data-edit-action=choose][disabled]')")
+    assert s.page.query_selector(".edit-gate-done")
+    assert abs(chip_top(s.page) - before) < 1
+
+
+def test_a_queued_street_reopens_from_the_queue_with_its_choice(session, fake):
+    three_streets(fake)
+    s = session()
+    wait_candidates(s.page, 3)
+    click_way(s.page, CENTER[0], CENTER[1] + 0.00001, 101)
+    s.page.click('[data-side="both"][data-value="separate"]')
+    wait(s.page, "() => (localStorage.getItem('bpn.queue.dev') || '').includes('101')")
+    s.page.keyboard.press("Escape")
+    wait(s.page, "() => !document.querySelector('[data-edit-action=choose]')")
+    s.page.click('[data-edit-action="open-queued"][data-way-id="101"]')
+    wait_selected(s.page, 101)
+    wait(s.page, "() => document.querySelector('[data-side=both][data-value=separate]').getAttribute('aria-pressed') === 'true'")
+    s.page.click('[data-side="both"][data-value="no"]')
+    wait(s.page, "() => document.getElementById('edit-queue').textContent.includes('sidewalk:both=no')")
+    stored = json.loads(s.page.evaluate("localStorage.getItem('bpn.queue.dev')"))
+    assert [(i["wayId"], i["set"]) for i in stored] == [(101, {"sidewalk:both": "no"})]
 
 
 def selection_queued(page):

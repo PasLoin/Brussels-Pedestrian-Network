@@ -146,3 +146,22 @@ test("results report the automatic retry and the ways dropped for changed geomet
   assert.match(out, /Rue B \(w2\) : géométrie modifiée depuis/);
   assert.match(out, /1 changeset vide fermé/);
 });
+
+test("the sources say which street-level imagery may be used, in every language", async () => {
+  const { queueView } = await load("panel.js");
+  const intent = { wayId: 5, set: { "sidewalk:both": "no" }, name: "Rue A" };
+  const form = { remark: "", sources: [], sourceOther: "", hashtags: "", review: false };
+  for (const lang of ["fr", "nl", "en"]) {
+    const warnings = [];
+    const out = String(queueView({
+      items: [intent], form, busy: false, loggedIn: true, result: null,
+      plan: { ready: [{}], groups: [{}], tooMany: false, max: 3, dropped: [] }, comments: ["x"],
+    }, i18nFor(lang, warnings), "https://dev", { sourcePresets: ["streetlevel imagery"] }));
+    const help = out.match(/data-edit-help="streetlevel">([^<]*)</);
+    assert.ok(help, lang);
+    assert.match(help[1], /Mapillary/);
+    assert.match(help[1], /Panoramax/);
+    assert.match(help[1], /Google Street View/);
+    assert.deepEqual(warnings, []);
+  }
+});

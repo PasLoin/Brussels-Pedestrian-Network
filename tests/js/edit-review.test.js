@@ -99,3 +99,48 @@ test("by default a street is framed between zoom 17 and 19 and checked close up 
   assert.equal(SETTINGS.fitMaxZoom, 19);
   assert.equal(resolveEnv("dev", "https://x/test-api/devtest.html").reviewZoom, 18.7);
 });
+
+test("the review gate keeps the same shape before and after the close look and sits above the choices", async () => {
+  const { detailView } = await load("panel.js");
+  const base = { kind: "way", editable: true, seenWhole: true, way: { id: 5, version: 1, tags: {} }, choice: { mode: "both", both: "", left: "", right: "" } };
+  const shape = (out) => {
+    const start = out.indexOf('class="edit-gate');
+    assert.ok(start >= 0, out);
+    const rest = out.slice(start);
+    const end = rest.search(/edit-gate-done|data-edit-action="(fit|review-next)"/);
+    return (rest.slice(0, end).match(/<(p|progress|button|div)\b/g) || []).map((tag) => (tag === "<div" ? "<button" : tag)).join(",");
+  };
+  for (const lang of ["fr", "en", "nl"]) {
+    const warnings = [];
+    const i18n = i18nFor(lang, warnings);
+    const pending = String(detailView({ ...base, review: { zoom: 18.6, percent: 40, done: false } }, i18n, "https://x", { autoQueue: true }));
+    const done = String(detailView({ ...base, review: { zoom: 18.6, percent: 100, done: true } }, i18n, "https://x", { autoQueue: true }));
+    const hidden = String(detailView({ ...base, seenWhole: false, review: { zoom: 18.6, percent: 0, done: false } }, i18n, "https://x", { autoQueue: true }));
+    assert.equal(shape(pending), shape(done));
+    assert.equal(shape(hidden), shape(done));
+    for (const out of [pending, done, hidden]) assert.ok(out.indexOf("edit-gate") < out.indexOf('data-value="yes"'));
+    assert.match(done, /<progress class="edit-progress" max="100" value="100">/);
+    assert.match(done, /class="btn edit-gate-done" aria-hidden="true"/);
+    assert.doesNotMatch(done, /data-edit-action="review-next"/);
+    assert.doesNotMatch(done, /data-value="yes"[^>]*disabled/);
+    assert.deepEqual(warnings, []);
+  }
+});
+
+test("without a close look the gate still holds its place once the whole street was seen", async () => {
+  const { detailView } = await load("panel.js");
+  const base = { kind: "way", editable: true, seenWhole: true, review: null, way: { id: 5, version: 1, tags: {} }, choice: { mode: "both", both: "", left: "", right: "" } };
+  const out = String(detailView(base, i18nFor("en"), "https://x", { autoQueue: true }));
+  assert.match(out, /class="edit-gate" role="status"[\s\S]*Whole street seen/);
+  assert.doesNotMatch(out, /<progress/);
+});
+
+test("each queued street can be reopened from the queue", async () => {
+  const { queueView } = await load("panel.js");
+  const form = { remark: "", sources: [], sourceOther: "", hashtags: "", review: false };
+  const out = String(queueView({
+    items: [{ wayId: 5, set: { "sidewalk:both": "no" }, name: "Rue <A>" }], form, plan: null, busy: false, loggedIn: true, result: null,
+  }, i18nFor("fr"), "https://dev", { sourcePresets: [] }));
+  assert.match(out, /<button type="button" class="edit-open" data-edit-action="open-queued" data-way-id="5" title="[^"]+">Rue &lt;A&gt;/);
+  assert.match(out, /data-edit-action="dequeue" data-way-id="5"/);
+});

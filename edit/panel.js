@@ -124,19 +124,6 @@ function lockView(lock, state, i18n) {
   if (lock === "look") {
     return html`<p class="edit-help edit-look" role="status">${t("edit.form.lookTime", { count: Math.ceil(state.lookLeftMs / 1000) })}</p>`;
   }
-  if (lock === "hidden") {
-    return html`<div class="edit-lock" role="status">
-      <p class="edit-warn">${t("edit.form.notVisible")}</p>
-      <button type="button" class="btn" data-edit-action="fit">${t("edit.form.showWhole")}</button>
-    </div>`;
-  }
-  if (lock === "detail") {
-    return html`<div class="edit-lock" role="status">
-      <p class="edit-warn">${t("edit.form.reviewDetail", { zoom: i18n.number(state.review.zoom, { maximumFractionDigits: 1 }), percent: state.review.percent })}</p>
-      <progress class="edit-progress" max="100" value="${state.review.percent}"></progress>
-      <button type="button" class="btn" data-edit-action="review-next">${t("edit.form.reviewNext")}</button>
-    </div>`;
-  }
   if (lock === "full") {
     return html`<div class="edit-lock" role="status">
       <p class="edit-warn">${t("edit.form.queueFull", { count: state.room.after, max: state.room.max })}</p>
@@ -144,6 +131,32 @@ function lockView(lock, state, i18n) {
     </div>`;
   }
   return "";
+}
+
+function gateView(lock, state, i18n) {
+  const { t } = i18n;
+  const review = state.review;
+  const zoom = review ? i18n.number(review.zoom, { maximumFractionDigits: 1 }) : "";
+  if (lock === "hidden") {
+    return html`<div class="edit-gate edit-lock" role="status">
+      <p class="edit-warn">${t("edit.form.notVisible")}</p>
+      ${review && html`<progress class="edit-progress" max="100" value="0"></progress>`}
+      <button type="button" class="btn" data-edit-action="fit">${t("edit.form.showWhole")}</button>
+    </div>`;
+  }
+  if (lock === "detail") {
+    return html`<div class="edit-gate edit-lock" role="status">
+      <p class="edit-warn">${t("edit.form.reviewDetail", { zoom, percent: review.percent })}</p>
+      <progress class="edit-progress" max="100" value="${review.percent}"></progress>
+      <button type="button" class="btn" data-edit-action="review-next">${t("edit.form.reviewNext")}</button>
+    </div>`;
+  }
+  if (lock === "moving" || state.seenWhole === false || (review && !review.done)) return "";
+  return html`<div class="edit-gate" role="status">
+    <p class="edit-ok">${review ? t("edit.form.reviewDone", { zoom }) : t("edit.form.wholeSeen")}</p>
+    ${review && html`<progress class="edit-progress" max="100" value="100"></progress>`}
+    <div class="btn edit-gate-done" aria-hidden="true">${t("edit.form.reviewFinished")}</div>
+  </div>`;
 }
 
 export function tagSummary(set) {
@@ -160,8 +173,7 @@ export function editFormView(state, i18n, settings = {}) {
   return html`
     <div class="edit-form${locked ? " locked" : ""}">
       ${lockView(lock, state, i18n)}
-      ${state.lookLeftMs > 0 && !state.queued && state.lookMode !== "block" && state.lookHasty && !lock && html`<p class="edit-help edit-look" role="status">${t("edit.form.lookTime", { count: Math.ceil(state.lookLeftMs / 1000) })}</p>`}
-      ${state.tooFast && !lock && html`<p class="edit-warn" role="alert">${t("edit.form.tooFast")}</p>`}
+      ${gateView(lock, state, i18n)}
       ${sides
         ? html`
           <p class="edit-help">${t("edit.form.direction")}</p>
@@ -174,6 +186,8 @@ export function editFormView(state, i18n, settings = {}) {
           <div class="edit-side">${t("edit.form.both")}</div>
           ${chips("both", choice.both, i18n, locked)}
           <button type="button" class="edit-link" data-edit-action="mode" data-mode="sides">${t("edit.form.differentSides")} <kbd>d</kbd></button>`}
+      ${state.lookLeftMs > 0 && !state.queued && state.lookMode !== "block" && state.lookHasty && !lock && html`<p class="edit-help edit-look" role="status">${t("edit.form.lookTime", { count: Math.ceil(state.lookLeftMs / 1000) })}</p>`}
+      ${state.tooFast && !lock && html`<p class="edit-warn" role="alert">${t("edit.form.tooFast")}</p>`}
       ${!settings.autoQueue && html`
         <button type="button" class="btn" data-edit-action="queue"${complete && !locked ? "" : html` disabled`}>${state.queued ? t("edit.form.update") : t("edit.form.add")}</button>`}
       ${state.queued && html`
@@ -287,6 +301,7 @@ function uploadFormView(state, i18n, settings) {
         <legend>${t("edit.upload.source")}</legend>
         ${settings.sourcePresets.map(v => html`<label class="edit-check"><input type="checkbox" name="cs-source" value="${v}"${f.sources.includes(v) ? html` checked` : ""}> ${v}</label>`)}
         <input type="text" name="cs-source-other" maxlength="${settings.maxTagLength || 255}" value="${f.sourceOther}" placeholder="${t("edit.upload.sourceOther")}">
+        <p class="edit-help" data-edit-help="streetlevel">${t("edit.upload.streetlevelHelp")}</p>
         ${fieldError("source", state.tooLong, t)}
       </fieldset>
       <label class="edit-field">${t("edit.upload.hashtags")}
@@ -322,7 +337,7 @@ export function queueView(state, i18n, webUrl, settings) {
     ${items.length > 0 && html`
       <ul class="edit-queue">
         ${items.map(i => html`<li>
-          <span><strong>${wayLabel(i)}</strong><br><span class="edit-help">${tagSummary(i.set)}</span></span>
+          <span><button type="button" class="edit-open" data-edit-action="open-queued" data-way-id="${i.wayId}" title="${t("edit.queue.open")}">${wayLabel(i)}</button><br><span class="edit-help">${tagSummary(i.set)}</span></span>
           <button type="button" class="edit-link" data-edit-action="dequeue" data-way-id="${i.wayId}">${t("edit.queue.remove")}</button>
         </li>`)}
       </ul>

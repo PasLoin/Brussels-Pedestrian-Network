@@ -378,6 +378,16 @@ def test_every_page_declares_a_valid_referrer_policy(site):
         assert "Referrer-Policy" not in html, path.relative_to(site)
 
 
+def test_every_page_except_404_links_a_favicon_that_resolves_on_the_site(site):
+    pages = [p for p in sorted(site.rglob("*.html")) if p.name != "404.html"]
+    assert any(p.name == "land.html" for p in pages)
+    for path in pages:
+        html = path.read_text(encoding="utf-8")
+        icons = re.findall(r'<link rel="icon" type="image/svg\+xml" href="([^"]+)" />', html)
+        assert len(icons) == 1, path.relative_to(site)
+        assert (path.parent / icons[0]).resolve() == (site / "favicon.svg").resolve(), path.relative_to(site)
+
+
 THIRD_PARTY_HOSTS = ("unpkg.com", "cdn.jsdelivr.net", "cdnjs.cloudflare.com", "esm.sh", "esm.run")
 
 
