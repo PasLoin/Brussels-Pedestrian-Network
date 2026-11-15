@@ -318,6 +318,7 @@ export function queueView(state, i18n, webUrl, settings) {
     <h3>${t("edit.queue.title", { count: items.length })}</h3>
     ${zonesView(state, i18n)}
     ${items.length === 0 && html`<p class="edit-help">${t("edit.queue.empty")}</p>`}
+    ${state.notSaved && html`<p class="edit-warn" data-edit-queue="unsaved">${t("edit.queue.notSaved")}</p>`}
     ${items.length > 0 && html`
       <ul class="edit-queue">
         ${items.map(i => html`<li>

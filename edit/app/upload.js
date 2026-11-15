@@ -82,6 +82,7 @@ export function installUpload(ctx) {
       result: state.result,
       busy: state.busy,
       loggedIn: Boolean(state.user),
+      notSaved: items.length > 0 && !queue.persisted(),
     }, i18n, env.webUrl, { ...env, maxTagLength: MAX_TAG_LENGTH })}`;
   }
 

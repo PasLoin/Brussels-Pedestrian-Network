@@ -525,7 +525,8 @@
       "undo": "Laatste ongedaan maken",
       "zones_one": "{{count}} changeset van maximaal {{max}} per verzending.",
       "zones_other": "{{count}} changesets van maximaal {{max}} per verzending.",
-      "full": "Limiet bereikt: alleen straten dicht bij de zones in de wachtrij kunnen nog worden toegevoegd."
+      "full": "Limiet bereikt: alleen straten dicht bij de zones in de wachtrij kunnen nog worden toegevoegd.",
+      "notSaved": "De wachtrij kon niet in deze browser worden opgeslagen (opslag vol of privénavigatie): ze gaat verloren als het tabblad wordt gesloten of herladen. Verstuur ze eerst."
     },
     "upload": {
       "source": "Bronnen (verplicht)",

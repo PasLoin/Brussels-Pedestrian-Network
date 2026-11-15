@@ -525,7 +525,8 @@
       "undo": "Annuler la dernière",
       "zones_one": "{{count}} changeset sur {{max}} au plus par envoi.",
       "zones_other": "{{count}} changesets sur {{max}} au plus par envoi.",
-      "full": "Limite atteinte : seules les rues proches des zones déjà en file peuvent encore être ajoutées."
+      "full": "Limite atteinte : seules les rues proches des zones déjà en file peuvent encore être ajoutées.",
+      "notSaved": "La file n'a pas pu être enregistrée dans ce navigateur (stockage plein ou navigation privée) : elle sera perdue si l'onglet est fermé ou rechargé. Envoyez-la avant."
     },
     "upload": {
       "source": "Sources (obligatoire)",

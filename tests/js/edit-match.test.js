@@ -59,3 +59,25 @@ test("the original id carried by the dev import points to its dev way", async ()
   assert.deepEqual([...merged.get(77)].sort((a, b) => a - b), [9, 4307569311, 4307569312]);
   assert.equal(mergeSourceIds(merged, new Map([[1, new Set([2])]]), { max: 2 }).size, 1);
 });
+
+test("between two close candidates the nearest wins, and a broken candidate is skipped", async () => {
+  const { matchCandidate, linesOf } = await load("match.js");
+  const broken = { type: "Feature", properties: { osm_id: 5 }, geometry: null };
+  const best = matchCandidate([street], [broken, line(8, shifted(0.00005)), line(7, shifted(0.00001))]);
+  assert.equal(best.feature.properties.osm_id, 7);
+  assert.deepEqual(linesOf(null), []);
+});
+
+test("a candidate inside the near band but too far on average is refused", async () => {
+  const { matchCandidate } = await load("match.js");
+  assert.equal(matchCandidate([street], [line(7, shifted(0.0001))], { nearM: 12, maxMeanM: 8 }), null);
+  assert.equal(matchCandidate([street], [line(7, shifted(0.0001))], { nearM: 12, maxMeanM: 12 }).feature.properties.osm_id, 7);
+});
+
+test("a single-point candidate is measured as a point, not as a line", async () => {
+  const { matchCandidate } = await load("match.js");
+  const point = line(7, [[4.4006, 50.8]]);
+  assert.equal(matchCandidate([street], [point]), null);
+  const tiny = [[4.4006, 50.8], [4.40061, 50.8]];
+  assert.equal(matchCandidate([tiny], [point]).feature.properties.osm_id, 7);
+});

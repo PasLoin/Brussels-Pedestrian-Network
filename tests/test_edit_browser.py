@@ -13,6 +13,7 @@ from urllib.parse import parse_qs, urlparse
 import pytest
 
 import build_site
+from browser_coverage import track
 from edit_fake_osm import DEV_HOST, FakeOsm
 
 try:
@@ -130,6 +131,8 @@ class Session:
         self.fake = fake
         self.settings = {"reviewZoom": "null", "minLookMs": "0", "paceMaxMeters": "1000000", "paceBlockMeters": "1000000", **(settings or {})}
         self.problems = []
+        self.coverage = []
+        self.origin = server
         self.context = browser.new_context(viewport={"width": 1134, "height": 763}, locale="fr-BE")
         self.context.route("**/*", self._route)
         seed = {}
@@ -171,6 +174,9 @@ class Session:
 
     def open(self, editing=True):
         page = self.context.new_page()
+        save = track(self.context, page, self.origin)
+        if save:
+            self.coverage.append(save)
         page.on("pageerror", lambda e: self.problems.append(f"pageerror: {e}"))
         page.on("console", lambda m: self.problems.append(m.text) if m.type == "error" and m.text.startswith("CSP") else None)
         page.goto(self.url)
@@ -180,6 +186,8 @@ class Session:
         return page
 
     def close(self):
+        for save in self.coverage:
+            save()
         self.context.close()
         assert self.problems == []
 
@@ -1798,3 +1806,77 @@ def test_on_mobile_the_layers_stay_reachable_folded_in_edit_mode(session, fake, 
     assert layer_visibility(s.page, ["sidewalk-roads"]) == {"sidewalk-roads": "visible"}
     s.page.click("#legend-toggle")
     assert not s.page.evaluate("document.getElementById('legend').classList.contains('open')")
+
+
+def log_in(page):
+    with page.expect_popup() as popup_info:
+        page.click('[data-edit-action="login"]')
+    popup = popup_info.value
+    return popup
+
+
+def stored_token(page):
+    raw = page.evaluate("localStorage.getItem('__osmAuth')")
+    return json.loads(raw)["accessToken"] if raw else None
+
+
+def test_the_full_oauth_login_uses_pkce_and_the_new_token(session, fake):
+    s = session(logged_in=False)
+    wait(s.page, "() => document.getElementById('edit-auth').innerText.includes('Se connecter à OSM')")
+    popup = log_in(s.page)
+    wait(s.page, "() => document.getElementById('edit-auth').innerText.includes('Connecté en tant que Testeur')")
+    end = time.time() + 10
+    while not popup.is_closed() and time.time() < end:
+        time.sleep(0.1)
+    assert popup.is_closed()
+    assert stored_token(s.page) == "fresh-token"
+    assert s.page.evaluate("localStorage.getItem('bpn.authEnv')") == "dev"
+    assert s.page.evaluate("localStorage.getItem('bpn.authPending')") is None
+    grant = fake.authorizations[0]
+    assert grant["client_id"] == dev_client_id()
+    assert grant["scope"] == "read_prefs write_api"
+    assert grant["response_type"] == "code"
+    assert grant["code_challenge_method"] == "S256"
+    assert grant["redirect_uri"].endswith("/test-api/land.html")
+    assert len(grant["state"]) >= 16
+    assert [e["checks"] for e in fake.exchanges] == [dict.fromkeys(["known_code", "grant_type", "client_id", "redirect_uri", "pkce"], True)]
+    assert fake.authorization_headers[-1] == "Bearer fresh-token"
+
+
+def test_a_denied_authorisation_stores_nothing_and_can_be_retried(session, fake):
+    fake.oauth_answer = "deny"
+    s = session(logged_in=False)
+    popup = log_in(s.page)
+    wait(s.page, "() => document.getElementById('edit-auth').innerText.includes('Connexion échouée ou annulée')")
+    assert stored_token(s.page) is None
+    assert fake.exchanges == []
+    assert s.page.evaluate("localStorage.getItem('bpn.authPending')") is None
+    if not popup.is_closed():
+        popup.close()
+    fake.oauth_answer = "approve"
+    log_in(s.page)
+    wait(s.page, "() => document.getElementById('edit-auth').innerText.includes('Connecté en tant que Testeur')")
+    assert stored_token(s.page) == "fresh-token"
+
+
+def test_a_forged_state_is_refused_before_any_token_exchange(session, fake):
+    fake.oauth_answer = "wrong_state"
+    s = session(logged_in=False)
+    popup = log_in(s.page)
+    wait(s.page, "() => document.getElementById('edit-auth').innerText.includes('Connexion échouée ou annulée')")
+    assert fake.exchanges == []
+    assert stored_token(s.page) is None
+    if not popup.is_closed():
+        popup.close()
+
+
+def test_a_refused_code_exchange_leaves_the_user_logged_out(session, fake):
+    fake.oauth_answer = "bad_grant"
+    s = session(logged_in=False)
+    popup = log_in(s.page)
+    wait(s.page, "() => document.getElementById('edit-auth').innerText.includes('Connexion échouée ou annulée')")
+    assert len(fake.exchanges) == 1
+    assert stored_token(s.page) is None
+    assert s.page.evaluate("localStorage.getItem('bpn.authEnv')") is None
+    if not popup.is_closed():
+        popup.close()

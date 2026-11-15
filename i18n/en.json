@@ -525,7 +525,8 @@
       "undo": "Undo last",
       "zones_one": "{{count}} changeset out of {{max}} at most per upload.",
       "zones_other": "{{count}} changesets out of {{max}} at most per upload.",
-      "full": "Limit reached: only streets close to the areas already queued can still be added."
+      "full": "Limit reached: only streets close to the areas already queued can still be added.",
+      "notSaved": "The queue could not be saved in this browser (storage full or private browsing): it will be lost if the tab is closed or reloaded. Send it first."
     },
     "upload": {
       "source": "Sources (required)",

@@ -1,5 +1,7 @@
+import base64
 import copy
 import gzip
+import hashlib
 import json
 import re
 import threading
@@ -29,6 +31,8 @@ ROUTES = [
     ("upload", "POST", re.compile(r"/api/0\.6/changeset/(\d+)/upload")),
     ("close", "PUT", re.compile(r"/api/0\.6/changeset/(\d+)/close")),
     ("revoke", "POST", re.compile(r"/oauth2/revoke")),
+    ("authorize", "GET", re.compile(r"/oauth2/authorize")),
+    ("token", "POST", re.compile(r"/oauth2/token")),
 ]
 
 
@@ -46,6 +50,11 @@ class FakeOsm:
         self.creates = []
         self.closed = []
         self.revoked = []
+        self.oauth_answer = "approve"
+        self.authorizations = []
+        self.exchanges = []
+        self.issued_token = "fresh-token"
+        self.authorization_headers = []
         self.faults = []
         self.lock = threading.Lock()
         self.conflict_text = None
@@ -138,6 +147,7 @@ class FakeOsm:
         return route.fulfill(status=status, body=body, headers=headers)
 
     def _user(self, req, parsed, match):
+        self.authorization_headers.append(req.headers.get("authorization"))
         return 200, json.dumps({"user": self.user}), JSON_HEADERS
 
     def _map(self, req, parsed, match):
@@ -228,6 +238,37 @@ class FakeOsm:
             self.changesets[cid]["open"] = False
         self.closed.append(cid)
         return 200, "", TEXT_HEADERS
+
+    def _authorize(self, req, parsed, match):
+        query = {k: v[0] for k, v in parse_qs(parsed.query).items()}
+        code = f"code-{len(self.authorizations) + 1}"
+        self.authorizations.append({**query, "code": code})
+        state = query.get("state", "")
+        if self.oauth_answer == "deny":
+            target = f"{query['redirect_uri']}?error=access_denied&error_description=The+user+denied&state={state}"
+        elif self.oauth_answer == "wrong_state":
+            target = f"{query['redirect_uri']}?code={code}&state=forged"
+        else:
+            target = f"{query['redirect_uri']}?code={code}&state={state}"
+        return 302, "", {**CORS, "Location": target}
+
+    def _token(self, req, parsed, match):
+        query = {k: v[0] for k, v in parse_qs(parsed.query).items()}
+        grant = next((a for a in self.authorizations if a["code"] == query.get("code")), None)
+        verifier = query.get("code_verifier", "")
+        challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
+        checks = {
+            "known_code": grant is not None,
+            "grant_type": query.get("grant_type") == "authorization_code",
+            "client_id": grant is not None and query.get("client_id") == grant.get("client_id"),
+            "redirect_uri": grant is not None and query.get("redirect_uri") == grant.get("redirect_uri"),
+            "pkce": grant is not None and grant.get("code_challenge_method") == "S256" and challenge == grant.get("code_challenge"),
+        }
+        self.exchanges.append({"query": query, "checks": checks})
+        if not all(checks.values()) or self.oauth_answer == "bad_grant":
+            return 400, json.dumps({"error": "invalid_grant", "error_description": "The provided authorization grant is invalid"}), JSON_HEADERS
+        body = {"access_token": self.issued_token, "token_type": "Bearer", "scope": grant.get("scope", ""), "created_at": 1763200000}
+        return 200, json.dumps(body), JSON_HEADERS
 
     def _revoke(self, req, parsed, match):
         form = {k: v[0] for k, v in parse_qs(self._body(req)).items()}
