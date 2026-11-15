@@ -2,9 +2,9 @@ format_version: 1
 source:
   wiki: https://wiki.openstreetmap.org
   page: Foundation/Local Chapters/United States/Pedestrian Working Group/Schema
-  revision: 3111749
-  url: https://wiki.openstreetmap.org/w/index.php?oldid=3111749
-  pwg_version: 1.1.0
+  revision: 3114148
+  url: https://wiki.openstreetmap.org/w/index.php?oldid=3114148
+  pwg_version: 1.1.1
 tiers:
 - bronze
 - silver
@@ -857,9 +857,9 @@ features:
           - 'yes'
           - 'no'
         gold:
-          description: Indicate if a ramp has been separately mapped as seperate
+          description: Indicate if a ramp has been separately mapped as separate
           values:
-          - seperate
+          - separate
     - id: stairs.tactile_paving
       tag: tactile_paving=*
       keys:
