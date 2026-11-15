@@ -371,8 +371,12 @@ body.is-editing #header, body.is-editing #lang-banner { display: none !important
   #basemap-control { left: 8px; flex-direction: column-reverse; align-items: flex-start; }
 
   #edit-bar { top: 8px; left: 8px; }
-  body.is-editing #legend, body.is-editing #zoom-badge { display: none; }
-  body.is-editing #basemap-control { top: 8px; right: 8px; bottom: auto; left: auto; flex-direction: column; align-items: flex-end; }
+  body.is-editing #zoom-badge { display: none; }
+  body.is-editing #legend {
+    top: 60px; right: 8px; max-width: calc(100vw - 16px);
+    max-height: calc(50vh - 76px - var(--attribution-clearance, 40px));
+  }
+  body.is-editing #basemap-control { top: 108px; right: 8px; bottom: auto; left: auto; flex-direction: column; align-items: flex-end; }
   #edit-dock, #edit-dock[data-position] {
     top: auto; left: 8px; right: 8px; width: auto; transform: none;
     bottom: calc(8px + var(--attribution-clearance, 40px)); max-height: 50vh;
