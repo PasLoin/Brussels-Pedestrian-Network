@@ -15,9 +15,13 @@ export function installEditMode(ctx) {
   ctx.active = false;
   store.editing = false;
 
+  function narrowScreen() {
+    return typeof window.matchMedia === "function" && window.matchMedia("(max-width: 600px)").matches;
+  }
+
   function foldSidePanel(position) {
     if (position === "left" && window.BPNMap) window.BPNMap.setHeaderOpen(false);
-    if (position === "right" && window.BPNMap) window.BPNMap.setLegendOpen(false);
+    if ((position === "right" || narrowScreen()) && window.BPNMap) window.BPNMap.setLegendOpen(false);
   }
 
   function afterLayoutChange() {
