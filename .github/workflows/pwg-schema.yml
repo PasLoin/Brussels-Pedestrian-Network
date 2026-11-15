@@ -8,28 +8,57 @@ on:
         required: true
         default: "PWG_Schema"
 
+permissions:
+  contents: read
+
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
           python-version: "3.12"
 
       - name: Install Python dependencies
-        run: pip install pyyaml
+        run: pip install --require-hashes -r requirements/pwg.txt
 
       - name: Fetch and parse PWG schema
-        run: python scripts/pwg_schema_fetch.py --page "${{ inputs.page }}"
+        env:
+          PAGE: ${{ inputs.page }}
+        run: python scripts/pwg_schema_fetch.py --page "$PAGE"
+
+      - name: Keep the new schema for the commit job
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: pwg-schema
+          path: pwg/schema.yaml
+          retention-days: 7
+          if-no-files-found: error
+
+  commit:
+    needs: refresh
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Get the new schema
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: pwg-schema
+          path: pwg
 
       - name: Commit pwg/schema.yaml
+        env:
+          PAGE: ${{ inputs.page }}
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -37,9 +66,27 @@ jobs:
           if git diff --cached --quiet; then
             echo "pwg/schema.yaml unchanged, nothing to commit."
           else
-            git commit -m "pwg: refresh schema from ${{ inputs.page }}"
+            git commit -m "pwg: refresh schema from ${PAGE}"
             git push
           fi
+
+  validate:
+    needs: commit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the committed schema
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ github.ref }}
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: pip install --require-hashes -r requirements/pwg.txt
 
       - name: Validate overrides against new schema
         run: python scripts/pwg_criteria.py
