@@ -1761,3 +1761,40 @@ def test_api_calls_carry_the_site_origin_as_referer_and_nothing_more(session, fa
     assert fake.referers
     assert set(fake.referers) == {origin}
     assert s.page.evaluate("document.querySelector('meta[name=referrer]').content") == "strict-origin-when-cross-origin"
+
+
+def boxes(page, ids):
+    return page.evaluate("""ids => Object.fromEntries(ids.map(id => {
+      const r = document.getElementById(id).getBoundingClientRect();
+      return [id, { left: r.left, top: r.top, right: r.right, bottom: r.bottom, shown: r.width > 0 && r.height > 0 }];
+    }))""", ids)
+
+
+def overlap(a, b):
+    return a["left"] < b["right"] and b["left"] < a["right"] and a["top"] < b["bottom"] and b["top"] < a["bottom"]
+
+
+@pytest.mark.parametrize("width, height", [(390, 844), (360, 740)])
+def test_on_mobile_the_layers_stay_reachable_folded_in_edit_mode(session, fake, width, height):
+    three_streets(fake)
+    s = session(editing=False)
+    s.page.set_viewport_size({"width": width, "height": height})
+    s.page.evaluate("BPNEdit.enter()")
+    wait_candidates(s.page, 3)
+    assert not s.page.evaluate("document.getElementById('legend').classList.contains('open')")
+    b = boxes(s.page, ["edit-bar", "legend", "basemap-control", "edit-dock"])
+    assert all(box["shown"] for box in b.values())
+    names = list(b)
+    for i, first in enumerate(names):
+        for second in names[i + 1:]:
+            assert not overlap(b[first], b[second]), (first, second, b)
+    assert not s.page.is_visible("#zoom-badge")
+    s.page.click("#legend-toggle")
+    assert s.page.evaluate("document.getElementById('legend').classList.contains('open')")
+    b = boxes(s.page, ["edit-bar", "legend", "edit-dock"])
+    assert not overlap(b["legend"], b["edit-bar"]) and not overlap(b["legend"], b["edit-dock"]), b
+    assert layer_visibility(s.page, ["sidewalk-roads"]) == {"sidewalk-roads": "none"}
+    s.page.locator("#legend-content .legend-item", has_text="Tags sidewalk").click()
+    assert layer_visibility(s.page, ["sidewalk-roads"]) == {"sidewalk-roads": "visible"}
+    s.page.click("#legend-toggle")
+    assert not s.page.evaluate("document.getElementById('legend').classList.contains('open')")
