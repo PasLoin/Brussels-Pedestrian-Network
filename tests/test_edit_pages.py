@@ -6,7 +6,7 @@ import pytest
 import build_site
 from build_site import DEV_API, DEVTEST_LAND, DEVTEST_PAGE, ROOT, SITE_URL, devtest_path, edit_pages
 
-OSM_API_SHA256 = "abcb97866313a82a4975b54e547a6fdf7f12d0d564feee544794450b5981e417"
+OSM_API_JS = "vendor/osm-api-4.0.1/index.min.js"
 PROD_HOSTS = ("https://api.openstreetmap.org", "https://www.openstreetmap.org")
 
 
@@ -60,7 +60,7 @@ def test_devtest_may_reach_the_dev_api_and_never_production(site):
 
 def test_devtest_loads_the_guarded_editor_before_the_map(site):
     html = _html(site / DEVTEST_PAGE)
-    osm_api = html.index('src="../vendor/osm-api-4.0.1.min.js"')
+    osm_api = html.index(f'src="../{OSM_API_JS}"')
     editor = html.index('src="../edit/main.js"')
     map_main = html.index('src="../map/main.js"')
     assert osm_api < editor < map_main
@@ -106,12 +106,13 @@ def test_editor_notes_and_tooling_are_not_published(site):
     assert not (site / "edit" / "TESTING.md").exists()
     assert not (site / "edit" / "package.json").exists()
     assert (site / "edit" / "main.js").is_file()
-    assert (site / "vendor" / "osm-api-4.0.1.LICENSE").is_file()
+    assert (site / "vendor" / "osm-api-4.0.1" / "LICENSE").is_file()
 
 
-def test_vendored_osm_api_is_the_reviewed_build():
-    data = (ROOT / "vendor" / "osm-api-4.0.1.min.js").read_bytes()
-    assert hashlib.sha256(data).hexdigest() == OSM_API_SHA256
+def test_served_osm_api_is_the_installed_package(site):
+    served = (site / OSM_API_JS).read_bytes()
+    installed = (ROOT / "node_modules" / "osm-api" / "dist" / "index.min.js").read_bytes()
+    assert hashlib.sha256(served).digest() == hashlib.sha256(installed).digest()
 
 
 def test_devtest_panel_has_a_queue(site):

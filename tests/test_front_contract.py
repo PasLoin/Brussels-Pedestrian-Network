@@ -2,6 +2,8 @@ import fnmatch
 import json
 import re
 
+import build_site
+
 from config import PED_HIGHWAY_TYPES
 from front_contract import (
     APP_STATS_PATHS,
@@ -66,10 +68,14 @@ def test_every_local_script_is_deployed_and_triggers_a_site_deploy():
     workflow = read_text(".github/workflows/site.yml")
     scripts = set().union(*(local_scripts(page_text(page)) for page in PAGES))
     assert {"i18n.js", "map/main.js", "popups.js", "stats.js", "evolution.js"} <= scripts
-    assert scripts <= deployed_files()
+    libraries = {path for files in build_site.vendor_paths().values() for path in files.values()}
+    own = {script for script in scripts if script not in libraries}
+    assert own <= deployed_files()
     triggers = push_trigger_paths(workflow)
-    for script in scripts:
+    for script in own:
         assert any(fnmatch.fnmatch(script, pattern) for pattern in triggers), script
+    if scripts & libraries:
+        assert "package-lock.json" in triggers
 
 
 def test_every_site_source_triggers_a_site_deploy():
@@ -116,3 +122,14 @@ def test_javascript_tooling_is_pinned_and_run_in_ci():
     workflow = read_text(".github/workflows/tests.yml")
     assert workflow.index("npm ci") < workflow.index("npm run lint") < workflow.index("node --test tests/js/*.test.js")
     assert {"package.json", "package-lock.json", "eslint.config.mjs"} <= push_trigger_paths(workflow)
+
+
+def test_library_updates_redeploy_the_site():
+    triggers = push_trigger_paths(read_text(".github/workflows/site.yml"))
+    assert {"package.json", "package-lock.json"} <= triggers
+
+
+def test_site_builds_install_the_pinned_libraries_first():
+    for name in ("build.yml", "site.yml"):
+        workflow = read_text(f".github/workflows/{name}")
+        assert workflow.index("npm ci") < workflow.index("python3 build_site.py --out _site"), name

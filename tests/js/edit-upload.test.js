@@ -4,7 +4,7 @@ const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const { html } = require("../../html.js");
 const { i18nFor } = require("./dictionaries.js");
-const OSM = require("../../vendor/osm-api-4.0.1.min.js");
+const OSM = require("osm-api/dist/index.min.js");
 
 globalThis.html = html;
 
@@ -507,10 +507,11 @@ test("generated comments never cut an emoji in half", async () => {
   assert.equal(text.endsWith("\ud83d"), false);
 });
 
-test("the version announced in created_by matches the vendored library", async () => {
+test("the version announced in changesets is the osm-api version pinned and served", async () => {
   const { OSM_API_JS_VERSION } = await load("env.js");
-  const fs = require("node:fs");
-  assert.ok(fs.existsSync(path.join(__dirname, "..", "..", "vendor", `osm-api-${OSM_API_JS_VERSION}.min.js`)));
+  const pkg = require("../../package.json");
+  assert.equal(pkg.devDependencies["osm-api"], OSM_API_JS_VERSION);
+  assert.equal(require("osm-api/package.json").version, OSM_API_JS_VERSION);
 });
 
 test("a changeset can never exceed 50 ways whatever the settings", async () => {
