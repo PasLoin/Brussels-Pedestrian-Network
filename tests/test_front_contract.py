@@ -81,8 +81,7 @@ def test_every_site_source_triggers_a_site_deploy():
 
 def test_data_pipeline_is_not_triggered_by_site_sources():
     triggers = push_trigger_paths(read_text(".github/workflows/build.yml"))
-    assert triggers == {".github/workflows/build.yml", "scripts/**"}
-
+    assert triggers == {".github/workflows/build.yml", "scripts/**", "requirements/pipeline.txt"}
 
 def test_both_workflows_render_checked_pages():
     for name in ("build.yml", "site.yml"):
