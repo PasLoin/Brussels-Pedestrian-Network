@@ -374,6 +374,15 @@ jobs:
             echo '[]' > history.json
           fi
 
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install the site libraries
+        run: npm ci --no-audit --no-fund --ignore-scripts
+
       - name: Check translations
         run: python3 check_i18n.py
 

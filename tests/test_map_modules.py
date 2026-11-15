@@ -36,10 +36,10 @@ def test_every_module_is_reachable_from_the_entry_point():
     assert seen == set(modules)
 
 
-def test_map_page_loads_only_the_entry_point_as_a_module():
+def test_map_page_loads_only_the_maplibre_loader_then_the_entry_point_as_modules():
     html = page_text("index.html")
     modules = re.findall(r'<script type="module" src="\./([^"]+)"', html)
-    assert modules == ["map/main.js"]
+    assert modules == [build_site.vendor_paths()["maplibre-gl"]["global"], "map/main.js"]
     assert html.index('src="./popups.js"') < html.index('src="./map/main.js"')
 
 

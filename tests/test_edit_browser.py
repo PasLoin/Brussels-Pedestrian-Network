@@ -27,15 +27,9 @@ if sync_playwright is None:
     pytest.skip("playwright not installed", allow_module_level=True)
 
 ROOT = Path(__file__).resolve().parents[1]
-MODULES = ROOT / "node_modules"
-LIBS = {
-    "maplibre-gl.js": MODULES / "maplibre-gl" / "dist" / "maplibre-gl.js",
-    "maplibre-gl.css": MODULES / "maplibre-gl" / "dist" / "maplibre-gl.css",
-    "pmtiles.js": MODULES / "pmtiles" / "dist" / "pmtiles.js",
-}
-if not all(path.is_file() for path in LIBS.values()):
+if not (ROOT / "node_modules" / "maplibre-gl" / "package.json").is_file():
     if os.environ.get("REQUIRE_BROWSER_TESTS") == "1":
-        raise RuntimeError("maplibre-gl and pmtiles must be installed with npm ci")
+        raise RuntimeError("the site libraries come from node_modules: run npm ci")
     pytest.skip("npm dev dependencies not installed", allow_module_level=True)
 
 BLANK_STYLE = json.dumps({"version": 8, "sources": {}, "layers": [{"id": "bg", "type": "background", "paint": {"background-color": "#eee"}}]})
@@ -151,11 +145,6 @@ class Session:
 
     def _route(self, route):
         url = route.request.url
-        if "unpkg.com" in url:
-            name = url.rsplit("/", 1)[-1]
-            if name in LIBS:
-                return route.fulfill(path=str(LIBS[name]), content_type="text/css" if name.endswith(".css") else "application/javascript")
-            return route.abort()
         if "geoservices-urbis.irisnet.be" in url:
             return route.fulfill(body=BLANK_PNG, content_type="image/png", headers={"Access-Control-Allow-Origin": "*"})
         if "tiles.openfreemap.org/styles/liberty" in url:

@@ -1,5 +1,6 @@
 import json
 import re
+from pathlib import Path
 from html import unescape as html_unescape
 
 import pytest
@@ -375,3 +376,99 @@ def test_every_page_declares_a_valid_referrer_policy(site):
         expected = ["no-referrer"] if path.name == "land.html" else ["strict-origin-when-cross-origin"]
         assert policies == expected, path.relative_to(site)
         assert "Referrer-Policy" not in html, path.relative_to(site)
+
+
+THIRD_PARTY_HOSTS = ("unpkg.com", "cdn.jsdelivr.net", "cdnjs.cloudflare.com", "esm.sh", "esm.run")
+
+
+def _built_pages(site):
+    return [p for p in site.rglob("*.html")]
+
+
+def test_no_page_loads_code_or_styles_from_another_site(site):
+    for path in _built_pages(site):
+        html = path.read_text(encoding="utf-8")
+        for host in THIRD_PARTY_HOSTS:
+            assert host not in html, (path, host)
+        assert not re.search(r'<script[^>]*\ssrc="(?:https?:)?//', html), path
+        assert not re.search(r'<link[^>]*rel="stylesheet"[^>]*href="(?:https?:)?//', html), path
+        assert not re.search(r'<link[^>]*href="(?:https?:)?//[^"]*"[^>]*rel="stylesheet"', html), path
+
+
+def test_scripts_only_come_from_the_site_itself(site):
+    for path in _built_pages(site):
+        html = path.read_text(encoding="utf-8")
+        match = re.search(r'http-equiv="Content-Security-Policy" content="([^"]*)"', html)
+        if not match:
+            continue
+        directives = {d.split()[0]: d.split()[1:] for d in (p.strip() for p in match.group(1).split(";")) if d}
+        assert directives.get("script-src", ["'self'"]) == ["'self'"], path
+        for directive in ("style-src", "connect-src"):
+            for host in THIRD_PARTY_HOSTS:
+                assert not any(host in source for source in directives.get(directive, [])), (path, directive)
+
+
+def test_served_libraries_are_the_pinned_installed_versions(site):
+    pins = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))["devDependencies"]
+    for name, files in build_site.VENDOR.items():
+        folder = site / "vendor" / f"{name}-{pins[name]}"
+        assert (folder / "LICENSE").is_file() or any(folder.glob("LICENSE*")), name
+        package = ROOT / "node_modules" / name
+        assert json.loads((package / "package.json").read_text(encoding="utf-8"))["version"] == pins[name], name
+        for kind, source in files.items():
+            served = folder / Path(source).name
+            assert served.read_bytes() == (package / source).read_bytes(), (name, kind)
+
+
+def test_pages_reference_the_served_library_files(site):
+    paths = build_site.vendor_paths()
+    expected = {
+        "index.html": [paths["maplibre-gl"]["global"], paths["maplibre-gl"]["css"], paths["pmtiles"]["js"]],
+        "stats.html": [paths["chart.js"]["js"]],
+        "evolution.html": [paths["chart.js"]["js"]],
+    }
+    for page, refs in expected.items():
+        html = (site / page).read_text(encoding="utf-8")
+        for ref in refs:
+            assert ref in html, (page, ref)
+            assert (site / ref).is_file(), ref
+
+
+def test_a_library_that_is_not_pinned_exactly_stops_the_build(tmp_path):
+    package = tmp_path / "package.json"
+    package.write_text(json.dumps({"devDependencies": {"maplibre-gl": "^4.7.1", "pmtiles": "3.2.1", "chart.js": "4.4.1", "osm-api": "4.0.1"}}))
+    with pytest.raises(ValueError, match="maplibre-gl must be pinned"):
+        build_site.vendor_versions(package)
+
+
+def test_an_installed_version_that_differs_from_the_pin_stops_the_build(tmp_path):
+    modules = tmp_path / "node_modules"
+    for name, files in build_site.VENDOR.items():
+        package = modules / name
+        package.mkdir(parents=True)
+        (package / "package.json").write_text(json.dumps({"version": "0.0.1" if name == "pmtiles" else build_site.vendor_versions()[name]}))
+        for source in files.values():
+            (package / source).parent.mkdir(parents=True, exist_ok=True)
+            (package / source).write_text("x")
+    with pytest.raises(ValueError, match="pmtiles 0.0.1 is installed but package.json pins"):
+        build_site.copy_vendor(tmp_path / "out", modules=modules)
+    with pytest.raises(ValueError, match="is not installed: run npm ci"):
+        build_site.copy_vendor(tmp_path / "out2", modules=tmp_path / "empty")
+
+
+def test_maplibre_is_exposed_to_the_page_scripts_by_a_module_loaded_first(site):
+    paths = build_site.vendor_paths()
+    folder = site / Path(paths["maplibre-gl"]["global"]).parent
+    shim = (site / paths["maplibre-gl"]["global"]).read_text(encoding="utf-8")
+    assert shim == 'import * as library from "./maplibre-gl.mjs";\nwindow.maplibregl = library;\n'
+    assert (folder / "maplibre-gl.mjs").is_file() and (folder / "maplibre-gl-worker.mjs").is_file()
+    html = (site / "index.html").read_text(encoding="utf-8")
+    loader = html.index(f'<script type="module" src="./{paths["maplibre-gl"]["global"]}"></script>')
+    assert loader < html.index('src="./map/main.js"')
+
+
+def test_maplibre_may_start_its_worker_from_the_site(site):
+    html = (site / "index.html").read_text(encoding="utf-8")
+    csp = re.search(r'http-equiv="Content-Security-Policy" content="([^"]*)"', html).group(1)
+    worker = next(d for d in csp.split(";") if d.strip().startswith("worker-src")).split()[1:]
+    assert worker == ["'self'", "blob:"]

@@ -19,7 +19,20 @@ STATIC = (
     "robots.txt", "favicon.svg", "app.css", "style.json",
     "i18n.js", "lang.js", "html.js", "nav.js", "filters.js", "popups.js", "stats.js", "evolution.js",
 )
-STATIC_DIRS = ("map", "edit", "vendor")
+STATIC_DIRS = ("map", "edit")
+PACKAGE_JSON = ROOT / "package.json"
+NODE_MODULES = ROOT / "node_modules"
+VENDOR_DIR = "vendor"
+VENDOR = {
+    "maplibre-gl": {"module": "dist/maplibre-gl.mjs", "worker": "dist/maplibre-gl-worker.mjs", "css": "dist/maplibre-gl.css", "license": "LICENSE.txt"},
+    "pmtiles": {"js": "dist/pmtiles.js"},
+    "chart.js": {"js": "dist/chart.umd.js", "license": "LICENSE.md"},
+    "osm-api": {"js": "dist/index.min.js", "license": "LICENSE"},
+}
+VENDOR_GLOBALS = {
+    "maplibre-gl": {"file": "maplibre-gl-global.mjs", "module": "maplibre-gl.mjs", "name": "maplibregl"},
+}
+EXACT_VERSION = re.compile(r"\d+\.\d+\.\d+")
 STATIC_DIR_IGNORE = ("package.json", "*.md")
 SITEMAP_ENTRIES = {
     "index.html": ("daily", "1.0"),
@@ -30,11 +43,11 @@ SITEMAP_ENTRIES = {
 NOT_FOUND = "404.html"
 CSP = {
     "default-src": ["'self'"],
-    "script-src": ["'self'", "https://unpkg.com", "https://cdn.jsdelivr.net"],
-    "style-src": ["'self'", "https://unpkg.com", "'unsafe-inline'"],
+    "script-src": ["'self'"],
+    "style-src": ["'self'", "'unsafe-inline'"],
     "img-src": ["'self'", "https://tiles.openfreemap.org", "https://www.openstreetmap.org", "data:"],
-    "connect-src": ["'self'", "https://tiles.openfreemap.org", "https://unpkg.com"],
-    "worker-src": ["blob:"],
+    "connect-src": ["'self'", "https://tiles.openfreemap.org"],
+    "worker-src": ["'self'", "blob:"],
     "child-src": ["blob:"],
     "font-src": ["https://tiles.openfreemap.org"],
     "object-src": ["'none'"],
@@ -256,14 +269,72 @@ def embedded_json(value):
     return Markup(text.replace("&", "\\u0026").replace("<", "\\u003c").replace(">", "\\u003e"))
 
 
+def vendor_versions(package_json=PACKAGE_JSON):
+    pins = json.loads(Path(package_json).read_text(encoding="utf-8")).get("devDependencies", {})
+    versions = {}
+    for name in VENDOR:
+        version = pins.get(name)
+        if not version or not EXACT_VERSION.fullmatch(version):
+            raise ValueError(f"{name} must be pinned to an exact version in package.json, found {version!r}")
+        versions[name] = version
+    return versions
+
+
+def vendor_folder(name, version):
+    return f"{VENDOR_DIR}/{name}-{version}"
+
+
+def vendor_paths(versions=None):
+    versions = versions or vendor_versions()
+    paths = {
+        name: {kind: f"{vendor_folder(name, versions[name])}/{Path(source).name}" for kind, source in files.items() if kind != "license"}
+        for name, files in VENDOR.items()
+    }
+    for name, shim in VENDOR_GLOBALS.items():
+        paths[name]["global"] = f"{vendor_folder(name, versions[name])}/{shim['file']}"
+    return paths
+
+
+def global_shim(shim):
+    return f'import * as library from "./{shim["module"]}";\nwindow.{shim["name"]} = library;\n'
+
+
+def copy_vendor(out, versions=None, modules=NODE_MODULES):
+    versions = versions or vendor_versions()
+    for name, files in VENDOR.items():
+        package = Path(modules) / name
+        manifest = package / "package.json"
+        if not manifest.is_file():
+            raise ValueError(f"{name} is not installed: run npm ci before building the site")
+        installed = json.loads(manifest.read_text(encoding="utf-8"))
+        if installed.get("version") != versions[name]:
+            raise ValueError(f"{name} {installed.get('version')} is installed but package.json pins {versions[name]}: run npm ci")
+        target = Path(out) / vendor_folder(name, versions[name])
+        target.mkdir(parents=True, exist_ok=True)
+        for kind, source in files.items():
+            shutil.copy2(package / source, target / Path(source).name)
+        if name in VENDOR_GLOBALS:
+            shim = VENDOR_GLOBALS[name]
+            (target / shim["file"]).write_text(global_shim(shim), encoding="utf-8")
+        if "license" not in files:
+            author = installed.get("author")
+            author = author.get("name") if isinstance(author, dict) else author
+            notice = f"{name} {versions[name]}\nLicense: {installed.get('license')}\n"
+            if author:
+                notice += f"Author: {author}\n"
+            (target / "LICENSE").write_text(notice, encoding="utf-8")
+
+
 def environment():
-    return Environment(
+    env = Environment(
         loader=FileSystemLoader(TEMPLATES_DIR),
         autoescape=True,
         undefined=StrictUndefined,
         keep_trailing_newline=True,
         trim_blocks=True,
     )
+    env.globals["vendor"] = vendor_paths()
+    return env
 
 
 def render_page(lang, page, config=None, env=None, dictionary=None, dictionaries=None):
@@ -464,6 +535,7 @@ def build(out, langs=None, lastmod=None, pseudo=False):
         shutil.copy2(ROOT / name, out / name)
     for name in STATIC_DIRS:
         shutil.copytree(ROOT / name, out / name, ignore=shutil.ignore_patterns(*STATIC_DIR_IGNORE))
+    copy_vendor(out)
     (out / NOT_FOUND).write_text(render_not_found(config, env, dictionaries), encoding="utf-8")
     write_sitemap(out, config, lastmod or datetime.now(timezone.utc).date().isoformat())
     return built
