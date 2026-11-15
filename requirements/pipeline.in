@@ -1,0 +1,7 @@
+geopandas
+igraph
+jinja2>=3.1
+numpy
+osmnx
+pyproj
+shapely>=2
