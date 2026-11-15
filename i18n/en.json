@@ -447,7 +447,10 @@
       "failed": "Login failed or cancelled.",
       "expired": "Session expired, please log in again.",
       "unconfigured": "OAuth client not configured for this environment.",
-      "disabled": "Editing is disabled."
+      "disabled": "Editing is disabled.",
+      "leaving": "Logging out and revoking the token with OSM…",
+      "revokeFailed": "Logged out in this browser, but OSM did not confirm that the token was revoked. Revoke the access yourself:",
+      "authorizedApps": "authorised applications of your OSM account"
     },
     "status": {
       "zoomIn": "Zoom in to level {{zoom}} to load candidates.",
@@ -552,7 +555,8 @@
       "changed": "The queue changed since it was prepared: check the new plan and send again.",
       "geometryChanged": "geometry changed since (reversed or split), removed from the queue.",
       "comment": "Comment of changeset {{n}}",
-      "nodeMoved": "a node was moved {{distance}} m since it was queued: check the way's history in iD or JOSM, removed from the queue."
+      "nodeMoved": "a node was moved {{distance}} m since it was queued: check the way's history in iD or JOSM, removed from the queue.",
+      "invalid": "invalid intent (unexpected values or keys), removed from the queue without sending anything: make this choice again."
     },
     "result": {
       "sent_one": "{{count}} changeset sent:",

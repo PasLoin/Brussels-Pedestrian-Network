@@ -3,6 +3,28 @@ import { hasSidewalkTag, isEditableCandidate } from "./whitelist.js";
 export const SIDEWALK_VALUES = Object.freeze(["separate", "yes", "no"]);
 export const SIDEWALK_KEY = /^sidewalk(?::|$)/;
 
+const BOTH_KEYS = Object.freeze(["sidewalk:both"]);
+const SIDE_KEYS = Object.freeze(["sidewalk:left", "sidewalk:right"]);
+
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === "object" && Object.getPrototypeOf(value) === Object.prototype;
+}
+
+export function isValidChange(intent) {
+  if (!isPlainObject(intent) || !isPlainObject(intent.set)) return false;
+  if (!Array.isArray(intent.unset) || intent.unset.length !== 0) return false;
+  const keys = Object.keys(intent.set).sort();
+  const expected = keys.length === 1 ? BOTH_KEYS : SIDE_KEYS;
+  if (keys.length !== expected.length || keys.some((key, i) => key !== expected[i])) return false;
+  return keys.every(key => SIDEWALK_VALUES.includes(intent.set[key]));
+}
+
+export function isValidIntent(intent) {
+  if (!isValidChange(intent)) return false;
+  if (!Number.isSafeInteger(intent.wayId) || intent.wayId <= 0) return false;
+  return isPlainObject(intent.preconditions) && typeof intent.preconditions.highway === "string";
+}
+
 export function tagsForChoice(left, right) {
   if (!SIDEWALK_VALUES.includes(left) || !SIDEWALK_VALUES.includes(right)) throw new Error("invalid-choice");
   return left === right ? { "sidewalk:both": left } : { "sidewalk:left": left, "sidewalk:right": right };
@@ -58,6 +80,7 @@ export function applyIntent(tags, intent) {
   const touched = [...Object.keys(intent.set), ...intent.unset];
   const foreign = touched.filter(key => !SIDEWALK_KEY.test(key));
   if (foreign.length) throw new Error(`refusing to touch ${foreign.join(", ")}`);
+  if (!isValidChange(intent)) throw new Error("refusing an invalid sidewalk change");
   const out = { ...(tags || {}) };
   for (const key of intent.unset) delete out[key];
   Object.assign(out, intent.set);

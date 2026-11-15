@@ -170,6 +170,81 @@ test("logout removes the token and the environment marker", async () => {
   assert.deepEqual(storage.dump(), {});
 });
 
+const REVOKE_ENV = { ...ENV, webUrl: "https://master.apis.dev.openstreetmap.org" };
+const TOKEN = JSON.stringify({ accessToken: "secret-token", issuedAt: "2026-11-15", scopes: ["read_prefs", "write_api"] });
+
+function fakeFetch(respond) {
+  const calls = [];
+  const fetchImpl = async (url, init) => {
+    calls.push({ url, init });
+    return respond(url, init);
+  };
+  return { calls, fetchImpl };
+}
+
+test("logout clears the token locally before revoking it on the OAuth server", async () => {
+  const { logout, AUTH_KEY, ENV_KEY } = await load("auth.js");
+  const storage = memoryStorage({ [AUTH_KEY]: TOKEN, [ENV_KEY]: "dev" });
+  const osm = fakeOsm();
+  let seenDuringRevoke = null;
+  const { calls, fetchImpl } = fakeFetch(() => {
+    seenDuringRevoke = storage.dump();
+    return { ok: true, status: 200 };
+  });
+  assert.equal(await logout({ osm, storage, env: REVOKE_ENV, fetchImpl }), "revoked");
+  assert.deepEqual(seenDuringRevoke, {});
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, "https://master.apis.dev.openstreetmap.org/oauth2/revoke");
+  assert.equal(calls[0].init.method, "POST");
+  assert.equal(calls[0].init.headers["Content-Type"], "application/x-www-form-urlencoded");
+  assert.equal(calls[0].init.credentials, "omit");
+  const body = new URLSearchParams(calls[0].init.body);
+  assert.equal(body.get("token"), "secret-token");
+  assert.equal(body.get("client_id"), "client");
+  assert.equal(body.get("token_type_hint"), "access_token");
+  assert.deepEqual(storage.dump(), {});
+});
+
+test("prod revokes on www.openstreetmap.org, where osm-api exchanges the code", async () => {
+  const { revokeUrl, authorizedAppsUrl } = await load("auth.js");
+  const { resolveEnv } = await load("env.js");
+  const prod = resolveEnv("prod", "https://pasloin.github.io/Brussels-Pedestrian-Network/test-api/beta.html");
+  assert.equal(revokeUrl(prod), "https://www.openstreetmap.org/oauth2/revoke");
+  assert.equal(authorizedAppsUrl(prod), "https://www.openstreetmap.org/oauth2/authorized_applications");
+});
+
+test("a revocation refused or unreachable is reported, the local logout stands", async () => {
+  const { logout, AUTH_KEY, ENV_KEY } = await load("auth.js");
+  const answers = [() => ({ ok: false, status: 503 }), () => { throw new TypeError("Failed to fetch"); }];
+  for (const respond of answers) {
+    const storage = memoryStorage({ [AUTH_KEY]: TOKEN, [ENV_KEY]: "dev" });
+    const { fetchImpl } = fakeFetch(respond);
+    assert.equal(await logout({ osm: fakeOsm(), storage, env: REVOKE_ENV, fetchImpl }), "failed");
+    assert.deepEqual(storage.dump(), {});
+  }
+});
+
+test("nothing is sent when there is no token for this environment", async () => {
+  const { logout, AUTH_KEY, ENV_KEY } = await load("auth.js");
+  const cases = [
+    memoryStorage(),
+    memoryStorage({ [AUTH_KEY]: TOKEN, [ENV_KEY]: "prod" }),
+    memoryStorage({ [AUTH_KEY]: TOKEN }),
+    memoryStorage({ [AUTH_KEY]: "{broken", [ENV_KEY]: "dev" }),
+    memoryStorage({ [AUTH_KEY]: JSON.stringify({ accessToken: "" }), [ENV_KEY]: "dev" }),
+  ];
+  for (const storage of cases) {
+    const { calls, fetchImpl } = fakeFetch(() => ({ ok: true }));
+    assert.equal(await logout({ osm: fakeOsm(), storage, env: REVOKE_ENV, fetchImpl }), "none");
+    assert.equal(calls.length, 0);
+    assert.deepEqual(storage.dump(), {});
+  }
+  const storage = memoryStorage({ [AUTH_KEY]: TOKEN, [ENV_KEY]: "dev" });
+  const { calls, fetchImpl } = fakeFetch(() => ({ ok: true }));
+  assert.equal(await logout({ osm: fakeOsm(), storage, env: { ...REVOKE_ENV, clientId: "" }, fetchImpl }), "failed");
+  assert.equal(calls.length, 0);
+});
+
 test("the whitelist keeps residential roads without any sidewalk key", async () => {
   const { isEditableCandidate } = await load("whitelist.js");
   assert.equal(isEditableCandidate({ highway: "residential", name: "Rue A" }), true);

@@ -684,6 +684,67 @@ def test_s5_a_token_from_another_environment_is_purged_on_load(session, fake):
     assert "Connecté" not in s.page.inner_text("#edit-auth")
 
 
+def dev_client_id():
+    source = (Path(__file__).resolve().parent.parent / "edit" / "env.js").read_text(encoding="utf-8")
+    return re.search(r'dev: Object\.freeze\(\{[^}]*?clientId: "([^"]+)"', source, re.S).group(1)
+
+
+def test_logging_out_revokes_the_token_on_the_oauth_server(session, fake):
+    s = session()
+    wait(s.page, "() => document.getElementById('edit-auth').innerText.includes('Connecté')")
+    s.page.click('[data-edit-action="logout"]')
+    wait(s.page, "() => document.getElementById('edit-auth').innerText.includes('Se connecter à OSM')")
+    assert s.page.evaluate("localStorage.getItem('__osmAuth')") is None
+    assert len(fake.revoked) == 1
+    form = fake.revoked[0]["form"]
+    assert form["token"] == "token"
+    assert form["token_type_hint"] == "access_token"
+    assert form["client_id"] == dev_client_id()
+    assert fake.revoked[0]["content_type"].startswith("application/x-www-form-urlencoded")
+    assert s.page.query_selector("[data-edit-revoke]") is None
+
+
+def test_a_revocation_that_fails_says_so_and_links_to_the_authorised_applications(session, fake):
+    s = session()
+    wait(s.page, "() => document.getElementById('edit-auth').innerText.includes('Connecté')")
+    fake.inject("revoke", status=503, body="Service Unavailable")
+    s.page.click('[data-edit-action="logout"]')
+    wait(s.page, "() => document.querySelector('[data-edit-revoke]') !== null")
+    assert s.page.evaluate("localStorage.getItem('__osmAuth')") is None
+    notice = s.page.inner_text("[data-edit-revoke]")
+    assert "n'a pas confirmé la révocation" in notice
+    href = s.page.get_attribute("[data-edit-revoke] a", "href")
+    assert href == f"https://{DEV_HOST}/oauth2/authorized_applications"
+    assert "Se connecter à OSM" in s.page.inner_text("#edit-auth")
+
+
+def test_a_revoked_session_also_revokes_the_token(session, fake):
+    fake.add_way(101, line_at(CENTER), street("Rue Test", "Teststraat"))
+    s = session(queue=[intent_for(fake, 101)])
+    prepare(s.page)
+    fake.inject("create", status=401, body="Couldn't authenticate you")
+    send(s.page)
+    wait(s.page, "() => document.getElementById('edit-auth').innerText.includes('Se connecter à OSM')")
+    assert [r["form"]["token"] for r in fake.revoked] == ["token"]
+
+
+def test_a_tampered_queue_entry_is_dropped_and_never_uploaded(session, fake):
+    fake.add_way(101, line_at(CENTER), street("Rue Test", "Teststraat"))
+    fake.add_way(102, line_at(CENTER, dy=0.0005), street("Rue Autre", "Anderestraat"))
+    bad_value = intent_for(fake, 101, {"sidewalk:both": "<b>no</b>"})
+    bad_unset = {**intent_for(fake, 102, {"sidewalk:both": "no"}), "unset": ["sidewalk:left"]}
+    s = session(queue=[bad_value, bad_unset])
+    prepare(s.page)
+    text = queue_text(s.page)
+    assert text.count("intention invalide") == 2
+    assert "<b>" not in s.page.inner_html("#edit-queue").replace("&lt;b&gt;", "")
+    assert fake.count("ways") == 0
+    assert fake.count("way") == 0
+    assert s.page.query_selector('[data-edit-action="send"]') is None
+    assert fake.creates == [] and fake.uploads == []
+    assert queue_ids(s.page) == []
+
+
 def test_each_changeset_carries_its_own_comment_and_reviewer_tags(session, fake):
     for i in range(3):
         fake.add_way(101 + i, line_at(CENTER, dy=i * 0.0005), street(f"Rue Nord {i}", f"Noordstraat {i}"))

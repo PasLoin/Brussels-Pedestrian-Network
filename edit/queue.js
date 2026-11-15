@@ -1,3 +1,5 @@
+import { isValidIntent } from "./intent.js";
+
 export function queueKey(env) {
   return `bpn.queue.${env}`;
 }
@@ -24,6 +26,7 @@ export function createQueue({ storage, env }) {
     has: wayId => items.some(i => i.wayId === wayId),
     get: wayId => items.find(i => i.wayId === wayId) || null,
     put(intent) {
+      if (!isValidIntent(intent)) throw new Error("invalid-intent");
       items = [...items.filter(i => i.wayId !== intent.wayId), intent];
       save();
     },

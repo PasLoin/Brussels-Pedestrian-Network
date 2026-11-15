@@ -447,7 +447,10 @@
       "failed": "Aanmelden mislukt of geannuleerd.",
       "expired": "Sessie verlopen, meld je opnieuw aan.",
       "unconfigured": "OAuth-client niet ingesteld voor deze omgeving.",
-      "disabled": "Bewerken is uitgeschakeld."
+      "disabled": "Bewerken is uitgeschakeld.",
+      "leaving": "Afmelden en token intrekken bij OSM…",
+      "revokeFailed": "Afgemeld in deze browser, maar OSM heeft de intrekking van het token niet bevestigd. Trek de toegang zelf in:",
+      "authorizedApps": "toegestane toepassingen van je OSM-account"
     },
     "status": {
       "zoomIn": "Zoom in tot niveau {{zoom}} om kandidaten te laden.",
@@ -552,7 +555,8 @@
       "changed": "De wachtrij is gewijzigd sinds de voorbereiding: controleer het nieuwe plan en verzend opnieuw.",
       "geometryChanged": "geometrie intussen gewijzigd (omgekeerd of gesplitst), uit de wachtrij gehaald.",
       "comment": "Opmerking van changeset {{n}}",
-      "nodeMoved": "een node werd {{distance}} m verplaatst sinds het in de wachtrij kwam: controleer de geschiedenis van de way in iD of JOSM, uit de wachtrij gehaald."
+      "nodeMoved": "een node werd {{distance}} m verplaatst sinds het in de wachtrij kwam: controleer de geschiedenis van de way in iD of JOSM, uit de wachtrij gehaald.",
+      "invalid": "ongeldige intentie (onverwachte waarden of sleutels), uit de wachtrij gehaald zonder iets te versturen: maak deze keuze opnieuw."
     },
     "result": {
       "sent_one": "{{count}} changeset verzonden:",

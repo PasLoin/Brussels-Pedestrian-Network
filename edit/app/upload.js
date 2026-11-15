@@ -141,8 +141,11 @@ export function installUpload(ctx) {
 
   function endSessionIfRevoked(err) {
     if (errorKind(err) !== "auth") return false;
-    logout({ osm, storage });
-    ctx.refreshAuth(errorMessage(err, i18n.t));
+    const message = errorMessage(err, i18n.t);
+    logout({ osm, storage, env }).then(outcome => {
+      if (outcome === "failed") ctx.refreshAuth(message, ctx.revokeNotice(outcome));
+    });
+    ctx.refreshAuth(message);
     return true;
   }
 

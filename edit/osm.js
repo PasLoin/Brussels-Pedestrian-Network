@@ -1,5 +1,5 @@
 import { distanceM, mergeBbox, spanM } from "./geo.js";
-import { applyIntent, geometryUnchanged, preconditionsHold } from "./intent.js";
+import { applyIntent, geometryUnchanged, isValidIntent, preconditionsHold } from "./intent.js";
 
 const GONE = new Set([404, 410]);
 const NODE_CHUNK = 500;
@@ -46,10 +46,11 @@ export function largestShiftM(intent, way, liveNodes) {
 }
 
 export async function preflight(osm, intents, { maxNodeShiftM = Infinity } = {}) {
-  const live = await readLiveWays(osm, intents.map(i => i.wayId));
+  const valid = intents.filter(isValidIntent);
+  const dropped = intents.filter(i => !isValidIntent(i)).map(intent => ({ intent, reason: "invalid" }));
+  const live = await readLiveWays(osm, valid.map(i => i.wayId));
   const candidates = [];
-  const dropped = [];
-  for (const intent of intents) {
+  for (const intent of valid) {
     const way = live.get(intent.wayId);
     if (!way || way.visible === false) dropped.push({ intent, reason: "deleted" });
     else if (!preconditionsHold(intent, way.tags)) dropped.push({ intent, reason: "already_fixed" });

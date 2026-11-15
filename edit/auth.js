@@ -82,10 +82,48 @@ export async function login({ osm, storage, env, tab, now = Date.now }) {
   }
 }
 
-export function logout({ osm, storage }) {
+export function readToken(storage) {
+  const raw = read(storage, AUTH_KEY);
+  if (raw === null) return null;
+  try {
+    const value = JSON.parse(raw);
+    return value && typeof value.accessToken === "string" && value.accessToken ? value.accessToken : null;
+  } catch {
+    return null;
+  }
+}
+
+export function revokeUrl(env) {
+  return `${env.webUrl}/oauth2/revoke`;
+}
+
+export function authorizedAppsUrl(env) {
+  return `${env.webUrl}/oauth2/authorized_applications`;
+}
+
+export async function revokeToken({ token, env, fetchImpl }) {
+  if (!token || !env || !env.clientId || !env.webUrl) return false;
+  try {
+    const response = await fetchImpl(revokeUrl(env), {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ token, token_type_hint: "access_token", client_id: env.clientId }).toString(),
+      credentials: "omit",
+      referrerPolicy: "no-referrer",
+    });
+    return Boolean(response && response.ok);
+  } catch {
+    return false;
+  }
+}
+
+export async function logout({ osm, storage, env = null, fetchImpl = (...args) => fetch(...args) }) {
+  const token = env && read(storage, ENV_KEY) === env.name ? readToken(storage) : null;
   osm.logout();
   remove(storage, AUTH_KEY);
   remove(storage, ENV_KEY);
+  if (!token) return "none";
+  return (await revokeToken({ token, env, fetchImpl })) ? "revoked" : "failed";
 }
 
 export function isLoggedIn({ osm, storage, env }) {

@@ -12,6 +12,7 @@ export function authView(state, i18n) {
       <button type="button" class="btn" data-edit-action="logout">${t("edit.auth.logout")}</button>
     `;
   }
+  if (state.kind === "leaving") return html`<p class="edit-note">${t("edit.auth.leaving")}</p>`;
   if (state.kind === "waiting") {
     return html`
       <p class="edit-note">${t("edit.auth.waiting")}</p>
@@ -20,6 +21,7 @@ export function authView(state, i18n) {
   }
   return html`
     ${state.message && html`<p class="edit-note">${state.message}</p>`}
+    ${state.revokeFailed && html`<p class="edit-note" data-edit-revoke="failed">${t("edit.auth.revokeFailed")} <a href="${state.appsUrl}" target="_blank" rel="noopener">${t("edit.auth.authorizedApps")}</a></p>`}
     <button type="button" class="btn" data-edit-action="login"${state.kind === "pending" ? html` disabled` : ""}>
       ${state.kind === "pending" ? t("edit.auth.pending") : t("edit.auth.login")}
     </button>
@@ -77,6 +79,7 @@ function valueLabel(value, t) {
 
 function dropReason(drop, t) {
   const reason = drop.reason;
+  if (reason === "invalid") return t("edit.plan.invalid");
   if (reason === "deleted") return t("edit.plan.deleted");
   if (reason === "node_moved") return t("edit.plan.nodeMoved", { distance: Math.round(drop.shiftM) });
   if (reason === "already_fixed") return t("edit.plan.alreadyFixed");

@@ -28,6 +28,7 @@ ROUTES = [
     ("create", "PUT", re.compile(r"/api/0\.6/changeset/create")),
     ("upload", "POST", re.compile(r"/api/0\.6/changeset/(\d+)/upload")),
     ("close", "PUT", re.compile(r"/api/0\.6/changeset/(\d+)/close")),
+    ("revoke", "POST", re.compile(r"/oauth2/revoke")),
 ]
 
 
@@ -44,6 +45,7 @@ class FakeOsm:
         self.uploads = []
         self.creates = []
         self.closed = []
+        self.revoked = []
         self.faults = []
         self.lock = threading.Lock()
         self.conflict_text = None
@@ -226,6 +228,11 @@ class FakeOsm:
             self.changesets[cid]["open"] = False
         self.closed.append(cid)
         return 200, "", TEXT_HEADERS
+
+    def _revoke(self, req, parsed, match):
+        form = {k: v[0] for k, v in parse_qs(self._body(req)).items()}
+        self.revoked.append({"form": form, "content_type": req.headers.get("content-type", "")})
+        return 200, "{}", JSON_HEADERS
 
     def open_changesets(self):
         return [cid for cid, cs in self.changesets.items() if cs["open"]]

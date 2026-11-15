@@ -85,6 +85,64 @@ test("applying an intent keeps every live tag and only touches sidewalk keys", a
   assert.throws(() => applyIntent(live, { set: {}, unset: ["name"] }), /refusing to touch name/);
 });
 
+test("only the changes the panel can produce are valid intents", async () => {
+  const { isValidIntent, isValidChange } = await load("intent.js");
+  const base = await intentFor(way(1, { highway: "residential" }), "no", "no");
+  const sides = await intentFor(way(2, { highway: "residential" }), "yes", "separate");
+  assert.equal(isValidIntent(base), true);
+  assert.equal(isValidIntent(sides), true);
+  const broken = [
+    { ...base, set: { "sidewalk:both": "maybe" } },
+    { ...base, set: { "sidewalk:both": "<img src=x>" } },
+    { ...base, set: { "sidewalk:left": "yes" } },
+    { ...base, set: { "sidewalk:both": "no", "sidewalk:left": "yes" } },
+    { ...base, set: { sidewalk: "both" } },
+    { ...base, set: { "sidewalk:both": ["no"] } },
+    { ...base, set: JSON.parse('{"__proto__": "no"}') },
+    { ...base, set: {} },
+    { ...base, set: null },
+    { ...base, unset: ["sidewalk"] },
+    { ...base, unset: undefined },
+    { ...base, wayId: 0 },
+    { ...base, wayId: -5 },
+    { ...base, wayId: 1.5 },
+    { ...base, wayId: "1" },
+    { ...base, preconditions: undefined },
+    { ...base, preconditions: { highway: 3 } },
+    null,
+    "intent",
+  ];
+  for (const intent of broken) assert.equal(isValidIntent(intent), false, JSON.stringify(intent));
+  assert.equal(isValidChange({ set: { "sidewalk:both": "yes" }, unset: [] }), true);
+});
+
+test("applying an intent refuses unexpected sidewalk values", async () => {
+  const { applyIntent } = await load("intent.js");
+  const live = { highway: "residential" };
+  assert.throws(() => applyIntent(live, { set: { "sidewalk:both": "maybe" }, unset: [] }), /invalid sidewalk change/);
+  assert.throws(() => applyIntent(live, { set: { "sidewalk:both": "no" }, unset: ["sidewalk:left"] }), /invalid sidewalk change/);
+  assert.throws(() => applyIntent(live, { set: { "sidewalk:left": "no" }, unset: [] }), /invalid sidewalk change/);
+});
+
+test("the queue refuses an invalid intent", async () => {
+  const { createQueue } = await load("queue.js");
+  const q = createQueue({ storage: memoryStorage(), env: "dev" });
+  const good = await intentFor(way(1, { highway: "residential" }), "no", "no");
+  assert.throws(() => q.put({ ...good, set: { "sidewalk:both": "maybe" } }), /invalid-intent/);
+  assert.equal(q.size(), 0);
+});
+
+test("the preflight drops a tampered intent without asking the API about it", async () => {
+  const { preflight } = await load("osm.js");
+  const good = await intentFor(way(1, { highway: "residential" }), "no", "no");
+  const tampered = { ...(await intentFor(way(2, { highway: "residential" }), "no", "no")), set: { "sidewalk:both": "no", "sidewalk:right": "yes" } };
+  const osm = fakeOsm({ ways: { 1: way(1, { highway: "residential" }), 2: way(2, { highway: "residential" }) } });
+  const { ready, dropped } = await preflight(osm, [good, tampered]);
+  assert.deepEqual(ready.map(r => r.intent.wayId), [1]);
+  assert.deepEqual(dropped.map(d => [d.intent.wayId, d.reason]), [[2, "invalid"]]);
+  assert.deepEqual(osm.calls, [["getFeatures", [1]]]);
+});
+
 test("preconditions are checked against the live tags", async () => {
   const { preconditionsHold } = await load("intent.js");
   const intent = await intentFor(way(1, { highway: "residential" }), "no", "no");
