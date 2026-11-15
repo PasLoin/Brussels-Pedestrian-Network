@@ -4,7 +4,7 @@
 {% block head %}
   <link href="{{ root }}{{ vendor["maplibre-gl"].css }}" rel="stylesheet" />
   <link href="{{ root }}app.css" rel="stylesheet" />
-  <script src="{{ root }}{{ vendor["maplibre-gl"].js }}"></script>
+  <script type="module" src="{{ root }}{{ vendor["maplibre-gl"].global }}"></script>
   <script src="{{ root }}{{ vendor["pmtiles"].js }}"></script>
 {% endblock %}
 {% block body %}

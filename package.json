@@ -14,9 +14,9 @@
     "fake-indexeddb": "6.2.8",
     "globals": "17.14.0",
     "linkedom": "0.18.15",
-    "maplibre-gl": "4.7.1",
+    "maplibre-gl": "6.17.0",
     "osm-api": "4.0.1",
-    "pmtiles": "3.2.1"
+    "pmtiles": "4.5.0"
   },
   "engines": {
     "node": ">=22"

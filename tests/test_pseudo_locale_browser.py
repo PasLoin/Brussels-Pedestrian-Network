@@ -176,7 +176,7 @@ def _open(browser, url, ready):
     errors, warnings = [], []
     page.on("pageerror", lambda e: errors.append(str(e)))
     page.on("console", lambda m: warnings.append(m.text) if m.type == "warning" else None)
-    page.route("**/maplibre-gl.js", lambda r: r.fulfill(body=MAP_STUB, content_type="text/javascript"))
+    page.route("**/maplibre-gl-global.mjs", lambda r: r.fulfill(body=MAP_STUB, content_type="text/javascript"))
     page.route("**/maplibre-gl.css", lambda r: r.fulfill(body="", content_type="text/css"))
     page.route("**/pmtiles.js", lambda r: r.fulfill(body=PMTILES_STUB, content_type="text/javascript"))
     page.route("**/chart.umd.js", lambda r: r.fulfill(body=_CHART_STUB, content_type="text/javascript"))

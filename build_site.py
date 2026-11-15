@@ -24,10 +24,13 @@ PACKAGE_JSON = ROOT / "package.json"
 NODE_MODULES = ROOT / "node_modules"
 VENDOR_DIR = "vendor"
 VENDOR = {
-    "maplibre-gl": {"js": "dist/maplibre-gl.js", "css": "dist/maplibre-gl.css", "license": "LICENSE.txt"},
+    "maplibre-gl": {"module": "dist/maplibre-gl.mjs", "worker": "dist/maplibre-gl-worker.mjs", "css": "dist/maplibre-gl.css", "license": "LICENSE.txt"},
     "pmtiles": {"js": "dist/pmtiles.js"},
     "chart.js": {"js": "dist/chart.umd.js", "license": "LICENSE.md"},
     "osm-api": {"js": "dist/index.min.js", "license": "LICENSE"},
+}
+VENDOR_GLOBALS = {
+    "maplibre-gl": {"file": "maplibre-gl-global.mjs", "module": "maplibre-gl.mjs", "name": "maplibregl"},
 }
 EXACT_VERSION = re.compile(r"\d+\.\d+\.\d+")
 STATIC_DIR_IGNORE = ("package.json", "*.md")
@@ -44,7 +47,7 @@ CSP = {
     "style-src": ["'self'", "'unsafe-inline'"],
     "img-src": ["'self'", "https://tiles.openfreemap.org", "https://www.openstreetmap.org", "data:"],
     "connect-src": ["'self'", "https://tiles.openfreemap.org"],
-    "worker-src": ["blob:"],
+    "worker-src": ["'self'", "blob:"],
     "child-src": ["blob:"],
     "font-src": ["https://tiles.openfreemap.org"],
     "object-src": ["'none'"],
@@ -283,10 +286,17 @@ def vendor_folder(name, version):
 
 def vendor_paths(versions=None):
     versions = versions or vendor_versions()
-    return {
+    paths = {
         name: {kind: f"{vendor_folder(name, versions[name])}/{Path(source).name}" for kind, source in files.items() if kind != "license"}
         for name, files in VENDOR.items()
     }
+    for name, shim in VENDOR_GLOBALS.items():
+        paths[name]["global"] = f"{vendor_folder(name, versions[name])}/{shim['file']}"
+    return paths
+
+
+def global_shim(shim):
+    return f'import * as library from "./{shim["module"]}";\nwindow.{shim["name"]} = library;\n'
 
 
 def copy_vendor(out, versions=None, modules=NODE_MODULES):
@@ -303,6 +313,9 @@ def copy_vendor(out, versions=None, modules=NODE_MODULES):
         target.mkdir(parents=True, exist_ok=True)
         for kind, source in files.items():
             shutil.copy2(package / source, target / Path(source).name)
+        if name in VENDOR_GLOBALS:
+            shim = VENDOR_GLOBALS[name]
+            (target / shim["file"]).write_text(global_shim(shim), encoding="utf-8")
         if "license" not in files:
             author = installed.get("author")
             author = author.get("name") if isinstance(author, dict) else author

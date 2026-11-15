@@ -423,7 +423,7 @@ def test_served_libraries_are_the_pinned_installed_versions(site):
 def test_pages_reference_the_served_library_files(site):
     paths = build_site.vendor_paths()
     expected = {
-        "index.html": [paths["maplibre-gl"]["js"], paths["maplibre-gl"]["css"], paths["pmtiles"]["js"]],
+        "index.html": [paths["maplibre-gl"]["global"], paths["maplibre-gl"]["css"], paths["pmtiles"]["js"]],
         "stats.html": [paths["chart.js"]["js"]],
         "evolution.html": [paths["chart.js"]["js"]],
     }
@@ -454,3 +454,21 @@ def test_an_installed_version_that_differs_from_the_pin_stops_the_build(tmp_path
         build_site.copy_vendor(tmp_path / "out", modules=modules)
     with pytest.raises(ValueError, match="is not installed: run npm ci"):
         build_site.copy_vendor(tmp_path / "out2", modules=tmp_path / "empty")
+
+
+def test_maplibre_is_exposed_to_the_page_scripts_by_a_module_loaded_first(site):
+    paths = build_site.vendor_paths()
+    folder = site / Path(paths["maplibre-gl"]["global"]).parent
+    shim = (site / paths["maplibre-gl"]["global"]).read_text(encoding="utf-8")
+    assert shim == 'import * as library from "./maplibre-gl.mjs";\nwindow.maplibregl = library;\n'
+    assert (folder / "maplibre-gl.mjs").is_file() and (folder / "maplibre-gl-worker.mjs").is_file()
+    html = (site / "index.html").read_text(encoding="utf-8")
+    loader = html.index(f'<script type="module" src="./{paths["maplibre-gl"]["global"]}"></script>')
+    assert loader < html.index('src="./map/main.js"')
+
+
+def test_maplibre_may_start_its_worker_from_the_site(site):
+    html = (site / "index.html").read_text(encoding="utf-8")
+    csp = re.search(r'http-equiv="Content-Security-Policy" content="([^"]*)"', html).group(1)
+    worker = next(d for d in csp.split(";") if d.strip().startswith("worker-src")).split()[1:]
+    assert worker == ["'self'", "blob:"]
