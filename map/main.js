@@ -1,10 +1,13 @@
-import { loadBasemapPatterns, loadInitialBasemap, setupBasemapControl } from "./basemaps.js";
+import { currentBasemapId, loadBasemapPatterns, loadInitialBasemap, setBasemap, setBasemapWhitelist, setupBasemapControl } from "./basemaps.js";
+import { setLegendPolicy } from "./legend.js";
 import { loadHeaderData } from "./header-data.js";
 import { initMap } from "./map-view.js";
+import { store } from "./store.js";
 import { clearRoute, isNavigating, loadGraph, toggleNavMode } from "./navigation.js";
 import {
   collapsePanelsOnSmallScreens, hideRoutePanel, setHeaderOpen, setLegendOpen, showRoutePanel, toggleHeader, toggleLegend,
 } from "./panels.js";
+import { closePopups } from "./interactions.js";
 import { CLICK_LAYERS, HOVER_LAYERS } from "./popup-layers.js";
 import { updateFlowFilter } from "./type-filters.js";
 
@@ -25,6 +28,12 @@ window.BPNMap = Object.freeze({
   toggleLegend,
   setHeaderOpen,
   toggleHeader,
+  closePopups,
+  stopNavigation: () => { if (isNavigating()) toggleNavMode(); },
+  setBasemap,
+  currentBasemap: currentBasemapId,
+  setBasemapWhitelist,
+  setLegendPolicy,
   hoverPopups: HOVER_LAYERS,
   clickPopups: CLICK_LAYERS,
 });
@@ -38,4 +47,8 @@ maplibregl.addProtocol("pmtiles", protocol.tile.bind(protocol));
 const { bm, style } = await loadInitialBasemap();
 setupBasemapControl();
 const map = initMap(style);
+map.once("load", () => {
+  store.mapReady = true;
+  window.dispatchEvent(new CustomEvent("bpn:map-ready", { detail: map }));
+});
 if (bm.url) map.once("style.load", () => loadBasemapPatterns(map, style, bm.url));

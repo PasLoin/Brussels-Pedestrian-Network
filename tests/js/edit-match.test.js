@@ -1,0 +1,83 @@
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const path = require("node:path");
+const { pathToFileURL } = require("node:url");
+
+const load = name => import(pathToFileURL(path.join(__dirname, "..", "..", "edit", name)).href);
+const line = (id, coords, tags = {}) => ({ type: "Feature", properties: { osm_id: id, ...tags }, geometry: { type: "LineString", coordinates: coords } });
+
+const street = [[4.4, 50.8], [4.4012, 50.8]];
+const shifted = dy => street.map(([x, y]) => [x, y + dy]);
+
+test("the dev way lying on the tile way is chosen even with other ids", async () => {
+  const { matchCandidate } = await load("match.js");
+  const best = matchCandidate([street], [line(7, shifted(0.00003)), line(8, shifted(0.0004)), line(9, [[4.4, 50.79], [4.4, 50.791]])]);
+  assert.equal(best.feature.properties.osm_id, 7);
+  assert.ok(best.meanM < 4, String(best.meanM));
+  assert.equal(best.cover, 1);
+});
+
+test("a parallel street 40 m away is never taken for the clicked one", async () => {
+  const { matchCandidate } = await load("match.js");
+  assert.equal(matchCandidate([street], [line(8, shifted(0.00036))]), null);
+});
+
+test("a dev way covering only half of the tile way is refused", async () => {
+  const { matchCandidate } = await load("match.js");
+  assert.equal(matchCandidate([street], [line(7, [[4.4, 50.8], [4.4006, 50.8]])]), null);
+});
+
+test("tile fragments of one street are matched together, and a longer dev way still matches", async () => {
+  const { matchCandidate } = await load("match.js");
+  const fragments = [[[4.4, 50.8], [4.4006, 50.8]], [[4.4006, 50.8], [4.4012, 50.8]]];
+  const best = matchCandidate(fragments, [line(7, [[4.3994, 50.8], [4.4018, 50.8]])]);
+  assert.equal(best.feature.properties.osm_id, 7);
+});
+
+test("no geometry, no match", async () => {
+  const { matchCandidate, linesOf } = await load("match.js");
+  assert.equal(matchCandidate([], [line(7, street)]), null);
+  assert.deepEqual(linesOf({ type: "Point", coordinates: [0, 0] }), []);
+  assert.equal(linesOf({ type: "MultiLineString", coordinates: [street, street] }).length, 2);
+});
+
+test("the original id carried by the dev import points to its dev way", async () => {
+  const { sourceIds, mergeSourceIds } = await load("candidates.js");
+  const index = sourceIds([
+    { type: "node", id: 1, lon: 4.4, lat: 50.8 },
+    { type: "way", id: 4307569310, tags: { highway: "residential", "@id": "1052304744", "@type": "way" } },
+    { type: "way", id: 4307569311, tags: { highway: "residential", "@id": "77" } },
+    { type: "way", id: 4307569312, tags: { highway: "residential", "@id": "77" } },
+    { type: "way", id: 4307569313, tags: { highway: "residential" } },
+    { type: "way", id: 4307569314, tags: { "@id": "abc" } },
+    { type: "way", id: 4307569315, visible: false, tags: { "@id": "88" } },
+  ]);
+  assert.deepEqual([...index.get(1052304744)], [4307569310]);
+  assert.deepEqual([...index.get(77)].sort(), [4307569311, 4307569312]);
+  assert.equal(index.size, 2);
+  const merged = mergeSourceIds(index, sourceIds([{ type: "way", id: 9, tags: { "@id": "77" } }]));
+  assert.deepEqual([...merged.get(77)].sort((a, b) => a - b), [9, 4307569311, 4307569312]);
+  assert.equal(mergeSourceIds(merged, new Map([[1, new Set([2])]]), { max: 2 }).size, 1);
+});
+
+test("between two close candidates the nearest wins, and a broken candidate is skipped", async () => {
+  const { matchCandidate, linesOf } = await load("match.js");
+  const broken = { type: "Feature", properties: { osm_id: 5 }, geometry: null };
+  const best = matchCandidate([street], [broken, line(8, shifted(0.00005)), line(7, shifted(0.00001))]);
+  assert.equal(best.feature.properties.osm_id, 7);
+  assert.deepEqual(linesOf(null), []);
+});
+
+test("a candidate inside the near band but too far on average is refused", async () => {
+  const { matchCandidate } = await load("match.js");
+  assert.equal(matchCandidate([street], [line(7, shifted(0.0001))], { nearM: 12, maxMeanM: 8 }), null);
+  assert.equal(matchCandidate([street], [line(7, shifted(0.0001))], { nearM: 12, maxMeanM: 12 }).feature.properties.osm_id, 7);
+});
+
+test("a single-point candidate is measured as a point, not as a line", async () => {
+  const { matchCandidate } = await load("match.js");
+  const point = line(7, [[4.4006, 50.8]]);
+  assert.equal(matchCandidate([street], [point]), null);
+  const tiny = [[4.4006, 50.8], [4.40061, 50.8]];
+  assert.equal(matchCandidate([tiny], [point]).feature.properties.osm_id, 7);
+});

@@ -38,7 +38,7 @@ export const BASEMAPS = [
     hideLayers: ["man_made-tunnel-*"]
   },
   {
-    id: "urbis-ortho", label: i18n.t("basemap.urbisOrtho.label"), title: i18n.t("basemap.urbisOrtho.title"),
+    id: "urbis-ortho", label: i18n.t("basemap.urbisOrtho.label"), title: i18n.t("basemap.urbisOrtho.title"), osmName: "UrbIS Ortho",
     thumb: wmsTileUrl(URBIS_GRID_WMS, "Ortho", 160).replace("{bbox-epsg-3857}", URBIS_THUMB_BBOX),
     attribution: URBIS_ATTRIBUTION,
     bounds: [4.23, 50.75, 4.49, 50.92],
@@ -52,6 +52,7 @@ export const BASEMAPS = [
 export const BASEMAP_STORAGE_KEY = "bpn-basemap";
 const basemapStyleCache = {};
 let currentBasemap = "liberty";
+let allowedBasemaps = null;
 let basemapRequest = 0;
 
 async function loadLibertyStyle() {
@@ -123,7 +124,8 @@ export async function loadBasemapPatterns(map, style, baseUrl) {
 
 function renderBasemapMenu() {
   const menu = document.getElementById("basemap-menu");
-  menu.replaceChildren(...BASEMAPS.map(bm => {
+  const shown = allowedBasemaps ? BASEMAPS.filter(bm => allowedBasemaps.includes(bm.id)) : BASEMAPS;
+  menu.replaceChildren(...shown.map(bm => {
     const active = bm.id === currentBasemap;
     const btn = document.createElement("button");
     btn.type = "button";
@@ -144,6 +146,15 @@ function renderBasemapMenu() {
   }));
 }
 
+export function currentBasemapId() {
+  return currentBasemap;
+}
+
+export function setBasemapWhitelist(ids) {
+  allowedBasemaps = ids ? [...ids] : null;
+  renderBasemapMenu();
+}
+
 export async function setBasemap(id) {
   const bm = BASEMAPS.find(b => b.id === id);
   if (!bm || id === currentBasemap || !store.map || !store.map.getSource("pedestrian")) return;
@@ -154,8 +165,10 @@ export async function setBasemap(id) {
     const style = await loadBasemapStyle(bm);
     if (request !== basemapRequest) return;
     currentBasemap = id;
+    if (bm.osmName) store.imageryUsed.add(bm.osmName);
     if (bm.url) store.map.once("style.load", () => loadBasemapPatterns(store.map, style, bm.url));
     store.map.setStyle(style, { diff: false, transformStyle: keepOverlays });
+    window.dispatchEvent(new CustomEvent("bpn:basemap", { detail: id }));
     try { localStorage.setItem(BASEMAP_STORAGE_KEY, id); } catch {}
     renderBasemapMenu();
   } catch (err) {
@@ -204,5 +217,6 @@ export async function loadInitialBasemap() {
     style = await loadBasemapStyle(bm);
   }
   currentBasemap = bm.id;
+  if (bm.osmName) store.imageryUsed.add(bm.osmName);
   return { bm, style };
 }

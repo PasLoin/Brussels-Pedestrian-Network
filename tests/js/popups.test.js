@@ -297,3 +297,19 @@ test("every iD link forces the iD editor whatever the user's OSM preference", ()
   }
   assert.ok(checked > 0);
 });
+
+test("sidewalk popups offer Éditer ici only when the editor accepts the way", () => {
+  const seen = [];
+  const editable = P.makePopupLayers({ ...palette, editHere: p => { seen.push(p.osm_id); return p.sw === "unknown"; } }, fr);
+  const format = editable.click.find(c => c.ids.includes("sidewalk-roads")).format;
+  const html = format({ sw: "unknown", name: "Rue A", osm_id: 4242, highway: "residential", length_m: 87 });
+  assert.match(html, /<button type="button" class="popup-edit" data-bpn-edit-way="4242">Éditer ici<\/button>/);
+  assert.doesNotMatch(format({ sw: "partial", name: "Rue A", osm_id: 4243, highway: "residential" }), /data-bpn-edit-way/);
+  assert.doesNotMatch(format({ sw: "unknown", name: "Rue A", osm_id: 0, highway: "residential" }), /data-bpn-edit-way/);
+  assert.deepEqual(seen, [4242, 4243]);
+});
+
+test("without an editor on the page the sidewalk popup keeps its plain links", () => {
+  const html = clickFormat("sidewalk-roads")({ sw: "unknown", name: "Rue A", osm_id: 4242, highway: "residential", length_m: 87 });
+  assert.doesNotMatch(html, /data-bpn-edit-way|Éditer ici/);
+});

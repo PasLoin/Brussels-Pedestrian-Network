@@ -85,7 +85,7 @@ function islandEditLinks(p, ways, nodeId) {
   return [josm && link(josm, "JOSM"), idLink && link(idLink, "iD")].filter(Boolean);
 }
 
-function makePopupLayers({ flowColors, sidewalkStatuses, highwayLayers, elevatorColor, elevatorLayerIds }, i18n) {
+function makePopupLayers({ flowColors, sidewalkStatuses, highwayLayers, elevatorColor, elevatorLayerIds, editHere = () => false }, i18n) {
   const { t } = i18n;
   const infraLabels = {
     pedestrian: t("popup.infra.pedestrian"),
@@ -166,7 +166,9 @@ function makePopupLayers({ flowColors, sidewalkStatuses, highwayLayers, elevator
           ${popupRow(t("popup.label.status"), known(sidewalkLabels, p.sw) || p.sw || "?")}
           ${popupRow("highway", p.highway || "—")}
           ${Number.isFinite(length) && length > 0 && popupRow(t("popup.label.length"), `${formatMeasure(i18n, Math.round(length))} m`)}
-          ${wid > 0 && popupRow(t("popup.label.way"), wayLinks(wid))}
+          ${wid > 0 && popupRow(t("popup.label.way"), editHere(p)
+            ? html`${wayLinks(wid)} · <button type="button" class="popup-edit" data-bpn-edit-way="${wid}">${t("popup.editHere")}</button>`
+            : wayLinks(wid))}
         `;
       }
     },
@@ -197,7 +199,9 @@ function makePopupLayers({ flowColors, sidewalkStatuses, highwayLayers, elevator
           ${popupRow(t("popup.label.crossedStreet"), p.name || "—")}
           ${popupRow(t("popup.label.length"), `${formatMeasure(i18n, p.length_m)} m`)}
           ${popupRow(t("popup.label.problem"), t("popup.crossingCandidate.problem"))}
-          ${wid > 0 && popupRow(t("popup.label.way"), wayLinks(wid))}
+          ${wid > 0 && popupRow(t("popup.label.way"), editHere(p)
+            ? html`${wayLinks(wid)} · <button type="button" class="popup-edit" data-bpn-edit-way="${wid}">${t("popup.editHere")}</button>`
+            : wayLinks(wid))}
         `;
       }
     },

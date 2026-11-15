@@ -22,15 +22,4 @@ export function loadHeaderData() {
       }
     })
     .catch(() => { document.getElementById("osm-date").textContent = i18n.t("header.osmDateUnknown"); });
-
-  fetch(i18n.dataUrl("stats.json"))
-    .then(r => r.json())
-    .then(s => {
-      const routing = s.routing || {};
-      const avgKm = i18n.number((routing.avg_distance_m || 0) / 1000, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      const trips = i18n.number(routing.routed_trips || 0);
-      document.getElementById("routing-stats").innerHTML =
-        html`${i18n.t("header.simulatedTrips")} <span>${trips}</span><br>${i18n.t("header.averageDistance")} <span>${avgKm} km</span>`;
-    })
-    .catch(() => { });
 }

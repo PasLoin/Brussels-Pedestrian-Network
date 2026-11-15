@@ -20,23 +20,31 @@ env:
   BOUNDARY_POLY_URL: https://raw.githubusercontent.com/PasLoin/Osm-python-analyse_Belgium/main/pbf_analyse/54094.poly
   BOUNDARY_POLY_PATH: 54094.poly
 
+permissions:
+  contents: read
+
 jobs:
   history:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          persist-credentials: false
 
       - name: Install system dependencies
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends jq osmium-tool
 
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12"
+
       - name: Install Python dependencies
-        run: pip install pyproj --break-system-packages
+        run: pip install --require-hashes -r requirements/history.txt
 
       - name: Download analysis boundary polygon
         run: |
@@ -45,8 +53,10 @@ jobs:
           head -2 "${BOUNDARY_POLY_PATH}"
 
       - name: Load or initialise history.json
+        env:
+          MODE: ${{ inputs.mode }}
         run: |
-          if [[ "${{ inputs.mode }}" == "full" ]]; then
+          if [[ "${MODE}" == "full" ]]; then
             echo "Full rebuild requested, starting from empty ${HISTORY_JSON_PATH}"
             echo "[]" > "${HISTORY_JSON_PATH}"
           elif [[ -f "${HISTORY_JSON_PATH}" ]]; then
@@ -123,11 +133,33 @@ jobs:
           jq -c '.[] | {date, type}' "${HISTORY_JSON_PATH}"
 
       - name: Upload history.json artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: history-json
           path: ${{ env.HISTORY_JSON_PATH }}
           retention-days: 90
+          if-no-files-found: error
+
+  commit:
+    needs: history
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Get the computed history.json
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: history-json
+          path: computed
+
+      - name: Check that it is a JSON list
+        run: |
+          jq -e 'type == "array"' "computed/${HISTORY_JSON_PATH}" > /dev/null
+          mv "computed/${HISTORY_JSON_PATH}" "${HISTORY_JSON_PATH}"
+          rm -rf computed
 
       - name: Commit history.json
         run: |

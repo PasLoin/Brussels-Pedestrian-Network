@@ -8,11 +8,11 @@ on:
     paths:
       - ".github/workflows/build.yml"
       - "scripts/**"
+      - "requirements/pipeline.txt"
   workflow_dispatch:
 
-concurrency:
-  group: gh-pages-deploy
-  cancel-in-progress: false
+permissions:
+  contents: read
 
 env:
   HIGHWAY_TYPES_PED: >-
@@ -77,22 +77,29 @@ env:
   MAX_ZOOM: 19
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          persist-credentials: false
 
       - name: Install system dependencies
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends osmium-tool tippecanoe jq
 
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements/pipeline.txt
+
       - name: Install Python dependencies
-        run: pip install "shapely>=2" osmnx geopandas igraph numpy pyproj "jinja2>=3.1" --break-system-packages
+        run: pip install --require-hashes -r requirements/pipeline.txt
 
       - name: Download OSM PBF
         run: |
@@ -103,6 +110,16 @@ jobs:
         run: |
           curl -fsSL "$BOUNDARY_POLY_URL" -o analysis_boundary.poly
           head -2 analysis_boundary.poly
+
+      - name: Export Brussels municipalities
+        continue-on-error: true
+        run: |
+          osmium tags-filter brussels.osm.pbf r/boundary=administrative \
+            -o admin.osm.pbf --overwrite
+          osmium export admin.osm.pbf \
+            --geometry-types=polygon \
+            -o admin_areas.geojson --overwrite
+          python3 scripts/export_communes.py admin_areas.geojson analysis_boundary.poly communes.geojson
 
       - name: Filter pedestrian features
         run: |
@@ -261,7 +278,7 @@ jobs:
 
       - name: Upload GeoJSON artifacts
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: geojson-outputs
           path: |
@@ -364,9 +381,33 @@ jobs:
         run: |
           python3 build_site.py --out _site --lastmod "$(date -u +%Y-%m-%d)"
           cp state.txt stats.json graph.json pedestrian.pmtiles history.json _site/
+          if [[ -s communes.geojson ]]; then cp communes.geojson _site/; else echo "::warning::communes.geojson missing, changeset comments fall back to the action only."; fi
+
+      - name: Keep the built site for the deploy job
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: site
+          path: _site
+          retention-days: 1
+          if-no-files-found: error
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: gh-pages-deploy
+      cancel-in-progress: false
+    steps:
+      - name: Get the built site
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: site
+          path: _site
 
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
+        uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./_site

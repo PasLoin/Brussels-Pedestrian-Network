@@ -2,23 +2,25 @@ name: Tests
 
 on:
   push:
-    branches: [main]
+    branches: [main, "fdr-**"]
     paths:
       - "scripts/**"
       - "tests/**"
       - "pwg/**"
       - "*.js"
+      - "map/**"
+      - "edit/**"
+      - "vendor/**"
       - "*.css"
       - "package.json"
       - "package-lock.json"
       - "eslint.config.mjs"
       - "build_site.py"
       - "check_i18n.py"
-      - ".github/workflows/build.yml"
-      - ".github/workflows/site.yml"
       - "templates/**"
       - "i18n/**"
-      - ".github/workflows/tests.yml"
+      - ".github/workflows/**"
+      - "requirements/**"
       - ".github/scripts/coverage_summary.py"
       - ".coveragerc"
   pull_request:
@@ -27,35 +29,45 @@ on:
       - "tests/**"
       - "pwg/**"
       - "*.js"
+      - "map/**"
+      - "edit/**"
+      - "vendor/**"
       - "*.css"
       - "package.json"
       - "package-lock.json"
       - "eslint.config.mjs"
       - "build_site.py"
       - "check_i18n.py"
-      - ".github/workflows/build.yml"
-      - ".github/workflows/site.yml"
       - "templates/**"
       - "i18n/**"
-      - ".github/workflows/tests.yml"
+      - ".github/workflows/**"
+      - "requirements/**"
       - ".github/scripts/coverage_summary.py"
       - ".coveragerc"
   workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
 
 jobs:
   pytest:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
           python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements/tests.txt
 
       - name: Set up Node
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
         with:
           node-version: "24"
           cache: npm
@@ -64,7 +76,7 @@ jobs:
         run: npm ci --no-audit --no-fund
 
       - name: Install Python dependencies
-        run: pip install "shapely>=2" osmnx geopandas igraph numpy pyproj pyyaml "jinja2>=3.1" pytest pytest-cov playwright
+        run: pip install --require-hashes -r requirements/tests.txt
 
       - name: Install browser for layout tests
         run: python -m playwright install --with-deps chromium
@@ -76,24 +88,31 @@ jobs:
         run: npm run lint
 
       - name: Run JavaScript tests
+        env:
+          NODE_V8_COVERAGE: ${{ github.workspace }}/coverage-js/raw
         run: node --test tests/js/*.test.js
-
-      - name: JavaScript coverage
-        if: ${{ !cancelled() }}
-        continue-on-error: true
-        run: >
-          node --test
-          --experimental-test-coverage
-          --test-coverage-exclude='tests/**'
-          --test-reporter=spec --test-reporter-destination=stdout
-          --test-reporter=lcov --test-reporter-destination=lcov.info
-          tests/js/*.test.js
 
       - name: Run unit tests
         env:
           REQUIRE_BROWSER_TESTS: "1"
           REQUIRE_NODE_TESTS: "1"
+          BROWSER_COVERAGE_DIR: ${{ github.workspace }}/coverage-js/raw
         run: python -m pytest tests/ -v --cov --cov-report=term-missing:skip-covered
+
+      - name: JavaScript coverage (unit tests and browser scenarios)
+        if: ${{ !cancelled() }}
+        run: >
+          npx c8 report
+          --temp-directory coverage-js/raw
+          --reports-dir coverage-js
+          --reporter=lcovonly --reporter=text-summary
+          --include 'edit/**' --include 'map/**' --include '*.js'
+          --exclude 'tests/**' --exclude 'vendor/**' --exclude 'node_modules/**' --exclude 'eslint.config.mjs'
+          --all --src .
+
+      - name: Edit code coverage floors
+        if: ${{ !cancelled() }}
+        run: python .github/scripts/coverage_summary.py --check
 
       - name: Coverage report
         if: ${{ !cancelled() }}
@@ -115,14 +134,14 @@ jobs:
       - name: Upload coverage
         if: ${{ !cancelled() }}
         continue-on-error: true
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: coverage
           path: |
             coverage-summary.md
             coverage.xml
             coverage.json
-            lcov.info
+            coverage-js/lcov.info
             htmlcov/
           retention-days: 14
           if-no-files-found: ignore

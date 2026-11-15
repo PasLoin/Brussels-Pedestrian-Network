@@ -23,7 +23,6 @@
       "stats": "Statistiques",
       "evolution": "Évolution",
       "about": "Méthodologie",
-      "statsShort": "Stats",
       "map": "Carte",
       "backToMap": "Retour à la carte"
     },
@@ -39,19 +38,18 @@
   "header": {
     "subtitle": "Flux piétons simulés et contrôle qualité OpenStreetMap à Bruxelles",
     "flowThreshold": "Flux sur route, minimum",
-    "editInOsm": "Éditer dans OSM",
+    "editInOsm": "Éditer sur openstreetmap.org",
     "editHint": "Disponible à partir du zoom {{zoom}}",
-    "osmDate": "Données OSM : {{date}}",
+    "osmDate": "Données OSM du {{date}}",
     "osmDateUnknown": "Données OSM : date inconnue",
-    "buildDate": "Calcul : {{date}}",
-    "simulatedTrips": "Trajets simulés :",
-    "averageDistance": "Distance moyenne :"
+    "buildDate": "Calcul du {{date}}",
+    "pages": "Pages du site"
   },
   "nav": {
     "loadingGraph": "Chargement du graphe…",
-    "start": "Navigation",
-    "unavailable": "Navigation (indisponible)",
-    "exit": "Quitter la navigation",
+    "start": "Itinéraire",
+    "unavailable": "Itinéraire indisponible",
+    "exit": "Quitter l'itinéraire",
     "placeStart": "Cliquez sur la carte pour placer le départ",
     "placeEnd": "Cliquez pour placer l'arrivée",
     "computing": "Calcul…",
@@ -67,7 +65,8 @@
     "clear": "Effacer l'itinéraire"
   },
   "map": {
-    "zoom": "zoom"
+    "zoom": "zoom",
+    "sourceCode": "Code source"
   },
   "basemap": {
     "menu": "Fond de carte",
@@ -81,7 +80,7 @@
     }
   },
   "legend": {
-    "title": "Légende",
+    "title": "Couches",
     "filterByType": "Filtrer par type",
     "selectAll": "Tout sélectionner",
     "deselectAll": "Tout désélectionner",
@@ -211,7 +210,8 @@
     "kerb": {
       "missingProblem": "Aucun nœud barrier=kerb ou kerb=no trouvé à cette extrémité",
       "untaggedProblem": "Nœud barrier=kerb ou kerb=no présent mais sans tag tactile_paving"
-    }
+    },
+    "editHere": "Éditer ici"
   },
   "stats": {
     "infra": {
@@ -432,5 +432,210 @@
   "notFound": {
     "title": "Page introuvable",
     "text": "Cette page n'existe pas ou a été déplacée."
+  },
+  "edit": {
+    "panel": {
+      "title": "Édition des trottoirs"
+    },
+    "auth": {
+      "login": "Se connecter à OSM",
+      "logout": "Se déconnecter",
+      "loggedAs": "Connecté en tant que {{name}}",
+      "pending": "Une connexion est déjà en cours dans un autre onglet.",
+      "waiting": "Terminez la connexion dans la fenêtre OSM.",
+      "retry": "Relancer la connexion",
+      "failed": "Connexion échouée ou annulée.",
+      "expired": "Session expirée, reconnectez-vous.",
+      "unconfigured": "Client OAuth non configuré pour cet environnement.",
+      "disabled": "L'édition est désactivée.",
+      "leaving": "Déconnexion et révocation du jeton auprès d'OSM…",
+      "revokeFailed": "Déconnecté sur ce navigateur, mais OSM n'a pas confirmé la révocation du jeton. Révoquez l'accès vous-même :",
+      "authorizedApps": "applications autorisées de votre compte OSM"
+    },
+    "status": {
+      "zoomIn": "Zoomez au niveau {{zoom}} pour charger les candidats.",
+      "zoomKept_one": "Zoomez au niveau {{zoom}} pour charger d'autres candidats ; le candidat déjà chargé reste affiché.",
+      "zoomKept_other": "Zoomez au niveau {{zoom}} pour charger d'autres candidats ; les {{count}} candidats déjà chargés restent affichés.",
+      "loading": "Chargement des candidats…",
+      "candidates_one": "{{count}} candidat dans la vue.",
+      "candidates_other": "{{count}} candidats dans la vue.",
+      "error": "Impossible de charger les candidats : {{message}}",
+      "noMatch": "Aucune rue sans tag sidewalk ne correspond à cet endroit sur le serveur dev.",
+      "splitOnDev_one": "Cette rue correspond à {{count}} way sur le serveur dev.",
+      "splitOnDev_other": "Cette rue correspond à {{count}} ways sur le serveur dev (découpée depuis l'import) : choisissez la bonne sur la carte."
+    },
+    "detail": {
+      "loading": "Lecture du way sur OSM…",
+      "error": "Impossible de lire le way : {{message}}",
+      "version": "Version",
+      "lastEdit": "Dernière modification",
+      "editable": "Aucun tag sidewalk : éditable.",
+      "alreadyFixed": "Ce way a déjà un tag sidewalk ou n'est plus une rue résidentielle : rien à faire.",
+      "gone": "{{way}} n'existe plus sur OSM (supprimé ou fusionné)."
+    },
+    "land": {
+      "title": "Connexion OpenStreetMap",
+      "working": "Vérification de la connexion…",
+      "ok": "Connexion terminée, vous pouvez fermer cette fenêtre.",
+      "missing": "Aucune connexion n'a été lancée depuis ce site. Fermez cette fenêtre et recommencez.",
+      "expired": "La connexion a pris trop de temps. Fermez cette fenêtre et recommencez.",
+      "mismatch": "Cette connexion a été lancée pour un autre serveur OSM. Fermez cette fenêtre et recommencez.",
+      "denied": "L'accès a été refusé sur OpenStreetMap.",
+      "nocode": "Cette page sert uniquement à terminer une connexion OpenStreetMap."
+    },
+    "form": {
+      "direction": "Gauche et droite suivent le sens du way : bleu à gauche, orange à droite.",
+      "left": "Gauche",
+      "right": "Droite",
+      "add": "Ajouter à la file",
+      "update": "Mettre à jour dans la file",
+      "both": "Les deux côtés",
+      "differentSides": "Côtés différents…",
+      "sameSides": "Même valeur des deux côtés",
+      "queued": "En file : {{tags}}",
+      "unqueue": "Retirer",
+      "skip": "Passer",
+      "next": "Suivant",
+      "shortcuts": "Touches : s, y, n posent la valeur, d pour des côtés différents, b pour les deux côtés, → rue suivante, p pour passer, Échap pour désélectionner.",
+      "notVisible": "La rue n'a pas encore été vue en entier. Affichez-la une fois en entier avant de choisir ; ensuite, vous pourrez zoomer librement.",
+      "showWhole": "Afficher toute la rue",
+      "fitting": "Affichage de toute la rue…",
+      "queueFull": "Cette rue ouvrirait une zone de plus, au-delà des {{max}} changesets autorisés par envoi. Préparez et envoyez la file avant de continuer ici.",
+      "shortcutsTitle": "Raccourcis clavier",
+      "reviewDetail": "Parcourez toute la rue au zoom {{zoom}} ou plus avant de choisir : {{percent}} % vu.",
+      "reviewNext": "Aller à la partie non vue",
+      "needOrtho": "Passez sur l'orthophoto UrbIS pour éditer : un trottoir se juge sur l'image, pas sur un fond de carte dessiné.",
+      "showOrtho": "Afficher l'orthophoto UrbIS",
+      "lookTime_one": "Prenez le temps de regarder la rue : encore {{count}} seconde.",
+      "lookTime_other": "Prenez le temps de regarder la rue : encore {{count}} secondes.",
+      "tooFast": "Vous éditez trop vite : privilégiez la qualité plutôt que la quantité.",
+      "paceCooldown_one": "Vous éditez encore trop vite. Pause de {{count}} seconde avant de reprendre : privilégiez la qualité plutôt que la quantité.",
+      "paceCooldown_other": "Vous éditez encore trop vite. Pause de {{count}} secondes avant de reprendre : privilégiez la qualité plutôt que la quantité."
+    },
+    "value": {
+      "separate": "separate (cartographié à part)",
+      "yes": "yes (présent, non cartographié à part)",
+      "no": "no (pas de trottoir)"
+    },
+    "queue": {
+      "title_one": "File d'édition ({{count}})",
+      "title_other": "File d'édition ({{count}})",
+      "empty": "Aucune modification en attente.",
+      "remove": "Retirer",
+      "undo": "Annuler la dernière",
+      "zones_one": "{{count}} changeset sur {{max}} au plus par envoi.",
+      "zones_other": "{{count}} changesets sur {{max}} au plus par envoi.",
+      "full": "Limite atteinte : seules les rues proches des zones déjà en file peuvent encore être ajoutées.",
+      "notSaved": "La file n'a pas pu être enregistrée dans ce navigateur (stockage plein ou navigation privée) : elle sera perdue si l'onglet est fermé ou rechargé. Envoyez-la avant."
+    },
+    "upload": {
+      "source": "Sources (obligatoire)",
+      "sourceOther": "Autres sources, séparées par ;",
+      "hashtags": "Hashtags",
+      "review": "Demander une relecture",
+      "loginFirst": "Connectez-vous pour envoyer.",
+      "prepare": "Préparer l'envoi",
+      "send_one": "Envoyer {{count}} changeset",
+      "send_other": "Envoyer {{count}} changesets",
+      "busy": "Traitement en cours…",
+      "sourceRequired": "Indiquez au moins une source.",
+      "remark": "Remarque (facultatif)",
+      "remarkPlaceholder": "par ex. vérifié sur place",
+      "commentHelp": "Chaque changeset reçoit un commentaire automatique (rue ou commune, puis l'action), visible avant l'envoi. Votre remarque s'ajoute à la fin.",
+      "sourceTooLong": "Sources trop longues : {{length}} caractères pour {{max}} au plus acceptés par OSM. Raccourcissez-les avant d'envoyer.",
+      "hashtagsTooLong": "Hashtags trop longs : {{length}} caractères pour {{max}} au plus acceptés par OSM. Raccourcissez-les avant d'envoyer.",
+      "tagTooLong": "Le tag {{key}} dépasse les {{max}} caractères acceptés par OSM."
+    },
+    "plan": {
+      "deleted": "supprimé sur OSM, retiré de la file.",
+      "alreadyFixed": "déjà corrigé depuis, retiré de la file.",
+      "modifiedMeanwhile": "modifié entre-temps, retiré de la file.",
+      "changesets_one": "{{count}} changeset va être créé pour {{ways}} way(s).",
+      "changesets_other": "{{count}} changesets vont être créés pour {{ways}} way(s).",
+      "tooMany": "La file couvre {{count}} zones, au-delà des {{max}} changesets autorisés : envoyez-en une partie d'abord.",
+      "changed": "La file a changé depuis la préparation : vérifiez le nouveau plan et renvoyez.",
+      "geometryChanged": "géométrie modifiée depuis (inversion ou découpage), retiré de la file.",
+      "comment": "Commentaire du changeset {{n}}",
+      "nodeMoved": "un nœud a été déplacé de {{distance}} m depuis la mise en file : vérifiez l'historique du way dans iD ou JOSM, retiré de la file.",
+      "invalid": "intention invalide (clés ou valeurs inattendues), retiré de la file sans rien envoyer : refaites ce choix."
+    },
+    "result": {
+      "sent_one": "{{count}} changeset envoyé :",
+      "sent_other": "{{count}} changesets envoyés :",
+      "failed": "Envoi impossible : {{message}}",
+      "closedEmpty_one": "{{count}} changeset vide fermé.",
+      "closedEmpty_other": "{{count}} changesets vides fermés.",
+      "retried_one": "Conflit détecté : le groupe a été relu et renvoyé une fois.",
+      "retried_other": "Conflits détectés : {{count}} groupes ont été relus et renvoyés une fois.",
+      "conflict_one": "{{way}} a été modifié sur OSM entre-temps : rien n'a été écrit pour son groupe. Il a été retiré de la file ; préparez à nouveau.",
+      "conflict_other": "{{way}} ont été modifiés sur OSM entre-temps : rien n'a été écrit pour leur groupe. Ils ont été retirés de la file ; préparez à nouveau."
+    },
+    "error": {
+      "network": "pas de connexion réseau, ou le serveur OSM est injoignable. Rien n'est perdu : réessayez une fois connecté.",
+      "auth": "votre session OSM a expiré ou l'autorisation a été révoquée. Reconnectez-vous ; votre file est conservée.",
+      "forbidden": "OSM a refusé la demande : le compte est peut-être bloqué ou doit accepter de nouvelles conditions sur openstreetmap.org.",
+      "rateLimit": "OSM limite le nombre de modifications qu'un compte récent peut envoyer par heure. Patientez un peu avant d'envoyer la suite ; votre file est conservée.",
+      "bandwidth": "trop de données téléchargées depuis OSM récemment. Attendez quelques minutes avant de déplacer à nouveau la carte.",
+      "maintenance": "le serveur OSM est en maintenance (lecture seule). Réessayez plus tard ; votre file est conservée.",
+      "tooBig": "la zone est trop grande ou trop dense pour charger les candidats : zoomez.",
+      "server": "le serveur OSM a renvoyé une erreur. Réessayez plus tard ; votre file est conservée.",
+      "unknown": "{{message}}",
+      "pausedRate": "trop de chargements de la carte en une minute : chargement en pause jusque vers {{time}}.",
+      "pausedBandwidth": "le serveur OSM limite les téléchargements : appels suspendus jusqu'à {{time}} environ."
+    },
+    "dock": {
+      "position": "Position du panneau",
+      "left": "Panneau à gauche",
+      "bottom": "Panneau en bas",
+      "right": "Panneau à droite"
+    },
+    "nav": {
+      "next": "Candidat suivant",
+      "none": "Tous les candidats de la vue ont été parcourus.",
+      "searching": "Recherche de rues voisines…",
+      "skipped_one": "{{count}} rue passée.",
+      "skipped_other": "{{count}} rues passées.",
+      "resetSkipped": "Réafficher"
+    },
+    "mode": {
+      "enter": "Éditer les trottoirs",
+      "title": "Mode édition",
+      "exit": "Quitter",
+      "exitTitle": "Quitter le mode édition ?",
+      "exitText_one": "{{count}} modification n'est pas encore envoyée sur OSM. Elle reste dans ce navigateur si vous la gardez.",
+      "exitText_other": "{{count}} modifications ne sont pas encore envoyées sur OSM. Elles restent dans ce navigateur si vous les gardez.",
+      "keep": "Garder pour plus tard",
+      "discard": "Abandonner les modifications",
+      "stay": "Continuer à éditer",
+      "pending_one": "{{count}} en attente",
+      "pending_other": "{{count}} en attente"
+    },
+    "meter": {
+      "summary": "Appels API : {{total}}, dont {{minute}} dans la dernière minute",
+      "peakMinute": "Pointe sur une minute : {{count}}",
+      "peakInFlight": "Appels simultanés au plus : {{count}}",
+      "warnInFlight": "La politique d'usage de l'API demande deux téléchargements simultanés au plus.",
+      "warnMinute": "Plus de {{count}} appels dans la dernière minute.",
+      "failures": "Réponses en erreur : {{list}}",
+      "since": "Compté depuis le {{date}}, dans ce navigateur.",
+      "reset": "Remettre à zéro",
+      "peakWaiting": "Appels mis en attente au plus : {{count}}"
+    },
+    "data": {
+      "title": "Données du serveur dev",
+      "help": "Chargez un export .osm du serveur dev : la couche « Tags sidewalk » affiche alors ses rues avec leurs IDs dev, comme le feront les tuiles en production.",
+      "load": "Charger un export .osm",
+      "replace": "Charger un autre export",
+      "loading": "Lecture de {{name}}…",
+      "active_one": "{{count}} rue chargée depuis {{name}}.",
+      "active_other": "{{count}} rues chargées depuis {{name}}.",
+      "latest": "Dernière modification dans l'export : {{date}}",
+      "reset": "Revenir aux tuiles de prod",
+      "errorNotOsm": "Ce fichier n'est pas un export OSM au format XML.",
+      "errorUnsaved": "Ce fichier contient des objets pas encore envoyés (ID négatif ou modification locale dans JOSM). Exportez les données depuis le serveur dev.",
+      "errorEmpty": "Aucune rue utilisable dans ce fichier.",
+      "errorTooBig": "Fichier trop gros : {{size}} Mo, 50 au plus.",
+      "errorRead": "Le fichier n'a pas pu être lu."
+    }
   }
 }

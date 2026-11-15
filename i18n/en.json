@@ -23,7 +23,6 @@
       "stats": "Statistics",
       "evolution": "Trends",
       "about": "Methodology",
-      "statsShort": "Stats",
       "map": "Map",
       "backToMap": "Back to the map"
     },
@@ -39,19 +38,18 @@
   "header": {
     "subtitle": "Simulated pedestrian flows and OpenStreetMap quality control in Brussels",
     "flowThreshold": "Road flow, minimum",
-    "editInOsm": "Edit in OSM",
+    "editInOsm": "Edit on openstreetmap.org",
     "editHint": "Available from zoom {{zoom}}",
-    "osmDate": "OSM data: {{date}}",
+    "osmDate": "OSM data from {{date}}",
     "osmDateUnknown": "OSM data: unknown date",
-    "buildDate": "Computed: {{date}}",
-    "simulatedTrips": "Simulated trips:",
-    "averageDistance": "Average distance:"
+    "buildDate": "Computed on {{date}}",
+    "pages": "Site pages"
   },
   "nav": {
     "loadingGraph": "Loading the graph…",
-    "start": "Navigation",
-    "unavailable": "Navigation (unavailable)",
-    "exit": "Exit navigation",
+    "start": "Route",
+    "unavailable": "Route unavailable",
+    "exit": "Exit route",
     "placeStart": "Click on the map to set the start",
     "placeEnd": "Click to set the destination",
     "computing": "Computing…",
@@ -67,7 +65,8 @@
     "clear": "Clear route"
   },
   "map": {
-    "zoom": "zoom"
+    "zoom": "zoom",
+    "sourceCode": "Source code"
   },
   "basemap": {
     "menu": "Base map",
@@ -81,7 +80,7 @@
     }
   },
   "legend": {
-    "title": "Legend",
+    "title": "Layers",
     "filterByType": "Filter by type",
     "selectAll": "Select all",
     "deselectAll": "Deselect all",
@@ -211,7 +210,8 @@
     "kerb": {
       "missingProblem": "No barrier=kerb or kerb=no node found at this end",
       "untaggedProblem": "barrier=kerb or kerb=no node present but without a tactile_paving tag"
-    }
+    },
+    "editHere": "Edit here"
   },
   "stats": {
     "infra": {
@@ -432,5 +432,210 @@
   "notFound": {
     "title": "Page not found",
     "text": "This page does not exist or has moved."
+  },
+  "edit": {
+    "panel": {
+      "title": "Sidewalk editing"
+    },
+    "auth": {
+      "login": "Log in to OSM",
+      "logout": "Log out",
+      "loggedAs": "Logged in as {{name}}",
+      "pending": "A login is already in progress in another tab.",
+      "waiting": "Finish logging in in the OSM window.",
+      "retry": "Restart login",
+      "failed": "Login failed or cancelled.",
+      "expired": "Session expired, please log in again.",
+      "unconfigured": "OAuth client not configured for this environment.",
+      "disabled": "Editing is disabled.",
+      "leaving": "Logging out and revoking the token with OSM…",
+      "revokeFailed": "Logged out in this browser, but OSM did not confirm that the token was revoked. Revoke the access yourself:",
+      "authorizedApps": "authorised applications of your OSM account"
+    },
+    "status": {
+      "zoomIn": "Zoom in to level {{zoom}} to load candidates.",
+      "zoomKept_one": "Zoom in to level {{zoom}} to load more candidates; the candidate already loaded stays on the map.",
+      "zoomKept_other": "Zoom in to level {{zoom}} to load more candidates; the {{count}} candidates already loaded stay on the map.",
+      "loading": "Loading candidates…",
+      "candidates_one": "{{count}} candidate in view.",
+      "candidates_other": "{{count}} candidates in view.",
+      "error": "Could not load candidates: {{message}}",
+      "noMatch": "No street without a sidewalk tag matches this place on the dev server.",
+      "splitOnDev_one": "This street matches {{count}} way on the dev server.",
+      "splitOnDev_other": "This street matches {{count}} ways on the dev server (split since the import): pick the right one on the map."
+    },
+    "detail": {
+      "loading": "Loading the live way…",
+      "error": "Could not read the way: {{message}}",
+      "version": "Version",
+      "lastEdit": "Last edit",
+      "editable": "Still matches the whitelist: editable.",
+      "alreadyFixed": "No longer matches the whitelist: already fixed since.",
+      "gone": "{{way}} no longer exists on OSM (deleted or merged)."
+    },
+    "land": {
+      "title": "OpenStreetMap login",
+      "working": "Checking the login…",
+      "ok": "Login complete, you can close this window.",
+      "missing": "No login was started from this site. Close this window and start again.",
+      "expired": "The login took too long. Close this window and start again.",
+      "mismatch": "This login was started for another OSM server. Close this window and start again.",
+      "denied": "Access was refused on OpenStreetMap.",
+      "nocode": "This page only completes an OpenStreetMap login."
+    },
+    "form": {
+      "direction": "Left and right follow the way's direction: blue on the left, orange on the right.",
+      "left": "Left",
+      "right": "Right",
+      "add": "Add to queue",
+      "update": "Update in queue",
+      "both": "Both sides",
+      "differentSides": "Different sides…",
+      "sameSides": "Same value on both sides",
+      "queued": "In queue: {{tags}}",
+      "unqueue": "Remove",
+      "skip": "Skip",
+      "next": "Next",
+      "shortcuts": "Keys: s, y, n set the value · d different sides · b both sides · → next · p skip · Esc deselect",
+      "notVisible": "This street has not been seen whole yet. Show it whole once before choosing; after that you can zoom in freely.",
+      "showWhole": "Show the whole street",
+      "fitting": "Showing the whole street…",
+      "queueFull": "This street would open one more area, beyond the {{max}} changesets allowed per upload. Prepare and send the queue before going on here.",
+      "shortcutsTitle": "Keyboard shortcuts",
+      "reviewDetail": "Go along the whole street at zoom {{zoom}} or closer before choosing: {{percent}} % seen.",
+      "reviewNext": "Go to the part not seen yet",
+      "needOrtho": "Switch to the UrbIS orthophoto to edit: a sidewalk is judged on the image, not on a drawn map.",
+      "showOrtho": "Show the UrbIS orthophoto",
+      "lookTime_one": "Take the time to look at the street: {{count}} more second.",
+      "lookTime_other": "Take the time to look at the street: {{count}} more seconds.",
+      "tooFast": "You are editing too fast: favour quality over quantity.",
+      "paceCooldown_one": "You are still editing too fast. {{count}} second pause before you can go on: favour quality over quantity.",
+      "paceCooldown_other": "You are still editing too fast. {{count}} second pause before you can go on: favour quality over quantity."
+    },
+    "value": {
+      "separate": "separate (mapped as its own way)",
+      "yes": "yes (present, not mapped separately)",
+      "no": "no sidewalk"
+    },
+    "queue": {
+      "title_one": "Edit queue ({{count}})",
+      "title_other": "Edit queue ({{count}})",
+      "empty": "No pending edits.",
+      "remove": "Remove",
+      "undo": "Undo last",
+      "zones_one": "{{count}} changeset out of {{max}} at most per upload.",
+      "zones_other": "{{count}} changesets out of {{max}} at most per upload.",
+      "full": "Limit reached: only streets close to the areas already queued can still be added.",
+      "notSaved": "The queue could not be saved in this browser (storage full or private browsing): it will be lost if the tab is closed or reloaded. Send it first."
+    },
+    "upload": {
+      "source": "Sources (required)",
+      "sourceOther": "Other sources, separated by ;",
+      "hashtags": "Hashtags",
+      "review": "Ask for a review",
+      "loginFirst": "Log in to send.",
+      "prepare": "Prepare sending",
+      "send_one": "Send {{count}} changeset",
+      "send_other": "Send {{count}} changesets",
+      "busy": "Working…",
+      "sourceRequired": "Give at least one source.",
+      "remark": "Remark (optional)",
+      "remarkPlaceholder": "e.g. checked on site",
+      "commentHelp": "Each changeset gets its own comment (street or municipality, then the action), shown in the plan before sending; your remark is added at the end.",
+      "sourceTooLong": "Sources too long: {{length}} characters, OSM accepts at most {{max}}. Shorten them before sending.",
+      "hashtagsTooLong": "Hashtags too long: {{length}} characters, OSM accepts at most {{max}}. Shorten them before sending.",
+      "tagTooLong": "The {{key}} tag is longer than the {{max}} characters OSM accepts."
+    },
+    "plan": {
+      "deleted": "deleted on OSM, removed from the queue.",
+      "alreadyFixed": "already fixed since, removed from the queue.",
+      "modifiedMeanwhile": "modified meanwhile, removed from the queue.",
+      "changesets_one": "{{count}} changeset will be created for {{ways}} way(s).",
+      "changesets_other": "{{count}} changesets will be created for {{ways}} way(s).",
+      "tooMany": "The queue spreads over {{count}} areas, more than the {{max}} changesets allowed: send part of it first.",
+      "changed": "The queue changed since it was prepared: check the new plan and send again.",
+      "geometryChanged": "geometry changed since (reversed or split), removed from the queue.",
+      "comment": "Comment of changeset {{n}}",
+      "nodeMoved": "a node was moved {{distance}} m since it was queued: check the way's history in iD or JOSM, removed from the queue.",
+      "invalid": "invalid intent (unexpected values or keys), removed from the queue without sending anything: make this choice again."
+    },
+    "result": {
+      "sent_one": "{{count}} changeset sent:",
+      "sent_other": "{{count}} changesets sent:",
+      "failed": "Sending failed: {{message}}",
+      "closedEmpty_one": "{{count}} empty changeset closed.",
+      "closedEmpty_other": "{{count}} empty changesets closed.",
+      "retried_one": "Conflict detected: the group was re-read and sent again once.",
+      "retried_other": "Conflicts detected: {{count}} groups were re-read and sent again once.",
+      "conflict_one": "{{way}} was modified on OSM meanwhile: nothing was written for its group. It has been removed from the queue; prepare again.",
+      "conflict_other": "{{way}} were modified on OSM meanwhile: nothing was written for their group. They have been removed from the queue; prepare again."
+    },
+    "error": {
+      "network": "no network connection, or the OSM server cannot be reached. Nothing was lost: try again once connected.",
+      "auth": "your OSM session has expired or the authorisation was revoked. Log in again; your queue is kept.",
+      "forbidden": "OSM refused the request: the account may be blocked or must accept new terms on openstreetmap.org.",
+      "rateLimit": "OSM limits how many edits a recent account can send per hour. Wait a little before sending the rest; your queue is kept.",
+      "bandwidth": "too much data downloaded from OSM recently. Wait a few minutes before moving the map again.",
+      "maintenance": "the OSM server is in maintenance (read-only). Try again later; your queue is kept.",
+      "tooBig": "the area is too large or too dense to load the candidates: zoom in.",
+      "server": "the OSM server returned an error. Try again later; your queue is kept.",
+      "unknown": "{{message}}",
+      "pausedRate": "too many map loads in one minute: loading paused until about {{time}}.",
+      "pausedBandwidth": "the OSM server limits downloads: calls paused until about {{time}}."
+    },
+    "dock": {
+      "position": "Panel position",
+      "left": "Panel on the left",
+      "bottom": "Panel at the bottom",
+      "right": "Panel on the right"
+    },
+    "nav": {
+      "next": "Next candidate",
+      "none": "Every candidate in view has been visited.",
+      "searching": "Looking for nearby streets…",
+      "skipped_one": "{{count}} street skipped.",
+      "skipped_other": "{{count}} streets skipped.",
+      "resetSkipped": "Show again"
+    },
+    "mode": {
+      "enter": "Edit sidewalks",
+      "title": "Editing mode",
+      "exit": "Exit",
+      "exitTitle": "Leave editing mode?",
+      "exitText_one": "{{count}} change has not been sent to OSM yet. If you keep it, it stays in this browser.",
+      "exitText_other": "{{count}} changes have not been sent to OSM yet. If you keep them, they stay in this browser.",
+      "keep": "Keep for later",
+      "discard": "Discard the changes",
+      "stay": "Keep editing",
+      "pending_one": "{{count}} pending",
+      "pending_other": "{{count}} pending"
+    },
+    "meter": {
+      "summary": "API calls: {{total}}, {{minute}} in the last minute",
+      "peakMinute": "Busiest minute: {{count}}",
+      "peakInFlight": "Most calls at once: {{count}}",
+      "warnInFlight": "The API usage policy asks for at most two downloads at once.",
+      "warnMinute": "More than {{count}} calls in the last minute.",
+      "failures": "Error responses: {{list}}",
+      "since": "Counted since {{date}}, in this browser.",
+      "reset": "Reset",
+      "peakWaiting": "Most calls kept waiting: {{count}}"
+    },
+    "data": {
+      "title": "Dev server data",
+      "help": "Load a .osm export of the dev server: the “Sidewalk tags” layer then shows its streets with their dev IDs, as the tiles will in production.",
+      "load": "Load a .osm export",
+      "replace": "Load another export",
+      "loading": "Reading {{name}}…",
+      "active_one": "{{count}} street loaded from {{name}}.",
+      "active_other": "{{count}} streets loaded from {{name}}.",
+      "latest": "Latest change in the export: {{date}}",
+      "reset": "Back to the production tiles",
+      "errorNotOsm": "This file is not an OSM XML export.",
+      "errorUnsaved": "This file holds objects not uploaded yet (negative ID or local change in JOSM). Export the data from the dev server.",
+      "errorEmpty": "No usable street in this file.",
+      "errorTooBig": "File too large: {{size}} MB, 50 at most.",
+      "errorRead": "The file could not be read."
+    }
   }
 }

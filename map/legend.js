@@ -6,13 +6,46 @@ import {
   updateIslandsFilter, updateKerbIssuesFilter, updateMissingCrossingsFilter, updateSidewalkFilter,
 } from "./type-filters.js";
 
+let policy = null;
+const registry = [];
+
+function applyPolicy() {
+  for (const { el, layerIds } of registry) {
+    const required = Boolean(policy) && layerIds.some(id => policy.required.has(id));
+    const allowed = !policy || required || layerIds.some(id => policy.optional.has(id));
+    el.hidden = !allowed;
+    if (typeof el.sync === "function") el.sync();
+    el.classList.toggle("locked", required);
+    if (el.classList.contains("legend-item")) {
+      if (required) el.setAttribute("aria-disabled", "true");
+      else el.removeAttribute("aria-disabled");
+    }
+  }
+}
+
+export function setLegendPolicy(next) {
+  policy = next ? { required: new Set(next.required), optional: new Set(next.optional) } : null;
+  applyPolicy();
+}
+
+export function legendLocked(layerId) {
+  return Boolean(policy) && policy.required.has(layerId);
+}
+
 export function buildLegend(map) {
   const legendEl = document.getElementById("legend-content");
+  let section = null;
+  const register = (el, layerIds) => {
+    registry.push({ el, layerIds });
+    if (section) section.layerIds.push(...layerIds);
+  };
   const addSection = (txt) => {
     const s = document.createElement("div");
     s.className = "legend-section";
     s.textContent = txt;
     legendEl.appendChild(s);
+    section = { el: s, layerIds: [] };
+    registry.push(section);
   };
 
   const makeItem = ({ layerId, label, color, color2, swatchType = "line", dashed = false, onToggle = null, linkedLayerIds = [] }) => {
@@ -47,6 +80,7 @@ export function buildLegend(map) {
     updateState();
 
     const toggle = () => {
+      if (legendLocked(layerId)) return;
       const v = map.getLayoutProperty(layerId, "visibility") === "none" ? "visible" : "none";
       map.setLayoutProperty(layerId, "visibility", v);
       linkedLayerIds.forEach(id => map.setLayoutProperty(id, "visibility", v));
@@ -55,6 +89,7 @@ export function buildLegend(map) {
     item.onclick = toggle;
     item.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } };
     item.sync = () => updateState(false, false);
+    register(item, [layerId, ...linkedLayerIds]);
     return item;
   };
 
@@ -89,6 +124,7 @@ export function buildLegend(map) {
     };
     item.onclick = toggle;
     item.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } };
+    register(item, ["kerb-issues"]);
     return item;
   };
 
@@ -184,6 +220,7 @@ export function buildLegend(map) {
     legendEl.appendChild(parentItem);
     filter = makeSubFilter({ items, activeSet, dataKey, updateFn, parentSub: sub, layerId, parentItem });
     legendEl.appendChild(sub);
+    register(sub, [layerId]);
   };
 
   addSection(i18n.t("legend.section.routing"));
@@ -239,4 +276,6 @@ export function buildLegend(map) {
     layerId: ELEVATOR_LAYER_IDS[0], linkedLayerIds: ELEVATOR_LAYER_IDS.slice(1),
     label: i18n.t("layer.elevator"), color: ELEVATOR_COLOR, swatchType: "dot",
   }));
+  section = null;
+  applyPolicy();
 }

@@ -1,0 +1,33 @@
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
+    groups:
+      npm-minor-patch:
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "pip"
+    directory: "/requirements"
+    schedule:
+      interval: "monthly"
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
+    groups:
+      pip-minor-patch:
+        update-types: ["minor", "patch"]

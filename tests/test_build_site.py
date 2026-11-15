@@ -364,3 +364,14 @@ def test_default_build_never_publishes_an_unpublished_language(site):
     for lang, conf in config["languages"].items():
         if not conf["published"]:
             assert not (site / conf["path"]).exists(), lang
+
+
+def test_every_page_declares_a_valid_referrer_policy(site):
+    pages = sorted(site.rglob("*.html"))
+    assert pages
+    for path in pages:
+        html = path.read_text(encoding="utf-8")
+        policies = re.findall(r'<meta name="referrer" content="([^"]+)"', html)
+        expected = ["no-referrer"] if path.name == "land.html" else ["strict-origin-when-cross-origin"]
+        assert policies == expected, path.relative_to(site)
+        assert "Referrer-Policy" not in html, path.relative_to(site)

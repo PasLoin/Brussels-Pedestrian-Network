@@ -21,7 +21,7 @@ export function initMap(style) {
   map.addControl(
     new maplibregl.AttributionControl({
       compact: false,
-      customAttribution: [String(html`<a href="https://github.com/PasLoin/Brussels-Pedestrian-Network" target="_blank" rel="noopener">PasLoin</a> · <a href="./stats.html">${i18n.t("common.nav.statsShort")}</a>`)]
+      customAttribution: [String(html`<a href="https://github.com/PasLoin/Brussels-Pedestrian-Network" target="_blank" rel="noopener">${i18n.t("map.sourceCode")}</a>`)]
     }),
     "bottom-right"
   );
@@ -67,10 +67,12 @@ export function initMap(style) {
       btn.classList.remove("disabled");
       btn.setAttribute("aria-disabled", "false");
       btn.setAttribute("tabindex", "0");
+      document.getElementById("edit-hint").hidden = true;
     } else {
       btn.classList.add("disabled");
       btn.setAttribute("aria-disabled", "true");
       btn.setAttribute("tabindex", "-1");
+      document.getElementById("edit-hint").hidden = false;
     }
   };
   map.on("load", syncZoomUi);

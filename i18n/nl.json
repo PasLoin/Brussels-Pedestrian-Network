@@ -23,7 +23,6 @@
       "stats": "Statistieken",
       "evolution": "Evolutie",
       "about": "Methodologie",
-      "statsShort": "Statistieken",
       "map": "Kaart",
       "backToMap": "Terug naar de kaart"
     },
@@ -39,19 +38,18 @@
   "header": {
     "subtitle": "Gesimuleerde voetgangersstromen en OpenStreetMap-kwaliteitscontrole in Brussel",
     "flowThreshold": "Stroom op de rijweg, minimum",
-    "editInOsm": "Bewerken in OSM",
+    "editInOsm": "Bewerken op openstreetmap.org",
     "editHint": "Beschikbaar vanaf zoom {{zoom}}",
-    "osmDate": "OSM-gegevens: {{date}}",
+    "osmDate": "OSM-gegevens van {{date}}",
     "osmDateUnknown": "OSM-gegevens: datum onbekend",
-    "buildDate": "Berekend: {{date}}",
-    "simulatedTrips": "Gesimuleerde verplaatsingen:",
-    "averageDistance": "Gemiddelde afstand:"
+    "buildDate": "Berekend op {{date}}",
+    "pages": "Pagina's van de site"
   },
   "nav": {
     "loadingGraph": "Netwerk laden…",
-    "start": "Navigatie",
-    "unavailable": "Navigatie (niet beschikbaar)",
-    "exit": "Navigatie verlaten",
+    "start": "Route",
+    "unavailable": "Route niet beschikbaar",
+    "exit": "Route verlaten",
     "placeStart": "Klik op de kaart om het vertrekpunt te kiezen",
     "placeEnd": "Klik om de bestemming te kiezen",
     "computing": "Berekenen…",
@@ -67,7 +65,8 @@
     "clear": "Route wissen"
   },
   "map": {
-    "zoom": "zoom"
+    "zoom": "zoom",
+    "sourceCode": "Broncode"
   },
   "basemap": {
     "menu": "Achtergrondkaart",
@@ -81,7 +80,7 @@
     }
   },
   "legend": {
-    "title": "Legende",
+    "title": "Lagen",
     "filterByType": "Filteren op type",
     "selectAll": "Alles selecteren",
     "deselectAll": "Alles deselecteren",
@@ -211,7 +210,8 @@
     "kerb": {
       "missingProblem": "Geen knoop barrier=kerb of kerb=no gevonden aan dit uiteinde",
       "untaggedProblem": "Knoop barrier=kerb of kerb=no aanwezig maar zonder tag tactile_paving"
-    }
+    },
+    "editHere": "Hier bewerken"
   },
   "stats": {
     "infra": {
@@ -432,5 +432,210 @@
   "notFound": {
     "title": "Pagina niet gevonden",
     "text": "Deze pagina bestaat niet of is verplaatst."
+  },
+  "edit": {
+    "panel": {
+      "title": "Stoepen bewerken"
+    },
+    "auth": {
+      "login": "Aanmelden bij OSM",
+      "logout": "Afmelden",
+      "loggedAs": "Aangemeld als {{name}}",
+      "pending": "Er loopt al een aanmelding in een ander tabblad.",
+      "waiting": "Rond de aanmelding af in het OSM-venster.",
+      "retry": "Aanmelding opnieuw starten",
+      "failed": "Aanmelden mislukt of geannuleerd.",
+      "expired": "Sessie verlopen, meld je opnieuw aan.",
+      "unconfigured": "OAuth-client niet ingesteld voor deze omgeving.",
+      "disabled": "Bewerken is uitgeschakeld.",
+      "leaving": "Afmelden en token intrekken bij OSM…",
+      "revokeFailed": "Afgemeld in deze browser, maar OSM heeft de intrekking van het token niet bevestigd. Trek de toegang zelf in:",
+      "authorizedApps": "toegestane toepassingen van je OSM-account"
+    },
+    "status": {
+      "zoomIn": "Zoom in tot niveau {{zoom}} om kandidaten te laden.",
+      "zoomKept_one": "Zoom in tot niveau {{zoom}} om meer kandidaten te laden; de al geladen kandidaat blijft zichtbaar.",
+      "zoomKept_other": "Zoom in tot niveau {{zoom}} om meer kandidaten te laden; de {{count}} al geladen kandidaten blijven zichtbaar.",
+      "loading": "Kandidaten laden…",
+      "candidates_one": "{{count}} kandidaat in beeld.",
+      "candidates_other": "{{count}} kandidaten in beeld.",
+      "error": "Kandidaten konden niet geladen worden: {{message}}",
+      "noMatch": "Op de dev-server komt geen straat zonder sidewalk-tag overeen met deze plek.",
+      "splitOnDev_one": "Deze straat komt overeen met {{count}} way op de dev-server.",
+      "splitOnDev_other": "Deze straat komt overeen met {{count}} ways op de dev-server (opgesplitst sinds de import): kies de juiste op de kaart."
+    },
+    "detail": {
+      "loading": "Live way lezen…",
+      "error": "Way kon niet gelezen worden: {{message}}",
+      "version": "Versie",
+      "lastEdit": "Laatste wijziging",
+      "editable": "Voldoet nog aan de witte lijst: bewerkbaar.",
+      "alreadyFixed": "Voldoet niet meer aan de witte lijst: intussen al verbeterd.",
+      "gone": "{{way}} bestaat niet meer op OSM (verwijderd of samengevoegd)."
+    },
+    "land": {
+      "title": "Aanmelden bij OpenStreetMap",
+      "working": "Aanmelding controleren…",
+      "ok": "Aanmelding voltooid, je kunt dit venster sluiten.",
+      "missing": "Er is geen aanmelding gestart vanaf deze site. Sluit dit venster en begin opnieuw.",
+      "expired": "De aanmelding duurde te lang. Sluit dit venster en begin opnieuw.",
+      "mismatch": "Deze aanmelding is gestart voor een andere OSM-server. Sluit dit venster en begin opnieuw.",
+      "denied": "De toegang werd geweigerd op OpenStreetMap.",
+      "nocode": "Deze pagina rondt alleen een OpenStreetMap-aanmelding af."
+    },
+    "form": {
+      "direction": "Links en rechts volgen de richting van de way: blauw links, oranje rechts.",
+      "left": "Links",
+      "right": "Rechts",
+      "add": "Toevoegen aan wachtrij",
+      "update": "Bijwerken in wachtrij",
+      "both": "Beide kanten",
+      "differentSides": "Verschillende kanten…",
+      "sameSides": "Zelfde waarde aan beide kanten",
+      "queued": "In wachtrij: {{tags}}",
+      "unqueue": "Verwijderen",
+      "skip": "Overslaan",
+      "next": "Volgende",
+      "shortcuts": "Toetsen: s, y, n zetten de waarde · d verschillende kanten · b beide kanten · → volgende · p overslaan · Esc deselecteren",
+      "notVisible": "Deze straat is nog niet volledig bekeken. Toon ze één keer volledig voor je kiest; daarna kun je vrij inzoomen.",
+      "showWhole": "Hele straat tonen",
+      "fitting": "Hele straat wordt getoond…",
+      "queueFull": "Deze straat zou een extra zone openen, boven de {{max}} changesets die per verzending zijn toegestaan. Bereid de wachtrij voor en verstuur ze voor je hier verdergaat.",
+      "shortcutsTitle": "Sneltoetsen",
+      "reviewDetail": "Loop de hele straat af op zoom {{zoom}} of dichterbij voor je kiest: {{percent}} % bekeken.",
+      "reviewNext": "Naar het deel dat nog niet bekeken is",
+      "needOrtho": "Schakel naar de UrbIS-orthofoto om te bewerken: een voetpad beoordeel je op het beeld, niet op een getekende kaart.",
+      "showOrtho": "UrbIS-orthofoto tonen",
+      "lookTime_one": "Neem de tijd om de straat te bekijken: nog {{count}} seconde.",
+      "lookTime_other": "Neem de tijd om de straat te bekijken: nog {{count}} seconden.",
+      "tooFast": "Je bewerkt te snel: kies voor kwaliteit boven kwantiteit.",
+      "paceCooldown_one": "Je bewerkt nog steeds te snel. Pauze van {{count}} seconde voor je verder kunt: kies voor kwaliteit boven kwantiteit.",
+      "paceCooldown_other": "Je bewerkt nog steeds te snel. Pauze van {{count}} seconden voor je verder kunt: kies voor kwaliteit boven kwantiteit."
+    },
+    "value": {
+      "separate": "separate (apart gekarteerd)",
+      "yes": "yes (aanwezig, niet apart gekarteerd)",
+      "no": "no (geen stoep)"
+    },
+    "queue": {
+      "title_one": "Bewerkingswachtrij ({{count}})",
+      "title_other": "Bewerkingswachtrij ({{count}})",
+      "empty": "Geen wachtende wijzigingen.",
+      "remove": "Verwijderen",
+      "undo": "Laatste ongedaan maken",
+      "zones_one": "{{count}} changeset van maximaal {{max}} per verzending.",
+      "zones_other": "{{count}} changesets van maximaal {{max}} per verzending.",
+      "full": "Limiet bereikt: alleen straten dicht bij de zones in de wachtrij kunnen nog worden toegevoegd.",
+      "notSaved": "De wachtrij kon niet in deze browser worden opgeslagen (opslag vol of privénavigatie): ze gaat verloren als het tabblad wordt gesloten of herladen. Verstuur ze eerst."
+    },
+    "upload": {
+      "source": "Bronnen (verplicht)",
+      "sourceOther": "Andere bronnen, gescheiden door ;",
+      "hashtags": "Hashtags",
+      "review": "Nalezing vragen",
+      "loginFirst": "Meld je aan om te verzenden.",
+      "prepare": "Verzending voorbereiden",
+      "send_one": "{{count}} changeset verzenden",
+      "send_other": "{{count}} changesets verzenden",
+      "busy": "Bezig…",
+      "sourceRequired": "Geef minstens één bron op.",
+      "remark": "Opmerking (optioneel)",
+      "remarkPlaceholder": "bv. ter plaatse gecontroleerd",
+      "commentHelp": "Elke changeset krijgt een eigen opmerking (straat of gemeente, dan de actie), zichtbaar in het plan vóór verzending; je opmerking wordt achteraan toegevoegd.",
+      "sourceTooLong": "Bronnen te lang: {{length}} tekens, OSM aanvaardt er maximaal {{max}}. Kort ze in voor je verstuurt.",
+      "hashtagsTooLong": "Hashtags te lang: {{length}} tekens, OSM aanvaardt er maximaal {{max}}. Kort ze in voor je verstuurt.",
+      "tagTooLong": "De tag {{key}} is langer dan de {{max}} tekens die OSM aanvaardt."
+    },
+    "plan": {
+      "deleted": "verwijderd op OSM, uit de wachtrij gehaald.",
+      "alreadyFixed": "intussen al verbeterd, uit de wachtrij gehaald.",
+      "modifiedMeanwhile": "intussen gewijzigd, uit de wachtrij gehaald.",
+      "changesets_one": "Er wordt {{count}} changeset aangemaakt voor {{ways}} way(s).",
+      "changesets_other": "Er worden {{count}} changesets aangemaakt voor {{ways}} way(s).",
+      "tooMany": "De wachtrij beslaat {{count}} zones, meer dan de toegestane {{max}} changesets: verzend eerst een deel.",
+      "changed": "De wachtrij is gewijzigd sinds de voorbereiding: controleer het nieuwe plan en verzend opnieuw.",
+      "geometryChanged": "geometrie intussen gewijzigd (omgekeerd of gesplitst), uit de wachtrij gehaald.",
+      "comment": "Opmerking van changeset {{n}}",
+      "nodeMoved": "een node werd {{distance}} m verplaatst sinds het in de wachtrij kwam: controleer de geschiedenis van de way in iD of JOSM, uit de wachtrij gehaald.",
+      "invalid": "ongeldige intentie (onverwachte waarden of sleutels), uit de wachtrij gehaald zonder iets te versturen: maak deze keuze opnieuw."
+    },
+    "result": {
+      "sent_one": "{{count}} changeset verzonden:",
+      "sent_other": "{{count}} changesets verzonden:",
+      "failed": "Verzenden mislukt: {{message}}",
+      "closedEmpty_one": "{{count}} lege changeset gesloten.",
+      "closedEmpty_other": "{{count}} lege changesets gesloten.",
+      "retried_one": "Conflict gedetecteerd: de groep werd opnieuw gelezen en één keer opnieuw verzonden.",
+      "retried_other": "Conflicten gedetecteerd: {{count}} groepen werden opnieuw gelezen en één keer opnieuw verzonden.",
+      "conflict_one": "{{way}} werd intussen gewijzigd op OSM: voor zijn groep werd niets geschreven. Hij is uit de wachtrij gehaald; bereid opnieuw voor.",
+      "conflict_other": "{{way}} werden intussen gewijzigd op OSM: voor hun groep werd niets geschreven. Ze zijn uit de wachtrij gehaald; bereid opnieuw voor."
+    },
+    "error": {
+      "network": "geen netwerkverbinding, of de OSM-server is onbereikbaar. Er gaat niets verloren: probeer opnieuw zodra je verbonden bent.",
+      "auth": "je OSM-sessie is verlopen of de toestemming werd ingetrokken. Meld je opnieuw aan; je wachtrij blijft bewaard.",
+      "forbidden": "OSM weigerde het verzoek: het account is mogelijk geblokkeerd of moet nieuwe voorwaarden aanvaarden op openstreetmap.org.",
+      "rateLimit": "OSM beperkt hoeveel wijzigingen een recent account per uur kan verzenden. Wacht even voor je de rest verzendt; je wachtrij blijft bewaard.",
+      "bandwidth": "onlangs te veel gegevens gedownload van OSM. Wacht enkele minuten voor je de kaart opnieuw verplaatst.",
+      "maintenance": "de OSM-server is in onderhoud (alleen lezen). Probeer later opnieuw; je wachtrij blijft bewaard.",
+      "tooBig": "de zone is te groot of te dicht om kandidaten te laden: zoom in.",
+      "server": "de OSM-server gaf een fout terug. Probeer later opnieuw; je wachtrij blijft bewaard.",
+      "unknown": "{{message}}",
+      "pausedRate": "te veel kaartladingen in één minuut: laden gepauzeerd tot ongeveer {{time}}.",
+      "pausedBandwidth": "de OSM-server beperkt downloads: oproepen gepauzeerd tot ongeveer {{time}}."
+    },
+    "dock": {
+      "position": "Positie van het paneel",
+      "left": "Paneel links",
+      "bottom": "Paneel onderaan",
+      "right": "Paneel rechts"
+    },
+    "nav": {
+      "next": "Volgende kandidaat",
+      "none": "Alle kandidaten in beeld zijn bekeken.",
+      "searching": "Naburige straten zoeken…",
+      "skipped_one": "{{count}} straat overgeslagen.",
+      "skipped_other": "{{count}} straten overgeslagen.",
+      "resetSkipped": "Opnieuw tonen"
+    },
+    "mode": {
+      "enter": "Voetpaden bewerken",
+      "title": "Bewerkingsmodus",
+      "exit": "Afsluiten",
+      "exitTitle": "Bewerkingsmodus verlaten?",
+      "exitText_one": "{{count}} wijziging is nog niet naar OSM verstuurd. Als je ze bewaart, blijft ze in deze browser.",
+      "exitText_other": "{{count}} wijzigingen zijn nog niet naar OSM verstuurd. Als je ze bewaart, blijven ze in deze browser.",
+      "keep": "Bewaren voor later",
+      "discard": "Wijzigingen verwerpen",
+      "stay": "Verder bewerken",
+      "pending_one": "{{count}} in wachtrij",
+      "pending_other": "{{count}} in wachtrij"
+    },
+    "meter": {
+      "summary": "API-oproepen: {{total}}, waarvan {{minute}} in de laatste minuut",
+      "peakMinute": "Drukste minuut: {{count}}",
+      "peakInFlight": "Meeste gelijktijdige oproepen: {{count}}",
+      "warnInFlight": "Het gebruiksbeleid van de API vraagt hoogstens twee gelijktijdige downloads.",
+      "warnMinute": "Meer dan {{count}} oproepen in de laatste minuut.",
+      "failures": "Foutantwoorden: {{list}}",
+      "since": "Geteld sinds {{date}}, in deze browser.",
+      "reset": "Op nul zetten",
+      "peakWaiting": "Meeste wachtende oproepen: {{count}}"
+    },
+    "data": {
+      "title": "Gegevens van de dev-server",
+      "help": "Laad een .osm-export van de dev-server: de laag “Sidewalk-tags” toont dan de straten met hun dev-ID's, zoals de tegels in productie.",
+      "load": "Een .osm-export laden",
+      "replace": "Een andere export laden",
+      "loading": "{{name}} wordt gelezen…",
+      "active_one": "{{count}} straat geladen uit {{name}}.",
+      "active_other": "{{count}} straten geladen uit {{name}}.",
+      "latest": "Laatste wijziging in de export: {{date}}",
+      "reset": "Terug naar de productietegels",
+      "errorNotOsm": "Dit bestand is geen OSM-export in XML.",
+      "errorUnsaved": "Dit bestand bevat objecten die nog niet verstuurd zijn (negatieve ID of lokale wijziging in JOSM). Exporteer de gegevens van de dev-server.",
+      "errorEmpty": "Geen bruikbare straat in dit bestand.",
+      "errorTooBig": "Bestand te groot: {{size}} MB, hoogstens 50.",
+      "errorRead": "Het bestand kon niet gelezen worden."
+    }
   }
 }
