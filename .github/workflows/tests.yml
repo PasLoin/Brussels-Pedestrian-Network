@@ -82,24 +82,31 @@ jobs:
         run: npm run lint
 
       - name: Run JavaScript tests
+        env:
+          NODE_V8_COVERAGE: ${{ github.workspace }}/coverage-js/raw
         run: node --test tests/js/*.test.js
-
-      - name: JavaScript coverage
-        if: ${{ !cancelled() }}
-        continue-on-error: true
-        run: >
-          node --test
-          --experimental-test-coverage
-          --test-coverage-exclude='tests/**'
-          --test-reporter=spec --test-reporter-destination=stdout
-          --test-reporter=lcov --test-reporter-destination=lcov.info
-          tests/js/*.test.js
 
       - name: Run unit tests
         env:
           REQUIRE_BROWSER_TESTS: "1"
           REQUIRE_NODE_TESTS: "1"
+          BROWSER_COVERAGE_DIR: ${{ github.workspace }}/coverage-js/raw
         run: python -m pytest tests/ -v --cov --cov-report=term-missing:skip-covered
+
+      - name: JavaScript coverage (unit tests and browser scenarios)
+        if: ${{ !cancelled() }}
+        run: >
+          npx c8 report
+          --temp-directory coverage-js/raw
+          --reports-dir coverage-js
+          --reporter=lcovonly --reporter=text-summary
+          --include 'edit/**' --include 'map/**' --include '*.js'
+          --exclude 'tests/**' --exclude 'vendor/**' --exclude 'node_modules/**' --exclude 'eslint.config.mjs'
+          --all --src .
+
+      - name: Edit code coverage floors
+        if: ${{ !cancelled() }}
+        run: python .github/scripts/coverage_summary.py --check
 
       - name: Coverage report
         if: ${{ !cancelled() }}
@@ -128,7 +135,7 @@ jobs:
             coverage-summary.md
             coverage.xml
             coverage.json
-            lcov.info
+            coverage-js/lcov.info
             htmlcov/
           retention-days: 14
           if-no-files-found: ignore
