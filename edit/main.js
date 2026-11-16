@@ -128,6 +128,7 @@ window.BPNEdit = Object.freeze({
   devData: () => ctx.devDataActive(),
   apiStats: () => (meter ? meter.stats() : null),
   resetApiStats: () => meter && meter.reset(),
+  maxConcurrentApi: env.maxConcurrentApi,
   canEdit: ctx.canEdit,
 });
 

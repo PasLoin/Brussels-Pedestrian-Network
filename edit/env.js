@@ -30,6 +30,7 @@ export const APP_NAME = "BrusselsPedestrianNetwork";
 export const APP_VERSION = "0.2.0";
 export const OSM_API_JS_VERSION = "4.0.1";
 export const MAX_WAYS_PER_CHANGESET = 50;
+export const MAX_CONCURRENT_API = 2;
 
 export const SETTINGS = Object.freeze({
   editEnabled: true,
@@ -65,7 +66,7 @@ export const SETTINGS = Object.freeze({
   mapCallsPerMinute: 25,
   pauseAfter509Ms: 5 * 60 * 1000,
   apiMeterWarnPerMinute: 30,
-  maxConcurrentApi: 2,
+  maxConcurrentApi: 1,
   reviewStepM: 5,
   reviewTtlMs: 12 * 60 * 60 * 1000,
   sourcePresets: Object.freeze(["survey", "local_knowledge", "streetlevel imagery", "aerial imagery"]),
@@ -77,6 +78,7 @@ export function resolveEnv(name, pageUrl, settings = SETTINGS) {
     ...ENVS[name],
     ...settings,
     maxWaysPerChangeset: Math.min(settings.maxWaysPerChangeset, MAX_WAYS_PER_CHANGESET),
+    maxConcurrentApi: Math.max(1, Math.min(settings.maxConcurrentApi, MAX_CONCURRENT_API)),
     redirectUrl: new URL(settings.landingPage, pageUrl).href,
   });
 }
