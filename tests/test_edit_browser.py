@@ -123,8 +123,9 @@ def intent_for(fake, way_id, set_tags=None):
 BLANK_PNG = bytes.fromhex("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c6360606060000000050001a5f645400000000049454e44ae426082")
 
 class Session:
-    def __init__(self, browser, server, fake, logged_in=True, queue=None, auth_env="dev", center=CENTER, zoom=17.5, editing=True, settings=None):
+    def __init__(self, browser, server, fake, logged_in=True, queue=None, auth_env="dev", center=CENTER, zoom=17.5, editing=True, settings=None, page_name="devtest.html"):
         self.fake = fake
+        self.aborted = []
         self.settings = {"reviewZoom": "null", "minLookMs": "0", "paceMaxMeters": "1000000", "paceBlockMeters": "1000000", **(settings or {})}
         self.problems = []
         self.coverage = []
@@ -143,7 +144,7 @@ class Session:
             f"if (!localStorage.getItem('test.seeded')) {{ for (const [k, v] of Object.entries({json.dumps(seed)})) localStorage.setItem(k, v);"
             " localStorage.setItem('test.seeded', '1'); }"
         )
-        self.url = f"{server}test-api/devtest.html#{zoom}/{center[1]}/{center[0]}"
+        self.url = f"{server}test-api/{page_name}#{zoom}/{center[1]}/{center[0]}"
         self.page = self.open(editing)
 
     def _route(self, route):
@@ -162,6 +163,7 @@ class Session:
             return route.fulfill(body=body, content_type="application/javascript")
         if url.startswith("http://127.0.0.1"):
             return route.continue_()
+        self.aborted.append(url)
         return route.abort()
 
     def open(self, editing=True):
@@ -1508,6 +1510,22 @@ def test_the_page_never_has_more_than_two_api_calls_in_flight(session, fake):
     assert stats["peakInFlight"] == limit
     assert stats["peakWaiting"] == 5 - limit
     assert stats["waiting"] == 0
+
+
+def test_the_beta_page_runs_in_prod_without_a_client_and_never_touches_the_dev_server(session, fake):
+    three_streets(fake)
+    s = session(logged_in=False, editing=False, page_name="beta.html")
+    assert s.page.evaluate("document.documentElement.dataset.editEnv") == "prod"
+    assert s.page.evaluate("BPNEdit.apiStats()") is None
+    assert s.page.evaluate("BPNEdit.maxConcurrentApi") == 1
+    assert not [u for u in s.aborted if "openstreetmap.org" in u]
+    enter_edit(s.page)
+    assert "Client OAuth non configuré" in s.page.inner_text("#edit-auth")
+    assert s.page.evaluate("document.querySelector('[data-edit-action=\"login\"]')") is None
+    time.sleep(0.5)
+    prod_calls = [u for u in s.aborted if "openstreetmap.org" in u]
+    assert prod_calls and all(u.startswith("https://api.openstreetmap.org/api/0.6/map") for u in prod_calls)
+    assert fake.calls == []
 
 
 def with_source(tags, source_id):

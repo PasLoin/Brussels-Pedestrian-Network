@@ -373,7 +373,7 @@ def test_every_page_declares_a_valid_referrer_policy(site):
     for path in pages:
         html = path.read_text(encoding="utf-8")
         policies = re.findall(r'<meta name="referrer" content="([^"]+)"', html)
-        expected = ["no-referrer"] if path.name == "land.html" else ["strict-origin-when-cross-origin"]
+        expected = ["no-referrer"] if path.name.endswith("land.html") else ["strict-origin-when-cross-origin"]
         assert policies == expected, path.relative_to(site)
         assert "Referrer-Policy" not in html, path.relative_to(site)
 

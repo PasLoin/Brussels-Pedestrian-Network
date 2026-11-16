@@ -20,6 +20,17 @@ test("the page environment comes from the html attribute and the landing page si
   assert.ok(Object.isFrozen(env));
 });
 
+test("the prod beta page lands on its own page, next to it, never on the dev one", async () => {
+  const { envFromDocument, ENVS } = await load("env.js");
+  const env = envFromDocument(fakeDocument("https://pasloin.github.io/Brussels-Pedestrian-Network/test-api/beta.html#17/50.8/4.4", "prod"));
+  assert.equal(env.name, "prod");
+  assert.equal(env.apiUrl, "https://api.openstreetmap.org");
+  assert.equal(env.redirectUrl, "https://pasloin.github.io/Brussels-Pedestrian-Network/test-api/beta-land.html");
+  assert.notEqual(ENVS.dev.landingPage, ENVS.prod.landingPage);
+  assert.equal(env.clientId, "");
+  assert.equal(env.apiMeter, false);
+});
+
 test("review-zoom in the address changes or switches off the close-up check", async () => {
   const { envFromDocument } = await load("env.js");
   const page = query => fakeDocument(`https://example.org/test-api/devtest.html${query}#17/50.8/4.4`);
