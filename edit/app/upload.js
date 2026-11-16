@@ -214,7 +214,7 @@ export function installUpload(ctx) {
         }
         state.plan = null;
         state.result = result;
-        ctx.scheduleCandidates();
+        ctx.scheduleCandidates({ reuse: false });
         const touched = new Set([...outcome.done.flatMap(d => d.wayIds), ...outcome.dropped.map(d => d.intent.wayId), ...result.conflictWayIds]);
         if (state.detail.kind === "way" && touched.has(state.detail.way.id)) refreshSelected = state.detail.way.id;
       } catch (err) {

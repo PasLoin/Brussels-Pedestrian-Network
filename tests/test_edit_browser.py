@@ -590,7 +590,7 @@ def test_l2_download_limit_empties_the_candidate_layer(session, fake):
     s = session()
     wait_candidates(s.page, 1)
     fake.inject("map", status=509, body="You have downloaded too much data")
-    s.page.evaluate(f"window.location.hash = '#17.6/{CENTER[1]}/{CENTER[0]}'")
+    s.page.evaluate(f"window.location.hash = '#17.6/{CENTER[1]}/{CENTER[0] + 0.01}'")
     wait(s.page, "() => document.getElementById('edit-status').textContent.includes('trop de données téléchargées')")
     assert s.page.evaluate("async () => { const { store } = await import('/map/store.js'); return store.map.querySourceFeatures('edit-candidates').length; }") == 0
     calls = fake.count("map")
@@ -1438,6 +1438,37 @@ def test_the_dev_meter_counts_exactly_the_calls_the_server_received(session, fak
     s.page.reload()
     wait(s.page, "() => window.BPNEdit && BPNEdit.isActive()")
     assert api_stats(s.page)["since"] > 0
+
+
+def test_moving_inside_a_window_already_loaded_sends_no_new_map_call(session, fake):
+    three_streets(fake)
+    s = session()
+    wait_candidates(s.page, 3)
+    time.sleep(0.5)
+    before = fake.count("map")
+    for dx, zoom in ((0.0002, 18.7), (-0.0002, 18.7), (0.0, 19.2), (0.0001, 17.2)):
+        map_eval(s.page, f"m.jumpTo({{ center: [{CENTER[0]} + {dx}, {CENTER[1]}], zoom: {zoom} }}); return true;")
+        time.sleep(0.5)
+    assert fake.count("map") == before
+    assert "candidat" in s.page.inner_text("#edit-status")
+    map_eval(s.page, f"m.jumpTo({{ center: [{CENTER[0]} + 0.02, {CENTER[1]}], zoom: 17.5 }}); return true;")
+    end = time.time() + 5
+    while time.time() < end and fake.count("map") == before:
+        s.page.wait_for_timeout(100)
+    assert fake.count("map") == before + 1
+
+
+def test_a_loaded_window_is_reloaded_once_it_is_older_than_the_reuse_limit(session, fake):
+    three_streets(fake)
+    s = session(settings={"candidateReuseMs": "0"})
+    wait_candidates(s.page, 3)
+    time.sleep(0.5)
+    before = fake.count("map")
+    map_eval(s.page, f"m.jumpTo({{ center: [{CENTER[0]} + 0.0002, {CENTER[1]}], zoom: 18.7 }}); return true;")
+    end = time.time() + 5
+    while time.time() < end and fake.count("map") == before:
+        s.page.wait_for_timeout(100)
+    assert fake.count("map") == before + 1
 
 
 def test_the_meter_records_server_refusals(session, fake):
