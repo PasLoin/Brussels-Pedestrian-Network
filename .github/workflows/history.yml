@@ -85,7 +85,7 @@ jobs:
           jq -c '.[]' history-list.json | while IFS= read -r entry; do
             iso=$(jq -r '.date' <<< "$entry")
             fname=$(jq -r '.filename' <<< "$entry")
-            url=$(jq -r '.url' <<< "$entry")
+            url=$(jq -r '.release_url // .url' <<< "$entry")
             etype=$(jq -r '.type' <<< "$entry")
 
             already_have=false
