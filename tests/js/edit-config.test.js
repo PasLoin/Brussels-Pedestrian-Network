@@ -42,6 +42,16 @@ test("a changeset never exceeds the API's 50 ways, whatever the settings say", a
   assert.equal(env.maxWaysPerChangeset, MAX_WAYS_PER_CHANGESET);
 });
 
+test("the API never sees more than two calls at once, whatever the settings say", async () => {
+  const { resolveEnv, SETTINGS, MAX_CONCURRENT_API } = await load("env.js");
+  const page = "https://example.org/devtest.html";
+  assert.equal(MAX_CONCURRENT_API, 2);
+  assert.ok(SETTINGS.maxConcurrentApi >= 1 && SETTINGS.maxConcurrentApi <= MAX_CONCURRENT_API);
+  assert.equal(resolveEnv("dev", page, { ...SETTINGS, maxConcurrentApi: 5 }).maxConcurrentApi, MAX_CONCURRENT_API);
+  assert.equal(resolveEnv("prod", page, { ...SETTINGS, maxConcurrentApi: 0 }).maxConcurrentApi, 1);
+  assert.equal(resolveEnv("dev", page).maxConcurrentApi, SETTINGS.maxConcurrentApi);
+});
+
 function fakeOsm({ token = "abc", authHeader, apiUrl = DEV_API } = {}) {
   return {
     getConfig: () => ({ apiUrl, ...(authHeader ? { authHeader } : {}) }),

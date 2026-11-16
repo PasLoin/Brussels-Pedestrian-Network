@@ -1502,9 +1502,11 @@ def test_the_page_never_has_more_than_two_api_calls_in_flight(session, fake):
     }""")
     assert statuses == [200] * 5
     stats = api_stats(s.page)
+    limit = s.page.evaluate("BPNEdit.maxConcurrentApi")
+    assert 1 <= limit <= 2
     assert stats["byKind"]["user"] == 5
-    assert stats["peakInFlight"] == 2
-    assert stats["peakWaiting"] == 3
+    assert stats["peakInFlight"] == limit
+    assert stats["peakWaiting"] == 5 - limit
     assert stats["waiting"] == 0
 
 
