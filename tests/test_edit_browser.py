@@ -126,6 +126,7 @@ class Session:
     def __init__(self, browser, server, fake, logged_in=True, queue=None, auth_env="dev", center=CENTER, zoom=17.5, editing=True, settings=None, page_name="devtest.html"):
         self.fake = fake
         self.aborted = []
+        self.aborted_auth = []
         self.settings = {"reviewZoom": "null", "minLookMs": "0", "paceMaxMeters": "1000000", "paceBlockMeters": "1000000", **(settings or {})}
         self.problems = []
         self.coverage = []
@@ -164,6 +165,7 @@ class Session:
         if url.startswith("http://127.0.0.1"):
             return route.continue_()
         self.aborted.append(url)
+        self.aborted_auth.append((url, route.request.headers.get("authorization", "")))
         return route.abort()
 
     def open(self, editing=True):
@@ -673,7 +675,9 @@ def test_s3_logging_out_in_another_tab_stops_the_send(session, fake):
     prepare(s.page)
     other = s.open()
     other.click('[data-edit-action="logout"]')
-    send(s.page)
+    wait(s.page, "() => document.getElementById('edit-auth').innerText.includes('Se connecter à OSM')")
+    assert s.page.is_disabled('[data-edit-action="send"]')
+    s.page.wait_for_timeout(300)
     assert fake.creates == []
     assert "Se connecter à OSM" in s.page.inner_text("#edit-auth")
     assert queue_ids(s.page) == [101]
@@ -1526,6 +1530,30 @@ def test_the_beta_page_runs_in_prod_without_a_client_and_never_touches_the_dev_s
     prod_calls = [u for u in s.aborted if "openstreetmap.org" in u]
     assert prod_calls and all(u.startswith("https://api.openstreetmap.org/api/0.6/map") for u in prod_calls)
     assert fake.calls == []
+
+
+def test_a_dev_login_in_another_tab_never_sends_its_token_from_the_beta_page(session, fake):
+    three_streets(fake)
+    s = session(logged_in=False, editing=True, page_name="beta.html")
+    dev = s.context.new_page()
+    dev.goto(s.origin + "test-api/devtest.html")
+    wait(dev, "() => window.BPNEdit !== undefined")
+    dev.evaluate("""() => {
+      localStorage.setItem('__osmAuth', JSON.stringify({ accessToken: 'dev-token', issuedAt: '2026-11-16', scopes: ['read_prefs', 'write_api'] }));
+      localStorage.setItem('bpn.authEnv', 'dev');
+    }""")
+    dev.close()
+    before = len(s.aborted_auth)
+    map_eval(s.page, "const c = m.getCenter(); m.jumpTo({ center: [c.lng + 0.01, c.lat + 0.005] });")
+    end = time.time() + 5
+    while time.time() < end and not [u for u, _ in s.aborted_auth[before:] if u.startswith("https://api.openstreetmap.org/api/0.6/map")]:
+        s.page.wait_for_timeout(100)
+    sent = [(u, a) for u, a in s.aborted_auth[before:] if "openstreetmap.org" in u]
+    assert sent and all(u.startswith("https://api.openstreetmap.org/api/0.6/map") for u, _ in sent)
+    assert all("dev-token" not in a for _, a in sent)
+    assert s.page.evaluate("localStorage.getItem('bpn.authEnv')") == "dev"
+    assert "dev-token" in s.page.evaluate("localStorage.getItem('__osmAuth')")
+    assert "Client OAuth non configuré" in s.page.inner_text("#edit-auth")
 
 
 def with_source(tags, source_id):

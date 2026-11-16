@@ -117,7 +117,17 @@ export async function revokeToken({ token, env, fetchImpl }) {
   }
 }
 
+export function ownsSession({ storage, env }) {
+  return read(storage, ENV_KEY) === env;
+}
+
+export function foreignSession({ storage, env }) {
+  const owner = read(storage, ENV_KEY);
+  return owner !== null && owner !== env && read(storage, AUTH_KEY) !== null;
+}
+
 export async function logout({ osm, storage, env = null, fetchImpl = (...args) => fetch(...args) }) {
+  if (env && foreignSession({ storage, env: env.name })) return "foreign";
   const token = env && read(storage, ENV_KEY) === env.name ? readToken(storage) : null;
   osm.logout();
   remove(storage, AUTH_KEY);

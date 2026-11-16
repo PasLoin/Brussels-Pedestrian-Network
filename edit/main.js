@@ -3,7 +3,7 @@ import { store } from "../map/store.js";
 import { createApiGuard } from "./api-guard.js";
 import { blockApi, createApiMeter, installApiChain } from "./api-meter.js";
 import { limitConcurrency } from "./api-queue.js";
-import { guardEnvironment, tabId } from "./auth.js";
+import { guardEnvironment, ownsSession, tabId } from "./auth.js";
 import { createClient } from "./client.js";
 import { envFromDocument } from "./env.js";
 import { createLookTracker } from "./look.js";
@@ -42,6 +42,7 @@ installApiChain(window, {
   apiUrl: env.apiUrl,
   meter,
   guard,
+  authorized: () => ownsSession({ storage, env: env.name }),
   limit: (fetchImpl, options) => limitConcurrency(fetchImpl, { ...options, max: env.maxConcurrentApi }),
 });
 if (!env.editEnabled) blockApi(window, env.apiUrl);

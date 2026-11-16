@@ -65,6 +65,29 @@ test("the guard sits in front of the queue, so refused calls are never counted o
   assert.equal(meter.stats().total, 1);
 });
 
+test("a token that belongs to the other environment never leaves with a call to this API", async () => {
+  const { installApiChain } = await load("api-meter.js");
+  const { limitConcurrency } = await load("api-queue.js");
+  const seen = [];
+  const target = { fetch: async (input, init) => { seen.push([typeof input === "string" ? input : input.url, new Headers((init && init.headers) || (input && input.headers)).get("Authorization")]); return new Response("ok"); } };
+  let owned = false;
+  installApiChain(target, { apiUrl: API, limit: limitConcurrency, authorized: () => owned });
+  const auth = { headers: { Authorization: "Bearer dev-token", "User-Agent": "x" } };
+  await target.fetch(`${API}/api/0.6/map.json?a`, auth);
+  await target.fetch(new Request(`${API}/api/0.6/way/1.json`, auth));
+  await target.fetch(`${API}/api/0.6/way/2.json`);
+  await target.fetch("https://tiles.example/1.pbf", auth);
+  owned = true;
+  await target.fetch(`${API}/api/0.6/map.json?b`, auth);
+  assert.deepEqual(seen, [
+    [`${API}/api/0.6/map.json?a`, null],
+    [`${API}/api/0.6/way/1.json`, null],
+    [`${API}/api/0.6/way/2.json`, null],
+    ["https://tiles.example/1.pbf", "Bearer dev-token"],
+    [`${API}/api/0.6/map.json?b`, "Bearer dev-token"],
+  ]);
+});
+
 const paceOptions = (storage, clock) => ({ storage, env: "dev", windowMs: 60000, maxMeters: 600, blockMeters: 900, repeatMs: 300000, cooldownMs: 60000, now: () => clock.t });
 
 test("editing too fast is measured in metres, so a street cut into short segments is not penalised", async () => {
