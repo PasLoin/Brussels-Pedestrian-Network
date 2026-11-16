@@ -1516,7 +1516,7 @@ def test_the_beta_page_runs_in_prod_without_a_client_and_never_touches_the_dev_s
     three_streets(fake)
     s = session(logged_in=False, editing=False, page_name="beta.html")
     assert s.page.evaluate("document.documentElement.dataset.editEnv") == "prod"
-    assert s.page.evaluate("BPNEdit.apiStats()") is None
+    assert s.page.evaluate("BPNEdit.apiStats()") is not None
     assert s.page.evaluate("BPNEdit.maxConcurrentApi") == 1
     assert not [u for u in s.aborted if "openstreetmap.org" in u]
     enter_edit(s.page)

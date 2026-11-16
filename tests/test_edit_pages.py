@@ -88,8 +88,8 @@ def test_beta_land_page_is_the_prod_one_and_the_pages_point_at_each_other(site):
     assert f'landingPage: "{DEVTEST_LAND.rsplit("/", 1)[-1]}"' in env_js
 
 
-def test_robots_keep_crawlers_out_of_the_test_pages(site):
-    assert "Disallow: /test-api/\n" in _html(site / "robots.txt")
+def test_robots_never_name_the_test_pages(site):
+    assert "test-api" not in _html(site / "robots.txt")
 
 
 def test_devtest_loads_the_guarded_editor_before_the_map(site):

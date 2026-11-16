@@ -28,7 +28,7 @@ test("the prod beta page lands on its own page, next to it, never on the dev one
   assert.equal(env.redirectUrl, "https://pasloin.github.io/Brussels-Pedestrian-Network/test-api/beta-land.html");
   assert.notEqual(ENVS.dev.landingPage, ENVS.prod.landingPage);
   assert.equal(env.clientId, "");
-  assert.equal(env.apiMeter, false);
+  assert.equal(env.apiMeter, true);
 });
 
 test("review-zoom in the address changes or switches off the close-up check", async () => {
