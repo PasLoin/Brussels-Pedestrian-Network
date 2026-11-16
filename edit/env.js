@@ -23,7 +23,7 @@ export const ENVS = Object.freeze({
     scopes: SCOPES,
     landingPage: "beta-land.html",
     candidates: "pmtiles",
-    apiMeter: false,
+    apiMeter: true,
     devData: false,
   }),
 });
