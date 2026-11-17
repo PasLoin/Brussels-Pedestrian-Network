@@ -551,9 +551,9 @@ def test_n7_a_slow_server_cannot_be_hit_twice_by_a_double_click(session, fake):
     s = session(queue=[intent_for(fake, 101)])
     prepare(s.page)
     s.page.check('input[name="cs-source"][value="survey"]')
-    fake.inject("create", delay=1.5)
+    hold_api(s.page, "/changeset/create", 1500)
     s.page.click('[data-edit-action="send"]')
-    time.sleep(0.3)
+    s.page.wait_for_timeout(300)
     assert s.page.evaluate("document.querySelector('[data-edit-action=\"send\"]').disabled")
     s.page.evaluate("document.querySelector('[data-edit-action=\"send\"]').click()")
     wait_idle(s.page)
@@ -1088,16 +1088,23 @@ def test_a_queued_street_reopens_from_the_queue_with_its_choice(session, fake):
     assert [(i["wayId"], i["set"]) for i in stored] == [(101, {"sidewalk:both": "no"})]
 
 
-def hold_way_reads(page, way_id, ms):
+def hold_api(page, fragment, ms, times=1):
     page.evaluate(f"""() => {{
       const inner = window.fetch;
+      let left = {times};
       window.fetch = async (input, init) => {{
-        const response = await inner(input, init);
         const url = typeof input === 'string' ? input : input.url;
-        if (url.includes('/way/{way_id}/full')) await new Promise(r => setTimeout(r, {ms}));
+        const held = left > 0 && url.includes({json.dumps(fragment)});
+        if (held) left -= 1;
+        const response = await inner(input, init);
+        if (held) await new Promise(r => setTimeout(r, {ms}));
         return response;
       }};
     }}""")
+
+
+def hold_way_reads(page, way_id, ms):
+    hold_api(page, f"/way/{way_id}/full", ms)
 
 
 def test_escape_while_the_next_street_is_loading_cancels_it(session, fake):
@@ -1316,7 +1323,7 @@ def test_keys_pressed_while_searching_for_the_next_street_change_nothing(session
     wait_selected(s.page, 101)
     time.sleep(0.8)
     wait(s.page, "() => document.getElementById('edit-status').textContent.includes('dans la vue')")
-    fake.inject("map", delay=1.5, times=3)
+    hold_api(s.page, "/map.json", 1500, times=3)
     s.page.keyboard.press("n")
     wait(s.page, "() => document.getElementById('edit-nav').textContent.includes('Recherche de rues voisines')")
     s.page.keyboard.press("s")
