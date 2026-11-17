@@ -65,7 +65,10 @@ export function installSelection(ctx) {
     renderDetail();
   }
 
+  let selectionRun = 0;
+
   function deselect() {
+    selectionRun += 1;
     ctx.clearPendingKeys();
     ctx.state.detail = { kind: "none" };
     ctx.showSelection(null);
@@ -92,6 +95,7 @@ export function installSelection(ctx) {
   }
 
   async function selectWay(id) {
+    const run = ++selectionRun;
     ctx.clearPendingKeys();
     const known = ctx.liveFeatures.get(id);
     ctx.showSelection(known ? known.geometry.coordinates : null);
@@ -101,6 +105,7 @@ export function installSelection(ctx) {
     renderDetail();
     try {
       const elements = await osm.getFeature("way", id, true);
+      if (run !== selectionRun) return;
       const way = elements.find(f => f.type === "way" && f.id === id);
       const nodes = new Map(elements.filter(f => f.type === "node").map(n => [n.id, [n.lon, n.lat]]));
       const coords = way.nodes.map(n => nodes.get(n));
@@ -125,6 +130,7 @@ export function installSelection(ctx) {
       ctx.state.detail = { ...detail, fitting: view === "moving", visible: view === "visible" };
       ctx.noteReview();
     } catch (err) {
+      if (run !== selectionRun) return;
       const gone = err && (err.cause === 404 || err.cause === 410);
       ctx.state.detail = gone ? { kind: "gone", wayId: id } : { kind: "error", message: errorMessage(err, i18n.t) };
       if (gone) ctx.showSelection(null);
