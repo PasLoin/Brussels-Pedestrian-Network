@@ -1088,6 +1088,47 @@ def test_a_queued_street_reopens_from_the_queue_with_its_choice(session, fake):
     assert [(i["wayId"], i["set"]) for i in stored] == [(101, {"sidewalk:both": "no"})]
 
 
+def hold_way_reads(page, way_id, ms):
+    page.evaluate(f"""() => {{
+      const inner = window.fetch;
+      window.fetch = async (input, init) => {{
+        const response = await inner(input, init);
+        const url = typeof input === 'string' ? input : input.url;
+        if (url.includes('/way/{way_id}/full')) await new Promise(r => setTimeout(r, {ms}));
+        return response;
+      }};
+    }}""")
+
+
+def test_escape_while_the_next_street_is_loading_cancels_it(session, fake):
+    three_streets(fake)
+    s = session()
+    wait_candidates(s.page, 3)
+    click_way(s.page, CENTER[0], CENTER[1] + 0.00001, 101)
+    hold_way_reads(s.page, 102, 1500)
+    s.page.click('[data-side="both"][data-value="separate"]')
+    wait(s.page, "() => document.getElementById('edit-detail').textContent.includes('Lecture du way sur OSM')")
+    s.page.keyboard.press("Escape")
+    time.sleep(2.0)
+    assert s.page.query_selector("[data-edit-action=choose]") is None
+    assert "Lecture du way" not in s.page.inner_text("#edit-detail")
+    assert map_eval(s.page, "return m.querySourceFeatures('edit-selection').length;") == 0
+    assert queue_ids(s.page) == [101]
+
+
+def test_a_slow_answer_for_an_earlier_click_never_replaces_the_latest_street(session, fake):
+    three_streets(fake)
+    s = session()
+    wait_candidates(s.page, 3)
+    hold_way_reads(s.page, 101, 1500)
+    click_way(s.page, CENTER[0], CENTER[1] + 0.00001, 101, expect_form=False)
+    wait(s.page, "() => document.getElementById('edit-detail').textContent.includes('Lecture du way sur OSM')")
+    click_way(s.page, CENTER[0], CENTER[1] - 0.0004 + 0.00001, 102)
+    time.sleep(2.0)
+    wait_selected(s.page, 102)
+    assert "w101" not in s.page.inner_text("#edit-detail")
+
+
 def selection_queued(page):
     return map_eval(page, "const f = m.querySourceFeatures('edit-selection')[0]; return f ? f.properties.queued : null;")
 
