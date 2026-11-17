@@ -117,12 +117,32 @@ export function installApiMeter(target, meter) {
   return () => { target.fetch = original; };
 }
 
-export function installApiChain(target, { apiUrl, meter = null, limit, guard = null }) {
-  const original = target.fetch.bind(target);
+function requestUrl(input) {
+  return typeof input === "string" ? input : input && input.url;
+}
+
+export function withoutAuthorization(input, init) {
+  const headers = new Headers((init && init.headers) || (input && typeof input !== "string" && input.headers) || undefined);
+  if (!headers.has("Authorization")) return [input, init];
+  headers.delete("Authorization");
+  return [typeof input === "string" ? input : new Request(input, { headers }), { ...(init || {}), headers }];
+}
+
+export function stripForeignAuthorization(fetchImpl, { apiUrl, authorized }) {
+  return (input, init) => {
+    const url = requestUrl(input);
+    if (typeof url !== "string" || !url.startsWith(apiUrl) || authorized()) return fetchImpl(input, init);
+    return fetchImpl(...withoutAuthorization(input, init));
+  };
+}
+
+export function installApiChain(target, { apiUrl, meter = null, limit, guard = null, authorized = () => true }) {
+  const bound = target.fetch.bind(target);
+  const original = stripForeignAuthorization(bound, { apiUrl, authorized });
   const counted = meter ? meter.wrap(original) : original;
   const limited = limit(counted, { matches: url => typeof url === "string" && url.startsWith(apiUrl), onWaiting: n => meter && meter.noteWaiting(n) });
   target.fetch = guard ? guard.wrap(limited) : limited;
-  return () => { target.fetch = original; };
+  return () => { target.fetch = bound; };
 }
 
 export class ApiBlockedError extends Error {

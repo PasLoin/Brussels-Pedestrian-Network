@@ -1,5 +1,5 @@
 import { i18n } from "../../map/i18n.js";
-import { authorizedAppsUrl, isLoggedIn, login, loginInProgress, logout } from "../auth.js";
+import { AUTH_KEY, ENV_KEY, authorizedAppsUrl, isLoggedIn, login, loginInProgress, logout } from "../auth.js";
 import { authView } from "../panel.js";
 
 export function installAuthPanel(ctx) {
@@ -50,6 +50,10 @@ export function installAuthPanel(ctx) {
       const message = err && err.message === "login-pending" ? i18n.t("edit.auth.pending") : i18n.t("edit.auth.failed");
       await refreshAuth(message);
     }
+  });
+
+  window.addEventListener("storage", (e) => {
+    if (e.key === null || e.key === AUTH_KEY || e.key === ENV_KEY) refreshAuth();
   });
 
   Object.assign(ctx, { refreshAuth, revokeNotice });

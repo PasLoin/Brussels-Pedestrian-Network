@@ -4,10 +4,10 @@ import re
 import pytest
 
 import build_site
-from build_site import DEV_API, DEVTEST_LAND, DEVTEST_PAGE, ROOT, SITE_URL, devtest_path, edit_pages
+from build_site import BETA_LAND, BETA_PAGE, DEV_API, DEVTEST_LAND, DEVTEST_PAGE, ROOT, SITE_URL, devtest_path, edit_pages
 
 OSM_API_JS = "vendor/osm-api-4.0.1/index.min.js"
-PROD_HOSTS = ("https://api.openstreetmap.org", "https://www.openstreetmap.org")
+PROD_HOSTS = build_site.PROD_HOSTS
 
 
 @pytest.fixture(scope="module")
@@ -58,6 +58,40 @@ def test_devtest_may_reach_the_dev_api_and_never_production(site):
         assert set(sources) <= set(csp[directive]), directive
 
 
+def test_beta_page_is_rendered_hidden_and_in_prod(site):
+    html = _html(site / BETA_PAGE)
+    assert 'data-edit-env="prod"' in html
+    assert '<meta name="robots" content="noindex, nofollow" />' in html
+    assert 'id="edit-panel"' in html
+    assert f'<link rel="canonical" href="{SITE_URL}{BETA_PAGE}" />' in html
+    assert "devtest" not in html
+
+
+def test_beta_may_reach_production_and_never_the_dev_api(site):
+    csp = _csp(_html(site / BETA_PAGE))
+    for host in PROD_HOSTS:
+        assert host in csp["connect-src"]
+    assert DEV_API not in csp["connect-src"]
+    dev_csp = _csp(_html(site / DEVTEST_PAGE))
+    for directive, sources in dev_csp.items():
+        assert directive == "connect-src" or sources == csp[directive], directive
+    assert set(dev_csp["connect-src"]) - {DEV_API} == set(csp["connect-src"]) - set(PROD_HOSTS)
+
+
+def test_beta_land_page_is_the_prod_one_and_the_pages_point_at_each_other(site):
+    html = _html(site / BETA_LAND)
+    assert 'data-edit-env="prod"' in html
+    assert _csp(html) == _csp(_html(site / DEVTEST_LAND))
+    assert '<meta name="robots" content="noindex, nofollow" />' in html
+    env_js = (ROOT / "edit" / "env.js").read_text(encoding="utf-8")
+    assert f'landingPage: "{BETA_LAND.rsplit("/", 1)[-1]}"' in env_js
+    assert f'landingPage: "{DEVTEST_LAND.rsplit("/", 1)[-1]}"' in env_js
+
+
+def test_robots_never_name_the_test_pages(site):
+    assert "test-api" not in _html(site / "robots.txt")
+
+
 def test_devtest_loads_the_guarded_editor_before_the_map(site):
     html = _html(site / DEVTEST_PAGE)
     osm_api = html.index(f'src="../{OSM_API_JS}"')
@@ -67,7 +101,7 @@ def test_devtest_loads_the_guarded_editor_before_the_map(site):
 
 
 def test_every_local_reference_of_the_test_pages_exists(site):
-    for page in (DEVTEST_PAGE, DEVTEST_LAND):
+    for page in (DEVTEST_PAGE, DEVTEST_LAND, BETA_PAGE, BETA_LAND):
         path = site / page
         for ref in _local_refs(_html(path)):
             assert (path.parent / ref).resolve().is_file(), (page, ref)
@@ -131,12 +165,16 @@ def test_only_raster_basemaps_name_their_imagery_for_changesets():
 
 
 
-def test_devtest_exists_in_every_published_language_with_a_working_switch(site):
+@pytest.mark.parametrize("edit_env", ["dev", "prod"])
+def test_edit_pages_exist_in_every_published_language_with_a_working_switch(site, edit_env):
     config = build_site.load_languages()
-    pages = edit_pages(config)
+    pages = edit_pages(config, edit_env)
     langs = build_site.published_languages(config)
     assert sorted(spec["lang"] for spec in pages.values()) == sorted(langs)
     assert devtest_path(build_site.DEVTEST_LANG) == DEVTEST_PAGE
+    assert build_site.edit_path(build_site.DEVTEST_LANG, "prod") == BETA_PAGE
+    main_page = build_site.EDIT_ENVS[edit_env]["page"]
+    other_pages = [p for env, spec in build_site.EDIT_ENVS.items() if env != edit_env for p in edit_pages(config, env)]
     for path, spec in pages.items():
         html = _html(site / path)
         assert f'<html lang="{spec["lang"]}"' in html
@@ -146,8 +184,10 @@ def test_devtest_exists_in_every_published_language_with_a_working_switch(site):
             href = "./" + other.rsplit("/", 1)[-1]
             assert f'href="{href}"' in html
             assert (site / path).parent.joinpath(href).resolve().is_file()
-        assert _csp(html) == _csp(_html(site / DEVTEST_PAGE))
-        assert 'data-edit-env="dev"' in html
+        for other in other_pages:
+            assert f'href="./{other.rsplit("/", 1)[-1]}"' not in html
+        assert _csp(html) == _csp(_html(site / main_page))
+        assert f'data-edit-env="{edit_env}"' in html
         assert '<meta name="robots" content="noindex, nofollow" />' in html
 
 

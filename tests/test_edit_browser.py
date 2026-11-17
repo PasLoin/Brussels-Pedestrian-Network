@@ -123,8 +123,10 @@ def intent_for(fake, way_id, set_tags=None):
 BLANK_PNG = bytes.fromhex("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c6360606060000000050001a5f645400000000049454e44ae426082")
 
 class Session:
-    def __init__(self, browser, server, fake, logged_in=True, queue=None, auth_env="dev", center=CENTER, zoom=17.5, editing=True, settings=None):
+    def __init__(self, browser, server, fake, logged_in=True, queue=None, auth_env="dev", center=CENTER, zoom=17.5, editing=True, settings=None, page_name="devtest.html"):
         self.fake = fake
+        self.aborted = []
+        self.aborted_auth = []
         self.settings = {"reviewZoom": "null", "minLookMs": "0", "paceMaxMeters": "1000000", "paceBlockMeters": "1000000", **(settings or {})}
         self.problems = []
         self.coverage = []
@@ -143,7 +145,7 @@ class Session:
             f"if (!localStorage.getItem('test.seeded')) {{ for (const [k, v] of Object.entries({json.dumps(seed)})) localStorage.setItem(k, v);"
             " localStorage.setItem('test.seeded', '1'); }"
         )
-        self.url = f"{server}test-api/devtest.html#{zoom}/{center[1]}/{center[0]}"
+        self.url = f"{server}test-api/{page_name}#{zoom}/{center[1]}/{center[0]}"
         self.page = self.open(editing)
 
     def _route(self, route):
@@ -162,6 +164,8 @@ class Session:
             return route.fulfill(body=body, content_type="application/javascript")
         if url.startswith("http://127.0.0.1"):
             return route.continue_()
+        self.aborted.append(url)
+        self.aborted_auth.append((url, route.request.headers.get("authorization", "")))
         return route.abort()
 
     def open(self, editing=True):
@@ -586,7 +590,7 @@ def test_l2_download_limit_empties_the_candidate_layer(session, fake):
     s = session()
     wait_candidates(s.page, 1)
     fake.inject("map", status=509, body="You have downloaded too much data")
-    s.page.evaluate(f"window.location.hash = '#17.6/{CENTER[1]}/{CENTER[0]}'")
+    s.page.evaluate(f"window.location.hash = '#17.6/{CENTER[1]}/{CENTER[0] + 0.01}'")
     wait(s.page, "() => document.getElementById('edit-status').textContent.includes('trop de données téléchargées')")
     assert s.page.evaluate("async () => { const { store } = await import('/map/store.js'); return store.map.querySourceFeatures('edit-candidates').length; }") == 0
     calls = fake.count("map")
@@ -671,7 +675,9 @@ def test_s3_logging_out_in_another_tab_stops_the_send(session, fake):
     prepare(s.page)
     other = s.open()
     other.click('[data-edit-action="logout"]')
-    send(s.page)
+    wait(s.page, "() => document.getElementById('edit-auth').innerText.includes('Se connecter à OSM')")
+    assert s.page.is_disabled('[data-edit-action="send"]')
+    s.page.wait_for_timeout(300)
     assert fake.creates == []
     assert "Se connecter à OSM" in s.page.inner_text("#edit-auth")
     assert queue_ids(s.page) == [101]
@@ -1434,6 +1440,37 @@ def test_the_dev_meter_counts_exactly_the_calls_the_server_received(session, fak
     assert api_stats(s.page)["since"] > 0
 
 
+def test_moving_inside_a_window_already_loaded_sends_no_new_map_call(session, fake):
+    three_streets(fake)
+    s = session()
+    wait_candidates(s.page, 3)
+    time.sleep(0.5)
+    before = fake.count("map")
+    for dx, zoom in ((0.0002, 18.7), (-0.0002, 18.7), (0.0, 19.2), (0.0001, 17.2)):
+        map_eval(s.page, f"m.jumpTo({{ center: [{CENTER[0]} + {dx}, {CENTER[1]}], zoom: {zoom} }}); return true;")
+        time.sleep(0.5)
+    assert fake.count("map") == before
+    assert "candidat" in s.page.inner_text("#edit-status")
+    map_eval(s.page, f"m.jumpTo({{ center: [{CENTER[0]} + 0.02, {CENTER[1]}], zoom: 17.5 }}); return true;")
+    end = time.time() + 5
+    while time.time() < end and fake.count("map") == before:
+        s.page.wait_for_timeout(100)
+    assert fake.count("map") == before + 1
+
+
+def test_a_loaded_window_is_reloaded_once_it_is_older_than_the_reuse_limit(session, fake):
+    three_streets(fake)
+    s = session(settings={"candidateReuseMs": "0"})
+    wait_candidates(s.page, 3)
+    time.sleep(0.5)
+    before = fake.count("map")
+    map_eval(s.page, f"m.jumpTo({{ center: [{CENTER[0]} + 0.0002, {CENTER[1]}], zoom: 18.7 }}); return true;")
+    end = time.time() + 5
+    while time.time() < end and fake.count("map") == before:
+        s.page.wait_for_timeout(100)
+    assert fake.count("map") == before + 1
+
+
 def test_the_meter_records_server_refusals(session, fake):
     three_streets(fake)
     fake.inject("map", status=509, body="You have downloaded too much data")
@@ -1508,6 +1545,46 @@ def test_the_page_never_has_more_than_two_api_calls_in_flight(session, fake):
     assert stats["peakInFlight"] == limit
     assert stats["peakWaiting"] == 5 - limit
     assert stats["waiting"] == 0
+
+
+def test_the_beta_page_runs_in_prod_without_a_client_and_never_touches_the_dev_server(session, fake):
+    three_streets(fake)
+    s = session(logged_in=False, editing=False, page_name="beta.html")
+    assert s.page.evaluate("document.documentElement.dataset.editEnv") == "prod"
+    assert s.page.evaluate("BPNEdit.apiStats()") is not None
+    assert s.page.evaluate("BPNEdit.maxConcurrentApi") == 1
+    assert not [u for u in s.aborted if "openstreetmap.org" in u]
+    enter_edit(s.page)
+    assert "Client OAuth non configuré" in s.page.inner_text("#edit-auth")
+    assert s.page.evaluate("document.querySelector('[data-edit-action=\"login\"]')") is None
+    time.sleep(0.5)
+    prod_calls = [u for u in s.aborted if "openstreetmap.org" in u]
+    assert prod_calls and all(u.startswith("https://api.openstreetmap.org/api/0.6/map") for u in prod_calls)
+    assert fake.calls == []
+
+
+def test_a_dev_login_in_another_tab_never_sends_its_token_from_the_beta_page(session, fake):
+    three_streets(fake)
+    s = session(logged_in=False, editing=True, page_name="beta.html")
+    dev = s.context.new_page()
+    dev.goto(s.origin + "test-api/devtest.html")
+    wait(dev, "() => window.BPNEdit !== undefined")
+    dev.evaluate("""() => {
+      localStorage.setItem('__osmAuth', JSON.stringify({ accessToken: 'dev-token', issuedAt: '2026-11-16', scopes: ['read_prefs', 'write_api'] }));
+      localStorage.setItem('bpn.authEnv', 'dev');
+    }""")
+    dev.close()
+    before = len(s.aborted_auth)
+    map_eval(s.page, "const c = m.getCenter(); m.jumpTo({ center: [c.lng + 0.01, c.lat + 0.005] });")
+    end = time.time() + 5
+    while time.time() < end and not [u for u, _ in s.aborted_auth[before:] if u.startswith("https://api.openstreetmap.org/api/0.6/map")]:
+        s.page.wait_for_timeout(100)
+    sent = [(u, a) for u, a in s.aborted_auth[before:] if "openstreetmap.org" in u]
+    assert sent and all(u.startswith("https://api.openstreetmap.org/api/0.6/map") for u, _ in sent)
+    assert all("dev-token" not in a for _, a in sent)
+    assert s.page.evaluate("localStorage.getItem('bpn.authEnv')") == "dev"
+    assert "dev-token" in s.page.evaluate("localStorage.getItem('__osmAuth')")
+    assert "Client OAuth non configuré" in s.page.inner_text("#edit-auth")
 
 
 def with_source(tags, source_id):

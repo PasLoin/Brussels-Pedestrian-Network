@@ -5,12 +5,13 @@ import { SOURCE } from "./layers.js";
 
 const WIDER_SEARCH = [2, 4];
 
-export function installCandidateLoader(ctx) {
+export function installCandidateLoader(ctx, { now = () => Date.now() } = {}) {
   const { env, osm, queue, skipped } = ctx;
   const liveFeatures = new Map();
   let sourceIndex = new Map();
   let loadedBoxes = [];
   let controller = null;
+  let inFlight = 0;
   let timer = null;
   let widening = null;
   let candidatesBlocked = null;
@@ -38,6 +39,11 @@ export function installCandidateLoader(ctx) {
     ctx.map.getSource(SOURCE)?.setData(EMPTY_COLLECTION);
   }
 
+  function freshlyLoaded(box) {
+    const since = now() - env.candidateReuseMs;
+    return loadedBoxes.some(entry => entry.at >= since && boxWithin(box, entry.box));
+  }
+
   function candidateFocus() {
     const d = ctx.state.detail;
     return d.kind === "way" && d.bbox ? d.bbox : null;
@@ -58,7 +64,7 @@ export function installCandidateLoader(ctx) {
       for (const scale of WIDER_SEARCH) {
         const center = map.getCenter();
         const box = candidateWindow({ center: [center.lng, center.lat], canvas: { width: map.getCanvas().clientWidth, height: map.getCanvas().clientHeight }, focus, settings: env, scale });
-        if (loadedBoxes.some(b => boxWithin(box, b))) continue;
+        if (freshlyLoaded(box)) continue;
         await loadCandidates({ box, around: true });
         if (ctx.state.detail.kind !== "way" || ctx.state.detail.way.id !== wayId) return;
         if (ctx.selectNext(false)) return;
@@ -73,14 +79,20 @@ export function installCandidateLoader(ctx) {
     if (!ctx.map || !focus) return;
     const request = currentRequest(focus);
     if (request.blocked || !request.around) return;
-    if (loadedBoxes.some(box => boxWithin(request.box, box))) return;
+    if (freshlyLoaded(request.box)) return;
     loadCandidates(request);
   }
 
-  async function loadCandidates(given = null) {
+  async function loadCandidates(given = null, { reuse = false } = {}) {
     if (!env.editEnabled) return;
-    if (controller) controller.abort();
     const request = given || currentRequest();
+    if (reuse && !request.blocked && freshlyLoaded(request.box)) {
+      if (inFlight) return;
+      candidatesBlocked = null;
+      ctx.showStatus({ kind: "ready", count: countInBox(liveFeatures.values(), boundsBox(ctx.map.getBounds())) });
+      return ctx.renderNav();
+    }
+    if (controller) controller.abort();
     candidatesBlocked = request.blocked || null;
     if (request.blocked) {
       controller = null;
@@ -95,12 +107,13 @@ export function installCandidateLoader(ctx) {
     const current = new AbortController();
     controller = current;
     ctx.showStatus({ kind: "loading" });
+    inFlight += 1;
     try {
       const features = await osm.getMapData(boxString(request.box), { signal: current.signal });
       if (current.signal.aborted) return;
       sourceIndex = mergeSourceIds(sourceIndex, sourceIds(features));
       setCandidates(mergeCandidates(liveFeatures, candidatesFromMapData(features), request.box));
-      loadedBoxes = [request.box, ...loadedBoxes].slice(0, 20);
+      loadedBoxes = [{ box: request.box, at: now() }, ...loadedBoxes].slice(0, 20);
       ctx.showStatus({ kind: "ready", count: countInBox(liveFeatures.values(), boundsBox(ctx.map.getBounds())) });
       ctx.renderNav();
     } catch (err) {
@@ -108,12 +121,14 @@ export function installCandidateLoader(ctx) {
       clearCandidates();
       ctx.showStatus({ kind: "error", message: errorMessage(err, i18n.t) });
       ctx.renderNav();
+    } finally {
+      inFlight -= 1;
     }
   }
 
-  function scheduleCandidates() {
+  function scheduleCandidates({ reuse = true } = {}) {
     clearTimeout(timer);
-    timer = setTimeout(loadCandidates, 300);
+    timer = setTimeout(() => loadCandidates(null, { reuse }), 300);
   }
 
   function stopCandidates() {

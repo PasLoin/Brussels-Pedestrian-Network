@@ -10,6 +10,7 @@ export const ENVS = Object.freeze({
     webUrl: DEV_API,
     clientId: "5KoHVvJ44fBlMmDP5qSQxN5N_UJGWCX18-e5aIfzO0Q",
     scopes: SCOPES,
+    landingPage: "land.html",
     candidates: "live",
     apiMeter: true,
     devData: true,
@@ -20,8 +21,9 @@ export const ENVS = Object.freeze({
     webUrl: "https://www.openstreetmap.org",
     clientId: "",
     scopes: SCOPES,
+    landingPage: "beta-land.html",
     candidates: "pmtiles",
-    apiMeter: false,
+    apiMeter: true,
     devData: false,
   }),
 });
@@ -38,9 +40,9 @@ export const SETTINGS = Object.freeze({
   autoAdvance: true,
   candidateMinZoom: 17,
   candidateFloorZoom: 15,
+  candidateReuseMs: 5 * 60 * 1000,
   maxCandidateAreaDeg2: 0.001,
   authPendingTtlMs: 5 * 60 * 1000,
-  landingPage: "land.html",
   maxWaysPerChangeset: 50,
   maxChangesetSpanM: 1000,
   maxChangesetsPerUpload: 3,
@@ -79,7 +81,7 @@ export function resolveEnv(name, pageUrl, settings = SETTINGS) {
     ...settings,
     maxWaysPerChangeset: Math.min(settings.maxWaysPerChangeset, MAX_WAYS_PER_CHANGESET),
     maxConcurrentApi: Math.max(1, Math.min(settings.maxConcurrentApi, MAX_CONCURRENT_API)),
-    redirectUrl: new URL(settings.landingPage, pageUrl).href,
+    redirectUrl: new URL(ENVS[name].landingPage, pageUrl).href,
   });
 }
 

@@ -170,6 +170,21 @@ test("logout removes the token and the environment marker", async () => {
   assert.deepEqual(storage.dump(), {});
 });
 
+test("logout from a page never touches a session opened by the other environment in another tab", async () => {
+  const { logout, ownsSession, foreignSession, AUTH_KEY, ENV_KEY } = await load("auth.js");
+  const storage = memoryStorage({ [AUTH_KEY]: "{\"accessToken\":\"dev-token\"}", [ENV_KEY]: "prod" });
+  const osm = fakeOsm();
+  let revoked = 0;
+  assert.equal(ownsSession({ storage, env: "dev" }), false);
+  assert.equal(foreignSession({ storage, env: "dev" }), true);
+  assert.equal(await logout({ osm, storage, env: ENV, fetchImpl: async () => { revoked += 1; return { ok: true }; } }), "foreign");
+  assert.deepEqual(osm.calls, []);
+  assert.equal(revoked, 0);
+  assert.deepEqual(storage.dump(), { [AUTH_KEY]: "{\"accessToken\":\"dev-token\"}", [ENV_KEY]: "prod" });
+  assert.equal(foreignSession({ storage: memoryStorage({ [AUTH_KEY]: "{}" }), env: "dev" }), false);
+  assert.equal(foreignSession({ storage: memoryStorage({ [ENV_KEY]: "prod" }), env: "dev" }), false);
+});
+
 const REVOKE_ENV = { ...ENV, webUrl: "https://master.apis.dev.openstreetmap.org" };
 const TOKEN = JSON.stringify({ accessToken: "secret-token", issuedAt: "2026-11-15", scopes: ["read_prefs", "write_api"] });
 
@@ -228,7 +243,6 @@ test("nothing is sent when there is no token for this environment", async () => 
   const { logout, AUTH_KEY, ENV_KEY } = await load("auth.js");
   const cases = [
     memoryStorage(),
-    memoryStorage({ [AUTH_KEY]: TOKEN, [ENV_KEY]: "prod" }),
     memoryStorage({ [AUTH_KEY]: TOKEN }),
     memoryStorage({ [AUTH_KEY]: "{broken", [ENV_KEY]: "dev" }),
     memoryStorage({ [AUTH_KEY]: JSON.stringify({ accessToken: "" }), [ENV_KEY]: "dev" }),
