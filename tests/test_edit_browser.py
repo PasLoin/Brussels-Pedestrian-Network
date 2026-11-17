@@ -484,7 +484,7 @@ def test_n1_offline_while_loading_candidates_shows_an_error_without_looping(sess
     time.sleep(1.0)
     assert fake.count("map") == 1
     fake.faults.clear()
-    s.page.evaluate(f"window.location.hash = '#17.6/{CENTER[1]}/{CENTER[0]}'")
+    move_map(s.page, 17.6, CENTER[1], CENTER[0])
     wait_candidates(s.page, 1)
 
 
@@ -589,13 +589,16 @@ def test_l2_download_limit_empties_the_candidate_layer(session, fake):
     fake.add_way(101, line_at(CENTER), street("Rue Test", "Teststraat"))
     s = session()
     wait_candidates(s.page, 1)
+    wait_settled(s.page, fake)
+    before = fake.count("map")
     fake.inject("map", status=509, body="You have downloaded too much data")
-    s.page.evaluate(f"window.location.hash = '#17.6/{CENTER[1]}/{CENTER[0] + 0.01}'")
+    move_map(s.page, 17.6, CENTER[1], CENTER[0] + 0.05)
+    wait_for_calls(s.page, fake, "map", before)
     wait(s.page, "() => document.getElementById('edit-status').textContent.includes('trop de données téléchargées')")
     assert s.page.evaluate("async () => { const { store } = await import('/map/store.js'); return store.map.querySourceFeatures('edit-candidates').length; }") == 0
     calls = fake.count("map")
     assert int(s.page.evaluate("localStorage.getItem('bpn.apiPause.dev')")) > 0
-    s.page.evaluate(f"window.location.hash = '#17.6/{CENTER[1]}/{CENTER[0] + 0.03}'")
+    move_map(s.page, 17.6, CENTER[1], CENTER[0] + 0.10)
     wait(s.page, "() => document.getElementById('edit-status').textContent.includes('appels suspendus')")
     assert fake.count("map") == calls
 
@@ -615,7 +618,7 @@ def test_l3_a_too_large_area_is_never_requested(session, fake):
     wait_candidates(s.page, 1)
     s.page.set_viewport_size({"width": 10000, "height": 8000})
     wait(s.page, "async () => { const { store } = await import('/map/store.js'); return store.map.getCanvas().clientWidth === 10000; }")
-    s.page.evaluate(f"window.location.hash = '#17/{CENTER[1] + 0.0001}/{CENTER[0]}'")
+    move_map(s.page, 17, CENTER[1] + 0.0001, CENTER[0])
     wait(s.page, "() => document.getElementById('edit-status').textContent.includes('trop grande ou trop dense')")
     time.sleep(0.6)
     assert requested_areas(fake)
@@ -927,6 +930,30 @@ def locked(page):
 
 def map_eval(page, body):
     return page.evaluate(f"async () => {{ const {{ store }} = await import('/map/store.js'); const m = store.map; {body} }}")
+
+
+def move_map(page, zoom, lat, lon):
+    center = map_eval(page, f"m.jumpTo({{ center: [{lon}, {lat}], zoom: {zoom} }}); const c = m.getCenter(); return [c.lng, c.lat, m.getZoom()];")
+    assert abs(center[0] - lon) < 1e-6 and abs(center[1] - lat) < 1e-6 and abs(center[2] - zoom) < 1e-6, center
+
+
+def wait_for_calls(page, fake, endpoint, above, timeout=10):
+    end = time.time() + timeout
+    while time.time() < end and fake.count(endpoint) <= above:
+        page.wait_for_timeout(50)
+    assert fake.count(endpoint) > above, (endpoint, fake.count(endpoint), page.inner_text("#edit-status"))
+
+
+def wait_settled(page, fake, endpoint="map", quiet=0.6, timeout=10):
+    end = time.time() + timeout
+    seen, since = fake.count(endpoint), time.time()
+    while time.time() < end:
+        page.wait_for_timeout(50)
+        if fake.count(endpoint) != seen:
+            seen, since = fake.count(endpoint), time.time()
+        elif time.time() - since >= quiet:
+            return
+    raise AssertionError(f"{endpoint} calls never settled")
 
 
 def whole_way_inside(page, coords):
@@ -1694,6 +1721,78 @@ def test_the_dev_export_survives_a_reload_and_a_basemap_change_until_reset(sessi
     assert sidewalk_source(s.page) == ["pedestrian", "sidewalk_roads"]
 
 
+def test_the_load_button_opens_the_file_picker_and_a_cancelled_pick_changes_nothing(session, fake):
+    three_streets(fake)
+    s = session()
+    with s.page.expect_file_chooser() as chooser:
+        s.page.click('[data-edit-action="data-load"]')
+    assert chooser.value.element.get_attribute("id") == "edit-data-file"
+    before = s.page.inner_text("#edit-data")
+    s.page.evaluate("document.getElementById('edit-data-file').dispatchEvent(new Event('change'))")
+    time.sleep(0.3)
+    assert s.page.inner_text("#edit-data") == before
+    assert s.page.evaluate("BPNEdit.devData()") is None
+    chooser.value.set_files(files=[{"name": "map.osm", "mimeType": "application/xml", "buffer": osm_xml([(101, line_at(CENTER), street("Rue Test", "Teststraat"))]).encode()}])
+    wait(s.page, "() => document.getElementById('edit-data').textContent.includes('1 rue chargée depuis map.osm')")
+
+
+def test_back_to_the_prod_tiles_restores_the_sidewalk_layer_without_a_reload(session, fake):
+    three_streets(fake)
+    s = session()
+    upload_osm(s.page, osm_xml([(101, line_at(CENTER), street("Rue Test", "Teststraat"))]))
+    wait(s.page, "() => !!BPNEdit.devData()")
+    s.page.click('[data-edit-action="data-reset"]')
+    wait(s.page, "() => BPNEdit.devData() === null")
+    assert sidewalk_source(s.page) == ["pedestrian", "sidewalk_roads"]
+    assert map_eval(s.page, "return !!m.getSource('dev-sidewalk');") is False
+    assert "Charger un export .osm" in s.page.inner_text("#edit-data")
+
+
+def test_a_second_export_replaces_the_first_one(session, fake):
+    three_streets(fake)
+    s = session()
+    upload_osm(s.page, osm_xml([(101, line_at(CENTER), street("Rue Test", "Teststraat"))]), name="first.osm")
+    wait(s.page, "() => document.getElementById('edit-data').textContent.includes('1 rue chargée depuis first.osm')")
+    upload_osm(s.page, osm_xml([
+        (201, line_at(CENTER, dy=-0.0004), street("Rue B", "Bstraat")),
+        (202, line_at(CENTER, dy=-0.0009), {**street("Rue C", "Cstraat"), "sidewalk:both": "no"}),
+    ]), name="second.osm")
+    wait(s.page, "() => document.getElementById('edit-data').textContent.includes('2 rues chargées depuis second.osm')")
+    assert sidewalk_source(s.page) == ["dev-sidewalk", None]
+    assert {p["osm_id"]: p["sw"] for p in dev_features(s.page)} == {201: "unknown", 202: "documented"}
+    assert map_eval(s.page, "return m.getStyle().layers.filter(l => l.id === 'sidewalk-roads').length;") == 1
+
+
+def test_a_file_over_fifty_megabytes_is_refused_without_being_read(session, fake):
+    three_streets(fake)
+    s = session()
+    s.page.evaluate("""() => {
+      const input = document.getElementById('edit-data-file');
+      const file = new File([new Uint8Array(51 * 1048576)], 'huge.osm', { type: 'application/xml' });
+      file.text = () => { window.__readHuge = true; return Promise.resolve(''); };
+      Object.defineProperty(input, 'files', { value: { 0: file, length: 1 }, configurable: true });
+      input.dispatchEvent(new Event('change'));
+    }""")
+    wait(s.page, "() => document.getElementById('edit-data').textContent.includes('Fichier trop gros : 51 Mo, 50 au plus')")
+    assert s.page.evaluate("window.__readHuge === undefined")
+    assert s.page.evaluate("BPNEdit.devData()") is None
+    assert sidewalk_source(s.page) == ["pedestrian", "sidewalk_roads"]
+
+
+def test_a_file_that_cannot_be_read_shows_the_generic_message(session, fake):
+    three_streets(fake)
+    s = session()
+    s.page.evaluate("""() => {
+      const input = document.getElementById('edit-data-file');
+      const file = new File(['<osm/>'], 'broken.osm', { type: 'application/xml' });
+      file.text = () => Promise.reject(new Error('disk gone'));
+      Object.defineProperty(input, 'files', { value: { 0: file, length: 1 }, configurable: true });
+      input.dispatchEvent(new Event('change'));
+    }""")
+    wait(s.page, "() => document.getElementById('edit-data').textContent.includes(\"Le fichier n'a pas pu être lu\")")
+    assert s.page.evaluate("BPNEdit.devData()") is None
+
+
 def test_a_josm_file_with_unsent_objects_or_a_non_osm_file_is_refused(session, fake):
     three_streets(fake)
     s = session()
@@ -1839,7 +1938,7 @@ def test_map_loads_pause_after_the_per_minute_ceiling(session, fake):
     s = session(settings={"mapCallsPerMinute": "2"})
     wait_candidates(s.page, 3)
     for step in (1, 2, 3):
-        s.page.evaluate(f"window.location.hash = '#17.6/{CENTER[1]}/{CENTER[0] + 0.02 * step}'")
+        move_map(s.page, 17.6, CENTER[1], CENTER[0] + 0.02 * step)
         time.sleep(0.6)
     wait(s.page, "() => document.getElementById('edit-status').textContent.includes('chargement en pause')")
     assert fake.count("map") == 2
