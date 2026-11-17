@@ -88,6 +88,22 @@ test("a token that belongs to the other environment never leaves with a call to 
   ]);
 });
 
+test("every call to the API carries this app's User-Agent, other hosts are left alone", async () => {
+  const { installApiChain } = await load("api-meter.js");
+  const { limitConcurrency } = await load("api-queue.js");
+  const { USER_AGENT } = await load("env.js");
+  const seen = [];
+  const target = { fetch: async (input, init) => { seen.push([typeof input === "string" ? input : input.url, new Headers((init && init.headers) || (input && input.headers)).get("User-Agent")]); return new Response("ok"); } };
+  installApiChain(target, { apiUrl: API, limit: limitConcurrency, userAgent: USER_AGENT });
+  await target.fetch(`${API}/api/0.6/map.json`, { headers: { "User-Agent": "https://github.com/osmlab/osm-api-js" } });
+  await target.fetch(new Request(`${API}/api/0.6/way/1/full.json`, { headers: { "User-Agent": "other" } }));
+  await target.fetch(`${API}/api/0.6/user/details.json`);
+  await target.fetch(`${API}/api/0.6/way/2.json`, { headers: { "User-Agent": USER_AGENT } });
+  await target.fetch("https://tiles.example/1.pbf", { headers: { "User-Agent": "kept" } });
+  assert.deepEqual(seen.map(([, ua]) => ua), [USER_AGENT, USER_AGENT, USER_AGENT, USER_AGENT, "kept"]);
+  assert.match(USER_AGENT, /^BrusselsPedestrianNetwork\/\d+\.\d+\.\d+ \(\+https:\/\/github\.com\/PasLoin\/Brussels-Pedestrian-Network\)$/);
+});
+
 const paceOptions = (storage, clock) => ({ storage, env: "dev", windowMs: 60000, maxMeters: 600, blockMeters: 900, repeatMs: 300000, cooldownMs: 60000, now: () => clock.t });
 
 test("editing too fast is measured in metres, so a street cut into short segments is not penalised", async () => {

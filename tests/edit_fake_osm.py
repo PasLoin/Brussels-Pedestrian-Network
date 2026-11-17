@@ -90,6 +90,8 @@ class FakeOsm:
         self.ways[way_id]["version"] += 1
 
     def inject(self, endpoint, status=None, body="", abort=False, after=False, delay=0.0, times=1, skip=0, hook=None):
+        if delay:
+            raise ValueError("a server-side delay blocks the test thread itself, so the page is never observed while waiting; hold the response in the page with hold_api() instead")
         self.faults.append({"endpoint": endpoint, "status": status, "body": body, "abort": abort,
                             "after": after, "delay": delay, "times": times, "skip": skip, "hook": hook})
 

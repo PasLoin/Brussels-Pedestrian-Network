@@ -5,7 +5,7 @@ import { blockApi, createApiMeter, installApiChain } from "./api-meter.js";
 import { limitConcurrency } from "./api-queue.js";
 import { guardEnvironment, ownsSession, tabId } from "./auth.js";
 import { createClient } from "./client.js";
-import { envFromDocument } from "./env.js";
+import { USER_AGENT, envFromDocument } from "./env.js";
 import { createLookTracker } from "./look.js";
 import { createPace } from "./pace.js";
 import { statusView } from "./panel.js";
@@ -43,6 +43,7 @@ installApiChain(window, {
   meter,
   guard,
   authorized: () => ownsSession({ storage, env: env.name }),
+  userAgent: USER_AGENT,
   limit: (fetchImpl, options) => limitConcurrency(fetchImpl, { ...options, max: env.maxConcurrentApi }),
 });
 if (!env.editEnabled) blockApi(window, env.apiUrl);
@@ -50,7 +51,7 @@ const osm = createClient(window.OSM);
 const tab = tabId(window.sessionStorage);
 
 guardEnvironment({ env: env.name, storage, osm });
-osm.configure({ apiUrl: env.apiUrl });
+osm.configure({ apiUrl: env.apiUrl, userAgent: USER_AGENT });
 
 const byId = id => document.getElementById(id);
 const statusEl = byId("edit-status");
