@@ -28,12 +28,16 @@ class PageCoverage:
         self.done = False
         self.cdp = context.new_cdp_session(page)
         self.cdp.send("Profiler.enable")
+        self.start()
+
+    def start(self):
         self.cdp.send("Profiler.startPreciseCoverage", {"callCount": True, "detailed": True})
 
-    def save(self, target):
+    def save(self, target, final=True):
         if self.done:
             return
-        self.done = True
+        if final:
+            self.done = True
         try:
             entries = self.cdp.send("Profiler.takePreciseCoverage")["result"]
         except Exception:
@@ -59,5 +63,13 @@ def track(context, page, origin):
         coverage.save(target)
         return original_close(*args, **kwargs)
 
+    def before_leaving(navigate):
+        def wrapped(*args, **kwargs):
+            coverage.save(target, final=False)
+            return navigate(*args, **kwargs)
+        return wrapped
+
     page.close = close
+    page.reload = before_leaving(page.reload)
+    page.goto = before_leaving(page.goto)
     return lambda: coverage.save(target)
