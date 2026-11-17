@@ -1655,6 +1655,32 @@ def test_a_dev_login_in_another_tab_never_sends_its_token_from_the_beta_page(ses
     assert "Client OAuth non configuré" in s.page.inner_text("#edit-auth")
 
 
+def test_every_api_call_names_this_app_and_never_osm_api_js(session, fake):
+    three_streets(fake)
+    s = session()
+    s.context.add_init_script("""
+      window.__apiHeaders = [];
+      const inner = window.fetch.bind(window);
+      window.fetch = (input, init) => {
+        const url = typeof input === 'string' ? input : input.url;
+        if (url.includes('/api/0.6/')) {
+          const headers = new Headers((init && init.headers) || (typeof input !== 'string' && input.headers) || undefined);
+          window.__apiHeaders.push([url, headers.get('User-Agent')]);
+        }
+        return inner(input, init);
+      };
+    """)
+    s.page.reload()
+    wait_candidates(s.page, 3)
+    click_way(s.page, CENTER[0], CENTER[1] + 0.00001, 101)
+    sent = s.page.evaluate("window.__apiHeaders")
+    expected = s.page.evaluate("import('/edit/env.js').then(m => m.USER_AGENT)")
+    assert expected.startswith("BrusselsPedestrianNetwork/") and "github.com/PasLoin/Brussels-Pedestrian-Network" in expected
+    kinds = {url.split("/api/0.6/")[1].split("?")[0].split(".")[0].split("/")[0] for url, _ in sent}
+    assert {"user", "map", "way"} <= kinds, kinds
+    assert all(ua == expected for _, ua in sent), sent
+
+
 def with_source(tags, source_id):
     return {**tags, "@id": str(source_id), "@type": "way"}
 

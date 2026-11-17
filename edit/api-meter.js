@@ -121,24 +121,27 @@ function requestUrl(input) {
   return typeof input === "string" ? input : input && input.url;
 }
 
-export function withoutAuthorization(input, init) {
+export function rewriteApiHeaders(input, init, { dropAuthorization = false, userAgent = null } = {}) {
   const headers = new Headers((init && init.headers) || (input && typeof input !== "string" && input.headers) || undefined);
-  if (!headers.has("Authorization")) return [input, init];
-  headers.delete("Authorization");
+  const dropping = dropAuthorization && headers.has("Authorization");
+  const renaming = Boolean(userAgent) && headers.get("User-Agent") !== userAgent;
+  if (!dropping && !renaming) return [input, init];
+  if (dropping) headers.delete("Authorization");
+  if (renaming) headers.set("User-Agent", userAgent);
   return [typeof input === "string" ? input : new Request(input, { headers }), { ...(init || {}), headers }];
 }
 
-export function stripForeignAuthorization(fetchImpl, { apiUrl, authorized }) {
+export function apiHeaders(fetchImpl, { apiUrl, authorized = () => true, userAgent = null }) {
   return (input, init) => {
     const url = requestUrl(input);
-    if (typeof url !== "string" || !url.startsWith(apiUrl) || authorized()) return fetchImpl(input, init);
-    return fetchImpl(...withoutAuthorization(input, init));
+    if (typeof url !== "string" || !url.startsWith(apiUrl)) return fetchImpl(input, init);
+    return fetchImpl(...rewriteApiHeaders(input, init, { dropAuthorization: !authorized(), userAgent }));
   };
 }
 
-export function installApiChain(target, { apiUrl, meter = null, limit, guard = null, authorized = () => true }) {
+export function installApiChain(target, { apiUrl, meter = null, limit, guard = null, authorized = () => true, userAgent = null }) {
   const bound = target.fetch.bind(target);
-  const original = stripForeignAuthorization(bound, { apiUrl, authorized });
+  const original = apiHeaders(bound, { apiUrl, authorized, userAgent });
   const counted = meter ? meter.wrap(original) : original;
   const limited = limit(counted, { matches: url => typeof url === "string" && url.startsWith(apiUrl), onWaiting: n => meter && meter.noteWaiting(n) });
   target.fetch = guard ? guard.wrap(limited) : limited;

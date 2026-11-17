@@ -31,6 +31,8 @@ export const ENVS = Object.freeze({
 export const APP_NAME = "BrusselsPedestrianNetwork";
 export const APP_VERSION = "0.2.0";
 export const OSM_API_JS_VERSION = "4.0.1";
+export const APP_URL = "https://github.com/PasLoin/Brussels-Pedestrian-Network";
+export const USER_AGENT = `${APP_NAME}/${APP_VERSION} (+${APP_URL})`;
 export const MAX_WAYS_PER_CHANGESET = 50;
 export const MAX_CONCURRENT_API = 2;
 
