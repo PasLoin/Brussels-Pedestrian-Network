@@ -150,7 +150,7 @@ class Session:
 
     def _route(self, route):
         url = route.request.url
-        if "geoservices-urbis.irisnet.be" in url or "geoservices-grid.irisnet.be" in url:
+        if "geoservices-vector.irisnet.be" in url or "geoservices-grid.irisnet.be" in url:
             return route.fulfill(body=BLANK_PNG, content_type="image/png", headers={"Access-Control-Allow-Origin": "*"})
         if "tiles.openfreemap.org/styles/liberty" in url:
             return route.fulfill(body=BLANK_STYLE, content_type="application/json", headers={"Access-Control-Allow-Origin": "*"})
