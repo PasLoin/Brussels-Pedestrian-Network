@@ -56,8 +56,8 @@ CSP = {
 }
 CSP_ADDITIONS = {
     "index.html": {
-        "img-src": ["https://pasloin.github.io", "https://geoservices-urbis.irisnet.be", "blob:"],
-        "connect-src": ["https://pasloin.github.io", "https://protomaps.github.io", "https://geoservices-urbis.irisnet.be"],
+        "img-src": ["https://pasloin.github.io", "https://geoservices-urbis.irisnet.be", "https://geoservices-grid.irisnet.be", "blob:"],
+        "connect-src": ["https://pasloin.github.io", "https://protomaps.github.io", "https://geoservices-urbis.irisnet.be", "https://geoservices-grid.irisnet.be"],
     },
 }
 DEV_API = "https://master.apis.dev.openstreetmap.org"

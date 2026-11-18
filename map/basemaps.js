@@ -5,7 +5,7 @@ import { BASE_STYLE_OVERRIDES } from "./layers.js";
 
 const LIBERTY_URL = "https://tiles.openfreemap.org/styles/liberty";
 const ZINNEKE_BASE = "https://pasloin.github.io/ZinnekeTiles/";
-const URBIS_GRID_WMS = "https://geoservices-urbis.irisnet.be/geoserver/urbisgrid/wms";
+const URBIS_GRID_WMS = "https://geoservices-grid.irisnet.be/geoserver/urbisgrid/ows";
 const URBIS_TOPO_WMS = "https://geoservices-urbis.irisnet.be/geoserver/urbistopo/wms";
 const URBIS_ATTRIBUTION = '<a href="https://datastore.brussels/web/urbis-download" target="_blank" rel="noopener">UrbIS</a> © <a href="https://paradigm.brussels" target="_blank" rel="noopener">Paradigm</a>';
 const URBIS_THUMB_BBOX = "484351,6594098,484685,6594433";
