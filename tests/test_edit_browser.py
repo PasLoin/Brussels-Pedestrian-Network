@@ -1734,6 +1734,61 @@ def test_next_says_so_when_the_index_has_nothing_left(session, fake):
     assert fake.count("map") == 0
 
 
+def test_skipping_the_last_street_of_the_view_jumps_to_the_nearest_indexed_street(session, fake):
+    fake.add_way(101, line_at(CENTER), street("Rue A", "Astraat"))
+    far = (CENTER[0] + 0.02, CENTER[1])
+    fake.add_way(107, line_at(far), street("Rue Loin", "Verstraat"))
+    s = beta_with_tiles(session, fake, [(101, line_at(CENTER), "unknown", "residential")], index=[[101, *CENTER], [107, *far]])
+    wait_candidates(s.page, 1)
+    s.page.keyboard.press("ArrowRight")
+    wait_selected(s.page, 101)
+    s.page.click('[data-edit-action="skip"]')
+    wait_selected(s.page, 107)
+    assert json.loads(s.page.evaluate("localStorage.getItem('bpn.skipped.prod')")) == [101]
+    assert fake.count("map") == 0
+
+
+def test_skipping_the_last_street_with_nothing_left_clears_the_selection_and_says_so(session, fake):
+    fake.add_way(101, line_at(CENTER), street("Rue A", "Astraat"))
+    s = beta_with_tiles(session, fake, [(101, line_at(CENTER), "unknown", "residential")], index=[[101, *CENTER]])
+    wait_candidates(s.page, 1)
+    s.page.keyboard.press("ArrowRight")
+    wait_selected(s.page, 101)
+    s.page.click('[data-edit-action="skip"]')
+    wait(s.page, "() => document.getElementById('edit-nav').textContent.includes('Tous les candidats de la vue ont été parcourus')")
+    assert selected_way(s.page) is None
+    assert fake.count("map") == 0
+
+
+def test_next_without_a_selection_searches_beyond_a_view_already_done(session, fake):
+    fake.add_way(101, line_at(CENTER), street("Rue A", "Astraat"))
+    far = (CENTER[0] + 0.02, CENTER[1])
+    fake.add_way(107, line_at(far), street("Rue Loin", "Verstraat"))
+    roads = [(101, line_at(CENTER), "unknown", "residential")]
+    s = beta_with_tiles(session, fake, roads, index=[[101, *CENTER], [107, *far]])
+    wait_candidates(s.page, 1)
+    s.page.evaluate("localStorage.setItem('bpn.skipped.prod', JSON.stringify([101]))")
+    s.page.reload()
+    show_tiles(s.page, roads)
+    wait_candidates(s.page, 1)
+    s.page.click('[data-edit-action="next"]')
+    wait_selected(s.page, 107)
+    assert fake.count("map") == 0
+
+
+def test_skipping_the_last_street_on_dev_loads_around_it_and_moves_on(session, fake):
+    fake.add_way(101, line_at(CENTER), street("Rue A", "Astraat"))
+    fake.add_way(102, line_at(CENTER, dy=-0.0045, dx=0.005, length=0.0006), street("Rue Loin", "Verstraat"))
+    s = session()
+    wait_candidates(s.page, 1)
+    s.page.keyboard.press("ArrowRight")
+    wait_selected(s.page, 101)
+    time.sleep(0.8)
+    wait(s.page, "() => document.getElementById('edit-status').textContent.includes('dans la vue')")
+    s.page.click('[data-edit-action="skip"]')
+    wait_selected(s.page, 102)
+
+
 def test_short_streets_are_candidates_but_stay_off_the_public_layer(session, fake):
     three_streets(fake)
     fake.add_way(110, line_at(CENTER, dy=0.0002), street("Bout", "Eind"))
