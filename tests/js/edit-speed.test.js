@@ -1,19 +1,12 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const path = require("node:path");
-const { pathToFileURL } = require("node:url");
 const { html } = require("../../html.js");
 const { i18nFor } = require("./dictionaries.js");
+const { loadEdit: load, memoryStorage } = require("./helpers.js");
 
 globalThis.html = html;
 
-const load = name => import(pathToFileURL(path.join(__dirname, "..", "..", "edit", name)).href);
 const key = (k, extra = {}) => ({ key: k, target: { tagName: "BODY" }, ...extra });
-
-function memoryStorage(initial = {}) {
-  const data = new Map(Object.entries(initial));
-  return { getItem: k => (data.has(k) ? data.get(k) : null), setItem: (k, v) => data.set(k, String(v)), removeItem: k => data.delete(k) };
-}
 
 test("keys map to editing actions and Tab is never taken", async () => {
   const { shortcutFor } = await load("shortcuts.js");

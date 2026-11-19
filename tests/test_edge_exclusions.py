@@ -1,7 +1,6 @@
 import pytest
 
-from build_graph import build_graph
-from clean_osm import clean_osm
+from osm_fixtures import cleaned_graph, one_way_per_case_xml
 
 _EXCLUDED = [
     ("footway foot=no", {"highway": "footway", "foot": "no"}),
@@ -57,31 +56,9 @@ _KEPT = [
 _ALL = _EXCLUDED + _KEPT
 
 
-def _osm_xml():
-    nodes, ways = [], []
-    for i, (name, tags) in enumerate(_ALL):
-        lat = 50.80 + i * 0.002
-        a, b = 2 * i + 1, 2 * i + 2
-        nodes.append(f'<node id="{a}" lat="{lat:.4f}" lon="4.3000" version="1"/>')
-        nodes.append(f'<node id="{b}" lat="{lat:.4f}" lon="4.3010" version="1"/>')
-        tag_xml = "".join(f'<tag k="{k}" v="{v}"/>' for k, v in tags.items())
-        ways.append(
-            f'<way id="{100 + i}" version="1"><nd ref="{a}"/><nd ref="{b}"/>'
-            f'<tag k="name" v="{name}"/>{tag_xml}</way>'
-        )
-    return (
-        "<?xml version='1.0' encoding='UTF-8'?>\n<osm version=\"0.6\" generator=\"test\">\n"
-        + "\n".join(nodes) + "\n" + "\n".join(ways) + "\n</osm>\n"
-    )
-
-
 @pytest.fixture(scope="module")
 def bundle(tmp_path_factory):
-    folder = tmp_path_factory.mktemp("exclusions")
-    raw, clean = folder / "raw.osm", folder / "clean.osm"
-    raw.write_text(_osm_xml())
-    clean_osm(str(raw), str(clean))
-    return build_graph(str(clean))
+    return cleaned_graph(tmp_path_factory.mktemp("exclusions"), one_way_per_case_xml(_ALL))
 
 
 @pytest.mark.parametrize("name, tags", _EXCLUDED, ids=[c[0] for c in _EXCLUDED])
@@ -123,10 +100,7 @@ def test_excluded_way_cuts_the_only_connection(tmp_path):
   <way id="12" version="1"><nd ref="3"/><nd ref="4"/><tag k="highway" v="footway"/><tag k="name" v="East"/></way>
 </osm>
 """
-    raw, clean = tmp_path / "raw.osm", tmp_path / "clean.osm"
-    raw.write_text(xml)
-    clean_osm(str(raw), str(clean))
-    gb = build_graph(str(clean))
+    gb = cleaned_graph(tmp_path, xml)
 
     index = {osmid: i for i, osmid in enumerate(gb.node_list)}
     paths = gb.graph.get_shortest_paths(index[1], to=index[4], weights="weight", output="epath")

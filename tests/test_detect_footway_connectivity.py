@@ -1,30 +1,13 @@
-import json
-import math
-
 import pytest
 
 from detect_footway_connectivity import detect_footway_connectivity_candidates
 from front_contract import assert_layer_contract
+from geo_fixtures import metric_xy as _xy, write_features as _write_geojson
 
 
 @pytest.fixture(autouse=True)
 def _work_in_tmp(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-
-
-LAT0 = 50.85
-LON0 = 4.35
-
-_M_PER_DEG_LAT = 111_320.0
-_M_PER_DEG_LON = 111_320.0 * math.cos(math.radians(LAT0))
-
-
-def _xy(x_m: float, y_m: float) -> list[float]:
-    return [LON0 + x_m / _M_PER_DEG_LON, LAT0 + y_m / _M_PER_DEG_LAT]
-
-
-def _write_geojson(path, features):
-    path.write_text(json.dumps({"type": "FeatureCollection", "features": features}))
 
 
 def _road_feature(coords_m, name="Test Road", highway="residential", fid=1):

@@ -1,10 +1,8 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const path = require("node:path");
-const { pathToFileURL } = require("node:url");
 const { i18nFor } = require("./dictionaries.js");
+const { loadEdit: load } = require("./helpers.js");
 
-const load = name => import(pathToFileURL(path.join(__dirname, "..", "..", "edit", name)).href);
 const apiError = (status, text) => Object.assign(new Error(`OSM API: ${text}`), { cause: status });
 
 test("every OSM failure is sorted into a kind the user can act on", async () => {

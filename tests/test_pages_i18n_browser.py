@@ -1,23 +1,12 @@
-import functools
-import http.server
 import json
-import os
 import re
-import threading
 
 import pytest
 
 import build_site
+from browser_support import require_playwright, serve
 
-try:
-    from playwright.sync_api import sync_playwright
-except ImportError:
-    sync_playwright = None
-
-if sync_playwright is None:
-    if os.environ.get("REQUIRE_BROWSER_TESTS") == "1":
-        raise RuntimeError("REQUIRE_BROWSER_TESTS=1 but playwright is not installed")
-    pytest.skip("playwright not installed", allow_module_level=True)
+require_playwright()
 
 from test_stats_json_contract import _BAD_TEXT, _CHART_STUB
 
@@ -95,20 +84,8 @@ def server(tmp_path_factory):
     (site / "stats.json").write_text(json.dumps(STATS), encoding="utf-8")
     (site / "history.json").write_text(json.dumps(HISTORY), encoding="utf-8")
     (site / "state.txt").write_text("build_timestamp=2026-11-08T01:15:00Z\n", encoding="utf-8")
-    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(site))
-    handler.log_message = lambda *args: None
-    httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
-    threading.Thread(target=httpd.serve_forever, daemon=True).start()
-    yield f"http://127.0.0.1:{httpd.server_address[1]}/"
-    httpd.shutdown()
-
-
-@pytest.fixture(scope="module")
-def browser():
-    with sync_playwright() as p:
-        instance = p.chromium.launch()
-        yield instance
-        instance.close()
+    with serve(site) as url:
+        yield url
 
 
 def _render(browser, url):

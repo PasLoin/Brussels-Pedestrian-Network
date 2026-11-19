@@ -2,24 +2,11 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const { pathToFileURL } = require("node:url");
 const { html } = require("../../html.js");
 const { i18nFor } = require("./dictionaries.js");
+const { EDIT, loadEdit: load, memoryStorage } = require("./helpers.js");
 
 globalThis.html = html;
-
-const EDIT = path.join(__dirname, "..", "..", "edit");
-const load = name => import(pathToFileURL(path.join(EDIT, name)).href);
-
-function memoryStorage(initial = {}) {
-  const data = new Map(Object.entries(initial));
-  return {
-    getItem: k => (data.has(k) ? data.get(k) : null),
-    setItem: (k, v) => data.set(k, String(v)),
-    removeItem: k => data.delete(k),
-    dump: () => Object.fromEntries(data),
-  };
-}
 
 function fakeOsm({ loginImpl } = {}) {
   const calls = [];

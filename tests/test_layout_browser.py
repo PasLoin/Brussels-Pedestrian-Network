@@ -1,22 +1,11 @@
-import functools
 import re
-import http.server
-import os
-import threading
 
 import pytest
 
 import build_site
+from browser_support import chromium, require_playwright, serve
 
-try:
-    from playwright.sync_api import sync_playwright
-except ImportError:
-    sync_playwright = None
-
-if sync_playwright is None:
-    if os.environ.get("REQUIRE_BROWSER_TESTS") == "1":
-        raise RuntimeError("REQUIRE_BROWSER_TESTS=1 but playwright is not installed")
-    pytest.skip("playwright not installed", allow_module_level=True)
+require_playwright()
 
 
 _VIEWPORTS = [
@@ -68,12 +57,8 @@ _LANGS = build_site.published_languages(_CONFIG)
 def site_root(tmp_path_factory):
     site = tmp_path_factory.mktemp("site")
     build_site.build(site)
-    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(site))
-    httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
-    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
-    thread.start()
-    yield f"http://127.0.0.1:{httpd.server_address[1]}/"
-    httpd.shutdown()
+    with serve(site) as url:
+        yield url
 
 
 @pytest.fixture(scope="module", params=_LANGS)
@@ -88,13 +73,11 @@ def server(site_root, lang):
 
 @pytest.fixture(scope="module")
 def page(server, lang):
-    with sync_playwright() as p:
-        browser = p.chromium.launch()
+    with chromium() as browser:
         pg = browser.new_page(locale=_CONFIG["languages"][lang]["locale"])
         pg.goto(server, wait_until="domcontentloaded")
         pg.wait_for_function("() => window.BPNMap !== undefined")
         yield pg
-        browser.close()
 
 
 def _overlap(a, b):

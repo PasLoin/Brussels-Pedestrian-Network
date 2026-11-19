@@ -1,18 +1,10 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const path = require("node:path");
-const { pathToFileURL } = require("node:url");
 const { html } = require("../../html.js");
 const { i18nFor } = require("./dictionaries.js");
+const { loadEdit: load, memoryStorage } = require("./helpers.js");
 
 globalThis.html = html;
-
-const load = name => import(pathToFileURL(path.join(__dirname, "..", "..", "edit", name)).href);
-
-function memoryStorage() {
-  const data = new Map();
-  return { getItem: k => (data.has(k) ? data.get(k) : null), setItem: (k, v) => data.set(k, String(v)), removeItem: k => data.delete(k) };
-}
 
 test("a street seen whole stays seen for its version until the flag expires", async () => {
   const { createReviewStore, reviewKey } = await load("review.js");

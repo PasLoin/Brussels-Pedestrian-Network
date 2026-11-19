@@ -7,9 +7,8 @@ from pyproj import Transformer
 
 import export
 import routing
-from build_graph import build_graph
-from clean_osm import clean_osm
 from export import undirected_edge_groups
+from osm_fixtures import cleaned_graph
 from simulation import drop_unsnapped, simulate_flows
 
 _LAT0, _LON0 = 50.80, 4.30
@@ -134,10 +133,7 @@ def _main_component_mask(graph):
 
 
 def _simulate(tmp_path, monkeypatch, kind):
-    raw, clean = tmp_path / "raw.osm", tmp_path / "clean.osm"
-    raw.write_text(_street_xml(kind))
-    clean_osm(str(raw), str(clean))
-    gb = build_graph(str(clean))
+    gb = cleaned_graph(tmp_path, _street_xml(kind))
     groups = undirected_edge_groups(gb.edges.tuples, gb.edges.geoms, gb.edges.lengths)
     mask = _main_component_mask(gb.graph)
     assert not mask.all()

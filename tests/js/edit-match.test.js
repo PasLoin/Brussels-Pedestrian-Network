@@ -1,9 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const path = require("node:path");
-const { pathToFileURL } = require("node:url");
+const { loadEdit: load } = require("./helpers.js");
 
-const load = name => import(pathToFileURL(path.join(__dirname, "..", "..", "edit", name)).href);
 const line = (id, coords, tags = {}) => ({ type: "Feature", properties: { osm_id: id, ...tags }, geometry: { type: "LineString", coordinates: coords } });
 
 const street = [[4.4, 50.8], [4.4012, 50.8]];

@@ -1,15 +1,8 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const path = require("node:path");
-const { pathToFileURL } = require("node:url");
+const { loadEdit: load, memoryStorage } = require("./helpers.js");
 
-const load = name => import(pathToFileURL(path.join(__dirname, "..", "..", "edit", name)).href);
 const API = "https://dev.example";
-
-function memoryStorage() {
-  const data = new Map();
-  return { getItem: k => (data.has(k) ? data.get(k) : null), setItem: (k, v) => data.set(k, String(v)) };
-}
 
 test("every OSM API path osm-api and the editor use gets its own counter", async () => {
   const { classifyApiCall } = await load("api-meter.js");

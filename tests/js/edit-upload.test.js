@@ -1,20 +1,11 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const path = require("node:path");
-const { pathToFileURL } = require("node:url");
 const { html } = require("../../html.js");
 const { i18nFor } = require("./dictionaries.js");
 const OSM = require("osm-api/dist/index.min.js");
+const { loadEdit: load, memoryStorage } = require("./helpers.js");
 
 globalThis.html = html;
-
-const EDIT = path.join(__dirname, "..", "..", "edit");
-const load = name => import(pathToFileURL(path.join(EDIT, name)).href);
-
-function memoryStorage(initial = {}) {
-  const data = new Map(Object.entries(initial));
-  return { getItem: k => (data.has(k) ? data.get(k) : null), setItem: (k, v) => data.set(k, String(v)), removeItem: k => data.delete(k) };
-}
 
 const SETTINGS = { maxWaysPerChangeset: 50, maxChangesetSpanM: 1000, maxChangesetsPerUpload: 3 };
 const UCCLE = [4.3330, 50.8000, 4.3340, 50.8005];

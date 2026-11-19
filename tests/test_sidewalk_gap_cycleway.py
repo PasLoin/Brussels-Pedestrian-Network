@@ -2,15 +2,11 @@ import json
 
 import geopandas as gpd
 import pytest
-from pyproj import Transformer
 from shapely.geometry import LineString
 
 from front_contract import assert_layer_contract
+from geo_fixtures import TO_WGS as _TO_WGS84, X0 as _X0, Y0 as _Y0
 from sidewalk_gap import _foot_cycleway_mask, _load_foot_cycleways, detect_sidewalk_gaps
-
-_TO_WGS84 = Transformer.from_crs("EPSG:31370", "EPSG:4326", always_xy=True)
-
-_X0, _Y0 = 150000.0, 170000.0
 
 
 def _wgs84_coords(coords):

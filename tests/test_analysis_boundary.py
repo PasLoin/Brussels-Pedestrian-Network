@@ -3,7 +3,6 @@ import json
 import geopandas as gpd
 import igraph as ig
 import pytest
-from pyproj import Transformer
 from shapely.geometry import LineString, Point, box
 
 from analysis_boundary import (
@@ -16,31 +15,11 @@ from analysis_boundary import (
 from detect_graph_islands import detect_graph_islands
 from detect_missing_crossings import detect_missing_crossings
 from detect_tactile_paving_issues import detect_tactile_paving_issues
+from geo_fixtures import TO_WGS as _TO_WGS, X0 as _X0, Y0 as _Y0
+from geo_fixtures import lambert_line as _line, lambert_point as _point, write_features as _write
 from sidewalk_gap import detect_sidewalk_gaps
 
-_TO_WGS = Transformer.from_crs("EPSG:31370", "EPSG:4326", always_xy=True)
-_X0, _Y0 = 150000.0, 170000.0
-
 AREA = box(_X0 - 50, _Y0 - 50, _X0 + 100, _Y0 + 50)
-
-
-def _ll(x, y):
-    return list(_TO_WGS.transform(_X0 + x, _Y0 + y))
-
-
-def _line(coords, props):
-    return {"type": "Feature", "properties": props,
-            "geometry": {"type": "LineString", "coordinates": [_ll(*c) for c in coords]}}
-
-
-def _point(x, y, props):
-    return {"type": "Feature", "properties": props,
-            "geometry": {"type": "Point", "coordinates": _ll(x, y)}}
-
-
-def _write(path, features):
-    path.write_text(json.dumps({"type": "FeatureCollection", "features": features}))
-    return str(path)
 
 
 def _ring(name, coords):

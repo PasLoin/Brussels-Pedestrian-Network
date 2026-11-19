@@ -3,7 +3,6 @@ import json
 import geopandas as gpd
 import numpy as np
 import pytest
-from pyproj import Transformer
 from shapely.geometry import LineString, Point
 
 import export
@@ -15,9 +14,7 @@ from export import (
     undirected_edge_groups,
 )
 from front_contract import assert_layer_contract
-
-_X0, _Y0 = 150000.0, 170000.0
-_TO_WGS = Transformer.from_crs("EPSG:31370", "EPSG:4326", always_xy=True)
+from geo_fixtures import TO_WGS as _TO_WGS, X0 as _X0, Y0 as _Y0
 
 
 def _seg(x1, y1, x2, y2):

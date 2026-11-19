@@ -2,9 +2,8 @@ import math
 
 import pytest
 
-from build_graph import build_graph
-from clean_osm import clean_osm
 from routing import route_pairs
+from osm_fixtures import cleaned_graph
 
 _M_PER_DEG_LAT = 111_320.0
 _LAT0, _LON0 = 50.80, 4.30
@@ -94,10 +93,7 @@ def _build_scenarios():
 def network(tmp_path_factory):
     folder = tmp_path_factory.mktemp("route_choice")
     text, endpoints = _build_scenarios()
-    raw, clean = folder / "raw.osm", folder / "clean.osm"
-    raw.write_text(text)
-    clean_osm(str(raw), str(clean))
-    return build_graph(str(clean)), endpoints
+    return cleaned_graph(folder, text), endpoints
 
 
 def _chosen(network, name, reverse=False):

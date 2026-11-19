@@ -3,7 +3,6 @@ import re
 from xml.sax.saxutils import quoteattr
 
 import pytest
-from pyproj import Transformer
 
 import main
 from front_contract import (
@@ -13,9 +12,7 @@ from front_contract import (
     get_path,
     read_text,
 )
-
-_TO_WGS = Transformer.from_crs("EPSG:31370", "EPSG:4326", always_xy=True)
-_X0, _Y0 = 150000.0, 170000.0
+from geo_fixtures import lambert_ll as _ll, write_features as _write
 
 STREET = "Rue de l'Essai"
 ISLAND_STREET = "Sentier de l'Îlot"
@@ -51,10 +48,6 @@ ADDRESSES = [
 PLATFORM_RING = [(595, 95), (635, 95), (635, 105), (595, 105), (595, 95)]
 
 
-def _ll(x, y):
-    return list(_TO_WGS.transform(_X0 + x, _Y0 + y))
-
-
 def _line(node_ids, props):
     return {"type": "Feature", "properties": props,
             "geometry": {"type": "LineString", "coordinates": [_ll(*NODES[n]) for n in node_ids]}}
@@ -68,10 +61,6 @@ def _point(xy, props):
 def _polygon(ring, props):
     return {"type": "Feature", "properties": props,
             "geometry": {"type": "Polygon", "coordinates": [[_ll(*xy) for xy in ring]]}}
-
-
-def _write(path, features):
-    path.write_text(json.dumps({"type": "FeatureCollection", "features": features}))
 
 
 def _osm_xml():

@@ -1,13 +1,10 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const path = require("node:path");
-const { pathToFileURL } = require("node:url");
 const { html } = require("../../html.js");
 const { i18nFor } = require("./dictionaries.js");
+const { loadEdit: load } = require("./helpers.js");
 
 globalThis.html = html;
-
-const load = name => import(pathToFileURL(path.join(__dirname, "..", "..", "edit", name)).href);
 
 function parsed(ways, extraNodes = []) {
   const nodes = new Map([[1, [4.4, 50.8]], [2, [4.4005, 50.8]], [3, [4.40005, 50.8]], ...extraNodes]);

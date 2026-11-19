@@ -1,11 +1,8 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const path = require("node:path");
-const { pathToFileURL } = require("node:url");
 const { DOMParser } = require("linkedom");
 const { IDBFactory } = require("fake-indexeddb");
-
-const load = name => import(pathToFileURL(path.join(__dirname, "..", "..", "edit", name)).href);
+const { loadEdit: load } = require("./helpers.js");
 
 function osm(body) {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<osm version="0.6" generator="test">${body}</osm>`;

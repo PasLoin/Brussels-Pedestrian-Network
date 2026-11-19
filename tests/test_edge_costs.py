@@ -3,9 +3,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-from build_graph import build_graph
-from clean_osm import clean_osm
 from config import EDGE_COST, PED_HIGHWAY_TYPES
+from osm_fixtures import cleaned_graph, one_way_per_case_xml
 
 _CASES = [
     ("footway", {"highway": "footway"}, 1.0, False),
@@ -49,31 +48,9 @@ _EXPECTED_HIGHWAY = {
 }
 
 
-def _osm_xml():
-    nodes, ways = [], []
-    for i, (name, tags, _, _) in enumerate(_CASES):
-        lat = 50.80 + i * 0.002
-        a, b = 2 * i + 1, 2 * i + 2
-        nodes.append(f'<node id="{a}" lat="{lat:.4f}" lon="4.3000" version="1"/>')
-        nodes.append(f'<node id="{b}" lat="{lat:.4f}" lon="4.3010" version="1"/>')
-        tag_xml = "".join(f'<tag k="{k}" v="{v}"/>' for k, v in tags.items())
-        ways.append(
-            f'<way id="{100 + i}" version="1"><nd ref="{a}"/><nd ref="{b}"/>'
-            f'<tag k="name" v="{name}"/>{tag_xml}</way>'
-        )
-    return (
-        "<?xml version='1.0' encoding='UTF-8'?>\n<osm version=\"0.6\" generator=\"test\">\n"
-        + "\n".join(nodes) + "\n" + "\n".join(ways) + "\n</osm>\n"
-    )
-
-
 @pytest.fixture(scope="module")
 def bundle(tmp_path_factory):
-    folder = tmp_path_factory.mktemp("costs")
-    raw, clean = folder / "raw.osm", folder / "clean.osm"
-    raw.write_text(_osm_xml())
-    clean_osm(str(raw), str(clean))
-    return build_graph(str(clean))
+    return cleaned_graph(tmp_path_factory.mktemp("costs"), one_way_per_case_xml([c[:2] for c in _CASES]))
 
 
 def _edges_named(bundle, name):

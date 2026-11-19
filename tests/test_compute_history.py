@@ -1,12 +1,9 @@
 import pytest
-from pyproj import Transformer
 
 from compute_history import _BrusselsStatsHandler, _build_record
 from config import PED_HIGHWAY_TYPES
 from front_contract import HISTORY_PATHS
-
-_TO_WGS = Transformer.from_crs("EPSG:31370", "EPSG:4326", always_xy=True)
-_X0, _Y0 = 150000.0, 170000.0
+from geo_fixtures import TO_WGS as _TO_WGS, X0 as _X0, Y0 as _Y0
 
 
 def _way(tags, length_m=1000.0, dy=0.0):
