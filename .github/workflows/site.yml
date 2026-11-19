@@ -80,6 +80,7 @@ jobs:
             graph.json
             pedestrian.pmtiles
             communes.geojson
+            edit_candidates.json
           sparse-checkout-cone-mode: false
 
       - name: Reuse published data
@@ -92,6 +93,7 @@ jobs:
             cp "published/$f" _site/
           done
           if [[ -s published/communes.geojson ]]; then cp published/communes.geojson _site/; fi
+          if [[ -s published/edit_candidates.json ]]; then cp published/edit_candidates.json _site/; else echo "::warning::edit_candidates.json not published yet, Next in the prod editor stays within the loaded tiles."; fi
           if [[ -f history.json ]] && jq empty history.json 2>/dev/null; then
             cp history.json _site/
           else
