@@ -189,7 +189,8 @@ export const PEDESTRIAN_LAYERS = [
   },
   {
     id: "sidewalk-roads", type: "line", source: "pedestrian", "source-layer": "sidewalk_roads",
-    minzoom: 13, layout: { "line-cap": "round", "line-join": "round", visibility: "none" },
+    minzoom: 13, filter: ["!=", ["get", "short"], true],
+    layout: { "line-cap": "round", "line-join": "round", visibility: "none" },
     paint: {
       "line-color": ["match", ["get", "sw"],
         "separate",   "#22c55e",

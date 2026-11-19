@@ -12,6 +12,7 @@ import { statusView } from "./panel.js";
 import { createQueue } from "./queue.js";
 import { createReviewStore } from "./review.js";
 import { createSkipList } from "./skipped.js";
+import { createHandledList } from "./handled.js";
 import { installAuthPanel } from "./app/auth-panel.js";
 import { installCamera } from "./app/camera.js";
 import { installCandidateLoader } from "./app/candidate-loader.js";
@@ -64,6 +65,7 @@ const ctx = {
   meter,
   queue: createQueue({ storage, env: env.name }),
   skipped: createSkipList({ storage, env: env.name }),
+  handled: createHandledList({ storage, env: env.name }),
   reviews: createReviewStore({ storage, env: env.name, ttlMs: env.reviewTtlMs }),
   looks: createLookTracker({ storage, env: env.name, history: env.lookHistory, tolerance: env.lookQuickTolerance }),
   pace: createPace({

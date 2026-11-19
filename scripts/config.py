@@ -58,6 +58,8 @@ PED_HIGHWAY_TYPES = frozenset({
     "platform", "corridor",
 })
 
+EDIT_CANDIDATE_HIGHWAYS = frozenset({"residential"})
+
 ROAD_TYPES_SIDEWALK_EXPECTED = frozenset({
     "residential", "service", "unclassified",
     "tertiary", "tertiary_link",

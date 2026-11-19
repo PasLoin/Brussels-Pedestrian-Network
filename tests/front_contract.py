@@ -79,7 +79,7 @@ LAYER_PROPS = {
         "osm_id", "type", "way_osm_id",
     }),
     "sidewalk_gaps": frozenset({"name"}),
-    "sidewalk_roads": frozenset({"highway", "length_m", "name", "osm_id", "sw"}),
+    "sidewalk_roads": frozenset({"highway", "length_m", "name", "osm_id", "short", "sw"}),
     "tactile_paving_issues": frozenset({
         "crossing_tp", "kerb1_tp", "kerb2_tp", "osm_id", "partner_way_osm_id",
         "reason", "sides_checked", "way_osm_id",
