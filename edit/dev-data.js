@@ -84,7 +84,6 @@ export function sidewalkRoadsFromOsm({ nodes, ways }) {
     const coords = way.refs.map(ref => nodes.get(ref));
     if (coords.length < 2 || coords.some(c => !c || !Number.isFinite(c[0]) || !Number.isFinite(c[1]))) continue;
     const length = lineLengthM(coords);
-    if (length < MIN_LENGTH_M) continue;
     features.push({
       type: "Feature",
       id: way.id,
@@ -95,6 +94,7 @@ export function sidewalkRoadsFromOsm({ nodes, ways }) {
         osm_id: way.id,
         highway,
         length_m: Math.round(length * 10) / 10,
+        short: length < MIN_LENGTH_M,
       },
     });
   }

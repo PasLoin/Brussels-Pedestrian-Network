@@ -123,8 +123,9 @@ def intent_for(fake, way_id, set_tags=None):
 BLANK_PNG = bytes.fromhex("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c6360606060000000050001a5f645400000000049454e44ae426082")
 
 class Session:
-    def __init__(self, browser, server, fake, logged_in=True, queue=None, auth_env="dev", center=CENTER, zoom=17.5, editing=True, settings=None, page_name="devtest.html"):
+    def __init__(self, browser, server, fake, logged_in=True, queue=None, auth_env="dev", center=CENTER, zoom=17.5, editing=True, settings=None, page_name="devtest.html", prod_fake=False):
         self.fake = fake
+        self.prod_fake = prod_fake
         self.aborted = []
         self.aborted_auth = []
         self.settings = {"reviewZoom": "null", "minLookMs": "0", "paceMaxMeters": "1000000", "paceBlockMeters": "1000000", **(settings or {})}
@@ -154,7 +155,7 @@ class Session:
             return route.fulfill(body=BLANK_PNG, content_type="image/png", headers={"Access-Control-Allow-Origin": "*"})
         if "tiles.openfreemap.org/styles/liberty" in url:
             return route.fulfill(body=BLANK_STYLE, content_type="application/json", headers={"Access-Control-Allow-Origin": "*"})
-        if DEV_HOST in url:
+        if DEV_HOST in url or (self.prod_fake and url.startswith(PROD_API)):
             return self.fake.handle(route)
         if self.settings and url.split("?")[0].endswith("/edit/env.js"):
             body = route.fetch().text()
@@ -787,6 +788,46 @@ def selected_way(page):
 
 def wait_selected(page, way_id):
     wait(page, f"() => document.getElementById('edit-detail').textContent.includes('w{way_id}') && !!document.querySelector('[data-edit-action=choose]')")
+
+
+PROD_API = "https://api.openstreetmap.org/"
+
+
+def tile_roads(page, roads):
+    features = [{"type": "Feature", "geometry": {"type": "LineString", "coordinates": road[1]},
+                 "properties": {"osm_id": road[0], "sw": road[2], "highway": road[3], "name": "", "length_m": 60,
+                                "short": bool(road[4]) if len(road) > 4 else False}}
+                for road in roads]
+    wait(page, "async () => { const { store } = await import('/map/store.js'); return !!(store.map && store.map.getLayer('sidewalk-roads')); }")
+    map_eval(page, f"""
+      const def = m.getStyle().layers.find(l => l.id === 'sidewalk-roads');
+      const order = m.getStyle().layers.map(l => l.id);
+      const before = order[order.indexOf('sidewalk-roads') + 1];
+      m.removeLayer('sidewalk-roads');
+      if (m.getSource('tiles-test')) m.removeSource('tiles-test');
+      m.addSource('tiles-test', {{ type: 'geojson', data: {{ type: 'FeatureCollection', features: {json.dumps(features)} }} }});
+      const {{ ['source-layer']: _, ...rest }} = def;
+      m.addLayer({{ ...rest, source: 'tiles-test', layout: {{ ...(rest.layout || {{}}), visibility: 'visible' }} }}, before);
+      return true;
+    """)
+
+
+def beta_with_tiles(session, fake, roads, state=None, index=None):
+    s = session(page_name="beta.html", logged_in=False, editing=False, prod_fake=True)
+    if state is not None:
+        s.page.route("**/state.txt", lambda r: r.fulfill(body=state, content_type="text/plain"))
+    if index is not None:
+        s.page.route("**/edit_candidates.json", lambda r: r.fulfill(body=json.dumps({"ways": index}), content_type="application/json"))
+    show_tiles(s.page, roads)
+    return s
+
+
+def show_tiles(page, roads):
+    enter_edit(page)
+    wait(page, "async () => { const { store } = await import('/map/store.js'); return BPNMap.currentBasemap() === 'urbis-ortho' && store.map.isStyleLoaded() && !!store.map.getLayer('sidewalk-roads'); }")
+    tile_roads(page, roads)
+    center = map_eval(page, "const c = m.getCenter(); return [c.lng, c.lat, m.getZoom()];")
+    move_map(page, center[2], center[1], center[0] + 0.00001)
 
 
 def three_streets(fake):
@@ -1632,10 +1673,118 @@ def test_the_beta_page_runs_in_prod_without_a_client_and_never_touches_the_dev_s
     enter_edit(s.page)
     assert "Client OAuth non configuré" in s.page.inner_text("#edit-auth")
     assert s.page.evaluate("document.querySelector('[data-edit-action=\"login\"]')") is None
-    time.sleep(0.5)
-    prod_calls = [u for u in s.aborted if "openstreetmap.org" in u]
-    assert prod_calls and all(u.startswith("https://api.openstreetmap.org/api/0.6/map") for u in prod_calls)
+    s.page.wait_for_timeout(800)
+    assert [u for u in s.aborted if "openstreetmap.org" in u] == []
     assert fake.calls == []
+
+
+def wait_candidate_ids(page, expected):
+    wanted = json.dumps(sorted(expected), separators=(",", ":"))
+    wait(page, f"async () => {{ const {{ store }} = await import('/map/store.js'); const ids = [...new Set(store.map.querySourceFeatures('edit-candidates').map(f => f.properties.osm_id))].sort((a, b) => a - b); return JSON.stringify(ids) === {json.dumps(wanted)}; }}")
+
+
+def three_tile_roads(extra=()):
+    return [
+        (101, line_at(CENTER), "unknown", "residential"),
+        (102, line_at(CENTER, dy=-0.0004), "unknown", "residential"),
+        (103, line_at(CENTER, dy=-0.0009), "unknown", "residential"),
+        (104, line_at(CENTER, dy=0.0004), "documented", "residential"),
+        (105, line_at(CENTER, dy=0.0008), "unknown", "tertiary"),
+        *extra,
+    ]
+
+
+def test_prod_candidates_come_from_the_tiles_without_any_map_call(session, fake):
+    three_streets(fake)
+    s = beta_with_tiles(session, fake, three_tile_roads())
+    wait_candidates(s.page, 3)
+    wait_candidate_ids(s.page, [101, 102, 103])
+    move_map(s.page, 17.6, CENTER[1] - 0.0002, CENTER[0] + 0.0003)
+    move_map(s.page, 17.2, CENTER[1], CENTER[0])
+    wait_candidates(s.page, 3)
+    s.page.keyboard.press("ArrowRight")
+    wait_selected(s.page, 101)
+    s.page.keyboard.press("ArrowRight")
+    wait_selected(s.page, 102)
+    assert fake.count("map") == 0
+    assert {name for name, _ in fake.calls} <= {"way_full"}
+    assert all(url.startswith(PROD_API) for _, url in fake.calls)
+
+
+def test_a_street_already_fixed_since_the_tiles_leaves_them_until_newer_tiles(session, fake):
+    three_streets(fake)
+    fake.add_way(106, line_at(CENTER, dy=0.0002), {**street("Rue D", "Dstraat"), "sidewalk:both": "separate"})
+    roads = three_tile_roads([(106, line_at(CENTER, dy=0.0002), "unknown", "residential")])
+    s = beta_with_tiles(session, fake, roads, state='{"timestamp":"2026-11-16T22:30:00Z"}\n')
+    wait_candidates(s.page, 4)
+    click_way(s.page, CENTER[0], CENTER[1] + 0.0002 + 0.00001, 106, expect_form=False)
+    wait(s.page, "() => document.getElementById('edit-detail').textContent.includes('rien à faire')")
+    wait(s.page, "async () => { const { store } = await import('/map/store.js'); return !store.map.querySourceFeatures('edit-candidates').some(f => f.properties.osm_id === 106); }")
+    assert json.loads(s.page.evaluate("localStorage.getItem('bpn.handled.prod')")).keys() == {"106"}
+    s.page.reload()
+    show_tiles(s.page, roads)
+    wait_candidates(s.page, 3)
+    s.page.unroute("**/state.txt")
+    s.page.route("**/state.txt", lambda r: r.fulfill(body='{"timestamp":"2099-01-01T00:00:00Z"}\n', content_type="text/plain"))
+    s.page.reload()
+    show_tiles(s.page, roads)
+    wait_candidates(s.page, 4)
+    assert s.page.evaluate("localStorage.getItem('bpn.handled.prod')") == "{}"
+    assert fake.count("map") == 0
+
+
+def test_next_jumps_to_the_nearest_indexed_street_once_the_view_is_done(session, fake):
+    fake.add_way(101, line_at(CENTER), street("Rue A", "Astraat"))
+    far = (CENTER[0] + 0.02, CENTER[1])
+    nearer = (CENTER[0] + 0.01, CENTER[1])
+    fake.add_way(107, line_at(far), street("Rue Loin", "Verstraat"))
+    fake.add_way(109, line_at(nearer), {**street("Rue Faite", "Gedaanstraat"), "sidewalk:both": "no"})
+    index = [[101, *CENTER], [107, *far], [109, *nearer], [111, CENTER[0] + 0.08, CENTER[1]]]
+    s = beta_with_tiles(session, fake, [(101, line_at(CENTER), "unknown", "residential")], index=index)
+    wait_candidates(s.page, 1)
+    s.page.evaluate("localStorage.setItem('bpn.handled.prod', JSON.stringify({ 109: Date.now() }))")
+    s.page.reload()
+    show_tiles(s.page, [(101, line_at(CENTER), "unknown", "residential")])
+    wait_candidates(s.page, 1)
+    s.page.keyboard.press("ArrowRight")
+    wait_selected(s.page, 101)
+    s.page.keyboard.press("ArrowRight")
+    wait_selected(s.page, 107)
+    wait(s.page, f"async () => {{ const {{ store }} = await import('/map/store.js'); return Math.abs(store.map.getCenter().lng - {far[0]}) < 0.005; }}")
+    assert fake.count("map") == 0
+    assert ("way_full", 109) not in [(name, int(url.split("/way/")[1].split("/")[0])) for name, url in fake.calls if "/way/" in url]
+
+
+def test_next_says_so_when_the_index_has_nothing_left(session, fake):
+    fake.add_way(101, line_at(CENTER), street("Rue A", "Astraat"))
+    s = beta_with_tiles(session, fake, [(101, line_at(CENTER), "unknown", "residential")], index=[[101, *CENTER]])
+    wait_candidates(s.page, 1)
+    s.page.keyboard.press("ArrowRight")
+    wait_selected(s.page, 101)
+    s.page.keyboard.press("ArrowRight")
+    wait(s.page, "() => document.getElementById('edit-nav').textContent.includes('Tous les candidats de la vue ont été parcourus')")
+    assert fake.count("map") == 0
+
+
+def test_short_streets_are_candidates_but_stay_off_the_public_layer(session, fake):
+    three_streets(fake)
+    fake.add_way(110, line_at(CENTER, dy=0.0002), street("Bout", "Eind"))
+    roads = three_tile_roads([(110, line_at(CENTER, dy=0.0002), "unknown", "residential", True)])
+    s = beta_with_tiles(session, fake, roads)
+    wait_candidates(s.page, 4)
+    wait_candidate_ids(s.page, [101, 102, 103, 110])
+    drawn = set(map_eval(s.page, "return m.queryRenderedFeatures({ layers: ['sidewalk-roads'] }).map(f => f.properties.osm_id);"))
+    assert 101 in drawn and 110 not in drawn
+
+
+def test_a_sent_street_is_recorded_as_handled(session, fake):
+    fake.add_way(101, line_at(CENTER), street("Rue Test", "Teststraat"))
+    s = session(queue=[intent_for(fake, 101)])
+    prepare(s.page)
+    s.page.check('input[name="cs-source"][value="survey"]')
+    send(s.page)
+    wait(s.page, "() => !!localStorage.getItem('bpn.handled.dev')")
+    assert json.loads(s.page.evaluate("localStorage.getItem('bpn.handled.dev')")).keys() == {"101"}
 
 
 def test_a_dev_login_in_another_tab_never_sends_its_token_from_the_beta_page(session, fake):
@@ -1650,12 +1799,17 @@ def test_a_dev_login_in_another_tab_never_sends_its_token_from_the_beta_page(ses
     }""")
     dev.close()
     before = len(s.aborted_auth)
-    map_eval(s.page, "const c = m.getCenter(); m.jumpTo({ center: [c.lng + 0.01, c.lat + 0.005] });")
+    s.page.evaluate("""() => {
+      const button = document.createElement('button');
+      button.dataset.bpnEditWay = '101';
+      document.body.append(button);
+      button.click();
+    }""")
     end = time.time() + 5
-    while time.time() < end and not [u for u, _ in s.aborted_auth[before:] if u.startswith("https://api.openstreetmap.org/api/0.6/map")]:
+    while time.time() < end and not [u for u, _ in s.aborted_auth[before:] if "/api/0.6/way/101" in u]:
         s.page.wait_for_timeout(100)
     sent = [(u, a) for u, a in s.aborted_auth[before:] if "openstreetmap.org" in u]
-    assert sent and all(u.startswith("https://api.openstreetmap.org/api/0.6/map") for u, _ in sent)
+    assert sent and all(u.startswith("https://api.openstreetmap.org/api/0.6/way/101") for u, _ in sent)
     assert all("dev-token" not in a for _, a in sent)
     assert s.page.evaluate("localStorage.getItem('bpn.authEnv')") == "dev"
     assert "dev-token" in s.page.evaluate("localStorage.getItem('__osmAuth')")

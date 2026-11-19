@@ -98,7 +98,7 @@ export function installSelection(ctx) {
     const run = ++selectionRun;
     ctx.clearPendingKeys();
     const known = ctx.liveFeatures.get(id);
-    ctx.showSelection(known ? known.geometry.coordinates : null);
+    ctx.showSelection(known && known.geometry.type === "LineString" ? known.geometry.coordinates : null);
     ctx.setDockOpen(true);
     ctx.markVisited(id);
     ctx.state.detail = { kind: "loading" };
@@ -126,6 +126,10 @@ export function installSelection(ctx) {
       ctx.startReview(coords);
       detail.seenWhole = reviews.seenWhole(id, way.version);
       detail.review = ctx.reviewState(reviews.seenDetail(id, way.version));
+      if (!detail.editable) {
+        ctx.handled.add(id);
+        ctx.forgetCandidates(id);
+      }
       const view = ctx.frameWay(detail);
       ctx.state.detail = { ...detail, fitting: view === "moving", visible: view === "visible" };
       ctx.noteReview();
@@ -133,7 +137,11 @@ export function installSelection(ctx) {
       if (run !== selectionRun) return;
       const gone = err && (err.cause === 404 || err.cause === 410);
       ctx.state.detail = gone ? { kind: "gone", wayId: id } : { kind: "error", message: errorMessage(err, i18n.t) };
-      if (gone) ctx.showSelection(null);
+      if (gone) {
+        ctx.showSelection(null);
+        ctx.handled.add(id);
+        ctx.forgetCandidates(id);
+      }
     }
     renderDetail();
     ctx.renderNav();

@@ -1,9 +1,10 @@
+import { pointsOf } from "./candidates.js";
 import { distanceM } from "./geo.js";
 
 const TIE_M = 0.01;
 
 export function featureCenter(feature) {
-  const coords = feature.geometry.coordinates;
+  const coords = pointsOf(feature.geometry);
   let w = Infinity, s = Infinity, e = -Infinity, n = -Infinity;
   for (const [x, y] of coords) {
     if (x < w) w = x;

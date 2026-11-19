@@ -1,4 +1,5 @@
-import { isEditableCandidate } from "./whitelist.js";
+import { linesOf } from "./match.js";
+import { WHITELIST, isEditableCandidate, matchesWhitelist } from "./whitelist.js";
 
 export const EMPTY_COLLECTION = Object.freeze({ type: "FeatureCollection", features: Object.freeze([]) });
 
@@ -100,21 +101,70 @@ function inBox([x, y], [w, s, e, n]) {
   return x >= w && x <= e && y >= s && y <= n;
 }
 
+export function pointsOf(geometry) {
+  if (!geometry) return [];
+  if (geometry.type === "Point") return [geometry.coordinates];
+  if (geometry.type === "LineString") return geometry.coordinates;
+  if (geometry.type === "MultiLineString") return geometry.coordinates.flat();
+  return [];
+}
+
+export function parseCandidateIndex(text) {
+  let value;
+  try {
+    value = JSON.parse(text);
+  } catch {
+    return [];
+  }
+  if (!value || !Array.isArray(value.ways)) return [];
+  const out = [];
+  for (const entry of value.ways) {
+    if (!Array.isArray(entry) || entry.length !== 3) continue;
+    const [id, lon, lat] = entry;
+    if (!Number.isInteger(id) || id <= 0 || !Number.isFinite(lon) || !Number.isFinite(lat)) continue;
+    if (lon < -180 || lon > 180 || lat < -90 || lat > 90) continue;
+    out.push({ id, lon, lat });
+  }
+  return out;
+}
+
+export function candidatesFromTiles(features, { box = null, exclude = () => false, whitelist = WHITELIST } = {}) {
+  const parts = new Map();
+  for (const f of features || []) {
+    const p = f.properties || {};
+    const id = Number(p.osm_id);
+    if (!Number.isInteger(id) || id <= 0 || p.sw !== "unknown") continue;
+    if (!matchesWhitelist({ highway: p.highway }, whitelist) || exclude(id)) continue;
+    const lines = linesOf(f.geometry).filter(line => line.length >= 2);
+    if (!lines.length) continue;
+    const entry = parts.get(id) || { lines: [], highway: String(p.highway || ""), name: String(p.name || "") };
+    entry.lines.push(...lines);
+    parts.set(id, entry);
+  }
+  const out = [];
+  for (const [id, { lines, highway, name }] of parts) {
+    const geometry = lines.length === 1 ? { type: "LineString", coordinates: lines[0] } : { type: "MultiLineString", coordinates: lines };
+    if (box && !pointsOf(geometry).some(c => inBox(c, box))) continue;
+    out.push({ type: "Feature", geometry, properties: { osm_id: id, highway, name } });
+  }
+  return { type: "FeatureCollection", features: out };
+}
+
 export function mergeCandidates(previous, collection, box, { max = 3000 } = {}) {
   const out = new Map();
   for (const [id, f] of previous) {
-    if (!f.geometry.coordinates.some(c => inBox(c, box))) out.set(id, f);
+    if (!pointsOf(f.geometry).some(c => inBox(c, box))) out.set(id, f);
   }
   for (const f of collection.features) out.set(f.properties.osm_id, f);
   if (out.size <= max) return out;
   const mid = [(box[0] + box[2]) / 2, (box[1] + box[3]) / 2];
-  const far = f => Math.min(...f.geometry.coordinates.map(([x, y]) => (x - mid[0]) ** 2 + (y - mid[1]) ** 2));
+  const far = f => Math.min(...pointsOf(f.geometry).map(([x, y]) => (x - mid[0]) ** 2 + (y - mid[1]) ** 2));
   return new Map([...out.entries()].sort((a, b) => far(a[1]) - far(b[1])).slice(0, max));
 }
 
 export function countInBox(features, box) {
   let n = 0;
-  for (const f of features) if (f.geometry.coordinates.some(c => inBox(c, box))) n += 1;
+  for (const f of features) if (pointsOf(f.geometry).some(c => inBox(c, box))) n += 1;
   return n;
 }
 

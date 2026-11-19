@@ -107,8 +107,17 @@ export function installUpload(ctx) {
     return changesetTags(group, count);
   }
 
+  const SETTLED_REASONS = new Set(["deleted", "already_fixed"]);
+
+  function settle(ids) {
+    if (!ids.length) return;
+    ctx.handled.add(ids);
+    ctx.forgetCandidates(ids);
+  }
+
   function dropFromQueue(dropped) {
     queue.remove(dropped.map(d => d.intent.wayId));
+    settle(dropped.filter(d => SETTLED_REASONS.has(d.reason)).map(d => d.intent.wayId));
   }
 
   async function preparePlan() {
@@ -216,6 +225,7 @@ export function installUpload(ctx) {
         state.result = result;
         ctx.scheduleCandidates({ reuse: false });
         const touched = new Set([...outcome.done.flatMap(d => d.wayIds), ...outcome.dropped.map(d => d.intent.wayId), ...result.conflictWayIds]);
+        settle(outcome.done.flatMap(d => d.wayIds));
         if (state.detail.kind === "way" && touched.has(state.detail.way.id)) refreshSelected = state.detail.way.id;
       } catch (err) {
         state.result = { done: [], error: failure(err) };

@@ -289,6 +289,7 @@ jobs:
             sidewalk_separate_candidates.geojson
             sidewalk_roads.geojson
             sidewalk_roads_raw.geojson
+            edit_candidates.json
             sidewalk_footways_raw.geojson
             service_roads_raw.geojson
             cycleways_raw.geojson
@@ -390,6 +391,7 @@ jobs:
         run: |
           python3 build_site.py --out _site --lastmod "$(date -u +%Y-%m-%d)"
           cp state.txt stats.json graph.json pedestrian.pmtiles history.json _site/
+          if [[ -s edit_candidates.json ]]; then cp edit_candidates.json _site/; else echo "::warning::edit_candidates.json missing, Next in the prod editor stays within the loaded tiles."; fi
           if [[ -s communes.geojson ]]; then cp communes.geojson _site/; else echo "::warning::communes.geojson missing, changeset comments fall back to the action only."; fi
 
       - name: Keep the built site for the deploy job

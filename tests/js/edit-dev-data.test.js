@@ -24,11 +24,11 @@ test("dev ways become sidewalk features with their dev id, like the production t
   assert.equal(features.length, 2);
   const [first, second] = features;
   assert.equal(first.id, 4307569310);
-  assert.deepEqual(first.properties, { sw: "unknown", name: "rue stevens-delannoy - stevens-delannoystraat", osm_id: 4307569310, highway: "residential", length_m: 35.1 });
+  assert.deepEqual(first.properties, { sw: "unknown", name: "rue stevens-delannoy - stevens-delannoystraat", osm_id: 4307569310, highway: "residential", length_m: 35.1, short: false });
   assert.equal(second.properties.sw, "separate");
 });
 
-test("service roads, areas, short ways, broken ways and other highways are left out", async () => {
+test("service roads, areas, broken ways and other highways are left out, short ways are kept and flagged", async () => {
   const { sidewalkRoadsFromOsm } = await load("dev-data.js");
   const { features } = sidewalkRoadsFromOsm(parsed([
     way(1, { highway: "service" }),
@@ -39,8 +39,10 @@ test("service roads, areas, short ways, broken ways and other highways are left 
     way(6, { highway: "Tertiary " }),
     way(7, { highway: "residential" }, [1]),
   ]));
-  assert.deepEqual(features.map(f => f.id), [6]);
-  assert.equal(features[0].properties.highway, "tertiary");
+  assert.deepEqual(features.map(f => f.id), [4, 6]);
+  assert.equal(features[0].properties.short, true);
+  assert.equal(features[1].properties.highway, "tertiary");
+  assert.equal(features[1].properties.short, false);
 });
 
 test("a file with no usable street is refused", async () => {
