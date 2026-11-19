@@ -1,5 +1,4 @@
 import json
-import math
 
 from shapely.geometry import Point
 from shapely.strtree import STRtree
@@ -10,20 +9,7 @@ from detect_tactile_paving_issues import (
     _match_crossing_way,
     detect_tactile_paving_issues,
 )
-
-LAT0 = 50.85
-LON0 = 4.35
-
-_M_PER_DEG_LAT = 111_320.0
-_M_PER_DEG_LON = 111_320.0 * math.cos(math.radians(LAT0))
-
-
-def _xy(x_m: float, y_m: float) -> list[float]:
-    return [LON0 + x_m / _M_PER_DEG_LON, LAT0 + y_m / _M_PER_DEG_LAT]
-
-
-def _write_geojson(path, features):
-    path.write_text(json.dumps({"type": "FeatureCollection", "features": features}))
+from geo_fixtures import metric_xy as _xy, write_features as _write_geojson
 
 
 def _crossing_feature(x_m, y_m, tactile_paving, fid):

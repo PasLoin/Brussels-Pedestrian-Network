@@ -1,9 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const path = require("node:path");
-const { pathToFileURL } = require("node:url");
-
-const load = name => import(pathToFileURL(path.join(__dirname, "..", "..", "edit", name)).href);
+const { loadEdit: load } = require("./helpers.js");
 
 function sharedStorage(initial = {}) {
   const data = new Map(Object.entries(initial));

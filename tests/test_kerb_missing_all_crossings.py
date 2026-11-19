@@ -1,10 +1,10 @@
-import json
-import math
-
 import geopandas as gpd
 import pytest
 from shapely.geometry import Point
 
+from crossing_fixtures import crossing_node as _crossing, crossing_way as _cw, kerb_node as _kerb
+from crossing_fixtures import kerb_issues as _kerb_issues, tactile_issues as _tactile_issues, tagged_line as _line
+from geo_fixtures import metric_xy as _xy, write_features as _write
 from front_contract import assert_layer_contract
 from detect_tactile_paving_issues import (
     _IN_SCOPE_VALUES,
@@ -13,45 +13,6 @@ from detect_tactile_paving_issues import (
     detect_tactile_paving_issues,
 )
 
-LAT0 = 50.85
-LON0 = 4.35
-_M_PER_DEG_LAT = 111_320.0
-_M_PER_DEG_LON = 111_320.0 * math.cos(math.radians(LAT0))
-
-
-def _xy(x_m, y_m):
-    return [LON0 + x_m / _M_PER_DEG_LON, LAT0 + y_m / _M_PER_DEG_LAT]
-
-
-def _write(path, features):
-    path.write_text(json.dumps({"type": "FeatureCollection", "features": features}))
-
-
-def _crossing(x, y, tp, fid):
-    props = {"highway": "crossing", "@id": fid}
-    if tp is not None:
-        props["tactile_paving"] = tp
-    return {"type": "Feature", "geometry": {"type": "Point", "coordinates": _xy(x, y)},
-            "properties": props}
-
-
-def _line(coords, fid, **tags):
-    return {"type": "Feature",
-            "geometry": {"type": "LineString", "coordinates": [_xy(x, y) for x, y in coords]},
-            "properties": {**tags, "@id": fid}}
-
-
-def _cw(coords, fid):
-    return _line(coords, fid, highway="footway", footway="crossing")
-
-
-def _kerb(x, y, tp, fid):
-    props = {"barrier": "kerb", "@id": fid}
-    if tp is not None:
-        props["tactile_paving"] = tp
-    return {"type": "Feature", "geometry": {"type": "Point", "coordinates": _xy(x, y)},
-            "properties": props}
-
 
 def _kerb_no(x, y, tp, fid, **tags):
     props = {"kerb": "no", "@id": fid, **tags}
@@ -59,19 +20,6 @@ def _kerb_no(x, y, tp, fid, **tags):
         props["tactile_paving"] = tp
     return {"type": "Feature", "geometry": {"type": "Point", "coordinates": _xy(x, y)},
             "properties": props}
-
-
-def _kerb_issues(tmp_path, kind=None):
-    feats = json.loads((tmp_path / "kerb_issues.geojson").read_text())["features"]
-    props = [f["properties"] for f in feats if f["properties"].get("type")]
-    if kind is not None:
-        props = [p for p in props if p["type"] == kind]
-    return props
-
-
-def _tactile_issues(tmp_path):
-    feats = json.loads((tmp_path / "tactile_paving_issues.geojson").read_text())["features"]
-    return [f["properties"] for f in feats if f["properties"].get("osm_id")]
 
 
 @pytest.fixture

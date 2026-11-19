@@ -1,21 +1,9 @@
-import functools
-import http.server
-import os
-import threading
-
 import pytest
 
 import build_site
+from browser_support import require_playwright, serve
 
-try:
-    from playwright.sync_api import sync_playwright
-except ImportError:
-    sync_playwright = None
-
-if sync_playwright is None:
-    if os.environ.get("REQUIRE_BROWSER_TESTS") == "1":
-        raise RuntimeError("REQUIRE_BROWSER_TESTS=1 but playwright is not installed")
-    pytest.skip("playwright not installed", allow_module_level=True)
+require_playwright()
 
 STORAGE_KEY = "bpn-lang"
 
@@ -24,20 +12,8 @@ STORAGE_KEY = "bpn-lang"
 def site(tmp_path_factory):
     out = tmp_path_factory.mktemp("site")
     build_site.build(out)
-    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(out))
-    handler.log_message = lambda *args: None
-    httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
-    threading.Thread(target=httpd.serve_forever, daemon=True).start()
-    yield f"http://127.0.0.1:{httpd.server_address[1]}/"
-    httpd.shutdown()
-
-
-@pytest.fixture(scope="module")
-def browser():
-    with sync_playwright() as p:
-        instance = p.chromium.launch()
-        yield instance
-        instance.close()
+    with serve(out) as url:
+        yield url
 
 
 def _context(browser, locale):

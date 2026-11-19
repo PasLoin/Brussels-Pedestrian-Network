@@ -1,9 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const path = require("node:path");
-const { pathToFileURL } = require("node:url");
+const { loadEdit: load } = require("./helpers.js");
 
-const load = name => import(pathToFileURL(path.join(__dirname, "..", "..", "edit", name)).href);
 const DEV_API = "https://master.apis.dev.openstreetmap.org";
 
 function fakeDocument(href, editEnv = "dev") {

@@ -1,19 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const path = require("node:path");
-const { pathToFileURL } = require("node:url");
-
-const load = name => import(pathToFileURL(path.join(__dirname, "..", "..", "edit", name)).href);
-
-function memoryStorage(initial = {}) {
-  const data = new Map(Object.entries(initial));
-  return {
-    getItem: key => (data.has(key) ? data.get(key) : null),
-    setItem: (key, value) => data.set(key, String(value)),
-    removeItem: key => data.delete(key),
-    dump: () => Object.fromEntries(data),
-  };
-}
+const { loadEdit: load, memoryStorage } = require("./helpers.js");
 
 const piece = (osm_id, coordinates, extra = {}) => ({
   geometry: { type: "LineString", coordinates },

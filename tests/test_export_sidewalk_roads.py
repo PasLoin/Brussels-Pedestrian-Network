@@ -4,15 +4,11 @@ from pathlib import Path
 
 import geopandas as gpd
 import pytest
-from pyproj import Transformer
 
 from config import EDIT_CANDIDATE_HIGHWAYS
 from export_sidewalk_roads import EDIT_CANDIDATES_FILE, _classify_edge_sidewalk, export_sidewalk_roads, write_edit_candidates
 from front_contract import assert_layer_contract
-
-_TO_WGS84 = Transformer.from_crs("EPSG:31370", "EPSG:4326", always_xy=True)
-
-_X0, _Y0 = 150000.0, 170000.0
+from geo_fixtures import TO_WGS as _TO_WGS84, X0 as _X0, Y0 as _Y0
 
 
 @pytest.mark.parametrize("tags, expected", [

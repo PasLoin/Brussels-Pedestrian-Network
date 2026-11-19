@@ -8,9 +8,8 @@ from pathlib import Path
 import igraph as ig
 import pytest
 
-from build_graph import build_graph
-from clean_osm import clean_osm
 from export import export_routing_graph
+from osm_fixtures import cleaned_graph
 
 _ROOT = Path(__file__).resolve().parent.parent
 _NODE = shutil.which("node")
@@ -78,10 +77,7 @@ def _grid_xml(size, rng):
 def exported(request, tmp_path_factory):
     rng = random.Random(request.param)
     folder = tmp_path_factory.mktemp(f"coherence{request.param}")
-    raw, clean = folder / "raw.osm", folder / "clean.osm"
-    raw.write_text(_grid_xml(7, rng))
-    clean_osm(str(raw), str(clean))
-    gb = build_graph(str(clean))
+    gb = cleaned_graph(folder, _grid_xml(7, rng))
     cwd = os.getcwd()
     os.chdir(folder)
     try:

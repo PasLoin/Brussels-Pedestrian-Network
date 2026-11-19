@@ -1,10 +1,5 @@
-import functools
-import http.server
 import json
-import math
-import os
 import re
-import threading
 import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -14,24 +9,12 @@ import pytest
 
 import build_site
 from browser_coverage import track
+from browser_support import require_node_modules, require_playwright, serve
 from edit_fake_osm import DEV_HOST, FakeOsm
 from map_fixtures import CATCH_MAP_ERRORS, empty_pmtiles
 
-try:
-    from playwright.sync_api import sync_playwright
-except ImportError:
-    sync_playwright = None
-
-if sync_playwright is None:
-    if os.environ.get("REQUIRE_BROWSER_TESTS") == "1":
-        raise RuntimeError("REQUIRE_BROWSER_TESTS=1 but playwright is not installed")
-    pytest.skip("playwright not installed", allow_module_level=True)
-
-ROOT = Path(__file__).resolve().parents[1]
-if not (ROOT / "node_modules" / "maplibre-gl" / "package.json").is_file():
-    if os.environ.get("REQUIRE_BROWSER_TESTS") == "1":
-        raise RuntimeError("the site libraries come from node_modules: run npm ci")
-    pytest.skip("npm dev dependencies not installed", allow_module_level=True)
+require_playwright()
+require_node_modules()
 
 BLANK_STYLE = json.dumps({"version": 8, "sources": {}, "layers": [{"id": "bg", "type": "background", "paint": {"background-color": "#eee"}}]})
 CENTER = (4.4300, 50.8460)
@@ -61,23 +44,8 @@ def server(tmp_path_factory):
     build_site.build(site)
     (site / "communes.geojson").write_text(json.dumps(COMMUNES), encoding="utf-8")
     (site / "pedestrian.pmtiles").write_bytes(empty_pmtiles())
-    class Quiet(http.server.SimpleHTTPRequestHandler):
-        def log_message(self, *args):
-            pass
-
-    handler = functools.partial(Quiet, directory=str(site))
-    httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
-    threading.Thread(target=httpd.serve_forever, daemon=True).start()
-    yield f"http://127.0.0.1:{httpd.server_address[1]}/"
-    httpd.shutdown()
-
-
-@pytest.fixture(scope="module")
-def browser():
-    with sync_playwright() as p:
-        instance = p.chromium.launch()
-        yield instance
-        instance.close()
+    with serve(site) as url:
+        yield url
 
 
 @pytest.fixture

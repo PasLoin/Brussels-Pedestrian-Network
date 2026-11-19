@@ -4,10 +4,7 @@ import pytest
 
 from detect_missing_crossings import _load_crossing_nodes
 from front_contract import assert_layer_contract
-
-
-def _write_geojson(path, features):
-    path.write_text(json.dumps({"type": "FeatureCollection", "features": features}))
+from geo_fixtures import lambert_line as _line, lambert_ll as _ll, write_features as _write_geojson
 
 
 def test_load_crossing_nodes_reads_osm_id_and_continuous(tmp_path):
@@ -57,23 +54,7 @@ def test_load_crossing_nodes_tolerates_bad_id(tmp_path):
     assert gdf.iloc[0]["osm_id"] == 0
 
 
-from pyproj import Transformer
-
 from detect_missing_crossings import detect_missing_crossings
-
-_TO_WGS = Transformer.from_crs("EPSG:31370", "EPSG:4326", always_xy=True)
-_X0, _Y0 = 150000.0, 170000.0
-
-
-def _ll(x, y):
-    lon, lat = _TO_WGS.transform(_X0 + x, _Y0 + y)
-    return [lon, lat]
-
-
-def _line(coords, props):
-    return {"type": "Feature",
-            "geometry": {"type": "LineString", "coordinates": [_ll(*c) for c in coords]},
-            "properties": props}
 
 
 def _run_scenario(tmp_path, monkeypatch, connector_props, node_props=None, connector=None, extra=None,

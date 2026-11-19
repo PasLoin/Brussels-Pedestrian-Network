@@ -2,7 +2,6 @@ import json
 import math
 
 import pytest
-from pyproj import Transformer
 
 from build_graph import build_graph
 from clean_osm import clean_osm
@@ -10,30 +9,8 @@ from detect_missing_crossings import detect_missing_crossings
 from export import compute_graph_stats, compute_network_stats, save_stats, undirected_edge_groups
 from export_sidewalk_roads import export_sidewalk_roads
 from front_contract import APP_STATS_PATHS, ROOT, STATS_HTML_PATHS, get_path, page_text
+from geo_fixtures import lambert_line as _line, lambert_point as _point, write_features as _write
 from sidewalk_gap import detect_sidewalk_gaps
-
-_TO_WGS = Transformer.from_crs("EPSG:31370", "EPSG:4326", always_xy=True)
-_X0, _Y0 = 150000.0, 170000.0
-
-
-def _ll(x, y):
-    return list(_TO_WGS.transform(_X0 + x, _Y0 + y))
-
-
-def _line(coords, props):
-    return {"type": "Feature", "properties": props,
-            "geometry": {"type": "LineString", "coordinates": [_ll(*c) for c in coords]}}
-
-
-def _point(x, y, props):
-    return {"type": "Feature", "properties": props,
-            "geometry": {"type": "Point", "coordinates": _ll(x, y)}}
-
-
-def _write(path, features):
-    path.write_text(json.dumps({"type": "FeatureCollection", "features": features}))
-    return str(path)
-
 
 _OSM = """<?xml version='1.0' encoding='UTF-8'?>
 <osm version="0.6" generator="test">
