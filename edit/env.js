@@ -43,6 +43,7 @@ export const SETTINGS = Object.freeze({
   candidateMinZoom: 17,
   candidateFloorZoom: 15,
   candidateReuseMs: 5 * 60 * 1000,
+  wayReuseMs: 4 * 60 * 1000,
   maxCandidateAreaDeg2: 0.001,
   authPendingTtlMs: 5 * 60 * 1000,
   maxWaysPerChangeset: 50,

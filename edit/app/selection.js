@@ -94,18 +94,33 @@ export function installSelection(ctx) {
     else ctx.clearPendingKeys();
   }
 
-  async function selectWay(id) {
+  function stillFresh(d, id) {
+    return d.kind === "way" && d.way.id === id && Date.now() - d.readAt < env.wayReuseMs;
+  }
+
+  function reframeSelected() {
+    ctx.setDockOpen(true);
+    ctx.applyView(ctx.frameWay(ctx.state.detail));
+    renderDetail();
+    ctx.renderNav();
+  }
+
+  async function selectWay(id, { fresh = false } = {}) {
+    const current = ctx.state.detail;
+    if (!fresh && current.kind === "loading" && current.wayId === id) return;
+    if (!fresh && stillFresh(current, id)) return reframeSelected();
     const run = ++selectionRun;
     ctx.clearPendingKeys();
     const known = ctx.liveFeatures.get(id);
     ctx.showSelection(known && known.geometry.type === "LineString" ? known.geometry.coordinates : null);
     ctx.setDockOpen(true);
     ctx.markVisited(id);
-    ctx.state.detail = { kind: "loading" };
+    ctx.state.detail = { kind: "loading", wayId: id };
     renderDetail();
     try {
       const elements = await osm.getFeature("way", id, true);
       if (run !== selectionRun) return;
+      const readAt = Date.now();
       const way = elements.find(f => f.type === "way" && f.id === id);
       const nodes = new Map(elements.filter(f => f.type === "node").map(n => [n.id, [n.lon, n.lat]]));
       const coords = way.nodes.map(n => nodes.get(n));
@@ -114,6 +129,7 @@ export function installSelection(ctx) {
       const detail = {
         kind: "way",
         way,
+        readAt,
         editable: isEditableCandidate(way.tags),
         bbox: bboxOf(coords),
         coords,

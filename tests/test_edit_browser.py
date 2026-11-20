@@ -270,6 +270,45 @@ def test_click_and_one_value_queues_the_way_with_its_geometry(session, fake):
     assert fake.count("way_full") == 1
 
 
+def test_clicking_the_selected_street_again_reads_it_only_once(session, fake):
+    fake.add_way(101, line_at(CENTER), street("Rue Test", "Teststraat"))
+    s = session()
+    wait_candidates(s.page, 1)
+    click_way(s.page, CENTER[0], CENTER[1] + 0.00001, 101)
+    for _ in range(3):
+        click_way(s.page, CENTER[0], CENTER[1] + 0.00001, 101)
+    time.sleep(0.5)
+    assert fake.count("way_full") == 1
+    s.page.keyboard.press("Escape")
+    click_way(s.page, CENTER[0], CENTER[1] + 0.00001, 101)
+    wait(s.page, "() => document.getElementById('edit-detail').textContent.includes('w101')")
+    assert fake.count("way_full") == 2
+
+
+def test_a_double_click_while_the_street_loads_sends_one_read(session, fake):
+    fake.add_way(101, line_at(CENTER), street("Rue Test", "Teststraat"))
+    s = session()
+    wait_candidates(s.page, 1)
+    hold_api(s.page, "/full", 800, times=2)
+    pt = find_way_pixel(s.page, CENTER[0], CENTER[1] + 0.00001, 101)
+    assert pt is not None
+    s.page.mouse.click(*pt)
+    s.page.mouse.click(*pt)
+    wait(s.page, "() => !!document.querySelector('[data-edit-action=choose]')")
+    assert fake.count("way_full") == 1
+
+
+def test_an_old_reading_is_refreshed_on_the_next_click(session, fake):
+    fake.add_way(101, line_at(CENTER), street("Rue Test", "Teststraat"))
+    s = session(settings={"wayReuseMs": "0"})
+    wait_candidates(s.page, 1)
+    click_way(s.page, CENTER[0], CENTER[1] + 0.00001, 101)
+    fake.edit_way(101, tags={**street("Rue Test", "Teststraat"), "sidewalk:both": "no"})
+    click_way(s.page, CENTER[0], CENTER[1] + 0.00001, 101, expect_form=False)
+    wait(s.page, "() => document.getElementById('edit-detail').textContent.includes('rien à faire')")
+    assert fake.count("way_full") == 2
+
+
 def test_different_sides_queue_only_once_both_are_chosen(session, fake):
     fake.add_way(101, line_at(CENTER), street("Rue Test", "Teststraat"))
     s = session()

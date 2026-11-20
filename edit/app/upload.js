@@ -140,7 +140,7 @@ export function installUpload(ctx) {
       if (refreshSelected !== null) {
         const id = refreshSelected;
         refreshSelected = null;
-        ctx.selectWay(id);
+        ctx.selectWay(id, { fresh: true });
       }
     }
   }
