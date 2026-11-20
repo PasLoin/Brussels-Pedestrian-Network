@@ -133,6 +133,7 @@ export function installUpload(ctx) {
     try {
       await task();
     } finally {
+      ctx.forgetReadings();
       state.busy = false;
       renderQueue();
       ctx.syncQueuedState();

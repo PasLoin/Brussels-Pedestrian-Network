@@ -281,7 +281,30 @@ def test_clicking_the_selected_street_again_reads_it_only_once(session, fake):
     assert fake.count("way_full") == 1
     s.page.keyboard.press("Escape")
     click_way(s.page, CENTER[0], CENTER[1] + 0.00001, 101)
-    wait(s.page, "() => document.getElementById('edit-detail').textContent.includes('w101')")
+    assert fake.count("way_full") == 1
+
+
+def test_going_back_to_a_street_just_read_reuses_its_reading(session, fake):
+    fake.add_way(101, line_at(CENTER), street("Rue A", "Astraat"))
+    fake.add_way(102, line_at(CENTER, dy=-0.0004), street("Rue B", "Bstraat"))
+    s = session()
+    wait_candidates(s.page, 2)
+    click_way(s.page, CENTER[0], CENTER[1] + 0.00001, 101)
+    click_way(s.page, CENTER[0], CENTER[1] - 0.00039, 102)
+    click_way(s.page, CENTER[0], CENTER[1] + 0.00001, 101)
+    click_way(s.page, CENTER[0], CENTER[1] - 0.00039, 102)
+    assert fake.count("way_full") == 2
+
+
+def test_preparing_the_queue_forgets_the_readings_kept_for_reuse(session, fake):
+    fake.add_way(101, line_at(CENTER), street("Rue A", "Astraat"))
+    fake.add_way(102, line_at(CENTER, dy=-0.0004), street("Rue B", "Bstraat"))
+    s = session(queue=[intent_for(fake, 102)])
+    wait_candidates(s.page, 2)
+    click_way(s.page, CENTER[0], CENTER[1] + 0.00001, 101)
+    s.page.keyboard.press("Escape")
+    prepare(s.page)
+    click_way(s.page, CENTER[0], CENTER[1] + 0.00001, 101)
     assert fake.count("way_full") == 2
 
 
@@ -304,6 +327,7 @@ def test_an_old_reading_is_refreshed_on_the_next_click(session, fake):
     wait_candidates(s.page, 1)
     click_way(s.page, CENTER[0], CENTER[1] + 0.00001, 101)
     fake.edit_way(101, tags={**street("Rue Test", "Teststraat"), "sidewalk:both": "no"})
+    s.page.keyboard.press("Escape")
     click_way(s.page, CENTER[0], CENTER[1] + 0.00001, 101, expect_form=False)
     wait(s.page, "() => document.getElementById('edit-detail').textContent.includes('rien à faire')")
     assert fake.count("way_full") == 2
