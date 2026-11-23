@@ -22,7 +22,7 @@ export function installNavigation(ctx) {
     renderNav();
   }
 
-  function selectNext(widen = true) {
+  function selectNext(widen = true, { onNone } = {}) {
     const map = ctx.map;
     if (!map) return false;
     const d = ctx.state.detail;
@@ -40,7 +40,7 @@ export function installNavigation(ctx) {
       next = nextCandidate(pool, from, base);
     }
     if (!next) {
-      const searching = widen && current !== null && ctx.searchWider(current);
+      const searching = widen && ctx.searchWider(onNone ? { onNone } : {});
       navHint = searching ? i18n.t("edit.nav.searching") : ctx.candidatesBlocked() === "zoom" ? i18n.t("edit.status.zoomIn", { zoom: env.candidateFloorZoom }) : i18n.t("edit.nav.none");
       renderNav();
       return false;
@@ -60,7 +60,12 @@ export function installNavigation(ctx) {
       ctx.renderQueue();
     }
     ctx.syncQueuedState();
-    if (!selectNext()) ctx.deselect();
+    const nothingLeft = () => {
+      ctx.deselect();
+      showNavHint(i18n.t("edit.nav.none"));
+    };
+    if (selectNext(true, { onNone: nothingLeft })) return;
+    if (!ctx.isWidening()) ctx.deselect();
   }
 
   navEl.addEventListener("click", (e) => {

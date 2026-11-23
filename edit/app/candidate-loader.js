@@ -60,18 +60,31 @@ export function installCandidateLoader(ctx, { now = () => Date.now(), fetchText 
     return candidateIndex;
   }
 
-  async function nextFromIndex(wayId) {
-    const [index] = await Promise.all([indexedCandidates(), tilesData()]);
+  function searchStart() {
     const d = ctx.state.detail;
-    if (!ctx.active || d.kind !== "way" || d.way.id !== wayId) return;
+    if (d.kind === "way") return d.bbox ? { wayId: d.way.id, focus: d.bbox } : null;
+    if (d.kind !== "none" || candidatesBlocked) return null;
+    return { wayId: null, focus: null };
+  }
+
+  function stillAt(wayId) {
+    const d = ctx.state.detail;
+    if (!ctx.active) return false;
+    return wayId === null ? d.kind === "none" : d.kind === "way" && d.way.id === wayId;
+  }
+
+  async function nextFromIndex({ wayId, focus }, nothingFound) {
+    const [index] = await Promise.all([indexedCandidates(), tilesData()]);
+    if (!stillAt(wayId)) return;
     const here = ctx.map.getCenter();
-    const from = d.bbox ? [(d.bbox[0] + d.bbox[2]) / 2, (d.bbox[1] + d.bbox[3]) / 2] : [here.lng, here.lat];
-    const exclude = new Set([wayId, ...liveFeatures.keys(), ...skipped.list(), ...queue.list().map(i => i.wayId)]);
+    const from = focus ? [(focus[0] + focus[2]) / 2, (focus[1] + focus[3]) / 2] : [here.lng, here.lat];
+    const exclude = new Set([...liveFeatures.keys(), ...skipped.list(), ...queue.list().map(i => i.wayId)]);
+    if (wayId !== null) exclude.add(wayId);
     const pool = index
       .filter(w => !handled.has(w.id))
       .map(w => ({ properties: { osm_id: w.id }, geometry: { type: "Point", coordinates: [w.lon, w.lat] } }));
     const next = nextCandidate(pool, from, exclude);
-    if (!next) return ctx.showNavHint(i18n.t("edit.nav.none"));
+    if (!next) return nothingFound();
     ctx.showNavHint("");
     ctx.selectWay(next.properties.osm_id);
   }
@@ -134,11 +147,13 @@ export function installCandidateLoader(ctx, { now = () => Date.now(), fetchText 
     return candidateRequest({ zoom: map.getZoom(), bounds: map.getBounds(), center: [center.lng, center.lat], canvas, focus, settings: env });
   }
 
-  function searchWider(wayId) {
-    const focus = candidateFocus();
-    if (widening || !focus) return false;
+  function searchWider({ onNone = () => ctx.showNavHint(i18n.t("edit.nav.none")) } = {}) {
+    const start = searchStart();
+    if (widening || !start) return false;
+    const { wayId, focus } = start;
+    const nothingFound = () => { if (stillAt(wayId)) onNone(); };
     if (fromTiles) {
-      widening = nextFromIndex(wayId).finally(() => { widening = null; });
+      widening = nextFromIndex(start, nothingFound).finally(() => { widening = null; });
       return true;
     }
     widening = (async () => {
@@ -148,10 +163,10 @@ export function installCandidateLoader(ctx, { now = () => Date.now(), fetchText 
         const box = candidateWindow({ center: [center.lng, center.lat], canvas: { width: map.getCanvas().clientWidth, height: map.getCanvas().clientHeight }, focus, settings: env, scale });
         if (freshlyLoaded(box)) continue;
         await loadCandidates({ box, around: true });
-        if (ctx.state.detail.kind !== "way" || ctx.state.detail.way.id !== wayId) return;
+        if (!stillAt(wayId)) return;
         if (ctx.selectNext(false)) return;
       }
-      if (ctx.state.detail.kind === "way" && ctx.state.detail.way.id === wayId) ctx.showNavHint(i18n.t("edit.nav.none"));
+      nothingFound();
     })().finally(() => { widening = null; });
     return true;
   }

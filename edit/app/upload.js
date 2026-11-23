@@ -133,6 +133,7 @@ export function installUpload(ctx) {
     try {
       await task();
     } finally {
+      ctx.forgetReadings();
       state.busy = false;
       renderQueue();
       ctx.syncQueuedState();
@@ -140,7 +141,7 @@ export function installUpload(ctx) {
       if (refreshSelected !== null) {
         const id = refreshSelected;
         refreshSelected = null;
-        ctx.selectWay(id);
+        ctx.selectWay(id, { fresh: true });
       }
     }
   }

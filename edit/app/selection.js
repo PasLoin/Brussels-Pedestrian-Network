@@ -94,17 +94,55 @@ export function installSelection(ctx) {
     else ctx.clearPendingKeys();
   }
 
-  async function selectWay(id) {
+  const readings = new Map();
+  const MAX_READINGS = 200;
+
+  function recentReading(id) {
+    const r = readings.get(id);
+    if (r && Date.now() - r.at < env.wayReuseMs) return r;
+    readings.delete(id);
+    return null;
+  }
+
+  async function readWay(id, fresh) {
+    const cached = !fresh && recentReading(id);
+    if (cached) return cached;
+    const reading = { elements: await osm.getFeature("way", id, true), at: Date.now() };
+    readings.delete(id);
+    readings.set(id, reading);
+    if (readings.size > MAX_READINGS) readings.delete(readings.keys().next().value);
+    return reading;
+  }
+
+  function forgetReadings() {
+    readings.clear();
+  }
+
+  function stillFresh(d, id) {
+    return d.kind === "way" && d.way.id === id && Date.now() - d.readAt < env.wayReuseMs;
+  }
+
+  function reframeSelected() {
+    ctx.setDockOpen(true);
+    ctx.applyView(ctx.frameWay(ctx.state.detail));
+    renderDetail();
+    ctx.renderNav();
+  }
+
+  async function selectWay(id, { fresh = false } = {}) {
+    const current = ctx.state.detail;
+    if (!fresh && current.kind === "loading" && current.wayId === id) return;
+    if (!fresh && stillFresh(current, id)) return reframeSelected();
     const run = ++selectionRun;
     ctx.clearPendingKeys();
     const known = ctx.liveFeatures.get(id);
     ctx.showSelection(known && known.geometry.type === "LineString" ? known.geometry.coordinates : null);
     ctx.setDockOpen(true);
     ctx.markVisited(id);
-    ctx.state.detail = { kind: "loading" };
+    ctx.state.detail = { kind: "loading", wayId: id };
     renderDetail();
     try {
-      const elements = await osm.getFeature("way", id, true);
+      const { elements, at: readAt } = await readWay(id, fresh);
       if (run !== selectionRun) return;
       const way = elements.find(f => f.type === "way" && f.id === id);
       const nodes = new Map(elements.filter(f => f.type === "node").map(n => [n.id, [n.lon, n.lat]]));
@@ -114,6 +152,7 @@ export function installSelection(ctx) {
       const detail = {
         kind: "way",
         way,
+        readAt,
         editable: isEditableCandidate(way.tags),
         bbox: bboxOf(coords),
         coords,
@@ -134,6 +173,7 @@ export function installSelection(ctx) {
       ctx.state.detail = { ...detail, fitting: view === "moving", visible: view === "visible" };
       ctx.noteReview();
     } catch (err) {
+      readings.delete(id);
       if (run !== selectionRun) return;
       const gone = err && (err.cause === 404 || err.cause === 410);
       ctx.state.detail = gone ? { kind: "gone", wayId: id } : { kind: "error", message: errorMessage(err, i18n.t) };
@@ -187,5 +227,5 @@ export function installSelection(ctx) {
     renderDetail();
   });
 
-  Object.assign(ctx, { renderDetail, editBlocked, applyValue, deselect, updateVisibility, selectWay });
+  Object.assign(ctx, { renderDetail, editBlocked, applyValue, deselect, updateVisibility, selectWay, forgetReadings });
 }
