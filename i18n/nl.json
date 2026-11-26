@@ -450,7 +450,10 @@
       "disabled": "Bewerken is uitgeschakeld.",
       "leaving": "Afmelden en token intrekken bij OSM…",
       "revokeFailed": "Afgemeld in deze browser, maar OSM heeft de intrekking van het token niet bevestigd. Trek de toegang zelf in:",
-      "authorizedApps": "toegestane toepassingen van je OSM-account"
+      "authorizedApps": "toegestane toepassingen van je OSM-account",
+      "betaRestricted": "Bèta: verzenden is voorbehouden aan toegelaten OSM-accounts.",
+      "betaAllowed": "Bèta: dit account mag verzenden.",
+      "notAllowed": "Tijdens de bèta is verzenden voorbehouden aan toegelaten accounts. Dit account (uid {{uid}}) hoort daar niet bij: je kunt bladeren en voorbereiden, maar niet verzenden."
     },
     "status": {
       "zoomIn": "Zoom in tot niveau {{zoom}} om kandidaten te laden.",
@@ -549,7 +552,8 @@
       "commentHelp": "Elke changeset krijgt een eigen opmerking (straat of gemeente, dan de actie), zichtbaar in het plan vóór verzending; je opmerking wordt achteraan toegevoegd.",
       "sourceTooLong": "Bronnen te lang: {{length}} tekens, OSM aanvaardt er maximaal {{max}}. Kort ze in voor je verstuurt.",
       "hashtagsTooLong": "Hashtags te lang: {{length}} tekens, OSM aanvaardt er maximaal {{max}}. Kort ze in voor je verstuurt.",
-      "tagTooLong": "De tag {{key}} is langer dan de {{max}} tekens die OSM aanvaardt."
+      "tagTooLong": "De tag {{key}} is langer dan de {{max}} tekens die OSM aanvaardt.",
+      "notAllowed": "Verzenden onmogelijk: dit account is tijdens de bèta niet toegelaten. Je wachtrij blijft bewaard."
     },
     "plan": {
       "deleted": "verwijderd op OSM, uit de wachtrij gehaald.",
@@ -586,7 +590,8 @@
       "server": "de OSM-server gaf een fout terug. Probeer later opnieuw; je wachtrij blijft bewaard.",
       "unknown": "{{message}}",
       "pausedRate": "te veel kaartladingen in één minuut: laden gepauzeerd tot ongeveer {{time}}.",
-      "pausedBandwidth": "de OSM-server beperkt downloads: oproepen gepauzeerd tot ongeveer {{time}}."
+      "pausedBandwidth": "de OSM-server beperkt downloads: oproepen gepauzeerd tot ongeveer {{time}}.",
+      "notAllowed": "dit account mag tijdens de bèta niet verzenden; er is niets naar OSM geschreven."
     },
     "dock": {
       "position": "Positie van het paneel",

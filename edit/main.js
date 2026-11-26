@@ -1,5 +1,6 @@
 import { i18n } from "../map/i18n.js";
 import { store } from "../map/store.js";
+import { installWriteGuard, isAllowedUid } from "./access.js";
 import { createApiGuard } from "./api-guard.js";
 import { blockApi, createApiMeter, installApiChain } from "./api-meter.js";
 import { limitConcurrency } from "./api-queue.js";
@@ -109,6 +110,9 @@ const ctx = {
   },
   showStatus: view => { statusEl.textContent = statusView(view, i18n); },
 };
+
+ctx.writeAllowed = () => isAllowedUid(env.access, ctx.state.user && ctx.state.user.uid);
+installWriteGuard(window, { apiUrl: env.apiUrl, allowed: ctx.writeAllowed });
 
 installLayers(ctx);
 installCamera(ctx);

@@ -356,3 +356,28 @@ test("the editor modules are only created after the environment guard and never 
     assert.match(src, /^export function install\w+\(ctx|^export function addEditLayers/m, name);
   }
 });
+
+test("the diff never reaches the tiles: osm.js and everything it imports stay away from map/ and the candidate sources", () => {
+  const FORBIDDEN = /^(?:\.\.\/map\/|\.\/candidates\.js$|\.\/dev-data\.js$|\.\/match\.js$|\.\/app\/)/;
+  const seen = new Set();
+  const visit = name => {
+    if (seen.has(name)) return;
+    seen.add(name);
+    const src = fs.readFileSync(path.join(EDIT, name), "utf8");
+    assert.doesNotMatch(src, /pmtiles|queryRenderedFeatures|querySourceFeatures/i, name);
+    for (const [, spec] of src.matchAll(/^import[^"']*["']([^"']+)["']/gm)) {
+      assert.doesNotMatch(spec, FORBIDDEN, `${name} imports ${spec}`);
+      visit(path.normalize(spec).replace(/^\.\//, ""));
+    }
+  };
+  visit("osm.js");
+  assert.ok(seen.has("intent.js") && seen.has("geo.js"));
+});
+
+test("the beta write guard is in place before any editor module can call the API", () => {
+  const main = fs.readFileSync(path.join(EDIT, "main.js"), "utf8");
+  const guard = main.indexOf("installWriteGuard(window");
+  const firstInstall = main.search(/\binstall[A-Z]\w*\(ctx/);
+  assert.ok(guard > 0, "installWriteGuard is missing");
+  assert.ok(guard < firstInstall, "a module is installed before the write guard");
+});

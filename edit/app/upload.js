@@ -59,7 +59,7 @@ export function installUpload(ctx) {
       if (el) el.textContent = issue ? tooLongMessage(issue, i18n.t) : "";
     }
     const send = queueEl.querySelector('[data-edit-action="send"]');
-    if (send) send.disabled = issues.length > 0 || !state.user || state.busy;
+    if (send) send.disabled = issues.length > 0 || !state.user || !ctx.writeAllowed() || state.busy;
   }
 
   function renderPending() {
@@ -82,6 +82,7 @@ export function installUpload(ctx) {
       result: state.result,
       busy: state.busy,
       loggedIn: Boolean(state.user),
+      notAllowed: Boolean(state.user) && !ctx.writeAllowed(),
       notSaved: items.length > 0 && !queue.persisted(),
     }, i18n, env.webUrl, { ...env, maxTagLength: MAX_TAG_LENGTH })}`;
   }
@@ -188,6 +189,10 @@ export function installUpload(ctx) {
       state.plan = null;
       await ctx.refreshAuth(i18n.t("edit.upload.loginFirst"));
       return;
+    }
+    if (!ctx.writeAllowed()) {
+      state.result = { done: [], error: i18n.t("edit.upload.notAllowed") };
+      return renderQueue();
     }
     try {
       if (formIssues().length) throw new Error("tag-too-long");

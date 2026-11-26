@@ -450,7 +450,10 @@
       "disabled": "L'édition est désactivée.",
       "leaving": "Déconnexion et révocation du jeton auprès d'OSM…",
       "revokeFailed": "Déconnecté sur ce navigateur, mais OSM n'a pas confirmé la révocation du jeton. Révoquez l'accès vous-même :",
-      "authorizedApps": "applications autorisées de votre compte OSM"
+      "authorizedApps": "applications autorisées de votre compte OSM",
+      "betaRestricted": "Bêta : l'envoi est réservé aux comptes OSM autorisés.",
+      "betaAllowed": "Bêta : ce compte est autorisé à envoyer.",
+      "notAllowed": "Pendant la bêta, l'envoi est réservé aux comptes autorisés. Ce compte (uid {{uid}}) n'en fait pas partie : vous pouvez parcourir et préparer, mais pas envoyer."
     },
     "status": {
       "zoomIn": "Zoomez au niveau {{zoom}} pour charger les candidats.",
@@ -549,7 +552,8 @@
       "commentHelp": "Chaque changeset reçoit un commentaire automatique (rue ou commune, puis l'action), visible avant l'envoi. Votre remarque s'ajoute à la fin.",
       "sourceTooLong": "Sources trop longues : {{length}} caractères pour {{max}} au plus acceptés par OSM. Raccourcissez-les avant d'envoyer.",
       "hashtagsTooLong": "Hashtags trop longs : {{length}} caractères pour {{max}} au plus acceptés par OSM. Raccourcissez-les avant d'envoyer.",
-      "tagTooLong": "Le tag {{key}} dépasse les {{max}} caractères acceptés par OSM."
+      "tagTooLong": "Le tag {{key}} dépasse les {{max}} caractères acceptés par OSM.",
+      "notAllowed": "Envoi impossible : ce compte n'est pas autorisé pendant la bêta. Votre file est conservée."
     },
     "plan": {
       "deleted": "supprimé sur OSM, retiré de la file.",
@@ -586,7 +590,8 @@
       "server": "le serveur OSM a renvoyé une erreur. Réessayez plus tard ; votre file est conservée.",
       "unknown": "{{message}}",
       "pausedRate": "trop de chargements de la carte en une minute : chargement en pause jusque vers {{time}}.",
-      "pausedBandwidth": "le serveur OSM limite les téléchargements : appels suspendus jusqu'à {{time}} environ."
+      "pausedBandwidth": "le serveur OSM limite les téléchargements : appels suspendus jusqu'à {{time}} environ.",
+      "notAllowed": "ce compte n'est pas autorisé à envoyer pendant la bêta ; rien n'a été écrit sur OSM."
     },
     "dock": {
       "position": "Position du panneau",

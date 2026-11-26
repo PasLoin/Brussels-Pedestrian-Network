@@ -1,3 +1,4 @@
+import { accessFromDataset } from "./access.js";
 import { parseReviewZoom } from "./review.js";
 
 const DEV_API = "https://master.apis.dev.openstreetmap.org";
@@ -77,7 +78,9 @@ export const SETTINGS = Object.freeze({
   sourcePresets: Object.freeze(["survey", "local_knowledge", "streetlevel imagery", "aerial imagery"]),
 });
 
-export function resolveEnv(name, pageUrl, settings = SETTINGS) {
+export const OPEN_ACCESS = Object.freeze({ restricted: false, uids: Object.freeze([]) });
+
+export function resolveEnv(name, pageUrl, settings = SETTINGS, access = OPEN_ACCESS) {
   if (!Object.prototype.hasOwnProperty.call(ENVS, name)) throw new Error(`unknown edit environment: ${name}`);
   return Object.freeze({
     ...ENVS[name],
@@ -85,11 +88,13 @@ export function resolveEnv(name, pageUrl, settings = SETTINGS) {
     maxWaysPerChangeset: Math.min(settings.maxWaysPerChangeset, MAX_WAYS_PER_CHANGESET),
     maxConcurrentApi: Math.max(1, Math.min(settings.maxConcurrentApi, MAX_CONCURRENT_API)),
     redirectUrl: new URL(ENVS[name].landingPage, pageUrl).href,
+    access,
   });
 }
 
 export function envFromDocument(doc = document) {
   const zoom = new URL(doc.location.href).searchParams.get("review-zoom");
   const settings = zoom === null ? SETTINGS : { ...SETTINGS, reviewZoom: parseReviewZoom(zoom) };
-  return resolveEnv(doc.documentElement.dataset.editEnv, doc.location.href, settings);
+  const dataset = doc.documentElement.dataset;
+  return resolveEnv(dataset.editEnv, doc.location.href, settings, accessFromDataset(dataset));
 }

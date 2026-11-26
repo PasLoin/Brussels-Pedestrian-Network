@@ -450,7 +450,10 @@
       "disabled": "Editing is disabled.",
       "leaving": "Logging out and revoking the token with OSM…",
       "revokeFailed": "Logged out in this browser, but OSM did not confirm that the token was revoked. Revoke the access yourself:",
-      "authorizedApps": "authorised applications of your OSM account"
+      "authorizedApps": "authorised applications of your OSM account",
+      "betaRestricted": "Beta: sending is limited to authorised OSM accounts.",
+      "betaAllowed": "Beta: this account may send.",
+      "notAllowed": "During the beta, sending is limited to authorised accounts. This account (uid {{uid}}) is not one of them: you can browse and prepare, but not send."
     },
     "status": {
       "zoomIn": "Zoom in to level {{zoom}} to load candidates.",
@@ -549,7 +552,8 @@
       "commentHelp": "Each changeset gets its own comment (street or municipality, then the action), shown in the plan before sending; your remark is added at the end.",
       "sourceTooLong": "Sources too long: {{length}} characters, OSM accepts at most {{max}}. Shorten them before sending.",
       "hashtagsTooLong": "Hashtags too long: {{length}} characters, OSM accepts at most {{max}}. Shorten them before sending.",
-      "tagTooLong": "The {{key}} tag is longer than the {{max}} characters OSM accepts."
+      "tagTooLong": "The {{key}} tag is longer than the {{max}} characters OSM accepts.",
+      "notAllowed": "Cannot send: this account is not authorised during the beta. Your queue is kept."
     },
     "plan": {
       "deleted": "deleted on OSM, removed from the queue.",
@@ -586,7 +590,8 @@
       "server": "the OSM server returned an error. Try again later; your queue is kept.",
       "unknown": "{{message}}",
       "pausedRate": "too many map loads in one minute: loading paused until about {{time}}.",
-      "pausedBandwidth": "the OSM server limits downloads: calls paused until about {{time}}."
+      "pausedBandwidth": "the OSM server limits downloads: calls paused until about {{time}}.",
+      "notAllowed": "this account is not authorised to send during the beta; nothing was written to OSM."
     },
     "dock": {
       "position": "Panel position",

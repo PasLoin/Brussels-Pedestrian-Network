@@ -9,6 +9,14 @@ export function authView(state, i18n) {
   if (state.kind === "logged") {
     return html`
       <p>${t("edit.auth.loggedAs", { name: state.name || "?" })}</p>
+      ${state.restricted && html`<p class="edit-help" data-edit-access="allowed">${t("edit.auth.betaAllowed")}</p>`}
+      <button type="button" class="btn" data-edit-action="logout">${t("edit.auth.logout")}</button>
+    `;
+  }
+  if (state.kind === "forbidden") {
+    return html`
+      <p>${t("edit.auth.loggedAs", { name: state.name || "?" })}</p>
+      <p class="edit-note" data-edit-access="forbidden">${t("edit.auth.notAllowed", { uid: String(state.uid ?? "?") })}</p>
       <button type="button" class="btn" data-edit-action="logout">${t("edit.auth.logout")}</button>
     `;
   }
@@ -21,6 +29,7 @@ export function authView(state, i18n) {
   }
   return html`
     ${state.message && html`<p class="edit-note">${state.message}</p>`}
+    ${state.restricted && html`<p class="edit-help" data-edit-access="restricted">${t("edit.auth.betaRestricted")}</p>`}
     ${state.revokeFailed && html`<p class="edit-note" data-edit-revoke="failed">${t("edit.auth.revokeFailed")} <a href="${state.appsUrl}" target="_blank" rel="noopener">${t("edit.auth.authorizedApps")}</a></p>`}
     <button type="button" class="btn" data-edit-action="login"${state.kind === "pending" ? html` disabled` : ""}>
       ${state.kind === "pending" ? t("edit.auth.pending") : t("edit.auth.login")}
@@ -290,7 +299,7 @@ function uploadFormView(state, i18n, settings) {
   const { t } = i18n;
   const f = state.form;
   const invalid = (state.tooLong || []).length > 0;
-  const blocked = !state.loggedIn || state.busy || invalid;
+  const blocked = !state.loggedIn || state.notAllowed || state.busy || invalid;
   return html`
     <div class="edit-upload">
       <label class="edit-field">${t("edit.upload.remark")}
@@ -310,6 +319,7 @@ function uploadFormView(state, i18n, settings) {
       ${fieldError("hashtags", state.tooLong, t)}
       <label class="edit-check"><input type="checkbox" name="cs-review"${f.review ? html` checked` : ""}> ${t("edit.upload.review")}</label>
       ${!state.loggedIn && html`<p class="edit-help">${t("edit.upload.loginFirst")}</p>`}
+      ${state.loggedIn && state.notAllowed && html`<p class="edit-note" data-edit-access="send-blocked">${t("edit.upload.notAllowed")}</p>`}
       <div class="edit-actions">
         <button type="button" class="btn" data-edit-action="plan"${state.busy ? html` disabled` : ""}>${t("edit.upload.prepare")}</button>
         ${state.plan && !state.plan.tooMany && state.plan.groups.length > 0 && html`

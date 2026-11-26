@@ -2406,3 +2406,84 @@ def test_a_refused_code_exchange_leaves_the_user_logged_out(session, fake):
     assert s.page.evaluate("localStorage.getItem('bpn.authEnv')") is None
     if not popup.is_closed():
         popup.close()
+
+
+ALLOWED_UID = 77
+REFUSED_UID = 4242
+
+
+@pytest.fixture(scope="module")
+def restricted_server(tmp_path_factory):
+    site = tmp_path_factory.mktemp("restricted-site")
+    access = build_site.edit_access({"BPN_EDIT_ALLOWLIST": "on", "BPN_EDIT_ALLOWED_UIDS_DEV": f"{ALLOWED_UID} 5"})
+    build_site.build(site, access=access)
+    (site / "communes.geojson").write_text(json.dumps(COMMUNES), encoding="utf-8")
+    (site / "pedestrian.pmtiles").write_bytes(empty_pmtiles())
+    with serve(site) as url:
+        yield url
+
+
+@pytest.fixture
+def restricted_session(browser, restricted_server):
+    opened = []
+
+    def make(fake, **kwargs):
+        s = Session(browser, restricted_server, fake, **kwargs)
+        opened.append(s)
+        return s
+
+    yield make
+    for s in opened:
+        s.close()
+
+
+def test_allowlist_an_allowed_account_sends_as_usual(restricted_session):
+    fake = FakeOsm(user_id=ALLOWED_UID)
+    fake.add_way(101, line_at(CENTER), street("Rue Test", "Teststraat"))
+    s = restricted_session(fake, queue=[intent_for(fake, 101)])
+    wait(s.page, "() => !!document.querySelector('#edit-auth [data-edit-access=allowed]')")
+    prepare(s.page)
+    assert s.page.query_selector('[data-edit-access="send-blocked"]') is None
+    send(s.page)
+    assert len(fake.creates) == 1
+    assert uploaded_tags(fake)["sidewalk:both"] == "separate"
+
+
+def test_allowlist_a_refused_account_can_prepare_but_never_writes(restricted_session):
+    fake = FakeOsm(user_id=REFUSED_UID, display_name="Inconnu")
+    fake.add_way(101, line_at(CENTER), street("Rue Test", "Teststraat"))
+    s = restricted_session(fake, queue=[intent_for(fake, 101)])
+    wait(s.page, "() => !!document.querySelector('#edit-auth [data-edit-access=forbidden]')")
+    auth = s.page.inner_text("#edit-auth")
+    assert "Inconnu" in auth and str(REFUSED_UID) in auth
+    prepare(s.page)
+    assert s.page.query_selector('[data-edit-access="send-blocked"]') is not None
+    assert s.page.is_disabled('[data-edit-action="send"]')
+    s.page.evaluate("document.querySelector('[data-edit-action=send]').disabled = false")
+    s.page.click('[data-edit-action="send"]')
+    wait_idle(s.page)
+    assert "pas autorisé" in queue_text(s.page)
+    forced = s.page.evaluate(
+        f"""() => fetch('https://{DEV_HOST}/api/0.6/changeset/create', {{ method: 'PUT', body: '<osm/>' }})
+              .then(() => 'sent', err => err.name)"""
+    )
+    assert forced == "EditNotAllowedError"
+    assert fake.count("create") == 0
+    assert fake.creates == []
+    assert queue_ids(s.page) == [101]
+
+
+def test_allowlist_a_refused_account_can_still_log_out_and_revoke(restricted_session):
+    fake = FakeOsm(user_id=REFUSED_UID)
+    s = restricted_session(fake)
+    wait(s.page, "() => !!document.querySelector('#edit-auth [data-edit-access=forbidden]')")
+    s.page.click('[data-edit-action="logout"]')
+    wait(s.page, "() => document.getElementById('edit-auth').innerText.includes('Se connecter à OSM')")
+    assert len(fake.revoked) == 1
+    assert s.page.query_selector('#edit-auth [data-edit-access="restricted"]') is not None
+
+
+def test_allowlist_off_shows_no_beta_notice(session, fake):
+    s = session()
+    wait(s.page, "() => document.getElementById('edit-auth').innerText.includes('Connecté')")
+    assert s.page.query_selector("#edit-auth [data-edit-access]") is None

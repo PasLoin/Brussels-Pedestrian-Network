@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ lang }}" data-locale="{{ locale }}" data-time-zone="{{ time_zone }}" data-root="{{ root }}"{% if edit_env %} data-edit-env="{{ edit_env }}"{% endif %}>
+<html lang="{{ lang }}" data-locale="{{ locale }}" data-time-zone="{{ time_zone }}" data-root="{{ root }}"{% if edit_env %} data-edit-env="{{ edit_env }}"{% endif %}{% if edit_access and edit_access.restricted %} data-edit-allowlist="on" data-edit-allowed-uids="{{ edit_access.uids|join(' ') }}"{% endif %}>
 <head>
   <meta charset="utf-8" />
   <meta http-equiv="Content-Security-Policy" content="{{ csp }}" />

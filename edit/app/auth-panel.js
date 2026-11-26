@@ -1,4 +1,5 @@
 import { i18n } from "../../map/i18n.js";
+import { isAllowedUid } from "../access.js";
 import { AUTH_KEY, ENV_KEY, authorizedAppsUrl, isLoggedIn, login, loginInProgress, logout } from "../auth.js";
 import { authView } from "../panel.js";
 
@@ -7,7 +8,7 @@ export function installAuthPanel(ctx) {
   const authEl = ctx.el.auth;
 
   function showAuth(view) {
-    authEl.innerHTML = html`${authView(view, i18n)}`;
+    authEl.innerHTML = html`${authView({ restricted: env.access.restricted, ...view }, i18n)}`;
   }
 
   function revokeNotice(outcome) {
@@ -24,8 +25,9 @@ export function installAuthPanel(ctx) {
     } else {
       try {
         const me = await osm.getUser("me");
-        state.user = { uid: me.id, name: me.display_name, changesetsCount: me.changesets && me.changesets.count };
-        showAuth({ kind: "logged", name: me.display_name });
+        const allowed = isAllowedUid(env.access, me.id);
+        state.user = { uid: me.id, name: me.display_name, changesetsCount: me.changesets && me.changesets.count, allowed };
+        showAuth({ kind: allowed ? "logged" : "forbidden", name: me.display_name, uid: me.id });
       } catch {
         const outcome = await logout({ osm, storage, env });
         showAuth({ kind: "anonymous", message: i18n.t("edit.auth.expired"), ...revokeNotice(outcome) });

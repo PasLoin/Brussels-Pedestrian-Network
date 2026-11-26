@@ -199,3 +199,76 @@ def test_editing_lives_in_its_own_panel_outside_the_header(site):
     dock = html[html.index('<aside id="edit-dock"'):html.index("</aside>")]
     for part in ("edit-dock-toggle", "edit-auth", "edit-status", "edit-detail", "edit-queue"):
         assert f'id="{part}"' in dock
+
+
+ALLOWLIST_ON = {"BPN_EDIT_ALLOWLIST": "on", "BPN_EDIT_ALLOWED_UIDS_DEV": "77, 12 77", "BPN_EDIT_ALLOWED_UIDS_PROD": "9001"}
+
+
+def _html_tag(html):
+    return re.search(r"<html[^>]*>", html).group(0)
+
+
+def test_edit_allowlist_is_off_unless_switched_on():
+    assert build_site.edit_access({}) == {"dev": {"restricted": False, "uids": []}, "prod": {"restricted": False, "uids": []}}
+    for off in ("", "off", "OFF", "false", "0", "no", " off "):
+        access = build_site.edit_access({"BPN_EDIT_ALLOWLIST": off, "BPN_EDIT_ALLOWED_UIDS_DEV": "5"})
+        assert access["dev"] == {"restricted": False, "uids": []}, off
+
+
+def test_edit_allowlist_on_keeps_each_environment_to_its_own_uids():
+    access = build_site.edit_access(ALLOWLIST_ON)
+    assert access == {"dev": {"restricted": True, "uids": [77, 12]}, "prod": {"restricted": True, "uids": [9001]}}
+    assert build_site.edit_access({"BPN_EDIT_ALLOWLIST": "on"}) == {"dev": {"restricted": True, "uids": []}, "prod": {"restricted": True, "uids": []}}
+
+
+@pytest.mark.parametrize("environ, message", [
+    ({"BPN_EDIT_ALLOWLIST": "maybe"}, "BPN_EDIT_ALLOWLIST"),
+    ({"BPN_EDIT_ALLOWLIST": "on", "BPN_EDIT_ALLOWED_UIDS_DEV": "12 abc"}, "BPN_EDIT_ALLOWED_UIDS_DEV"),
+    ({"BPN_EDIT_ALLOWLIST": "on", "BPN_EDIT_ALLOWED_UIDS_PROD": "0"}, "BPN_EDIT_ALLOWED_UIDS_PROD"),
+    ({"BPN_EDIT_ALLOWED_UIDS_DEV": "-4"}, "BPN_EDIT_ALLOWED_UIDS_DEV"),
+])
+def test_a_mistyped_allowlist_stops_the_build(environ, message):
+    with pytest.raises(ValueError, match=message):
+        build_site.edit_access(environ)
+
+
+def test_a_mistyped_allowlist_fails_the_command_line_build(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("BPN_EDIT_ALLOWLIST", "yes please")
+    assert build_site.main(["--out", str(tmp_path / "site")]) == 1
+    assert "BPN_EDIT_ALLOWLIST" in capsys.readouterr().err
+
+
+def test_an_empty_list_with_the_allowlist_on_is_announced(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("BPN_EDIT_ALLOWLIST", "on")
+    monkeypatch.setenv("BPN_EDIT_ALLOWED_UIDS_DEV", "77")
+    monkeypatch.delenv("BPN_EDIT_ALLOWED_UIDS_PROD", raising=False)
+    assert build_site.main(["--out", str(tmp_path / "site")]) == 0
+    out = capsys.readouterr()
+    assert "edit allowlist on: dev 1 uid(s), prod 0 uid(s)" in out.out
+    assert "BPN_EDIT_ALLOWED_UIDS_PROD is empty" in out.err
+
+
+def test_default_build_carries_no_allowlist(site):
+    for path in [DEVTEST_PAGE, BETA_PAGE, "index.html", DEVTEST_LAND, BETA_LAND]:
+        assert "data-edit-allowlist" not in _html(site / path), path
+        assert "data-edit-allowed-uids" not in _html(site / path), path
+
+
+def test_allowlist_reaches_each_edit_page_with_its_own_environment_uids(tmp_path):
+    out = tmp_path / "site"
+    build_site.build(out, lastmod="2026-11-23", access=build_site.edit_access(ALLOWLIST_ON))
+    config = build_site.load_languages()
+    for env_name, uids in (("dev", "77 12"), ("prod", "9001")):
+        for path in edit_pages(config, env_name):
+            tag = _html_tag(_html(out / path))
+            assert 'data-edit-allowlist="on"' in tag, path
+            assert f'data-edit-allowed-uids="{uids}"' in tag, path
+    for path in ["index.html", "stats.html", "about.html", DEVTEST_LAND, BETA_LAND, "404.html"]:
+        assert "data-edit-allowlist" not in _html(out / path), path
+
+
+def test_site_workflow_hands_the_repository_variables_to_the_build():
+    workflow = (ROOT / ".github/workflows/site.yml").read_text(encoding="utf-8")
+    step = workflow.split("- name: Render pages", 1)[1].split("- name:", 1)[0]
+    for var in ("BPN_EDIT_ALLOWLIST", "BPN_EDIT_ALLOWED_UIDS_DEV", "BPN_EDIT_ALLOWED_UIDS_PROD"):
+        assert f"{var}: ${{{{ vars.{var} }}}}" in step, var

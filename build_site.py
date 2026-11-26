@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 import re
 import shutil
 import sys
@@ -71,6 +72,11 @@ EDIT_ENVS = {
     "dev": {"page": DEVTEST_PAGE, "stem": "devtest", "land": DEVTEST_LAND, "hosts": (DEV_API,)},
     "prod": {"page": BETA_PAGE, "stem": "beta", "land": BETA_LAND, "hosts": PROD_HOSTS},
 }
+EDIT_ALLOWLIST_VAR = "BPN_EDIT_ALLOWLIST"
+EDIT_ALLOWED_UIDS_VARS = {name: f"BPN_EDIT_ALLOWED_UIDS_{name.upper()}" for name in EDIT_ENVS}
+SWITCH_ON = {"on", "true", "1", "yes"}
+SWITCH_OFF = {"", "off", "false", "0", "no"}
+UID_TOKEN = re.compile(r"[1-9]\d{0,11}")
 LAND_PAGES = {
     spec["land"]: {"lang": DEVTEST_LANG, "edit_env": name} for name, spec in EDIT_ENVS.items()
 }
@@ -333,6 +339,44 @@ def copy_vendor(out, versions=None, modules=NODE_MODULES):
             (target / "LICENSE").write_text(notice, encoding="utf-8")
 
 
+def parse_switch(name, value):
+    text = (value or "").strip().lower()
+    if text in SWITCH_ON:
+        return True
+    if text in SWITCH_OFF:
+        return False
+    raise ValueError(f"{name} must be on or off, got {value!r}")
+
+
+def parse_uids(name, value):
+    uids = []
+    for token in re.split(r"[\s,;]+", (value or "").strip()):
+        if not token:
+            continue
+        if not UID_TOKEN.fullmatch(token):
+            raise ValueError(f"{name}: {token!r} is not an OSM user id")
+        if int(token) not in uids:
+            uids.append(int(token))
+    return uids
+
+
+def edit_access(environ=None):
+    environ = os.environ if environ is None else environ
+    restricted = parse_switch(EDIT_ALLOWLIST_VAR, environ.get(EDIT_ALLOWLIST_VAR))
+    access = {}
+    for name, var in EDIT_ALLOWED_UIDS_VARS.items():
+        uids = parse_uids(var, environ.get(var))
+        access[name] = {"restricted": restricted, "uids": uids if restricted else []}
+    return access
+
+
+def edit_access_summary(access):
+    if not any(spec["restricted"] for spec in access.values()):
+        return "edit allowlist off: any logged-in OSM account may send"
+    parts = [f"{name} {len(spec['uids'])} uid(s)" for name, spec in access.items()]
+    return "edit allowlist on: " + ", ".join(parts)
+
+
 def environment():
     env = Environment(
         loader=FileSystemLoader(TEMPLATES_DIR),
@@ -374,6 +418,7 @@ def render_page(lang, page, config=None, env=None, dictionary=None, dictionaries
         }),
         home="./",
         edit_env=None,
+        edit_access=None,
         noindex=False,
     )
 
@@ -414,7 +459,8 @@ def edit_alternates(config, pages, dictionaries):
     return result
 
 
-def render_edit_page(path, spec, config=None, env=None, dictionary=None, dictionaries=None):
+def render_edit_page(path, spec, config=None, env=None, dictionary=None, dictionaries=None, access=None):
+    access = edit_access() if access is None else access
     config = config or load_languages()
     env = env or environment()
     lang = spec["lang"]
@@ -444,6 +490,7 @@ def render_edit_page(path, spec, config=None, env=None, dictionary=None, diction
         }),
         home=root + conf["path"],
         edit_env=spec["edit_env"],
+        edit_access=access[spec["edit_env"]],
         noindex=True,
     )
 
@@ -518,10 +565,11 @@ def write_sitemap(out, config, lastmod):
     (out / SITEMAP).write_text(sitemap_xml(config, lastmod), encoding="utf-8")
 
 
-def build(out, langs=None, lastmod=None, pseudo=False):
+def build(out, langs=None, lastmod=None, pseudo=False, access=None):
     out = Path(out).resolve()
     if out == ROOT or out in ROOT.parents:
         raise ValueError(f"refusing to wipe {out}")
+    access = edit_access() if access is None else access
     config = load_languages()
     built = selected_languages(config, langs)
     env = environment()
@@ -544,7 +592,7 @@ def build(out, langs=None, lastmod=None, pseudo=False):
         built.append(PSEUDO_LANG)
     for path, spec in all_edit_pages(config).items():
         (out / path).parent.mkdir(parents=True, exist_ok=True)
-        (out / path).write_text(render_edit_page(path, spec, config, env, dictionaries=dictionaries), encoding="utf-8")
+        (out / path).write_text(render_edit_page(path, spec, config, env, dictionaries=dictionaries, access=access), encoding="utf-8")
     for path, spec in LAND_PAGES.items():
         (out / path).parent.mkdir(parents=True, exist_ok=True)
         (out / path).write_text(render_land_page(path, spec, config, env), encoding="utf-8")
@@ -566,10 +614,15 @@ def main(argv=None):
     parser.add_argument("--pseudo", action="store_true", help=f"also render the {PSEUDO_LANG} pseudo-locale in {PSEUDO_CONF['path']}, never published")
     args = parser.parse_args(argv)
     try:
-        built = build(Path(args.out), args.lang, args.lastmod, args.pseudo)
+        access = edit_access()
+        built = build(Path(args.out), args.lang, args.lastmod, args.pseudo, access)
     except ValueError as e:
         print(f"[ERROR] {e}", file=sys.stderr)
         return 1
+    print(f"[INFO] {edit_access_summary(access)}")
+    for name, spec in access.items():
+        if spec["restricted"] and not spec["uids"]:
+            print(f"[WARN] {EDIT_ALLOWED_UIDS_VARS[name]} is empty: nobody may send from the {name} editor", file=sys.stderr)
     print(f"[OK] site rendered in {args.out}: {', '.join(built)}")
     return 0
 
