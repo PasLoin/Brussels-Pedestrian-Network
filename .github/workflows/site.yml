@@ -65,6 +65,10 @@ jobs:
         run: python3 check_i18n.py
 
       - name: Render pages
+        env:
+          BPN_EDIT_ALLOWLIST: ${{ vars.BPN_EDIT_ALLOWLIST }}
+          BPN_EDIT_ALLOWED_UIDS_DEV: ${{ vars.BPN_EDIT_ALLOWED_UIDS_DEV }}
+          BPN_EDIT_ALLOWED_UIDS_PROD: ${{ vars.BPN_EDIT_ALLOWED_UIDS_PROD }}
         run: python3 build_site.py --out _site --lastmod "$(date -u +%Y-%m-%d)"
 
       - name: Fetch published data
