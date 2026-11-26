@@ -91,8 +91,9 @@ def intent_for(fake, way_id, set_tags=None):
 BLANK_PNG = bytes.fromhex("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c6360606060000000050001a5f645400000000049454e44ae426082")
 
 class Session:
-    def __init__(self, browser, server, fake, logged_in=True, queue=None, auth_env="dev", center=CENTER, zoom=17.5, editing=True, settings=None, page_name="devtest.html", prod_fake=False):
+    def __init__(self, browser, server, fake, logged_in=True, queue=None, auth_env="dev", center=CENTER, zoom=17.5, editing=True, settings=None, page_name="devtest.html", prod_fake=False, client_ids=None):
         self.fake = fake
+        self.client_ids = client_ids or {}
         self.prod_fake = prod_fake
         self.aborted = []
         self.aborted_auth = []
@@ -125,11 +126,14 @@ class Session:
             return route.fulfill(body=BLANK_STYLE, content_type="application/json", headers={"Access-Control-Allow-Origin": "*"})
         if DEV_HOST in url or (self.prod_fake and url.startswith(PROD_API)):
             return self.fake.handle(route)
-        if self.settings and url.split("?")[0].endswith("/edit/env.js"):
+        if (self.settings or self.client_ids) and url.split("?")[0].endswith("/edit/env.js"):
             body = route.fetch().text()
             for key, value in self.settings.items():
                 body, n = re.subn(rf"^(\s*{key}): [^,]+,", rf"\1: {value},", body, flags=re.M)
                 assert n == 1, key
+            for env_name, client_id in self.client_ids.items():
+                body, n = re.subn(rf'({env_name}: Object\.freeze\(\{{[^}}]*?clientId: )"[^"]*"', rf"\g<1>{json.dumps(client_id)}", body, flags=re.S)
+                assert n == 1, env_name
             return route.fulfill(body=body, content_type="application/javascript")
         if url.startswith("http://127.0.0.1"):
             return route.continue_()
@@ -1696,7 +1700,7 @@ def test_the_page_never_has_more_than_two_api_calls_in_flight(session, fake):
 
 def test_the_beta_page_runs_in_prod_without_a_client_and_never_touches_the_dev_server(session, fake):
     three_streets(fake)
-    s = session(logged_in=False, editing=False, page_name="beta.html")
+    s = session(logged_in=False, editing=False, page_name="beta.html", client_ids={"prod": ""})
     assert s.page.evaluate("document.documentElement.dataset.editEnv") == "prod"
     assert s.page.evaluate("BPNEdit.apiStats()") is not None
     assert s.page.evaluate("BPNEdit.maxConcurrentApi") == 1
@@ -1875,7 +1879,7 @@ def test_a_sent_street_is_recorded_as_handled(session, fake):
 
 def test_a_dev_login_in_another_tab_never_sends_its_token_from_the_beta_page(session, fake):
     three_streets(fake)
-    s = session(logged_in=False, editing=True, page_name="beta.html")
+    s = session(logged_in=False, editing=True, page_name="beta.html", client_ids={"prod": ""})
     dev = s.context.new_page()
     dev.goto(s.origin + "test-api/devtest.html")
     wait(dev, "() => window.BPNEdit !== undefined")

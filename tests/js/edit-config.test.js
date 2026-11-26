@@ -25,7 +25,8 @@ test("the prod beta page lands on its own page, next to it, never on the dev one
   assert.equal(env.apiUrl, "https://api.openstreetmap.org");
   assert.equal(env.redirectUrl, "https://pasloin.github.io/Brussels-Pedestrian-Network/test-api/beta-land.html");
   assert.notEqual(ENVS.dev.landingPage, ENVS.prod.landingPage);
-  assert.equal(env.clientId, "");
+  assert.equal(typeof env.clientId, "string");
+  assert.notEqual(env.clientId, ENVS.dev.clientId);
   assert.equal(env.apiMeter, true);
 });
 
