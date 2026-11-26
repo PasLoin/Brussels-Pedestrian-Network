@@ -20,7 +20,7 @@ export const ENVS = Object.freeze({
     name: "prod",
     apiUrl: "https://api.openstreetmap.org",
     webUrl: "https://www.openstreetmap.org",
-    clientId: "",
+    clientId: "fake",
     scopes: SCOPES,
     landingPage: "beta-land.html",
     candidates: "pmtiles",
