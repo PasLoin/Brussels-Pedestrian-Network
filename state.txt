@@ -1,0 +1,15 @@
+{
+  "uuid": "7d2c39cc-e057-4966-aedf-5039bbd95d17",
+  "timestamp": "2026-11-28T08:13:08Z",
+  "size_bytes": 47439978,
+  "elapsed": 127.77250931,
+  "bbox": [
+    50.749369,
+    4.202947,
+    50.94491,
+    4.512645
+  ],
+  "boundary_relation": 54094,
+  "boundary_poly_url": "https://raw.githubusercontent.com/PasLoin/Osm-python-analyse_Belgium/main/pbf_analyse/54094.poly",
+  "buffer_meters": 100
+}build_timestamp=2026-11-28T08:42:19Z
